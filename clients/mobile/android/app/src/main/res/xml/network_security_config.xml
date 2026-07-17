@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CumulusVPN reaches each gateway's control API over http://<node-ip>:51821
+  (cleartext). TLS is unnecessary for integrity here: every /v1/info response is
+  ed25519-signed and the client verifies the signature against its pinned key, so
+  a MITM cannot forge gateway data. Gateway IPs are dynamic Flux nodes, so we
+  cannot pin per-domain rules — cleartext is permitted app-wide. Without this,
+  release builds (usesCleartextTraffic defaults to false) silently drop every
+  gateway probe and the app shows "no gateways / no countries".
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>
