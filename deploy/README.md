@@ -70,8 +70,8 @@ deploy/
 ```
 edit countries.yaml
   → node scripts/generate.mjs --stage beta --check      # writes plain/ + onchain/, warns on coverage
-  → REGISTRY_AUTH=… PAYMENT_ADDRESS=t1… DIRECTORY_PUBKEY=… node scripts/encrypt.mjs cumulusde
-  → ./scripts/register.sh cumulusde                      # sign + broadcast + pay
+  → REGISTRY_AUTH=… PAYMENT_ADDRESS=t1… DIRECTORY_PUBKEY=… node scripts/encrypt.mjs cumulusvpnde
+  → ./scripts/register.sh cumulusvpnde                      # sign + broadcast + pay
 ```
 
 Fleet strategy and the scale-out ladder (Beta ~50 instances / 12 countries → GA ~200 / 30 →

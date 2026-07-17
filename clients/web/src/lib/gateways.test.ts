@@ -20,15 +20,15 @@ function gateway(country: string, load: number, city = 'Somewhere'): GatewayInfo
 
 describe('healthOf', () => {
   it('is unknown when no live gateway was discovered', () => {
-    const [seed] = buildCountryOptions(['cumulusfr'], []);
+    const [seed] = buildCountryOptions(['cumulusvpnfr'], []);
     expect(seed).toBeDefined();
     expect(healthOf(seed!)).toBe('unknown');
   });
 
   it('maps load bands to good / fair / busy', () => {
-    const good = buildCountryOptions(['cumulusde'], [gateway('DE', 0.1)])[0]!;
-    const fair = buildCountryOptions(['cumulusde'], [gateway('DE', 0.5)])[0]!;
-    const busy = buildCountryOptions(['cumulusde'], [gateway('DE', 0.9)])[0]!;
+    const good = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.1)])[0]!;
+    const fair = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.5)])[0]!;
+    const busy = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.9)])[0]!;
     expect(healthOf(good)).toBe('good');
     expect(healthOf(fair)).toBe('fair');
     expect(healthOf(busy)).toBe('busy');
@@ -37,7 +37,7 @@ describe('healthOf', () => {
 
 describe('buildCountryOptions', () => {
   it('produces one enriched row per spec', () => {
-    const options = buildCountryOptions(['cumulusde', 'cumulusnl'], []);
+    const options = buildCountryOptions(['cumulusvpnde', 'cumulusvpnnl'], []);
     expect(options).toHaveLength(2);
     const de = options.find((o) => o.cc === 'DE')!;
     expect(de.name).toBe('Germany');
@@ -50,7 +50,7 @@ describe('buildCountryOptions', () => {
 
   it('picks the least-loaded gateway as best and counts nodes per country', () => {
     const options = buildCountryOptions(
-      ['cumulusde'],
+      ['cumulusvpnde'],
       [gateway('DE', 0.8, 'Berlin'), gateway('DE', 0.2, 'Frankfurt')],
     );
     const de = options[0]!;
@@ -63,7 +63,7 @@ describe('buildCountryOptions', () => {
 
   it('sorts live countries before seed-only ones, then alphabetically', () => {
     const options = buildCountryOptions(
-      ['cumulusde', 'cumulusau', 'cumulusnl'],
+      ['cumulusvpnde', 'cumulusvpnau', 'cumulusvpnnl'],
       [gateway('NL', 0.3)],
     );
     expect(options.map((o) => o.cc)).toEqual(['NL', 'AU', 'DE']);

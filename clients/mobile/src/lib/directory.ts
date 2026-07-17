@@ -18,7 +18,7 @@ import bundled from '../data/directory.json';
  * Pinned directory Ed25519 public key (`CVPN_DIRECTORY_PUBKEY`), base64.
  * Baked into the binary; the whole trust chain hangs off this constant.
  */
-export const CVPN_DIRECTORY_PUBKEY = 'IhvN6OfPIjw1y+I+zK3Z/63gsgL1qEt7f8M9UZqRzIU=';
+export const CVPN_DIRECTORY_PUBKEY = '1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=';
 
 /** The bundled snapshot, typed as the core `Directory`. */
 export const bundledDirectory: Directory = bundled as Directory;

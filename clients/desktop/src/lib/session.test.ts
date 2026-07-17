@@ -98,7 +98,7 @@ describe('establish', () => {
     dns: '10.8.0.1',
     payment_address: 't1addr',
     payment_memo: 'CVPN1:code',
-    price_flux: 4.5,
+    price_flux: 20,
   };
 
   it('enrolls the key, pins the gateway sign key, and brings the tunnel up', async () => {

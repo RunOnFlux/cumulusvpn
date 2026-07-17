@@ -45,7 +45,7 @@ if (!['open', 'datacenter'].includes(variant)) {
 // pubkey is published in clients) — so the OPEN variant leaks nothing by inlining it on-chain.
 function gatewayEnv(defaults) {
   return [
-    'CVPN_PRICE_FLUX=4.5',
+    'CVPN_PRICE_FLUX=20',
     'CVPN_PAYMENT_ADDRESS=t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ',
     'CVPN_DIRECTORY_PUBKEY=1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=',
     'CVPN_FREE_RATE_KBPS=100',
@@ -66,7 +66,7 @@ let eligibleByCountry = null;
 if (doCheck) eligibleByCountry = await fetchEligibleNodeCounts();
 
 for (const c of wanted) {
-  const name = `cumulus${c.cc}`;
+  const name = `cumulusvpn${c.cc}`;
   const instances = c.instances ?? defaults.instances;
   const repotag = c.repotag ?? defaults.repotag;
   const cpu = c.cpu ?? defaults.cpu;

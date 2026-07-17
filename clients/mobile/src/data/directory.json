@@ -1,21 +1,21 @@
 {
   "version": 1,
-  "updated": "2026-07-16T10:59:43Z",
-  "payment_address": "t1exampleADDRESSxxxxxxxxxxxxxxxxxx",
-  "price_flux": 4.5,
+  "updated": "2026-07-17T14:12:07Z",
+  "payment_address": "t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ",
+  "price_flux": 20,
   "specs": [
-    "cumulusau",
-    "cumulusbr",
-    "cumulusca",
-    "cumuluscz",
-    "cumulusde",
-    "cumulusfr",
-    "cumulusgb",
-    "cumulusjp",
-    "cumulusnl",
-    "cumuluspl",
-    "cumulussg",
-    "cumulusus"
+    "cumulusvpnau",
+    "cumulusvpnbr",
+    "cumulusvpnca",
+    "cumulusvpncz",
+    "cumulusvpnde",
+    "cumulusvpnfr",
+    "cumulusvpngb",
+    "cumulusvpnjp",
+    "cumulusvpnnl",
+    "cumulusvpnpl",
+    "cumulusvpnsg",
+    "cumulusvpnus"
   ],
   "seed_gateways": [
     {
@@ -24,6 +24,6 @@
       "sign_pubkey": "REPLACE_GATEWAY_ED25519_PUBKEY_B64"
     }
   ],
-  "sign_pubkey": "IhvN6OfPIjw1y+I+zK3Z/63gsgL1qEt7f8M9UZqRzIU=",
-  "sig": "6hw21bXnG05i2Un5lvFd47GbV6XlMVTd8nnqSGfZguUd+P/nTXG0VmDa+j21ICgkesC8zo6s0f3RjqHvBqIKAg=="
+  "sign_pubkey": "1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=",
+  "sig": "TsQTer0bKqMjb0mUZGKwwy5Lr0bDVaUKXynxZRoCJKk3Ps7D4Q/AREEgAZWuTT6Ob7SZQmRpf8ARwo4rK9LHAA=="
 }

@@ -1,12 +1,12 @@
 /**
- * Country helpers that turn a Flux app-spec name (`cumulusde`) into the display
+ * Country helpers that turn a Flux app-spec name (`cumulusvpnde`) into the display
  * data the country picker needs. Names come from the platform `Intl` catalogue
  * and flags are derived from the ISO code, so only the primary city is a table.
  */
 
-// Spec names are `cumulus<cc>` where `<cc>` is a lowercase ISO-3166-1 alpha-2.
+// Spec names are `cumulusvpn<cc>` where `<cc>` is a lowercase ISO-3166-1 alpha-2.
 export function specToCountryCode(spec: string): string {
-  return spec.replace(/^cumulus/, '').toUpperCase();
+  return spec.replace(/^cumulusvpn/, '').toUpperCase();
 }
 
 /** Regional-indicator flag emoji for a 2-letter country code, e.g. `DE` → 🇩🇪. */

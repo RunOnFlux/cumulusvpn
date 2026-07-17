@@ -28,7 +28,7 @@ describe('BUNDLED_DIRECTORY', () => {
   });
 
   it('lists a spec per fleet country', () => {
-    expect(BUNDLED_DIRECTORY.specs).toContain('cumulusde');
+    expect(BUNDLED_DIRECTORY.specs).toContain('cumulusvpnde');
     expect(BUNDLED_DIRECTORY.specs.every((s) => s.startsWith('cumulus'))).toBe(true);
   });
 });

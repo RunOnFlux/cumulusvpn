@@ -71,7 +71,7 @@ chain-anchored source of truth all gateways share).
 
 | Var | Required | Default | Purpose |
 |---|---|---|---|
-| `CVPN_PRICE_FLUX` | yes | — | Monthly price in FLUX (e.g. `4.5`) |
+| `CVPN_PRICE_FLUX` | yes | — | Monthly price in FLUX (e.g. `20`) |
 | `CVPN_PAYMENT_ADDRESS` | yes | — | Transparent FLUX address payments go to |
 | `CVPN_DIRECTORY_PUBKEY` | no | — | ed25519 key that signs `directory.json` (republished) |
 | `CVPN_FREE_RATE_KBPS` | no | `100` | Free-tier rate limit (KB/s) |
@@ -89,7 +89,7 @@ Fixed ports: WireGuard UDP **51820**, control API TCP **51821**.
 ## Run the PoC locally (against a mock)
 
 ```bash
-CVPN_PRICE_FLUX=4.5 \
+CVPN_PRICE_FLUX=20 \
 CVPN_PAYMENT_ADDRESS=t1exampleAddressReplaceMe \
 CVPN_KEY_FILE=/tmp/cvpn.key \
 CVPN_BIND=:51821 \

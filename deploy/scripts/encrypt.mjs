@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // encrypt.mjs — wrap a plaintext inner spec into the on-chain `enterprise` ciphertext.
 //
-//   node encrypt.mjs cumulusde
+//   node encrypt.mjs cumulusvpnde
 //
 // FluxOS v8 enterprise apps carry {contacts, components} encrypted so only whitelisted, KYC'd
 // ArcaneOS enterprise nodes can decrypt and run them. Encryption is a hybrid scheme (per-node

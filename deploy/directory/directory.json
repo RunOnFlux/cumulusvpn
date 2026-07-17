@@ -5,7 +5,7 @@
   "version": 1,
   "updated": "2026-07-16T00:00:00Z",
   "payment_address": "t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ",
-  "price_flux": 4.5,
+  "price_flux": 20,
   "specs": [],
   "seed_gateways": [
     { "ip": "0.0.0.0", "country": "DE", "sign_pubkey": "REPLACE_GATEWAY_ED25519_PUBKEY_B64" }

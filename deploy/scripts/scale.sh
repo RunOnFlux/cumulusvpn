@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scale.sh — change the instance count for one country and push a paid update.
 #
-#   ./scale.sh cumulusde 8      # set Germany to 8 instances, regenerate, re-encrypt, re-register
+#   ./scale.sh cumulusvpnde 8      # set Germany to 8 instances, regenerate, re-encrypt, re-register
 #
 # Clients pick up new instances automatically via Flux discovery (/apps/location) — no client
 # release needed. Use when p95 gateway load for a country exceeds ~60% (see docs/02).

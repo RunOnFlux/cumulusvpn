@@ -64,7 +64,7 @@ async function probe(ip: string, fetchImpl: FetchImpl): Promise<GatewayInfo | nu
  * country and sorted by load (ascending) so the caller can pick the least-busy
  * gateway in a given country.
  *
- * @param specNames - Flux app-spec names, e.g. `["cumulusde", "cumulusus"]`.
+ * @param specNames - Flux app-spec names, e.g. `["cumulusvpnde", "cumulusvpnus"]`.
  * @param options - Optional extra Flux nodes and a custom fetch implementation.
  * @returns Verified gateways, grouped by country and sorted by load.
  */

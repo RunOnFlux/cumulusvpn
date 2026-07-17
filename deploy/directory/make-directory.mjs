@@ -6,7 +6,7 @@
 //       SECRET — the .key file is gitignored; ship only the pubkey to clients (CVPN_DIRECTORY_PUBKEY).
 //
 //   node directory/make-directory.mjs build --key directory/directory.key \
-//        [--payment-address t1...] [--price 4.5] [--in directory.json] [--out directory.signed.json]
+//        [--payment-address t1...] [--price 20] [--in directory.json] [--out directory.signed.json]
 //       Read specs/onchain/cumulus*.json for the spec list, fold in the payment address / price /
 //       seed gateways from the unsigned sample directory.json (or flags), then SIGN. Writes the
 //       signed artifact to directory.signed.json (gitignored) with `sig` + `sign_pubkey`.
@@ -127,7 +127,7 @@ function assembleFromSpecs(base) {
     version: base.version ?? 1,
     updated: new Date().toISOString().replace(/\.\d{3}Z$/, 'Z'),
     payment_address: flag('payment-address', base.payment_address ?? 't1REPLACE_PAYMENT_ADDRESS'),
-    price_flux: flag('price') !== undefined ? Number(flag('price')) : (base.price_flux ?? 4.5),
+    price_flux: flag('price') !== undefined ? Number(flag('price')) : (base.price_flux ?? 20),
     specs,
     seed_gateways: base.seed_gateways ?? [],
   };

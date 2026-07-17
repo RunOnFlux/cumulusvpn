@@ -3,7 +3,7 @@
   "//2": "NOT here — they live encrypted in `enterprise`. compose[] carries only the shape needed",
   "//3": "for pricing/scheduling; contacts+components are encrypted via encrypt.mjs before broadcast.",
   "version": 8,
-  "name": "cumulusCC",
+  "name": "cumulusvpnCC",
   "description": "CumulusVPN — decentralized VPN gateway",
   "owner": "196GJWyLxzAw3MirTT7Bqs2iGpUQio29GH",
   "instances": 3,
@@ -18,7 +18,7 @@
     {
       "name": "gateway",
       "description": "gateway",
-      "repotag": "ghcr.io/runonflux/cumulusvpn-gateway:v0.1.0",
+      "repotag": "ghcr.io/runonflux/cumulusvpn-gateway:0.1.0",
       "ports": [51820, 51821],
       "containerPorts": [51820, 51821],
       "domains": ["", ""],

@@ -22,7 +22,7 @@ e.g. CVPN1:3QJmnh8vzBqoQpuTGDsUCkbFyxVQ
 ```
 - `CVPN1` = protocol tag + version. Anything else in OP_RETURN is ignored by scanners.
 - Client apps and the web onboarding page compute and display this string + a QR code
-  (`flux:t1PayAddress?amount=4.5&message=CVPN1:…` URI for Zelcore/SSP deep-linking).
+  (`flux:t1PayAddress?amount=20&message=CVPN1:…` URI for Zelcore/SSP deep-linking).
 
 ### Payment rule (evaluated identically by every gateway)
 A tx grants entitlement iff:
@@ -41,7 +41,7 @@ lives in the app spec env (`CVPN_PRICE_FLUX`), which every gateway reads from it
 value, chain-anchored, owner-updated. Operational rule: retarget to ≈$0.99 when drift exceeds
 ±25%. Grace rule so nobody pays the "old" price into a void: gateways accept the previous price
 constant for 72 h after a spec update (both values visible in spec history).
-Clients display: "Send **4.5 FLUX** (~$0.99) with this exact message."
+Clients display: "Send **20 FLUX** (~$0.99) with this exact message."
 
 ### Wallet UX
 - Zelcore, SSP Wallet and the explorer all support OP_RETURN messages on sends ("message" field).

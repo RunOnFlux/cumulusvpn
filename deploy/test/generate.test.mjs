@@ -83,7 +83,7 @@ test('generate.mjs --variant datacenter emits 12 on-chain + 12 plain enterprise 
     }
 
     // plain (secret) inner spec DOES carry repoauth for the private registry
-    const us = JSON.parse(readFileSync(join(plainDir, 'cumulusus.json'), 'utf8'));
+    const us = JSON.parse(readFileSync(join(plainDir, 'cumulusvpnus.json'), 'utf8'));
     assert.ok(Array.isArray(us.components) && us.components.length >= 1);
     assert.equal(typeof us.components[0].repoauth, 'string');
   } finally {
@@ -97,7 +97,7 @@ test('generate.mjs honors per-country instance counts (us=6)', () => {
     copyIn(sb, 'scripts/generate.mjs', 'scripts/generate.mjs');
     copyIn(sb, 'countries.yaml', 'countries.yaml');
     runNode(join(sb, 'scripts', 'generate.mjs'), ['--stage', 'beta']);
-    const us = JSON.parse(readFileSync(join(sb, 'specs', 'onchain', 'cumulusus.json'), 'utf8'));
+    const us = JSON.parse(readFileSync(join(sb, 'specs', 'onchain', 'cumulusvpnus.json'), 'utf8'));
     assert.equal(us.instances, 6);
   } finally {
     cleanup(sb);

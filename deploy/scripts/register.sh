@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # register.sh — register (or update) one CumulusVPN country spec on Flux.
 #
-#   ./register.sh cumulusde
+#   ./register.sh cumulusvpnde
 #
 # Flow (FluxOS app API + Flux chain):
 #   1. verify spec shape          POST /apps/verifyappregistrationspecifications
@@ -15,7 +15,7 @@
 # This is a scaffold — wire steps 3/5 to the SDK/wallet you standardize on. Never commit keys.
 set -euo pipefail
 
-NAME="${1:?usage: register.sh cumulus<cc>}"
+NAME="${1:?usage: register.sh cumulusvpn<cc>}"
 FLUX_API="${FLUX_API:-https://api.runonflux.io}"
 SPEC="$(dirname "$0")/../specs/onchain/${NAME}.json"
 

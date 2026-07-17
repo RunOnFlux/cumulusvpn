@@ -37,8 +37,8 @@ describe('paymentMemo', () => {
 describe('walletDeepLink', () => {
   it('builds the flux: URI exactly per contract', () => {
     const memo = paymentMemo(ZERO_PUB);
-    expect(walletDeepLink('t1abc', 4.5, memo)).toBe(
-      `flux:t1abc?amount=4.5&message=CVPN1:${ZERO_CODE}`,
+    expect(walletDeepLink('t1abc', 20, memo)).toBe(
+      `flux:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`,
     );
   });
 });

@@ -7,13 +7,13 @@
     {
       "name": "gateway",
       "description": "Userspace WireGuard gateway (wireguard-go + netstack)",
-      "repotag": "ghcr.io/runonflux/cumulusvpn-gateway:v0.1.0",
+      "repotag": "ghcr.io/runonflux/cumulusvpn-gateway:0.1.0",
       "repoauth": "",
       "ports": [51820, 51821],
       "containerPorts": [51820, 51821],
       "domains": ["", ""],
       "environmentParameters": [
-        "CVPN_PRICE_FLUX=4.5",
+        "CVPN_PRICE_FLUX=20",
         "CVPN_PAYMENT_ADDRESS=t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ",
         "CVPN_DIRECTORY_PUBKEY=1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=",
         "CVPN_FREE_RATE_KBPS=100",

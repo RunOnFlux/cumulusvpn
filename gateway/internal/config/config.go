@@ -24,7 +24,7 @@ const (
 
 // Config is the fully resolved gateway configuration.
 type Config struct {
-	// PriceFlux is the monthly price in FLUX (e.g. 4.5). Canonical value
+	// PriceFlux is the monthly price in FLUX (e.g. 20). Canonical value
 	// lives in the app spec env so all gateways agree without an oracle.
 	PriceFlux float64
 	// PaymentAddress is the transparent FLUX address payments are sent to.

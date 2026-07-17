@@ -2,7 +2,7 @@
 // validate.mjs — check generated on-chain specs against the Flux v8 enterprise shape.
 //
 //   node scripts/validate.mjs                 # validate every specs/onchain/cumulus*.json
-//   node scripts/validate.mjs cumulusde       # validate one
+//   node scripts/validate.mjs cumulusvpnde       # validate one
 //
 // This is a shape check, not a FluxOS registration check (register.sh does the authoritative
 // POST /apps/verifyappregistrationspecifications). It catches generator regressions before we

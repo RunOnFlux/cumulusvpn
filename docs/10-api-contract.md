@@ -70,7 +70,7 @@ Response `data`:
   "dns":             "1.1.1.1",
   "payment_address": "t1...",
   "payment_memo":    "CVPN1:<code>",
-  "price_flux":      4.5
+  "price_flux":      20
 }
 ```
 Errors: `bad_pubkey`, `bad_pow`, `rate_limited` (429, 1 enroll/IP/2s), `at_capacity`,
@@ -95,7 +95,7 @@ Response `data`:
 
 ## Discovery (no server of ours)
 
-1. For each spec name (`cumulusde`, `cumulusus`, … from the signed directory): `GET
+1. For each spec name (`cumulusvpnde`, `cumulusvpnus`, … from the signed directory): `GET
    https://api.runonflux.io/apps/location/<spec>` → `{status, data: [{ip, ...}]}`. For redundancy
    also query 2–3 random Flux nodes directly at `http://<nodeIP>:16127/apps/location/<spec>`.
 2. The `ip` field may be `"1.2.3.4"` or `"1.2.3.4:16127"` — strip any port.
@@ -127,8 +127,8 @@ Wallet deep link for payment: `flux:<payment_address>?amount=<price_flux>&messag
   "version": 1,
   "updated": "<RFC3339>",
   "payment_address": "t1...",
-  "price_flux": 4.5,
-  "specs": ["cumulusde", "cumulusus", "cumulusnl", "..."],
+  "price_flux": 20,
+  "specs": ["cumulusvpnde", "cumulusvpnus", "cumulusvpnnl", "..."],
   "seed_gateways": [ { "ip": "1.2.3.4", "country": "DE", "sign_pubkey": "..." } ],
   "sig": "<base64 ed25519 over the canonical JSON of everything above minus `sig`>"
 }

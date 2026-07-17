@@ -25,11 +25,11 @@ function info(overrides: Partial<InfoResponse>): InfoResponse {
 describe('discoverGateways', () => {
   it('queries Flux + nodes, probes /v1/info, and returns verified gateways sorted by country then load', async () => {
     const routes: Record<string, Response> = {
-      'https://api.runonflux.io/apps/location/cumulusde': jsonResponse({
+      'https://api.runonflux.io/apps/location/cumulusvpnde': jsonResponse({
         status: 'success',
         data: [{ ip: '1.2.3.4:16127' }, { ip: '5.6.7.8' }],
       }),
-      'http://9.9.9.9:16127/apps/location/cumulusde': jsonResponse({
+      'http://9.9.9.9:16127/apps/location/cumulusvpnde': jsonResponse({
         status: 'success',
         data: [{ ip: '10.0.0.1' }],
       }),
@@ -48,7 +48,7 @@ describe('discoverGateways', () => {
       return res;
     };
 
-    const gateways = await discoverGateways(['cumulusde'], { nodes: ['9.9.9.9'], fetchImpl });
+    const gateways = await discoverGateways(['cumulusvpnde'], { nodes: ['9.9.9.9'], fetchImpl });
 
     expect(gateways.map((g) => `${g.country}:${g.ip}`)).toEqual([
       'AT:5.6.7.8', // country asc
@@ -58,13 +58,13 @@ describe('discoverGateways', () => {
     // port was stripped from the api.runonflux entry
     expect(calls).toContain('http://1.2.3.4:51821/v1/info');
     // node index was queried directly
-    expect(calls).toContain('http://9.9.9.9:16127/apps/location/cumulusde');
+    expect(calls).toContain('http://9.9.9.9:16127/apps/location/cumulusvpnde');
   });
 
   it('drops unreachable candidates', async () => {
     const fetchImpl: FetchImpl = async (input) => {
       const url = String(input);
-      if (url.endsWith('/apps/location/cumulusus')) {
+      if (url.endsWith('/apps/location/cumulusvpnus')) {
         return jsonResponse({ status: 'success', data: [{ ip: '1.1.1.1' }, { ip: '2.2.2.2' }] });
       }
       if (url === 'http://1.1.1.1:51821/v1/info') {
@@ -72,7 +72,7 @@ describe('discoverGateways', () => {
       }
       throw new Error('connection refused');
     };
-    const gateways = await discoverGateways(['cumulusus'], { fetchImpl });
+    const gateways = await discoverGateways(['cumulusvpnus'], { fetchImpl });
     expect(gateways).toHaveLength(1);
     expect(gateways[0]!.ip).toBe('1.1.1.1');
   });
@@ -81,7 +81,7 @@ describe('discoverGateways', () => {
     const otherSigner = makeSignKeypair();
     const fetchImpl: FetchImpl = async (input) => {
       const url = String(input);
-      if (url.endsWith('/apps/location/cumulusde')) {
+      if (url.endsWith('/apps/location/cumulusvpnde')) {
         return jsonResponse({ status: 'success', data: [{ ip: '3.3.3.3' }] });
       }
       // Body is signed by otherSigner but advertises signer's pubkey → invalid.
@@ -94,7 +94,7 @@ describe('discoverGateways', () => {
         },
       });
     };
-    const gateways = await discoverGateways(['cumulusde'], { fetchImpl });
+    const gateways = await discoverGateways(['cumulusvpnde'], { fetchImpl });
     expect(gateways).toHaveLength(0);
   });
 });
@@ -125,8 +125,8 @@ describe('directoryVerify', () => {
     version: 1,
     updated: '2026-07-16T00:00:00Z',
     payment_address: 't1abc',
-    price_flux: 4.5,
-    specs: ['cumulusde', 'cumulusus'],
+    price_flux: 20,
+    specs: ['cumulusvpnde', 'cumulusvpnus'],
     seed_gateways: [{ ip: '1.2.3.4', country: 'DE', sign_pubkey: 'x' }],
   };
 

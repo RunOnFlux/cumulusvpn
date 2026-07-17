@@ -208,7 +208,7 @@ def screen_payment():
     return '''<div class="pay">
   <h3>Upgrade to full speed</h3>
   <div class="sub">Send FLUX with the exact message below. Every gateway unlocks your key within ~1 minute — no account needed.</div>
-  <div class="amount"><div class="big">4.5 FLUX</div><div class="usd">≈ $0.99 · 30 days</div></div>
+  <div class="amount"><div class="big">20 FLUX</div><div class="usd">≈ $0.99 · 30 days</div></div>
   <div class="qr"></div>
   <div class="field"><div class="lab">Pay to address</div><div class="val"><span>t1cUmuLus…9xVQ2f</span><span class="cp">Copy</span></div></div>
   <div class="field"><div class="lab">Message (required)</div><div class="val"><span>CVPN1:3QJmnh8vzBqoQpuTGD</span><span class="cp">Copy</span></div></div>

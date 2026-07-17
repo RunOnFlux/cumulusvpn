@@ -42,15 +42,15 @@ from the image:
 Decision pending in docs/08 #1a. The example below shows the datacenter variant; the open variant
 drops `datacenter`/`enterprise` and inlines the public `compose`.
 
-On-chain wrapper `deploy/specs/onchain/cumulusde.json`:
+On-chain wrapper `deploy/specs/onchain/cumulusvpnde.json`:
 
-On-chain wrapper `deploy/specs/onchain/cumulusde.json` (top-level fields are public; components
+On-chain wrapper `deploy/specs/onchain/cumulusvpnde.json` (top-level fields are public; components
 are encrypted):
 
 ```jsonc
 {
   "version": 8,
-  "name": "cumulusde",                  // ≤63 chars; "cumulus" prefix fine (only flux/zel reserved)
+  "name": "cumulusvpnde",                  // ≤63 chars; "cumulus" prefix fine (only flux/zel reserved)
   "description": "CumulusVPN — decentralized VPN gateway",
   "owner": "<our enterprise ZelID>",    // must be on the Flux enterprise-owner whitelist
   "instances": 5,
@@ -69,7 +69,7 @@ are encrypted):
 }
 ```
 
-The encrypted inner spec (`deploy/specs/plain/cumulusde.json`, gitignored) carries the private
+The encrypted inner spec (`deploy/specs/plain/cumulusvpnde.json`, gitignored) carries the private
 `repotag`, `repoauth`, and the `CVPN_*` env (`CVPN_PRICE_FLUX`, `CVPN_PAYMENT_ADDRESS`,
 `CVPN_DIRECTORY_PUBKEY`, `CVPN_FREE_RATE_KBPS`, peer caps).
 
@@ -93,7 +93,7 @@ Strategy (decided): **one app spec per country** (`acEU_DE`, `acEU_NL`, `acNA_US
 few big regional specs. Benefits: guaranteed presence per country, clean capacity steering
 (bump `instances` only where demand is), hundreds of distinct exit IPs, and the client's country
 list maps 1:1 to specs. Specs are generated from a manifest (`deploy/countries.yaml`) by script —
-we never hand-edit hundreds of JSONs. Naming: `cumulus<cc>` (e.g. `cumulusde`, `cumulusus`).
+we never hand-edit hundreds of JSONs. Naming: `cumulus<cc>` (e.g. `cumulusvpnde`, `cumulusvpnus`).
 
 ### Scale-out ladder (fleet grows with demand — adding instances is just a paid spec update;
 clients discover new instances automatically, no release needed)

@@ -3,8 +3,8 @@ import { cityOf, flagOf, nameOf, specToCountryCode } from './countries';
 
 describe('specToCountryCode', () => {
   it('strips the cumulus prefix and upper-cases the ISO code', () => {
-    expect(specToCountryCode('cumulusde')).toBe('DE');
-    expect(specToCountryCode('cumulusus')).toBe('US');
+    expect(specToCountryCode('cumulusvpnde')).toBe('DE');
+    expect(specToCountryCode('cumulusvpnus')).toBe('US');
   });
 
   it('upper-cases even when the prefix is absent', () => {

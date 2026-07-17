@@ -15,7 +15,7 @@ const enrollData: EnrollResponse = {
   dns: '1.1.1.1',
   payment_address: 't1abc',
   payment_memo: 'CVPN1:2RkUfDC55GMndKreXqK7Jruu8Snx',
-  price_flux: 4.5,
+  price_flux: 20,
 };
 
 describe('enroll', () => {

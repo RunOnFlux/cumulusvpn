@@ -1,5 +1,5 @@
 # Fleet manifest — source of truth for spec generation (deploy/scripts/generate.mjs).
-# One Flux app spec per country, named cumulus<cc> (cumulusde, cumulusus).
+# One Flux app spec per country, named cumulusvpn<cc> (cumulusvpnde, cumulusvpnus).
 # geolocation uses FluxOS ac<CONTINENT>_<ISO-COUNTRY> format.
 # stage: beta | ga | scale  (generate/register only stages <= the --stage passed to generate.mjs)
 #
