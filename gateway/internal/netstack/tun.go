@@ -19,6 +19,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -47,6 +48,14 @@ type netTun struct {
 	mtu            int
 	dnsServers     []netip.Addr
 	hasV4, hasV6   bool
+
+	// closed is the single shutdown signal. WriteNotify (a gVisor callback) and
+	// Read both select on it so the incomingPacket channel is NEVER closed while
+	// a send may be in flight — the upstream code closed it in Close(), which
+	// races WriteNotify's send (and can panic "send on closed channel" if the
+	// gateway is torn down under live traffic). closeClosed guards the one close.
+	closed      chan struct{}
+	closeClosed sync.Once
 }
 
 type Net netTun
@@ -77,6 +86,7 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 		stack:          stack.New(opts),
 		events:         make(chan tun.Event, 10),
 		incomingPacket: make(chan *buffer.View),
+		closed:         make(chan struct{}),
 		dnsServers:     dnsServers,
 		mtu:            mtu,
 	}
@@ -135,8 +145,10 @@ func (tun *netTun) Events() <-chan tun.Event {
 }
 
 func (tun *netTun) Read(buf [][]byte, sizes []int, offset int) (int, error) {
-	view, ok := <-tun.incomingPacket
-	if !ok {
+	var view *buffer.View
+	select {
+	case view = <-tun.incomingPacket:
+	case <-tun.closed:
 		return 0, os.ErrClosed
 	}
 
@@ -177,22 +189,24 @@ func (tun *netTun) WriteNotify() {
 	view := pkt.ToView()
 	pkt.DecRef()
 
-	tun.incomingPacket <- view
+	select {
+	case tun.incomingPacket <- view:
+	case <-tun.closed:
+	}
 }
 
 func (tun *netTun) Close() error {
-	tun.stack.RemoveNIC(1)
-
-	if tun.events != nil {
-		close(tun.events)
-	}
-
-	tun.ep.Close()
-
-	if tun.incomingPacket != nil {
-		close(tun.incomingPacket)
-	}
-
+	tun.closeClosed.Do(func() {
+		// Signal Read/WriteNotify to stop before tearing down, so no goroutine
+		// sends on incomingPacket after we stop draining it. incomingPacket is
+		// deliberately NOT closed (closing it races an in-flight WriteNotify send).
+		close(tun.closed)
+		tun.stack.RemoveNIC(1)
+		if tun.events != nil {
+			close(tun.events)
+		}
+		tun.ep.Close()
+	})
 	return nil
 }
 
