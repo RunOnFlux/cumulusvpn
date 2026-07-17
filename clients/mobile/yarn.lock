@@ -840,12 +840,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=df8986&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=e9b520&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.2.0"
     "@noble/hashes": "npm:2.2.0"
     "@scure/base": "npm:2.2.0"
-  checksum: 10c0/acbee44a233770bc3196783b6ac794ba2c8e2867c0fb3f135568f7cd6f3186a63a3c53eff269395a30de77c58a76846d012125e3c8349b8abc2bf2486ed5c09d
+  checksum: 10c0/7304ad29624e0a479929bcbb6915b28f19cdfd260144d24f1e40fec8e6c483cf3781fa13053f9c4a7a73ee71b37943d3c5131a952a51656b5d086856bc1f2a65
   languageName: node
   linkType: hard
 
@@ -872,6 +872,7 @@ __metadata:
     react-native: "npm:0.86.0"
     react-native-get-random-values: "npm:1.11.0"
     react-test-renderer: "npm:19.2.7"
+    text-encoding-polyfill: "npm:0.6.7"
     typescript: "npm:5.9.3"
     typescript-eslint: "npm:8.64.0"
   languageName: unknown
@@ -6343,6 +6344,13 @@ __metadata:
     glob: "npm:^7.1.4"
     minimatch: "npm:^3.0.4"
   checksum: 10c0/019d33d81adff3f9f1bfcff18125fb2d3c65564f437d9be539270ee74b994986abb8260c7c2ce90e8f30162178b09dbbce33c6389273afac4f36069c48521f57
+  languageName: node
+  linkType: hard
+
+"text-encoding-polyfill@npm:0.6.7":
+  version: 0.6.7
+  resolution: "text-encoding-polyfill@npm:0.6.7"
+  checksum: 10c0/5486a2320e2384b0153d2835a8e6e3a643ff28fcd05c2e9fa5d69c7879a2b8fdb7faa44708792a9205f074f10606ee3b6470c8f3f4da1be90a014b79057008d0
   languageName: node
   linkType: hard
 
