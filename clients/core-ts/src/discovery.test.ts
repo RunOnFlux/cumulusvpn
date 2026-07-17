@@ -23,19 +23,31 @@ function info(overrides: Partial<InfoResponse>): InfoResponse {
 }
 
 describe('discoverGateways', () => {
-  it('queries Flux + nodes, probes /v1/info, and returns verified gateways sorted by country then load', async () => {
+  it('probes /v1/info, tags country from the SPEC (not the gateway), and sorts by country then load', async () => {
     const routes: Record<string, Response> = {
+      // AT spec: one gateway from Flux; the node index has none.
+      'https://api.runonflux.io/apps/location/cumulusvpnat': jsonResponse({
+        status: 'success',
+        data: [{ ip: '5.6.7.8' }],
+      }),
+      'http://9.9.9.9:16127/apps/location/cumulusvpnat': jsonResponse({
+        status: 'success',
+        data: [],
+      }),
+      // DE spec: one from Flux (with a :port to strip) + one from the node index.
       'https://api.runonflux.io/apps/location/cumulusvpnde': jsonResponse({
         status: 'success',
-        data: [{ ip: '1.2.3.4:16127' }, { ip: '5.6.7.8' }],
+        data: [{ ip: '1.2.3.4:16127' }],
       }),
       'http://9.9.9.9:16127/apps/location/cumulusvpnde': jsonResponse({
         status: 'success',
         data: [{ ip: '10.0.0.1' }],
       }),
-      'http://1.2.3.4:51821/v1/info': signedResponse(info({ country: 'DE', load: 0.5 }), signer),
-      'http://5.6.7.8:51821/v1/info': signedResponse(info({ country: 'AT', load: 0.2 }), signer),
-      'http://10.0.0.1:51821/v1/info': signedResponse(info({ country: 'DE', load: 0.1 }), signer),
+      // Gateways report NO country of their own (as on Flux, where hostinfo is
+      // unavailable) — the spec name supplies the authoritative country.
+      'http://5.6.7.8:51821/v1/info': signedResponse(info({ country: '', load: 0.2 }), signer),
+      'http://1.2.3.4:51821/v1/info': signedResponse(info({ country: '', load: 0.5 }), signer),
+      'http://10.0.0.1:51821/v1/info': signedResponse(info({ country: '', load: 0.1 }), signer),
     };
     const calls: string[] = [];
     const fetchImpl: FetchImpl = async (input) => {
@@ -48,8 +60,12 @@ describe('discoverGateways', () => {
       return res;
     };
 
-    const gateways = await discoverGateways(['cumulusvpnde'], { nodes: ['9.9.9.9'], fetchImpl });
+    const gateways = await discoverGateways(['cumulusvpnat', 'cumulusvpnde'], {
+      nodes: ['9.9.9.9'],
+      fetchImpl,
+    });
 
+    // Country comes from the spec (cumulusvpn<cc>), so DE gateways group together.
     expect(gateways.map((g) => `${g.country}:${g.ip}`)).toEqual([
       'AT:5.6.7.8', // country asc
       'DE:10.0.0.1', // then load asc within DE (0.1 before 0.5)
@@ -143,5 +159,16 @@ describe('directoryVerify', () => {
   it('rejects the wrong verifying key', () => {
     const other = base64.encode(ed25519.getPublicKey(ed25519.utils.randomSecretKey()));
     expect(directoryVerify(signDirectory(base, secret), other)).toBe(false);
+  });
+
+  // The REAL shipped directory (deploy/directory/make-directory.mjs) signs the
+  // payload WITHOUT `sign_pubkey`, then adds `sign_pubkey` to the artifact. So a
+  // valid directory carries a sign_pubkey field that is NOT part of the signature.
+  // Verification must ignore it (regression: it used to be included, which made
+  // every real directory fail → clients showed "no gateways / no countries").
+  it('accepts a signed directory that carries a sign_pubkey field', () => {
+    const signed = signDirectory(base, secret);
+    const withPubkey: Directory = { ...signed, sign_pubkey: pubB64 };
+    expect(directoryVerify(withPubkey, pubB64)).toBe(true);
   });
 });

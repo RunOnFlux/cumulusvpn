@@ -4,6 +4,14 @@ import { fetchSigned } from './http.js';
 import { CONTROL_PORT } from './types.js';
 import type { Directory, DiscoverOptions, FetchImpl, GatewayInfo, InfoResponse } from './types.js';
 
+/**
+ * Derive the ISO-3166-1 alpha-2 country code from a Flux app-spec name.
+ * Spec names are `cumulusvpn<cc>` (e.g. `cumulusvpnde` -> `DE`).
+ */
+export function specToCountryCode(spec: string): string {
+  return spec.replace(/^cumulusvpn/, '').toUpperCase();
+}
+
 /** Public Flux app-location index. */
 const FLUX_API = 'https://api.runonflux.io';
 /** Port a Flux node exposes its own app-location index on. */
@@ -75,24 +83,35 @@ export async function discoverGateways(
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const nodes = options.nodes ?? [];
 
-  const locationUrls: string[] = [];
-  for (const spec of specNames) {
-    locationUrls.push(`${FLUX_API}/apps/location/${spec}`);
-    for (const node of nodes) {
-      locationUrls.push(`http://${node}:${FLUX_NODE_PORT}/apps/location/${spec}`);
-    }
-  }
+  // Map each candidate gateway IP to the country of the spec it was discovered
+  // under (cumulusvpn<cc> -> CC). This is the AUTHORITATIVE country: Flux places
+  // each spec only on nodes in its `geolocation` (acEU_DE, …), whereas the
+  // gateway's own /v1/info carries no geo (hostinfo is unavailable inside the
+  // Flux container), so it reports an empty country. Keeping the spec→country
+  // link here is what lets the clients group gateways under a country at all.
+  const ipCountry = new Map<string, string>();
+  await Promise.all(
+    specNames.map(async (spec) => {
+      const cc = specToCountryCode(spec);
+      const urls = [`${FLUX_API}/apps/location/${spec}`];
+      for (const node of nodes) {
+        urls.push(`http://${node}:${FLUX_NODE_PORT}/apps/location/${spec}`);
+      }
+      const lists = await Promise.all(urls.map((url) => fetchLocation(url, fetchImpl)));
+      for (const list of lists) {
+        for (const ip of list) {
+          if (!ipCountry.has(ip)) {
+            ipCountry.set(ip, cc);
+          }
+        }
+      }
+    }),
+  );
 
-  const lists = await Promise.all(locationUrls.map((url) => fetchLocation(url, fetchImpl)));
-  const candidates = new Set<string>();
-  for (const list of lists) {
-    for (const ip of list) {
-      candidates.add(ip);
-    }
-  }
-
-  const probed = await Promise.all([...candidates].map((ip) => probe(ip, fetchImpl)));
-  const gateways = probed.filter((g): g is GatewayInfo => g !== null);
+  const probed = await Promise.all([...ipCountry.keys()].map((ip) => probe(ip, fetchImpl)));
+  const gateways = probed
+    .filter((g): g is GatewayInfo => g !== null)
+    .map((g) => ({ ...g, country: ipCountry.get(g.ip) || g.country }));
 
   // Group by country, then order least-loaded first (latency tiebreak is a
   // POC: probe timing is not yet captured; load is a good enough proxy).
@@ -140,9 +159,19 @@ function canonicalJson(value: unknown): string {
  */
 export function directoryVerify(directory: Directory, publicKeyB64: string): boolean {
   try {
-    const { sig, ...unsigned } = directory;
+    // Verify over every field EXCEPT the signature envelope (`sig`, `sign_pubkey`)
+    // and `//` JSON-comment keys — this MUST match the signer,
+    // deploy/directory/make-directory.mjs. `sign_pubkey` is metadata: the client
+    // trusts its PINNED key (publicKeyB64), not this field, so it is deliberately
+    // excluded from the signed payload. (Stripping only `sig` — the old behaviour —
+    // included sign_pubkey and made every real, signed directory fail to verify.)
+    const unsigned: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(directory)) {
+      if (k === 'sig' || k === 'sign_pubkey' || k.startsWith('//')) continue;
+      unsigned[k] = v;
+    }
     const message = encoder.encode(canonicalJson(unsigned));
-    return ed25519.verify(base64.decode(sig), message, base64.decode(publicKeyB64));
+    return ed25519.verify(base64.decode(directory.sig), message, base64.decode(publicKeyB64));
   } catch {
     return false;
   }
