@@ -9,7 +9,7 @@
 // Ed25519 directory signing pubkey (base64), matching `sign_pubkey` in the
 // signed directory artifact produced by deploy/directory/make-directory.mjs.
 // POC: a real release pins the production key here and rotates via app update.
-export const DIRECTORY_PUBKEY = 'IhvN6OfPIjw1y+I+zK3Z/63gsgL1qEt7f8M9UZqRzIU=';
+export const DIRECTORY_PUBKEY = '1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=';
 
 // Path the signed directory is served from (this app hosts it at /directory.json).
 export const DIRECTORY_URL = '/directory.json';

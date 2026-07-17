@@ -4,7 +4,7 @@
   "//3": "verify `sig` over the canonical JSON of every field except `sig`/`sign_pubkey`. docs/10.",
   "version": 1,
   "updated": "2026-07-16T00:00:00Z",
-  "payment_address": "t1REPLACE_PAYMENT_ADDRESS",
+  "payment_address": "t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ",
   "price_flux": 4.5,
   "specs": [],
   "seed_gateways": [

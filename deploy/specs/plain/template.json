@@ -14,8 +14,8 @@
       "domains": ["", ""],
       "environmentParameters": [
         "CVPN_PRICE_FLUX=4.5",
-        "CVPN_PAYMENT_ADDRESS=t1REPLACE_PAYMENT_ADDRESS",
-        "CVPN_DIRECTORY_PUBKEY=REPLACE_ED25519_PUBKEY",
+        "CVPN_PAYMENT_ADDRESS=t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ",
+        "CVPN_DIRECTORY_PUBKEY=1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=",
         "CVPN_FREE_RATE_KBPS=100",
         "CVPN_PREMIUM_RATE_MBPS=50",
         "CVPN_MAX_PEERS_FREE=400",
