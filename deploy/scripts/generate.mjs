@@ -24,9 +24,35 @@ const NODE_API = process.env.FLUX_API || 'https://api.runonflux.io';
 const args = process.argv.slice(2);
 const stage = args[stageIdx() + 1] ?? 'beta';
 const doCheck = args.includes('--check');
+// variant: 'open' (default, DEPLOYABLE) inlines the public image+env on-chain, no encryption,
+// no datacenter flag. 'datacenter' keeps the enterprise/encrypted path (needs a real encrypt.mjs
+// — the current one is a stub, so datacenter specs are NOT registerable yet).
+const variant = flagValue('--variant') ?? 'open';
 function stageIdx() {
   const i = args.indexOf('--stage');
   return i === -1 ? -1 : i;
+}
+function flagValue(flag) {
+  const i = args.indexOf(flag);
+  return i === -1 ? undefined : args[i + 1];
+}
+if (!['open', 'datacenter'].includes(variant)) {
+  console.error(`--variant must be "open" or "datacenter" (got "${variant}")`);
+  process.exit(1);
+}
+
+// The gateway's runtime env. Every value is PUBLIC (the payment address is on-chain; the directory
+// pubkey is published in clients) — so the OPEN variant leaks nothing by inlining it on-chain.
+function gatewayEnv(defaults) {
+  return [
+    'CVPN_PRICE_FLUX=4.5',
+    'CVPN_PAYMENT_ADDRESS=t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ',
+    'CVPN_DIRECTORY_PUBKEY=1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=',
+    'CVPN_FREE_RATE_KBPS=100',
+    'CVPN_PREMIUM_RATE_MBPS=50',
+    `CVPN_MAX_PEERS_FREE=${defaults.maxPeersFree ?? 400}`,
+    `CVPN_MAX_PEERS_TOTAL=${defaults.maxPeersTotal ?? 1000}`,
+  ];
 }
 
 const manifest = parseYaml(readFileSync(join(ROOT, 'countries.yaml'), 'utf8'));
@@ -43,72 +69,106 @@ for (const c of wanted) {
   const name = `cumulus${c.cc}`;
   const instances = c.instances ?? defaults.instances;
   const repotag = c.repotag ?? defaults.repotag;
+  const cpu = c.cpu ?? defaults.cpu;
+  const ram = c.ram ?? defaults.ram;
+  const hdd = c.hdd ?? defaults.hdd;
+  const ports = defaults.ports;
+  const domains = ports.map(() => '');
+  const expire = c.expire ?? defaults.expire ?? 264000;
+  const staticip = c.staticip ?? defaults.staticip ?? true;
 
-  // ---- plaintext inner spec (encrypted before broadcast) ----
-  const plain = {
-    contacts: ['info@cumulusvpn.com'],
-    components: [
-      {
-        name: 'gateway',
-        description: `CumulusVPN gateway (${c.cc.toUpperCase()})`,
-        repotag,
-        repoauth: '', // PUBLIC GHCR image — no auth needed (set only if you switch to a private registry)
-        ports: defaults.ports,
-        containerPorts: defaults.ports,
-        domains: defaults.ports.map(() => ''),
-        environmentParameters: [
-          'CVPN_PRICE_FLUX=4.5',
-          'CVPN_PAYMENT_ADDRESS=t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ',
-          'CVPN_DIRECTORY_PUBKEY=1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=',
-          'CVPN_FREE_RATE_KBPS=100',
-          'CVPN_PREMIUM_RATE_MBPS=50',
-          `CVPN_MAX_PEERS_FREE=${defaults.maxPeersFree ?? 400}`,
-          `CVPN_MAX_PEERS_TOTAL=${defaults.maxPeersTotal ?? 1000}`,
-        ],
-        commands: [],
-        containerData: '/data',
-        cpu: c.cpu ?? defaults.cpu,
-        ram: c.ram ?? defaults.ram,
-        hdd: c.hdd ?? defaults.hdd,
-        secrets: '',
-      },
-    ],
-  };
-
-  // ---- on-chain enterprise wrapper ----
-  const onchain = {
-    version: 8,
-    name,
-    description: 'CumulusVPN — decentralized VPN gateway',
-    owner,
-    instances,
-    contacts: [],
-    geolocation: [c.geolocation],
-    expire: c.expire ?? defaults.expire ?? 264000,
-    nodes: c.nodes ?? [],
-    staticip: c.staticip ?? defaults.staticip ?? true,
-    datacenter: c.datacenter ?? defaults.datacenter ?? true,
-    enterprise: 'REPLACE_WITH_ENCRYPTED_BLOB', // encrypt.mjs overwrites this
-    compose: [
-      {
-        name: 'gateway',
-        description: 'gateway',
-        repotag,
-        ports: defaults.ports,
-        containerPorts: defaults.ports,
-        domains: defaults.ports.map(() => ''),
-        environmentParameters: [],
-        commands: [],
-        containerData: '/data',
-        cpu: c.cpu ?? defaults.cpu,
-        ram: c.ram ?? defaults.ram,
-        hdd: c.hdd ?? defaults.hdd,
-      },
-    ],
-  };
-
-  writeFileSync(join(ROOT, 'specs', 'plain', `${name}.json`), JSON.stringify(plain, null, 2));
-  writeFileSync(join(ROOT, 'specs', 'onchain', `${name}.json`), JSON.stringify(onchain, null, 2));
+  if (variant === 'open') {
+    // ---- OPEN v8 spec (DEPLOYABLE): public image + real env inline on-chain, no encryption.
+    // enterprise:false is the required-in-v8 flag for a non-enterprise app; no datacenter flag.
+    const onchain = {
+      version: 8,
+      name,
+      description: 'CumulusVPN — decentralized VPN gateway',
+      owner,
+      compose: [
+        {
+          name: 'gateway',
+          description: `CumulusVPN gateway (${c.cc.toUpperCase()})`,
+          repotag,
+          ports,
+          containerPorts: ports,
+          domains,
+          environmentParameters: gatewayEnv(defaults),
+          commands: [],
+          containerData: '/data',
+          cpu,
+          ram,
+          hdd,
+        },
+      ],
+      instances,
+      contacts: ['info@cumulusvpn.com'],
+      geolocation: [c.geolocation],
+      nodes: c.nodes ?? [],
+      staticip,
+      enterprise: false,
+      expire,
+    };
+    writeFileSync(join(ROOT, 'specs', 'onchain', `${name}.json`), JSON.stringify(onchain, null, 2));
+  } else {
+    // ---- DATACENTER v8 spec: enterprise/encrypted path. plain inner spec (SECRET) feeds
+    // encrypt.mjs; on-chain compose carries EMPTY env + an enterprise-blob placeholder.
+    // NOTE: encrypt.mjs is currently a STUB — datacenter specs are not registerable until it
+    // is wired to real FluxOS enterprise encryption.
+    const plain = {
+      contacts: ['info@cumulusvpn.com'],
+      components: [
+        {
+          name: 'gateway',
+          description: `CumulusVPN gateway (${c.cc.toUpperCase()})`,
+          repotag,
+          repoauth: '', // PUBLIC GHCR image — no auth needed (set only for a private registry)
+          ports,
+          containerPorts: ports,
+          domains,
+          environmentParameters: gatewayEnv(defaults),
+          commands: [],
+          containerData: '/data',
+          cpu,
+          ram,
+          hdd,
+          secrets: '',
+        },
+      ],
+    };
+    const onchain = {
+      version: 8,
+      name,
+      description: 'CumulusVPN — decentralized VPN gateway',
+      owner,
+      instances,
+      contacts: [],
+      geolocation: [c.geolocation],
+      expire,
+      nodes: c.nodes ?? [],
+      staticip,
+      datacenter: c.datacenter ?? defaults.datacenter ?? true,
+      enterprise: 'REPLACE_WITH_ENCRYPTED_BLOB', // encrypt.mjs overwrites this
+      compose: [
+        {
+          name: 'gateway',
+          description: 'gateway',
+          repotag,
+          ports,
+          containerPorts: ports,
+          domains,
+          environmentParameters: [],
+          commands: [],
+          containerData: '/data',
+          cpu,
+          ram,
+          hdd,
+        },
+      ],
+    };
+    writeFileSync(join(ROOT, 'specs', 'plain', `${name}.json`), JSON.stringify(plain, null, 2));
+    writeFileSync(join(ROOT, 'specs', 'onchain', `${name}.json`), JSON.stringify(onchain, null, 2));
+  }
 
   let note = '';
   if (eligibleByCountry) {
@@ -120,9 +180,11 @@ for (const c of wanted) {
   console.log(`✓ ${name}  ${c.geolocation}  instances=${instances}${note}`);
 }
 
-console.log(`\nGenerated ${wanted.length} specs for stage "${stage}".`);
+console.log(`\nGenerated ${wanted.length} "${variant}" specs for stage "${stage}".`);
 console.log(
-  'Next: encrypt.mjs (wrap plaintext → enterprise blob) → register.sh (sign + broadcast + pay).',
+  variant === 'open'
+    ? 'Next: validate.mjs → register.sh (verify + sign + broadcast + pay). No encryption needed.'
+    : 'Next: encrypt.mjs (wrap plaintext → enterprise blob) → register.sh (sign + broadcast + pay).',
 );
 
 // Rough eligibility: count deterministic nodes whose geo country matches. NOTE: this counts the

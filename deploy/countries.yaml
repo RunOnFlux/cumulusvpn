@@ -7,7 +7,7 @@
 # (not residential), the image/env are encrypted (hidden from the public marketplace), and the
 # private registry (repoauth) is enterprise-only. See ../docs/02-flux-deployment.md.
 
-owner: ZELID_OWNER_ADDRESS # our enterprise app-owner ZelID (must be on the enterprise whitelist)
+owner: 196GJWyLxzAw3MirTT7Bqs2iGpUQio29GH # enterprise app-owner ZelID (must be on the enterprise whitelist)
 
 defaults:
   instances: 3
@@ -17,7 +17,11 @@ defaults:
   staticip: true # stable WG endpoints
   datacenter: true # enterprise-only v8 flag → datacenter nodes, not homes
   ports: [51820, 51821] # WG (TCP+UDP auto) + control API
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:v0.1.0' # PUBLIC GHCR image (auto-built), no repoauth
+  # PUBLIC GHCR image (auto-built), no repoauth. NOTE: the tag must be the form CI actually
+  # publishes — docker/metadata-action strips the leading "v", so git tag v0.1.0 -> image :0.1.0
+  # (NOT :v0.1.0). Before a real registration, pin the immutable digest here
+  # (…/cumulusvpn-gateway@sha256:…) so a paid spec can't be re-tagged out from under it.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.1.0'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:

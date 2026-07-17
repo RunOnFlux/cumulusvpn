@@ -26,8 +26,17 @@ function validateSpec(name, spec) {
   const errs = [];
   const fail = (m) => errs.push(m);
 
+  // Variant is inferred from the `enterprise` field: `false` => OPEN (public inline compose),
+  // a non-empty string => DATACENTER (encrypted enterprise blob + datacenter:true).
+  const isOpen = spec.enterprise === false;
+
   if (spec.version !== 8) fail(`version must be 8 (got ${JSON.stringify(spec.version)})`);
-  if (spec.datacenter !== true) fail(`datacenter must be true (enterprise/datacenter placement)`);
+  if (isOpen) {
+    if ('datacenter' in spec && spec.datacenter !== false)
+      fail(`open spec must not set datacenter:true`);
+  } else if (spec.datacenter !== true) {
+    fail(`datacenter must be true (enterprise/datacenter placement)`);
+  }
   if (typeof spec.instances !== 'number' || spec.instances < 1)
     fail(`instances must be a positive number`);
   if (typeof spec.staticip !== 'boolean') fail(`staticip must be a boolean`);
@@ -39,8 +48,10 @@ function validateSpec(name, spec) {
   if (Array.isArray(spec.geolocation) && spec.geolocation.length < 1)
     fail(`geolocation must list at least one region`);
 
-  // enterprise: present (placeholder pre-encrypt, ciphertext post-encrypt). Must be a non-empty string.
-  if (typeof spec.enterprise !== 'string' || !spec.enterprise) {
+  // enterprise: OPEN => literal false; DATACENTER => non-empty string (placeholder or ciphertext).
+  if (isOpen) {
+    if (spec.enterprise !== false) fail(`open spec: enterprise must be false`);
+  } else if (typeof spec.enterprise !== 'string' || !spec.enterprise) {
     fail(`enterprise field missing — must be a placeholder or encrypted blob`);
   }
 
@@ -71,6 +82,16 @@ function validateSpec(name, spec) {
       }
       // On-chain compose must NOT leak private image auth — that belongs in the encrypted inner spec.
       if ('repoauth' in comp) fail(`${at}: repoauth must not appear in the public on-chain spec`);
+      // v7-only fields FluxOS v8 rejects ("Unsupported parameter for v8", appValidator.js).
+      for (const k of ['secrets', 'tiered'])
+        if (k in comp) fail(`${at}.${k} is not allowed in a v8 spec`);
+      // OPEN spec's public compose must actually carry the runtime env (nothing is encrypted).
+      if (
+        isOpen &&
+        Array.isArray(comp.environmentParameters) &&
+        comp.environmentParameters.length === 0
+      )
+        fail(`${at}: open spec must inline environmentParameters (none found)`);
     });
   }
 

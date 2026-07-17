@@ -4,7 +4,9 @@ import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeSandbox, cleanup, copyIn, runNode } from './helpers.mjs';
 
-test('generate.mjs expands countries.yaml into 12 beta v8 enterprise specs', () => {
+// The DEPLOYABLE default is the OPEN variant: public image + real env inlined on-chain,
+// enterprise:false, no datacenter flag, no encryption step (encrypt.mjs is a stub).
+test('generate.mjs (open, default) expands countries.yaml into 12 beta v8 OPEN specs', () => {
   const sb = makeSandbox();
   try {
     copyIn(sb, 'scripts/generate.mjs', 'scripts/generate.mjs');
@@ -14,29 +16,67 @@ test('generate.mjs expands countries.yaml into 12 beta v8 enterprise specs', () 
     assert.equal(status, 0, `generate should exit 0; stderr: ${stderr}`);
 
     const onchainDir = join(sb, 'specs', 'onchain');
-    const plainDir = join(sb, 'specs', 'plain');
     const onchain = readdirSync(onchainDir).filter((f) => f.startsWith('cumulus'));
-    const plain = readdirSync(plainDir).filter((f) => f.startsWith('cumulus'));
-
     assert.equal(onchain.length, 12, 'exactly 12 beta on-chain specs');
-    assert.equal(plain.length, 12, 'exactly 12 beta plain specs');
 
     for (const f of onchain) {
       const spec = JSON.parse(readFileSync(join(onchainDir, f), 'utf8'));
-      // v8 enterprise shape
       assert.equal(spec.version, 8, `${f}: version 8`);
-      assert.equal(spec.datacenter, true, `${f}: datacenter true`);
-      assert.equal(typeof spec.enterprise, 'string', `${f}: enterprise is a string`);
-      assert.ok(spec.enterprise.length > 0, `${f}: enterprise non-empty`);
+      assert.equal(spec.enterprise, false, `${f}: open spec enterprise:false`);
+      assert.ok(!('datacenter' in spec), `${f}: open spec has no datacenter flag`);
       assert.equal(typeof spec.instances, 'number', `${f}: instances number`);
       assert.ok(spec.instances >= 1, `${f}: instances >= 1`);
-      assert.equal(typeof spec.staticip, 'boolean', `${f}: staticip boolean`);
+      assert.equal(spec.staticip, true, `${f}: staticip true`);
       assert.ok(
         Array.isArray(spec.geolocation) && spec.geolocation.length >= 1,
         `${f}: geolocation`,
       );
       assert.ok(Array.isArray(spec.compose) && spec.compose.length >= 1, `${f}: compose`);
-      // public on-chain compose must not leak private image auth
+      for (const comp of spec.compose) {
+        // public on-chain compose must not leak private image auth or v7-only fields
+        assert.ok(!('repoauth' in comp), `${f}: on-chain compose must not carry repoauth`);
+        assert.ok(!('secrets' in comp), `${f}: v8 compose must not carry secrets`);
+        assert.ok(!('tiered' in comp), `${f}: v8 compose must not carry tiered`);
+        // open compose carries the real runtime env inline (nothing is encrypted)
+        assert.ok(
+          Array.isArray(comp.environmentParameters) && comp.environmentParameters.length > 0,
+          `${f}: open compose inlines environmentParameters`,
+        );
+      }
+    }
+  } finally {
+    cleanup(sb);
+  }
+});
+
+// The DATACENTER variant keeps the enterprise/encrypted path (plain inner spec + enterprise blob).
+test('generate.mjs --variant datacenter emits 12 on-chain + 12 plain enterprise specs', () => {
+  const sb = makeSandbox();
+  try {
+    copyIn(sb, 'scripts/generate.mjs', 'scripts/generate.mjs');
+    copyIn(sb, 'countries.yaml', 'countries.yaml');
+
+    const { status, stderr } = runNode(join(sb, 'scripts', 'generate.mjs'), [
+      '--stage',
+      'beta',
+      '--variant',
+      'datacenter',
+    ]);
+    assert.equal(status, 0, `generate should exit 0; stderr: ${stderr}`);
+
+    const onchainDir = join(sb, 'specs', 'onchain');
+    const plainDir = join(sb, 'specs', 'plain');
+    const onchain = readdirSync(onchainDir).filter((f) => f.startsWith('cumulus'));
+    const plain = readdirSync(plainDir).filter((f) => f.startsWith('cumulus'));
+    assert.equal(onchain.length, 12, 'exactly 12 beta on-chain specs');
+    assert.equal(plain.length, 12, 'exactly 12 beta plain specs');
+
+    for (const f of onchain) {
+      const spec = JSON.parse(readFileSync(join(onchainDir, f), 'utf8'));
+      assert.equal(spec.version, 8, `${f}: version 8`);
+      assert.equal(spec.datacenter, true, `${f}: datacenter true`);
+      assert.equal(typeof spec.enterprise, 'string', `${f}: enterprise is a string`);
+      assert.ok(spec.enterprise.length > 0, `${f}: enterprise non-empty`);
       for (const comp of spec.compose) {
         assert.ok(!('repoauth' in comp), `${f}: on-chain compose must not carry repoauth`);
       }

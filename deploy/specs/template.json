@@ -5,7 +5,7 @@
   "version": 8,
   "name": "cumulusCC",
   "description": "CumulusVPN — decentralized VPN gateway",
-  "owner": "ZELID_OWNER_ADDRESS",
+  "owner": "196GJWyLxzAw3MirTT7Bqs2iGpUQio29GH",
   "instances": 3,
   "contacts": [],
   "geolocation": ["acEU_DE"],
