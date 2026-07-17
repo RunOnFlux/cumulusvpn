@@ -1,0 +1,20 @@
+# golangci-lint configuration for the CumulusVPN gateway.
+# Sensible defaults: vet + the standard static-analysis quartet.
+# Run: golangci-lint run ./...  (install: https://golangci-lint.run)
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  disable-all: true
+  enable:
+    - govet       # go vet: suspicious constructs
+    - staticcheck # staticcheck: bugs, simplifications, deprecations
+    - errcheck    # unchecked error returns
+    - gofmt       # gofmt formatting (must match `gofmt -l`)
+    - ineffassign # ineffective assignments
+
+issues:
+  # Show all findings rather than golangci-lint's default cap.
+  max-issues-per-linter: 0
+  max-same-issues: 0

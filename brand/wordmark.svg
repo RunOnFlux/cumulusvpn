@@ -1,0 +1,30 @@
+<svg width="1200" height="320" viewBox="0 0 1200 320" xmlns="http://www.w3.org/2000/svg">
+  <!-- Horizontal wordmark lockup: icon + "CumulusVPN" + tagline. -->
+  <defs>
+    <linearGradient id="cloud" x1="60" y1="90" x2="230" y2="250" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7DF3EB"/>
+      <stop offset="0.5" stop-color="#34E4DA"/>
+      <stop offset="1" stop-color="#0FB9AE"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="150" y1="95" x2="185" y2="235" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8FFFC"/>
+    </linearGradient>
+  </defs>
+  <!-- glyph (cloud + bolt), scaled to ~260px box -->
+  <g transform="translate(40 40) scale(0.235)">
+    <g fill="url(#cloud)">
+      <circle cx="392" cy="556" r="104"/>
+      <circle cx="512" cy="486" r="146"/>
+      <circle cx="642" cy="532" r="118"/>
+      <circle cx="712" cy="588" r="78"/>
+      <rect x="326" y="556" width="452" height="132" rx="66"/>
+    </g>
+    <path d="M566 372 L430 566 L512 566 L470 700 L620 512 L534 512 Z" fill="url(#bolt)"/>
+  </g>
+  <!-- wordmark -->
+  <text x="320" y="168" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700"
+        font-size="112" letter-spacing="-3" fill="#0C1420">Cumulus<tspan fill="#0FB9AE">VPN</tspan></text>
+  <text x="324" y="228" font-family="'SF Mono','Menlo',monospace" font-weight="500"
+        font-size="30" letter-spacing="3" fill="#5A6B78">DECENTRALIZED VPN · POWERED BY FLUX</text>
+</svg>

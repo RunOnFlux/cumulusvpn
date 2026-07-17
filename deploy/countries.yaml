@@ -1,0 +1,53 @@
+# Fleet manifest — source of truth for spec generation (deploy/scripts/generate.mjs).
+# One Flux app spec per country, named cumulus<cc> (cumulusde, cumulusus).
+# geolocation uses FluxOS ac<CONTINENT>_<ISO-COUNTRY> format.
+# stage: beta | ga | scale  (generate/register only stages <= the --stage passed to generate.mjs)
+#
+# All specs are ENTERPRISE + datacenter: they deploy only to KYC'd ArcaneOS datacenter nodes
+# (not residential), the image/env are encrypted (hidden from the public marketplace), and the
+# private registry (repoauth) is enterprise-only. See ../docs/02-flux-deployment.md.
+
+owner: ZELID_OWNER_ADDRESS # our enterprise app-owner ZelID (must be on the enterprise whitelist)
+
+defaults:
+  instances: 3
+  cpu: 1.0
+  ram: 1000
+  hdd: 5
+  staticip: true # stable WG endpoints
+  datacenter: true # enterprise-only v8 flag → datacenter nodes, not homes
+  ports: [51820, 51821] # WG (TCP+UDP auto) + control API
+  repotag: 'registry.cumulusvpn.com/gateway:v0.1.0' # PRIVATE registry (repoauth), not public
+  # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
+
+countries:
+  # --- Beta (12) --- instance counts tuned per expected demand; min 3 for failover
+  - { cc: us, geolocation: acNA_US, instances: 6, stage: beta }
+  - { cc: ca, geolocation: acNA_CA, instances: 3, stage: beta }
+  - { cc: de, geolocation: acEU_DE, instances: 5, stage: beta }
+  - { cc: nl, geolocation: acEU_NL, instances: 5, stage: beta }
+  - { cc: fr, geolocation: acEU_FR, instances: 4, stage: beta }
+  - { cc: gb, geolocation: acEU_GB, instances: 4, stage: beta }
+  - { cc: cz, geolocation: acEU_CZ, instances: 3, stage: beta }
+  - { cc: pl, geolocation: acEU_PL, instances: 3, stage: beta }
+  - { cc: sg, geolocation: acAS_SG, instances: 4, stage: beta }
+  - { cc: jp, geolocation: acAS_JP, instances: 4, stage: beta }
+  - { cc: au, geolocation: acOC_AU, instances: 3, stage: beta }
+  - { cc: br, geolocation: acSA_BR, instances: 3, stage: beta }
+  # --- GA additions (extend toward ~30) ---
+  - { cc: es, geolocation: acEU_ES, stage: ga }
+  - { cc: it, geolocation: acEU_IT, stage: ga }
+  - { cc: se, geolocation: acEU_SE, stage: ga }
+  - { cc: ch, geolocation: acEU_CH, stage: ga }
+  - { cc: at, geolocation: acEU_AT, stage: ga }
+  - { cc: fi, geolocation: acEU_FI, stage: ga }
+  - { cc: mx, geolocation: acNA_MX, stage: ga }
+  - { cc: kr, geolocation: acAS_KR, stage: ga }
+  - { cc: in, geolocation: acAS_IN, stage: ga }
+  - { cc: za, geolocation: acAF_ZA, stage: ga }
+
+# CRITICAL PRE-FLIGHT (generate.mjs enforces): enterprise/datacenter nodes are FEWER than the
+# general fleet. Before registering, query the eligible enterprise-node count per country via
+# /daemon/viewdeterministicfluxnodelist (+ enterprise whitelist) and warn if instances > eligible
+# nodes — an over-provisioned spec silently under-fills. Some countries may have zero enterprise
+# nodes; drop or relax (staticip-only, non-enterprise) those, deciding per docs/08.

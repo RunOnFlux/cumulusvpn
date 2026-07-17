@@ -1,0 +1,11 @@
+node_modules/
+dist/
+build/
+target/
+coverage/
+.yarn/
+yarn.lock
+deploy/.test-sandbox/
+deploy/specs/plain/cumulus*.json
+deploy/specs/onchain/cumulus*.json
+deploy/directory/directory.signed.json

@@ -1,0 +1,166 @@
+name: ci-ts
+
+# TypeScript / JavaScript CI for the CumulusVPN monorepo.
+# Covers the three root Yarn workspaces (core-ts, web, desktop) plus the two
+# standalone packages that are intentionally NOT root workspaces: the mobile
+# React Native app and the deploy tooling (each carries its own yarn.lock).
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'clients/**'
+      - 'deploy/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'tsconfig*.json'
+      - '.prettierrc'
+      - '.prettierignore'
+      - '.yarnrc.yml'
+      - '.github/workflows/ci-ts.yml'
+  pull_request:
+    paths:
+      - 'clients/**'
+      - 'deploy/**'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'tsconfig*.json'
+      - '.prettierrc'
+      - '.prettierignore'
+      - '.yarnrc.yml'
+      - '.github/workflows/ci-ts.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-ts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Root workspaces share one immutable install; the matrix fans out per package.
+  workspaces:
+    name: workspace (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: core-ts
+            pkg: '@cumulusvpn/core'
+          - name: web
+            pkg: '@cumulusvpn/web'
+          - name: desktop
+            pkg: '@cumulusvpn/desktop'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install (immutable)
+        run: yarn install --immutable
+
+      - name: format:check
+        run: yarn workspace ${{ matrix.pkg }} run format:check
+
+      - name: lint
+        run: yarn workspace ${{ matrix.pkg }} run lint
+
+      - name: typecheck
+        run: yarn workspace ${{ matrix.pkg }} run typecheck
+
+      - name: test
+        run: yarn workspace ${{ matrix.pkg }} run test
+
+      - name: build
+        run: yarn workspace ${{ matrix.pkg }} run build
+
+  # React Native app — standalone install, no bundler build in CI (store builds
+  # happen on native runners); we gate on format, lint, types and unit tests.
+  mobile:
+    name: mobile (react-native)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: clients/mobile
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: |
+            yarn.lock
+            clients/mobile/yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      # The mobile app consumes @cumulusvpn/core via `file:../core-ts`, and its
+      # jest moduleNameMapper resolves it to dist/index.js. dist/ is a build
+      # output (gitignored), so it must be built BEFORE the mobile install copies
+      # the package — otherwise `yarn test` fails on a clean checkout.
+      - name: Build shared core
+        working-directory: ${{ github.workspace }}
+        run: |
+          yarn install --immutable
+          yarn workspace @cumulusvpn/core run build
+
+      - name: Install
+        run: yarn install
+
+      - name: format:check
+        run: yarn format:check
+
+      - name: lint
+        run: yarn lint
+
+      - name: typecheck
+        run: yarn tsc --noEmit
+
+      - name: test
+        run: yarn test
+
+  # Deploy tooling — standalone install; pure Node (.mjs), so no typecheck/build.
+  deploy:
+    name: deploy (tooling)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+          cache-dependency-path: deploy/yarn.lock
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install
+
+      - name: lint
+        run: yarn lint
+
+      - name: format:check
+        run: yarn format:check
+
+      - name: test
+        run: yarn test

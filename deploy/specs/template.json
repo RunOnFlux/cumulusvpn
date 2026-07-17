@@ -1,0 +1,33 @@
+{
+  "//": "ON-CHAIN enterprise app spec (v8). Public/broadcast form. The image, env and repoauth are",
+  "//2": "NOT here — they live encrypted in `enterprise`. compose[] carries only the shape needed",
+  "//3": "for pricing/scheduling; contacts+components are encrypted via encrypt.mjs before broadcast.",
+  "version": 8,
+  "name": "cumulusCC",
+  "description": "CumulusVPN — decentralized VPN gateway",
+  "owner": "ZELID_OWNER_ADDRESS",
+  "instances": 3,
+  "contacts": [],
+  "geolocation": ["acEU_DE"],
+  "expire": 264000,
+  "nodes": [],
+  "staticip": true,
+  "datacenter": true,
+  "enterprise": "ENCRYPTED_BLOB_FROM_encrypt.mjs",
+  "compose": [
+    {
+      "name": "gateway",
+      "description": "gateway",
+      "repotag": "registry.cumulusvpn.com/gateway:v0.1.0",
+      "ports": [51820, 51821],
+      "containerPorts": [51820, 51821],
+      "domains": ["", ""],
+      "environmentParameters": [],
+      "commands": [],
+      "containerData": "/data",
+      "cpu": 1.0,
+      "ram": 1000,
+      "hdd": 5
+    }
+  ]
+}

@@ -1,0 +1,42 @@
+node_modules/
+dist/
+build/
+deploy/.test-sandbox/
+target/
+coverage/
+.yarn/*
+!.yarn/patches
+.pnp.*
+*.log
+.DS_Store
+.env
+.env.*
+peers.cache
+
+# SECRET — plaintext enterprise inner specs hold repoauth + real addresses; never commit
+deploy/specs/plain/cumulus*.json
+deploy/specs/onchain/cumulus*.json
+
+# SECRET — directory Ed25519 signing key; ship only the pubkey. Signed artifact is generated.
+deploy/directory/*.key
+deploy/directory/directory.signed.json
+
+# --- iOS / Xcode ---
+Pods/
+*.xcuserstate
+xcuserdata/
+DerivedData/
+
+# --- Android ---
+.gradle/
+local.properties
+*.hprof
+.cxx/
+
+# --- vendored wireguard-apple: commit patched SOURCE, never its build artifacts ---
+.tmp/
+clients/mobile/ios/vendor/wireguard-apple/Sources/WireGuardKitGo/out/
+clients/mobile/ios/vendor/wireguard-apple/Sources/WireGuardKitGo/.tmp/
+
+# --- desktop wireguard-go sidecar binary (regenerate via scripts/fetch-wireguard-go.sh) ---
+clients/desktop/src-tauri/binaries/wireguard-go-*

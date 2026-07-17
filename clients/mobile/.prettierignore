@@ -1,0 +1,9 @@
+node_modules/
+ios/
+android/
+coverage/
+dist/
+build/
+.yarn/
+yarn.lock
+src/data/directory.json

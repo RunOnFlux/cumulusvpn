@@ -1,0 +1,38 @@
+[package]
+name = "cumulusvpn-desktop"
+version = "0.1.0"
+description = "CumulusVPN desktop — Tauri shell driving a bundled wireguard-go sidecar."
+authors = ["CumulusVPN"]
+license = "MIT"
+edition = "2021"
+rust-version = "1.77"
+
+# The library the Tauri app links against; `main.rs` is a thin launcher so the
+# same core can later grow into a Mullvad-style privileged daemon.
+[lib]
+name = "cumulusvpn_desktop_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.0.0", features = [] }
+
+[dependencies]
+tauri = { version = "2.0.0", features = ["tray-icon"] }
+tauri-plugin-shell = "2.0.0"
+tauri-plugin-opener = "2.0.0"
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"
+thiserror = "1.0.64"
+base64 = "0.22.1"
+# POC: reserved for real UAPI socket IO / counter polling of wireguard-go.
+tokio = { version = "1.40.0", features = ["rt-multi-thread", "macros", "sync", "io-util", "net", "time"] }
+
+[features]
+# Enables Tauri's custom-protocol asset loading in release builds.
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+opt-level = "s"
+lto = true
+strip = true
+panic = "abort"

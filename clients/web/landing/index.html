@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CumulusVPN — Decentralized VPN on the Flux Network</title>
+<meta name="description" content="One-tap private VPN on the Flux network. No accounts, no logs, no email. Free forever at 100 KB/s — full speed for $0.99/month, paid in FLUX from your own wallet." />
+<meta name="theme-color" content="#070B11" />
+<meta property="og:title" content="CumulusVPN — Private internet, no account, no logs." />
+<meta property="og:description" content="Decentralized VPN on the Flux Network. Powered by RunOnFlux. Free at 100 KB/s, full speed for $0.99/month in FLUX." />
+<meta property="og:type" content="website" />
+<style>
+  :root {
+    --bg: #F5F8FB; --bg-2: #EAF0F6; --surface: #FFFFFF; --surface-2: #F0F4F8;
+    --ink: #0C1420; --ink-2: #46586B; --ink-3: #7B8D9E; --line: #DCE5EE;
+    --cyan: #0FB9AE; --cyan-glow: #34E4DA; --amber: #C77F17; --amber-2: #F5B23D;
+    --green: #1F9D6B; --slate: #8496A8;
+    --phone-sky-1: #10203a; --phone-sky-2: #1d3a63; --phone-sky-3: #2f6f9e;
+    --radius: 18px; --maxw: 1160px;
+    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #070B11; --bg-2: #0C121B; --surface: #10171F; --surface-2: #161F2A;
+      --ink: #EAF1F8; --ink-2: #A6B6C6; --ink-3: #6C7E90; --line: #1E2A37;
+      --cyan: #34E4DA; --cyan-glow: #34E4DA; --amber: #F5B23D; --amber-2: #F5B23D;
+      --green: #34D399; --slate: #64748B;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #F5F8FB; --bg-2: #EAF0F6; --surface: #FFFFFF; --surface-2: #F0F4F8;
+    --ink: #0C1420; --ink-2: #46586B; --ink-3: #7B8D9E; --line: #DCE5EE;
+    --cyan: #0FB9AE; --cyan-glow: #34E4DA; --amber: #C77F17; --amber-2: #F5B23D; --green: #1F9D6B;
+  }
+  :root[data-theme="dark"] {
+    --bg: #070B11; --bg-2: #0C121B; --surface: #10171F; --surface-2: #161F2A;
+    --ink: #EAF1F8; --ink-2: #A6B6C6; --ink-3: #6C7E90; --line: #1E2A37;
+    --cyan: #34E4DA; --cyan-glow: #34E4DA; --amber: #F5B23D; --amber-2: #F5B23D; --green: #34D399;
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--sans);
+    -webkit-font-smoothing: antialiased; line-height: 1.5; overflow-x: hidden; }
+  .wrap { max-width: var(--maxw); margin: 0 auto; padding: 0 24px; }
+  h1, h2, h3 { text-wrap: balance; margin: 0; }
+  .mono { font-family: var(--mono); }
+  .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .16em; text-transform: uppercase;
+    color: var(--cyan); font-weight: 600; }
+  a { color: inherit; }
+  img { max-width: 100%; }
+
+  /* ---- top bar ---- */
+  header.top { border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); }
+  .top .wrap { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 700; letter-spacing: -.02em; font-size: 18px;
+    text-decoration: none; }
+  .mark { width: 26px; height: 26px; }
+  .top nav { display: flex; gap: 22px; font-size: 14px; color: var(--ink-2); align-items: center; }
+  .top nav a { text-decoration: none; }
+  .top nav a:hover { color: var(--ink); }
+  .top .right { display: flex; align-items: center; gap: 14px; }
+  .badge-flux { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line);
+    padding: 4px 9px; border-radius: 20px; white-space: nowrap; }
+  .theme-btn { background: transparent; border: 1px solid var(--line); color: var(--ink-2); border-radius: 20px;
+    width: 34px; height: 34px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 15px; line-height: 1; }
+  .theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+
+  /* ---- buttons ---- */
+  .btn { font: inherit; font-weight: 600; font-size: 15px; border-radius: 12px; padding: 13px 20px; cursor: pointer;
+    border: 1px solid transparent; text-decoration: none; display: inline-flex; align-items: center; gap: 9px; }
+  .btn.primary { background: var(--cyan); color: #05201E; }
+  .btn.primary:hover { filter: brightness(1.06); }
+  .btn.amber { background: var(--amber-2); color: #3a2606; }
+  .btn.amber:hover { filter: brightness(1.05); }
+  .btn.ghost { background: transparent; border-color: var(--line); color: var(--ink); }
+  .btn.ghost:hover { border-color: var(--ink-3); }
+
+  /* ---- hero ---- */
+  .hero { position: relative; overflow: hidden; border-bottom: 1px solid var(--line); }
+  .hero .wrap { display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center;
+    padding: 76px 24px 84px; }
+  .hero h1 { font-size: clamp(38px, 5.4vw, 64px); line-height: .98; letter-spacing: -.035em; font-weight: 800; }
+  .hero h1 .glow { color: var(--cyan); }
+  .hero p.lede { font-size: 19px; color: var(--ink-2); max-width: 46ch; margin: 22px 0 0; }
+  .hero .cta { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+  .kpis { display: flex; gap: 26px; margin-top: 40px; flex-wrap: wrap; }
+  .kpi .n { font-family: var(--mono); font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
+  .kpi .l { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+  .hero-glow { position: absolute; width: 620px; height: 620px; right: -180px; top: -220px; border-radius: 50%;
+    background: radial-gradient(circle, color-mix(in srgb, var(--cyan) 26%, transparent), transparent 62%);
+    filter: blur(20px); pointer-events: none; }
+
+  /* ---- phone frame ---- */
+  .phone { width: 300px; border-radius: 40px; padding: 12px; background: linear-gradient(160deg, #202b38, #0c1119);
+    box-shadow: 0 30px 70px -24px rgba(4,10,20,.6), 0 0 0 1px rgba(255,255,255,.05) inset; margin: 0 auto; }
+  .phone .screen { border-radius: 30px; overflow: hidden; background: var(--phone-sky-1); position: relative;
+    aspect-ratio: 300 / 640; display: flex; flex-direction: column; }
+  .notch { position: absolute; top: 9px; left: 50%; transform: translateX(-50%); width: 92px; height: 20px;
+    background: #05080d; border-radius: 12px; z-index: 5; }
+  .stbar { display: flex; justify-content: space-between; padding: 12px 20px 0; font-family: var(--mono);
+    font-size: 11px; color: rgba(255,255,255,.82); z-index: 4; }
+
+  .app { flex: 1; display: flex; flex-direction: column; padding: 16px 18px 20px; color: #EAF3FA;
+    background: linear-gradient(180deg, var(--phone-sky-1), var(--phone-sky-2) 58%, var(--phone-sky-3)); }
+  .app-top { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+  .app-title { font-weight: 700; letter-spacing: -.01em; font-size: 15px; display: flex; gap: 8px; align-items: center; }
+  .tier-pill { font-family: var(--mono); font-size: 10.5px; padding: 4px 9px; border-radius: 20px; font-weight: 600; }
+  .tier-pill.free { background: rgba(255,255,255,.12); color: #cfe0ee; }
+  .tier-pill.prem { background: var(--amber-2); color: #3a2606; }
+
+  .orb-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; }
+  .orb { width: 168px; height: 168px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    position: relative; }
+  .orb .ring { position: absolute; inset: 0; border-radius: 50%; border: 2px solid rgba(255,255,255,.14); }
+  .orb.on { background: radial-gradient(circle at 50% 42%, color-mix(in srgb, var(--cyan-glow) 60%, transparent), transparent 68%); }
+  .orb.on .ring { border-color: var(--cyan-glow); box-shadow: 0 0 40px -4px var(--cyan-glow), 0 0 0 8px rgba(52,228,218,.08);
+    animation: pulse 3.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 0 40px -4px var(--cyan-glow), 0 0 0 8px rgba(52,228,218,.08); }
+    50% { box-shadow: 0 0 56px 0 var(--cyan-glow), 0 0 0 14px rgba(52,228,218,.05); } }
+  @media (prefers-reduced-motion: reduce) { .orb.on .ring { animation: none; } }
+  .orb .core { width: 120px; height: 120px; border-radius: 50%; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 3px; }
+  .orb.on .core { background: rgba(9,20,26,.5); border: 1px solid rgba(52,228,218,.4); }
+  .orb .pw { width: 26px; height: 26px; }
+  .orb .state { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .orb.on .state { color: var(--cyan-glow); }
+
+  .conn-loc { text-align: center; }
+  .conn-loc .flag { font-size: 30px; line-height: 1; }
+  .conn-loc .c { font-size: 21px; font-weight: 700; letter-spacing: -.01em; margin-top: 4px; }
+  .conn-loc .ip { font-family: var(--mono); font-size: 11.5px; color: rgba(203,224,238,.7); margin-top: 3px; }
+
+  .stat-row { display: flex; gap: 10px; margin-top: 4px; }
+  .stat { flex: 1; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.08); border-radius: 12px;
+    padding: 10px 12px; }
+  .stat .k { font-size: 10px; color: rgba(203,224,238,.65); text-transform: uppercase; letter-spacing: .06em; }
+  .stat .v { font-family: var(--mono); font-size: 15px; font-weight: 600; margin-top: 3px; }
+  .stat .v .u { font-size: 10px; color: rgba(203,224,238,.6); }
+
+  .big-disc { margin-top: 14px; text-align: center; background: rgba(255,255,255,.1); color: #EAF3FA; font-weight: 600;
+    border: 1px solid rgba(255,255,255,.16); border-radius: 14px; padding: 13px; font-size: 14px; }
+
+  /* ---- section scaffolding ---- */
+  section { padding: 72px 0; border-bottom: 1px solid var(--line); }
+  .sec-head { max-width: 62ch; margin-bottom: 40px; }
+  .sec-head.center { margin-left: auto; margin-right: auto; text-align: center; }
+  .sec-head h2 { font-size: clamp(26px, 3.4vw, 38px); letter-spacing: -.03em; font-weight: 800; margin-top: 10px; }
+  .sec-head p { color: var(--ink-2); font-size: 17px; margin: 14px 0 0; }
+
+  /* how it works */
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .step { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px;
+    position: relative; }
+  .step .num { font-family: var(--mono); font-size: 12px; color: var(--cyan); font-weight: 600; }
+  .step h3 { font-size: 18px; letter-spacing: -.01em; margin: 12px 0 8px; }
+  .step p { color: var(--ink-2); font-size: 14.5px; margin: 0; }
+  .step .code { font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); background: var(--bg-2);
+    border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; margin-top: 14px; word-break: break-all; }
+
+  /* tiers */
+  .tiers { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; max-width: 760px; margin: 0 auto; }
+  .tier { border-radius: var(--radius); border: 1px solid var(--line); padding: 28px; background: var(--surface);
+    display: flex; flex-direction: column; }
+  .tier.prem { border-color: var(--amber-2); box-shadow: 0 0 0 1px var(--amber-2) inset; }
+  .tier .name { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; }
+  .tier .price { font-family: var(--mono); font-size: 38px; font-weight: 700; letter-spacing: -.03em; margin: 14px 0 2px; }
+  .tier .price .per { font-size: 14px; color: var(--ink-3); font-weight: 400; }
+  .tier .price small { display:block; font-size: 12px; color: var(--ink-3); font-weight: 400; margin-top: 4px; }
+  .tier ul { list-style: none; padding: 0; margin: 18px 0 22px; display: flex; flex-direction: column; gap: 10px; }
+  .tier li { display: flex; gap: 10px; font-size: 14px; color: var(--ink-2); }
+  .tier li .ck { color: var(--cyan); flex-shrink: 0; }
+  .tier.prem li .ck { color: var(--amber); }
+  .tier .btn { justify-content: center; margin-top: auto; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .dot.g { background: var(--green); }
+
+  /* get the app */
+  .apps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .appcard { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px;
+    display: flex; flex-direction: column; gap: 6px; }
+  .appcard .ico { width: 40px; height: 40px; color: var(--cyan); margin-bottom: 8px; }
+  .appcard h3 { font-size: 18px; letter-spacing: -.01em; }
+  .appcard p { color: var(--ink-2); font-size: 14px; margin: 0 0 16px; }
+  .appcard .actions { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+  .applink { display: flex; align-items: center; justify-content: space-between; gap: 10px; text-decoration: none;
+    border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
+    background: var(--surface-2); }
+  .applink:hover { border-color: var(--ink-3); }
+  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
+  .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
+    letter-spacing: .06em; }
+
+  /* trust */
+  .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .trust { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; }
+  .trust .ico { width: 26px; height: 26px; color: var(--cyan); margin-bottom: 12px; }
+  .trust h3 { font-size: 16px; letter-spacing: -.01em; margin-bottom: 7px; }
+  .trust p { color: var(--ink-2); font-size: 14px; margin: 0; }
+  .trust p a { color: var(--cyan); text-decoration: none; }
+  .trust p a:hover { text-decoration: underline; }
+
+  /* cta band */
+  .band { background: linear-gradient(135deg, color-mix(in srgb, var(--cyan) 14%, var(--surface)), var(--surface));
+    border: 1px solid var(--line); border-radius: var(--radius); padding: 44px; text-align: center; margin-top: 8px; }
+  .band h2 { font-size: clamp(24px, 3vw, 34px); letter-spacing: -.03em; font-weight: 800; }
+  .band p { color: var(--ink-2); font-size: 17px; margin: 12px auto 26px; max-width: 52ch; }
+  .band .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  footer { padding: 44px 0 60px; color: var(--ink-3); font-size: 13px; }
+  footer .cols { display: flex; justify-content: space-between; gap: 32px; flex-wrap: wrap; margin-bottom: 28px; }
+  footer .col h4 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-2);
+    margin: 0 0 12px; }
+  footer .col a { display: block; color: var(--ink-3); text-decoration: none; font-size: 13.5px; margin-bottom: 8px; }
+  footer .col a:hover { color: var(--ink); }
+  footer .foot-bottom { display: flex; justify-content: space-between; gap: 20px; flex-wrap: wrap;
+    padding-top: 22px; border-top: 1px solid var(--line); }
+  footer .disclaimer { max-width: 62ch; line-height: 1.55; color: var(--ink-3); }
+
+  @media (max-width: 900px) {
+    .hero .wrap { grid-template-columns: 1fr; gap: 48px; }
+    .steps, .apps, .trust-grid { grid-template-columns: 1fr; }
+    .tiers { grid-template-columns: 1fr; }
+    .top nav { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="#top">
+    <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" fill="currentColor" opacity=".18"/>
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+      <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+    </svg>
+    CumulusVPN
+  </a>
+  <nav>
+    <a href="#how">How it works</a><a href="#pricing">Pricing</a>
+    <a href="#apps">Get the app</a><a href="#trust">Privacy</a>
+  </nav>
+  <div class="right">
+    <span class="badge-flux">Powered by RunOnFlux</span>
+    <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">◐</button>
+  </div>
+</div></header>
+
+<a id="top"></a>
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="wrap">
+    <div>
+      <span class="eyebrow">Decentralized VPN on the Flux Network</span>
+      <h1>Private internet,<br><span class="glow">no account, no logs.</span></h1>
+      <p class="lede">One tap connects you through datacenter nodes in dozens of countries.
+        Free at 100&nbsp;KB/s forever. Full speed for $0.99/month — paid in FLUX, straight from
+        your wallet. No email, no card, no company that can hand over what it never had.</p>
+      <div class="cta">
+        <a class="btn primary" href="#apps">Get the app</a>
+        <a class="btn ghost" href="#how">How it works</a>
+      </div>
+      <div class="kpis">
+        <div class="kpi"><div class="n">6,500+</div><div class="l">Flux nodes worldwide</div></div>
+        <div class="kpi"><div class="n">30+</div><div class="l">countries at launch</div></div>
+        <div class="kpi"><div class="n">$0.99</div><div class="l">per month, in FLUX</div></div>
+      </div>
+    </div>
+
+    <!-- HERO PHONE: connected state -->
+    <div class="phone" aria-label="CumulusVPN app, connected">
+      <div class="screen">
+        <div class="notch"></div>
+        <div class="stbar"><span>9:41</span><span>100%</span></div>
+        <div class="app">
+          <div class="app-top">
+            <div class="app-title">CumulusVPN</div>
+            <span class="tier-pill prem">PREMIUM</span>
+          </div>
+          <div class="orb-wrap">
+            <div class="orb on">
+              <div class="ring"></div>
+              <div class="core">
+                <svg class="pw" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v9" stroke="var(--cyan-glow)" stroke-width="2.2" stroke-linecap="round"/><path d="M6.5 7a7 7 0 1 0 11 0" stroke="var(--cyan-glow)" stroke-width="2.2" stroke-linecap="round"/></svg>
+                <span class="state">Connected</span>
+              </div>
+            </div>
+            <div class="conn-loc">
+              <div class="flag">🇩🇪</div>
+              <div class="c">Germany</div>
+              <div class="ip">exit 185.244.x.x · Frankfurt</div>
+            </div>
+            <div class="stat-row">
+              <div class="stat"><div class="k">Down</div><div class="v">48.2<span class="u"> Mbps</span></div></div>
+              <div class="stat"><div class="k">Up</div><div class="v">21.7<span class="u"> Mbps</span></div></div>
+              <div class="stat"><div class="k">Ping</div><div class="v">12<span class="u"> ms</span></div></div>
+            </div>
+          </div>
+          <div class="big-disc">Disconnect</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">How it works</span>
+      <h2>No accounts. No server of ours. Just the chain.</h2>
+      <p>Your WireGuard key is your identity. Payment is a fact on the Flux blockchain that every
+        gateway reads independently. If our company vanished tomorrow, the deployed gateways keep running.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="num">STEP 01</div>
+        <h3>Generate &amp; connect</h3>
+        <p>The app makes a WireGuard keypair on your device and enrolls it at the nearest datacenter
+          gateway. Free tier is throttled to 100&nbsp;KB/s server-side — connected in seconds, no signup.</p>
+        <div class="code">pubkey → POST /v1/enroll → tunnel up</div>
+      </div>
+      <div class="step">
+        <div class="num">STEP 02</div>
+        <h3>Pay in FLUX</h3>
+        <p>Send 4.5&nbsp;FLUX (~$0.99) to the payment address with your key's code in the transaction
+          message. One tap opens your wallet with it pre-filled.</p>
+        <div class="code">memo: CVPN1:&lt;code(pubkey)&gt;</div>
+      </div>
+      <div class="step">
+        <div class="num">STEP 03</div>
+        <h3>Unlocked everywhere</h3>
+        <p>Every gateway scans the chain and flips your key to full speed within ~1&nbsp;minute — on all
+          servers at once, for 30&nbsp;days. No activation, no login. Prepay to stack months.</p>
+        <div class="code">chain → paid_until[key] += 30d</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="sec-head center">
+      <span class="eyebrow">Pricing</span>
+      <h2>Free that actually works. Cheap when you need more.</h2>
+      <p>The free tier is funded by subscribers and capped so it can't be abused — genuinely usable
+        for browsing and messaging. Full speed is one wallet transfer away.</p>
+    </div>
+    <div class="tiers">
+      <div class="tier">
+        <div class="name"><span class="dot g"></span> Free</div>
+        <div class="price">$0<span class="per"> / forever</span><small>no account, no card, ever</small></div>
+        <ul>
+          <li><span class="ck">✓</span> Every country, every gateway</li>
+          <li><span class="ck">✓</span> 100 KB/s — fine for browsing &amp; chat</li>
+          <li><span class="ck">✓</span> No logs, no email, no signup</li>
+          <li><span class="ck">✓</span> Open-source apps &amp; gateway</li>
+        </ul>
+        <a class="btn ghost" href="#apps">Start free</a>
+      </div>
+      <div class="tier prem">
+        <div class="name"><span class="tier-pill prem">PREMIUM</span></div>
+        <div class="price">4.5 FLUX<span class="per"> / month</span><small>≈ $0.99 · paid on-chain, stacks</small></div>
+        <ul>
+          <li><span class="ck">✓</span> Full speed — up to 50 Mbit/s per device</li>
+          <li><span class="ck">✓</span> Unlocks on all gateways at once</li>
+          <li><span class="ck">✓</span> Pay from any FLUX wallet, prepay months</li>
+          <li><span class="ck">✓</span> Still no account — no logs, no email, nothing stored</li>
+        </ul>
+        <a class="btn amber" href="#apps">Get premium</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="apps">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Get the app</span>
+      <h2>One connect button, on every screen you own.</h2>
+      <p>The same beautiful client on web, desktop and mobile — sharing one design language and one
+        key. Pay on web or desktop; your phone unlocks automatically over the chain within a minute.</p>
+    </div>
+    <div class="apps">
+
+      <div class="appcard">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 18v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <h3>Web</h3>
+        <p>Generates your key in the browser, connects, and hosts the pay-in-FLUX page. No install —
+          the fastest way to try it and to upgrade.</p>
+        <div class="actions">
+          <a class="applink" href="https://vpn.cumulusvpn.com"><span>Open web app</span><span class="tag">Beta</span></a>
+        </div>
+      </div>
+
+      <div class="appcard">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <h3>Desktop</h3>
+        <p>A calm menu-bar app for macOS, Windows and Linux. Kill switch, auto-reconnect and gateway
+          failover run quietly in the tray. Signed ~10&nbsp;MB installers.</p>
+        <div class="actions">
+          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Soon</span></span>
+        </div>
+      </div>
+
+      <div class="appcard">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <h3>Mobile</h3>
+        <p>iOS and Android, connect-only and store-compliant. Upgrade on the web and your phone flips
+          to full speed on its own — no in-app billing, no lock-in.</p>
+        <div class="actions">
+          <span class="applink soon"><span>App Store · Google Play</span><span class="tag">Soon</span></span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<section id="trust">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="eyebrow">Privacy by architecture</span>
+      <h2>We can't hand over what we never had.</h2>
+      <p>Most VPNs ask you to trust a no-logs promise. CumulusVPN removes the thing you'd have to
+        trust: there's no account to log, no database of users, and no central server that owns the fleet.</p>
+    </div>
+    <div class="trust-grid">
+      <div class="trust">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7l8-4 8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h3>No logs, ever</h3>
+        <p>Gateways enforce tier per key and route traffic — nothing about who or what you browse is
+          stored. DNS runs through the tunnel to the gateway's own resolver.</p>
+      </div>
+      <div class="trust">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="9" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M5 19c1.2-3 4-4.5 7-4.5S17.8 16 19 19" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18 4l2 2M20 4l-2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+        <h3>No accounts</h3>
+        <p>No email, no password, no card. Your WireGuard key is your only identity, and payment is
+          an anonymous FLUX transfer tied to a hash — not to you.</p>
+      </div>
+      <div class="trust">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <h3>Open source</h3>
+        <p>The apps and the gateway are public. Read the code, build it yourself, or run your own —
+          the payment and entitlement protocol is fully documented.</p>
+      </div>
+      <div class="trust">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M7 7h.01M7 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        <h3>Real datacenter nodes</h3>
+        <p>Exits run on Flux datacenter infrastructure — not a residential botnet. Stable IPs, real
+          bandwidth, over 6,500 nodes across the network.</p>
+      </div>
+      <div class="trust">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.7 3.8 9S14.5 18.5 12 21C9.5 18.5 8.2 15.3 8.2 12S9.5 5.5 12 3Z" stroke="currentColor" stroke-width="1.5"/></svg>
+        <h3>Decentralized fleet</h3>
+        <p>Clients discover live gateways from the Flux network itself, with a signed bundled
+          fallback. No single point to seize, block, or switch off.</p>
+      </div>
+      <div class="trust">
+        <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 10V8a6 6 0 0 1 12 0v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><rect x="4.5" y="10" width="15" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/></svg>
+        <h3>WireGuard under the hood</h3>
+        <p>Modern, audited, fast. You never touch a config file — the app handles keys, tunnels and
+          failover. WireGuard is the wire; the experience is one button.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <div class="band">
+      <h2>Private internet is $0.99 away.</h2>
+      <p>Start free in seconds — no email, no card. Upgrade with one FLUX transfer whenever you want
+        full speed, and your $0.99 literally buys the network's own compute.</p>
+      <div class="cta">
+        <a class="btn primary" href="#apps">Get the app</a>
+        <a class="btn ghost" href="#pricing">See pricing</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div class="col">
+      <h4>Product</h4>
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#apps">Get the app</a>
+      <a href="https://vpn.cumulusvpn.com">Web app</a>
+    </div>
+    <div class="col">
+      <h4>Learn</h4>
+      <a href="#trust">Privacy</a>
+      <a href="https://runonflux.io">Flux network</a>
+      <a href="#how">Payments in FLUX</a>
+    </div>
+    <div class="col">
+      <h4>Network</h4>
+      <a href="https://runonflux.io">Powered by RunOnFlux</a>
+      <a href="https://home.runonflux.io">Flux dashboard</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <div>
+      <div class="brand" style="font-size:15px;margin-bottom:8px;color:var(--ink-2)">
+        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="width:20px;height:20px">
+          <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+          <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+        </svg>
+        CumulusVPN
+      </div>
+      <p class="disclaimer">
+        Decentralized VPN on the Flux Network · cumulusvpn.com. CumulusVPN is an independent project
+        built on Flux infrastructure; not affiliated with the makers of WireGuard. WireGuard is a
+        registered trademark of Jason A. Donenfeld. FLUX price shown (~$0.99) is approximate and
+        moves with the market. Availability may be restricted where VPNs are unlawful.
+        <span class="mono">POC preview — figures illustrative pending mainnet launch.</span>
+      </p>
+    </div>
+    <div class="mono" style="align-self:flex-end;white-space:nowrap">© 2026 CumulusVPN</div>
+  </div>
+</div></footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var KEY = 'cumulusvpn-theme';
+    try {
+      var saved = localStorage.getItem(KEY);
+      if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+    } catch (e) {}
+    function current() {
+      var attr = root.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var btn = document.getElementById('themeToggle');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var next = current() === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+    }
+  })();
+</script>
+</body>
+</html>

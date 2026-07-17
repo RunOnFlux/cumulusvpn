@@ -1,0 +1,138 @@
+name: release-gateway
+
+# Build (and, when credentials exist, publish) the CumulusVPN gateway image.
+#
+# Triggers:
+#   * pushing a tag matching gateway-v*  (e.g. gateway-v0.1.0)
+#   * manual dispatch (optionally with an explicit version)
+#
+# What is automated: a reproducible multi-stage image build, and a push to
+# registry.cumulusvpn.com — but ONLY when REGISTRY_USER / REGISTRY_TOKEN
+# repository secrets are configured. Without them the push job no-ops loudly.
+#
+# What is NOT automated: on-chain register/deploy to the Flux network. That
+# needs a funded wallet + signing key and is run by hand from deploy/scripts.
+# See .github/workflows/README.md and deploy/README.md.
+on:
+  push:
+    tags:
+      - 'gateway-v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Image version tag (without the leading gateway-v). Defaults to the short SHA.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  IMAGE: registry.cumulusvpn.com/cumulusvpn-gateway
+
+jobs:
+  build:
+    name: build image
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Derive version and reproducible timestamp
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            version="${GITHUB_REF_NAME#gateway-v}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            version="${{ github.event.inputs.version }}"
+          else
+            version="$(git rev-parse --short HEAD)"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          # Deterministic build time = commit time, for a reproducible digest.
+          echo "epoch=$(git log -1 --format=%ct)" >> "$GITHUB_OUTPUT"
+          echo "Building ${IMAGE}:${version} (SOURCE_DATE_EPOCH=$(git log -1 --format=%ct))"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (reproducible, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: gateway
+          file: gateway/Dockerfile
+          platforms: linux/amd64
+          push: false
+          load: true
+          provenance: false
+          sbom: false
+          build-args: |
+            SOURCE_DATE_EPOCH=${{ steps.meta.outputs.epoch }}
+            TARGETARCH=amd64
+          tags: |
+            ${{ env.IMAGE }}:${{ steps.meta.outputs.version }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Export image as artifact
+        run: |
+          docker save "${IMAGE}:${{ steps.meta.outputs.version }}" -o gateway-image.tar
+          ls -lh gateway-image.tar
+
+      - name: Upload image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gateway-image
+          path: gateway-image.tar
+          retention-days: 7
+
+  push:
+    name: push to registry
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      REGISTRY: registry.cumulusvpn.com
+      REGISTRY_USER: ${{ secrets.REGISTRY_USER }}
+      REGISTRY_TOKEN: ${{ secrets.REGISTRY_TOKEN }}
+      VERSION: ${{ needs.build.outputs.version }}
+    steps:
+      # Secrets cannot gate a job-level `if`, so gate at the step level: every
+      # subsequent step is skipped when the credentials are absent.
+      - name: Check registry credentials
+        id: creds
+        run: |
+          if [ -n "$REGISTRY_USER" ] && [ -n "$REGISTRY_TOKEN" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Registry push skipped::REGISTRY_USER / REGISTRY_TOKEN are not configured, so ${IMAGE}:${VERSION} was built but NOT pushed to ${REGISTRY}. This is expected on forks. Add the repository secrets to enable continuous delivery."
+          fi
+
+      - name: Download image artifact
+        if: steps.creds.outputs.present == 'true'
+        uses: actions/download-artifact@v4
+        with:
+          name: gateway-image
+
+      - name: Load image
+        if: steps.creds.outputs.present == 'true'
+        run: docker load -i gateway-image.tar
+
+      - name: Log in to registry
+        if: steps.creds.outputs.present == 'true'
+        run: echo "$REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$REGISTRY_USER" --password-stdin
+
+      - name: Push image
+        if: steps.creds.outputs.present == 'true'
+        run: |
+          docker push "${IMAGE}:${VERSION}"
+          docker push "${IMAGE}:latest"
+          echo "::notice title=Pushed::${IMAGE}:${VERSION} and :latest pushed to ${REGISTRY}."
+
+      - name: Manual deploy reminder
+        run: |
+          echo "Image build complete for ${IMAGE}:${VERSION}."
+          echo "NEXT STEP IS MANUAL: registering / deploying the gateway on the Flux"
+          echo "network requires a funded wallet + signing key and is run by hand"
+          echo "from deploy/scripts (see deploy/README.md). CI never holds wallet keys."

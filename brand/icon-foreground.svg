@@ -1,0 +1,24 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Android adaptive icon FOREGROUND: glyph only, transparent, scaled into the ~66dp safe zone. -->
+  <defs>
+    <linearGradient id="cloud" x1="300" y1="360" x2="620" y2="700" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7DF3EB"/>
+      <stop offset="0.5" stop-color="#34E4DA"/>
+      <stop offset="1" stop-color="#0FB9AE"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="470" y1="380" x2="560" y2="660" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8FFFC"/>
+    </linearGradient>
+  </defs>
+  <g transform="translate(512 512) scale(0.78) translate(-512 -523)">
+    <g fill="url(#cloud)">
+      <circle cx="392" cy="556" r="104"/>
+      <circle cx="512" cy="486" r="146"/>
+      <circle cx="642" cy="532" r="118"/>
+      <circle cx="712" cy="588" r="78"/>
+      <rect x="326" y="556" width="452" height="132" rx="66"/>
+    </g>
+    <path d="M566 372 L430 566 L512 566 L470 700 L620 512 L534 512 Z" fill="url(#bolt)"/>
+  </g>
+</svg>

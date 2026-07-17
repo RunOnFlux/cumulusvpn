@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // React Native's Metro bundler resolves modules like a bundler, so the
+    // repo-wide Bundler resolution + ESNext module settings carry over cleanly.
+    "jsx": "react-jsx",
+    "lib": ["ES2022"],
+    "types": ["react", "react-native", "jest"],
+    "noEmit": true,
+    // RN ships .native.ts / platform files as plain modules; keep isolated
+    // modules on (inherited) but allow the JS entry point to sit alongside.
+    "allowJs": false
+  },
+  "include": ["App.tsx", "src/**/*.ts", "src/**/*.tsx"],
+  "exclude": ["node_modules", "ios", "android", "dist", "build"]
+}

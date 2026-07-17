@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "updated": "2026-07-16T10:59:43Z",
+  "payment_address": "t1exampleADDRESSxxxxxxxxxxxxxxxxxx",
+  "price_flux": 4.5,
+  "specs": [
+    "cumulusau",
+    "cumulusbr",
+    "cumulusca",
+    "cumuluscz",
+    "cumulusde",
+    "cumulusfr",
+    "cumulusgb",
+    "cumulusjp",
+    "cumulusnl",
+    "cumuluspl",
+    "cumulussg",
+    "cumulusus"
+  ],
+  "seed_gateways": [
+    {
+      "ip": "0.0.0.0",
+      "country": "DE",
+      "sign_pubkey": "REPLACE_GATEWAY_ED25519_PUBKEY_B64"
+    }
+  ],
+  "sign_pubkey": "IhvN6OfPIjw1y+I+zK3Z/63gsgL1qEt7f8M9UZqRzIU=",
+  "sig": "6hw21bXnG05i2Un5lvFd47GbV6XlMVTd8nnqSGfZguUd+P/nTXG0VmDa+j21ICgkesC8zo6s0f3RjqHvBqIKAg=="
+}

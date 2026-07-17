@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="CumulusVPN — decentralized VPN on the Flux Network. Generate a WireGuard config in your browser and upgrade with FLUX. No account, no logs."
+    />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <meta name="theme-color" content="#0C1420" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CumulusVPN" />
+    <meta property="og:title" content="CumulusVPN — Private internet, no account, no logs" />
+    <meta
+      property="og:description"
+      content="Decentralized VPN on the Flux Network. Generate a WireGuard config in your browser and upgrade with FLUX. No account, no logs."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CumulusVPN — Private internet, no account, no logs" />
+    <meta
+      name="twitter:description"
+      content="Decentralized VPN on the Flux Network. No account, no logs."
+    />
+    <meta name="twitter:image" content="/og-image.png" />
+    <title>CumulusVPN — Private internet, no account, no logs</title>
+    <script>
+      // Apply the persisted theme before first paint to avoid a flash.
+      try {
+        var t = localStorage.getItem('cvpn.theme');
+        if (t === 'light' || t === 'dark') {
+          document.documentElement.setAttribute('data-theme', t);
+        }
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

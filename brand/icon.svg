@@ -1,0 +1,50 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1024" y2="1024" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1424"/>
+      <stop offset="0.55" stop-color="#0C2230"/>
+      <stop offset="1" stop-color="#0A2E30"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="512" cy="470" r="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34E4DA" stop-opacity="0.42"/>
+      <stop offset="0.55" stop-color="#0FB9AE" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#0FB9AE" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cloud" x1="300" y1="360" x2="620" y2="700" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#7DF3EB"/>
+      <stop offset="0.5" stop-color="#34E4DA"/>
+      <stop offset="1" stop-color="#0FB9AE"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="470" y1="380" x2="560" y2="660" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8FFFC"/>
+    </linearGradient>
+    <filter id="boltglow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="0" stdDeviation="14" flood-color="#34E4DA" flood-opacity="0.9"/>
+    </filter>
+    <filter id="softshadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="18" stdDeviation="26" flood-color="#04141A" flood-opacity="0.45"/>
+    </filter>
+  </defs>
+
+  <!-- background -->
+  <rect width="1024" height="1024" fill="url(#bg)"/>
+  <ellipse cx="512" cy="472" rx="430" ry="410" fill="url(#glow)"/>
+
+  <!-- cloud (cumulus): overlapping lobes on a rounded base, one gradient fill -->
+  <g filter="url(#softshadow)">
+    <g fill="url(#cloud)">
+      <circle cx="392" cy="556" r="104"/>
+      <circle cx="512" cy="486" r="146"/>
+      <circle cx="642" cy="532" r="118"/>
+      <circle cx="712" cy="588" r="78"/>
+      <rect x="326" y="556" width="452" height="132" rx="66"/>
+    </g>
+    <!-- top-left inner highlight for a touch of dimension -->
+    <circle cx="512" cy="486" r="146" fill="#FFFFFF" opacity="0.10"/>
+  </g>
+
+  <!-- flux energy bolt through the cloud -->
+  <path d="M566 372 L430 566 L512 566 L470 700 L620 512 L534 512 Z"
+        fill="url(#bolt)" filter="url(#boltglow)"/>
+</svg>

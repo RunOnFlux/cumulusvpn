@@ -1,0 +1,13 @@
+{
+  "//": "UNSIGNED sample / template. `build` reads this + specs/onchain/ and writes the signed",
+  "//2": "artifact to directory.signed.json (gitignored). Clients ship CVPN_DIRECTORY_PUBKEY and",
+  "//3": "verify `sig` over the canonical JSON of every field except `sig`/`sign_pubkey`. docs/10.",
+  "version": 1,
+  "updated": "2026-07-16T00:00:00Z",
+  "payment_address": "t1REPLACE_PAYMENT_ADDRESS",
+  "price_flux": 4.5,
+  "specs": [],
+  "seed_gateways": [
+    { "ip": "0.0.0.0", "country": "DE", "sign_pubkey": "REPLACE_GATEWAY_ED25519_PUBKEY_B64" }
+  ]
+}

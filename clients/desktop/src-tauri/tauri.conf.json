@@ -1,0 +1,60 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "CumulusVPN",
+  "version": "0.1.0",
+  "identifier": "com.cumulusvpn.desktop",
+  "build": {
+    "beforeDevCommand": "yarn dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "yarn build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "CumulusVPN",
+        "label": "main",
+        "width": 380,
+        "height": 620,
+        "minWidth": 360,
+        "minHeight": 560,
+        "resizable": false,
+        "decorations": true,
+        "transparent": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' http://*:51821 https://api.runonflux.io http://*:16127"
+    },
+    "trayIcon": {
+      "id": "main",
+      "iconPath": "icons/icon.png",
+      "tooltip": "CumulusVPN",
+      "menuOnLeftClick": false
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "externalBin": ["binaries/wireguard-go"],
+    "resources": [],
+    "category": "Utility",
+    "shortDescription": "Decentralized VPN on the Flux network",
+    "longDescription": "CumulusVPN routes your traffic through the Flux network using WireGuard. Pay with FLUX for premium speed."
+  },
+  "plugins": {
+    "updater": {
+      "//": "POC: staged rollout + signed manifests wired at release; the bundled directory snapshot rides along.",
+      "endpoints": ["https://cumulusvpn.com/updater/{{target}}/{{arch}}/{{current_version}}"],
+      "pubkey": ""
+    }
+  }
+}
