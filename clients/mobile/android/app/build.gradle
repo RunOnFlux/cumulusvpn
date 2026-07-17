@@ -125,7 +125,7 @@ dependencies {
     // CumulusVPN WireGuard tunnel — official wireguard-android userspace backend
     // (GoBackend + Tunnel + Config). Ships a prebuilt wireguard-go .so for every
     // ABI, so no NDK/Go step is needed to consume it. See CumulusVpnService.kt.
-    implementation("com.wireguard.android:tunnel:1.0.20230706")
+    implementation("com.wireguard.android:tunnel:1.0.20260102")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
