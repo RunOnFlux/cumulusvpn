@@ -13,6 +13,13 @@ updates:
     groups:
       root-npm:
         patterns: ["*"]
+    ignore:
+      # TypeScript 7 (native rewrite) is unusable until typescript-eslint supports
+      # it — the latest typescript-eslint peer-caps TS at <6.1.0, and yarn's builtin
+      # TS compat patch fails on 7.x. Hold at the newest 5.x. Revisit (remove this)
+      # once typescript-eslint ships TS 7 support.
+      - dependency-name: "typescript"
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: npm
     directory: "/clients/mobile" # standalone React Native app
