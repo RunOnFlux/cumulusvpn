@@ -59,9 +59,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
-          cache-dependency-path: yarn.lock
 
+      # Corepack must be enabled BEFORE any `yarn` call: the packageManager
+      # field pins yarn@4, and setup-node's built-in `cache: yarn` would invoke
+      # the runner's global Yarn 1 and fail. So no setup-node cache here.
       - name: Enable Corepack
         run: corepack enable
 
@@ -99,10 +100,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
-          cache-dependency-path: |
-            yarn.lock
-            clients/mobile/yarn.lock
 
       - name: Enable Corepack
         run: corepack enable
@@ -147,8 +144,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: yarn
-          cache-dependency-path: deploy/yarn.lock
 
       - name: Enable Corepack
         run: corepack enable
