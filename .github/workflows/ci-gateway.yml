@@ -79,8 +79,9 @@ jobs:
         with:
           # v8 installs golangci-lint v2 (built with a current Go toolchain, so it
           # can analyze our `go 1.25` target — v1.64.x was built with go1.24 and
-          # errored "language version go1.24 < targeted 1.25"). Advisory job:
-          # --issues-exit-code=0 keeps the check green while still annotating.
+          # errored "language version go1.24 < targeted 1.25"). --no-config runs
+          # the default (standard) linters without a v2 config file; advisory job,
+          # so --issues-exit-code=0 keeps the check green while still annotating.
           version: latest
           working-directory: gateway
-          args: --issues-exit-code=0
+          args: --no-config --issues-exit-code=0
