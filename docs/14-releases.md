@@ -7,7 +7,7 @@ the two websites already auto-deploy (see `.github/workflows/README.md`).
 | App | Workflow | Trigger tag | Output |
 |---|---|---|---|
 | Android | `android-release.yml` | `mobile-v*` | signed **APK + AAB** → GitHub Release |
-| Desktop | `desktop-release.yml` | `desktop-v*` | macOS `.dmg`, Windows `.msi/.exe`, Linux `.AppImage/.deb` (matrix) |
+| Desktop | `desktop-release.yml` | `desktop-v*` | macOS **Apple Silicon** `.dmg`/`.app` (Intel/Windows/Linux deferred) |
 | iOS | Xcode Cloud (+ `ios/ci_scripts/`) | (Xcode Cloud UI) | TestFlight / App Store |
 
 > **Generate the keys yourself** with the commands below — don't paste private keys
@@ -72,15 +72,14 @@ requires an Apple Developer account): add `APPLE_CERTIFICATE`,
 `APPLE_PASSWORD` (app-specific password), `APPLE_TEAM_ID`. Without them the build
 still produces unsigned installers.
 
-**3. Release:** `git tag desktop-v1.0.0 && git push origin desktop-v1.0.0` → a
-matrix build (macOS arm64 + x64, Windows, Linux) publishes a **draft** GitHub
-Release with the installers.
+**3. Release:** `git tag desktop-v1.0.0 && git push origin desktop-v1.0.0` → builds
+the **Apple Silicon** macOS installer and publishes a **draft** GitHub Release.
 
-> ⚠️ **Sidecar gap:** the tunnel needs the `wireguard-go` binary per target triple.
-> `clients/desktop/scripts/fetch-wireguard-go.sh` currently vendors only
-> `aarch64-apple-darwin`; extend it to build/fetch for each platform (Go cross-compile
-> of wireguard-go) or the Windows/Linux/x64-mac bundles will fail to resolve the
-> sidecar. This is the main remaining desktop-release task.
+> **Apple Silicon only (decided):** Intel Macs are dropped (obsolete). The vendored
+> `wireguard-go` sidecar covers `aarch64-apple-darwin`, so this build works as-is —
+> no cross-compile needed. To add Windows/Linux later, extend
+> `clients/desktop/scripts/fetch-wireguard-go.sh` to cross-compile wireguard-go per
+> platform and re-add those matrix legs to `desktop-release.yml`.
 
 ## iOS (Xcode Cloud)
 
