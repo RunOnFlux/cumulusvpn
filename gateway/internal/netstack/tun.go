@@ -64,7 +64,13 @@ func CreateNetTUN(localAddresses, dnsServers []netip.Addr, mtu int) (tun.Device,
 	opts := stack.Options{
 		NetworkProtocols:   []stack.NetworkProtocolFactory{ipv4.NewProtocol, ipv6.NewProtocol},
 		TransportProtocols: []stack.TransportProtocolFactory{tcp.NewProtocol, udp.NewProtocol, icmp.NewProtocol6, icmp.NewProtocol4},
-		HandleLocal:        true,
+		// HandleLocal MUST be false for the exit-node / subnet-router use: with
+		// promiscuous mode on, HandleLocal makes gVisor treat every client
+		// source IP as "one of our own" (AcquireAssignedAddress returns a temp
+		// endpoint for any address) and drop the packet as an invalid source.
+		// Upstream wireguard-go sets it true because it drives a host endpoint;
+		// CumulusVPN drives a router, like Tailscale's netstack (HandleLocal off).
+		HandleLocal: false,
 	}
 	dev := &netTun{
 		ep:             channel.New(1024, uint32(mtu), ""),
