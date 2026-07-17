@@ -1,0 +1,64 @@
+# Dependabot — keep dependencies current automatically ("always latest").
+# Weekly grouped update PRs across every ecosystem in the monorepo. Grouping keeps
+# PR noise down (one PR per ecosystem per week). Review + merge as they land; CI
+# gates every PR. Most current alerts are transitive dev deps (RN CLI / jest / Tauri)
+# that clear once those upstreams release — Dependabot picks those up here.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/" # root TS workspace: core-ts, web, desktop frontend
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      root-npm:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: "/clients/mobile" # standalone React Native app
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 10
+    groups:
+      mobile-npm:
+        patterns: ["*"]
+
+  - package-ecosystem: npm
+    directory: "/deploy" # standalone deploy tooling
+    schedule:
+      interval: weekly
+    groups:
+      deploy-npm:
+        patterns: ["*"]
+
+  - package-ecosystem: cargo
+    directory: "/clients/desktop/src-tauri" # desktop Rust / Tauri
+    schedule:
+      interval: weekly
+    groups:
+      desktop-cargo:
+        patterns: ["*"]
+
+  - package-ecosystem: gradle
+    directory: "/clients/mobile/android" # Android native deps
+    schedule:
+      interval: weekly
+    groups:
+      android-gradle:
+        patterns: ["*"]
+
+  - package-ecosystem: gomod
+    directory: "/gateway" # Go gateway
+    schedule:
+      interval: weekly
+    groups:
+      gateway-gomod:
+        patterns: ["*"]
+
+  - package-ecosystem: github-actions
+    directory: "/" # workflow action versions
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
