@@ -75,6 +75,7 @@ jobs:
       # Rename to clear, versioned filenames so every download is self-describing
       # (CumulusVPN-1.0.0.apk / CumulusVPN-1.0.0.aab) instead of "app-release.*".
       - name: Stage named artifacts
+        working-directory: ${{ github.workspace }} # job default is clients/mobile; actions below resolve from the workspace root
         run: |
           ver="${GITHUB_REF_NAME#mobile-v}"
           [ "$ver" = "${GITHUB_REF_NAME}" ] && ver="dev" # manual/dispatch run (no tag)
