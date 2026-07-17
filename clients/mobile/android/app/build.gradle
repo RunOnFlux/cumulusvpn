@@ -92,15 +92,26 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Release signing. Keystore + passwords come from CI env (GitHub secrets,
+        // decoded to android/app/release.keystore by the android-release workflow).
+        // Absent locally → release falls back to debug signing so dev builds work.
+        release {
+            if (System.getenv("SIGNING_STORE_PASSWORD") != null) {
+                storeFile file("release.keystore")
+                storePassword System.getenv("SIGNING_STORE_PASSWORD")
+                keyAlias System.getenv("SIGNING_KEY_ALIAS")
+                keyPassword System.getenv("SIGNING_KEY_PASSWORD")
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Real release signing in CI (SIGNING_* env from GitHub secrets);
+            // falls back to debug signing for local builds without the keystore.
+            signingConfig System.getenv("SIGNING_STORE_PASSWORD") != null ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
         }

@@ -43,3 +43,19 @@ clients/desktop/src-tauri/binaries/wireguard-go-*
 
 # --- RN machine-local (per-developer node path) ---
 clients/mobile/ios/.xcode.env.local
+
+# --- SIGNING SECRETS — never commit release keys/certs (they live in GitHub Secrets) ---
+# Broad by design: ANY keystore/key/cert is a secret here. debug.keystore is the
+# one intentional exception (the standard, public Android debug key).
+*.keystore
+!**/debug.keystore
+*.jks
+*.key
+*.key.pub
+*.tauri-key
+*.tauri-key.pub
+*.p12
+*.pfx
+*.mobileprovision
+*.cer
+*.certSigningRequest

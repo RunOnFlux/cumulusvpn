@@ -44,7 +44,9 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "externalBin": ["binaries/wireguard-go"],
+    "externalBin": [
+      "binaries/wireguard-go"
+    ],
     "resources": [],
     "category": "Utility",
     "shortDescription": "Decentralized VPN on the Flux network",
@@ -53,8 +55,10 @@
   "plugins": {
     "updater": {
       "//": "POC: staged rollout + signed manifests wired at release; the bundled directory snapshot rides along.",
-      "endpoints": ["https://cumulusvpn.com/updater/{{target}}/{{arch}}/{{current_version}}"],
-      "pubkey": ""
+      "endpoints": [
+        "https://github.com/RunOnFlux/cumulusvpn/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEEwOTlFOTdBNzE0OUM5NApSV1NVbkJTbmw1NEpDcytoZElGYnFXdExmN2tHeGVYamVDRmxzeTFOdjdobTlUbDFONVlMc090YQo="
     }
   }
 }

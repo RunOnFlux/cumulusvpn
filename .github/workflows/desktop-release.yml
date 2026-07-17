@@ -1,0 +1,91 @@
+name: desktop-release
+
+# Cross-platform CumulusVPN desktop installers (macOS .dmg, Windows .msi/.exe,
+# Linux .AppImage/.deb) built with tauri-action, published to a GitHub Release.
+#
+# Trigger: push a tag like `desktop-v1.2.3`, or run manually.
+#
+# Required GitHub secrets (see docs/14-releases.md):
+#   TAURI_SIGNING_PRIVATE_KEY           updater signing key (tauri signer generate)
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD  its password
+# Optional (macOS sign + notarize — omit for unsigned dev builds):
+#   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
+# Optional (Windows Authenticode): configure per tauri docs.
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: '--target aarch64-apple-darwin'
+          - platform: macos-latest
+            args: '--target x86_64-apple-darwin'
+          - platform: ubuntu-22.04
+            args: ''
+          - platform: windows-latest
+            args: ''
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ startsWith(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      - name: Linux system deps
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install deps + build shared core
+        run: |
+          yarn install --immutable
+          yarn workspace @cumulusvpn/core build
+
+      # The tunnel needs the userspace wireguard-go sidecar for this runner's
+      # target triple. POC: fetch-wireguard-go.sh currently vendors only
+      # aarch64-apple-darwin — extend it to build/fetch per-platform binaries
+      # (or the tauri bundle's externalBin resolution will fail on other targets).
+      - name: Provide wireguard-go sidecar
+        run: bash clients/desktop/scripts/fetch-wireguard-go.sh
+        shell: bash
+
+      - name: Build + release (tauri-action)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: clients/desktop
+          tagName: ${{ github.ref_name }}
+          releaseName: 'CumulusVPN Desktop ${{ github.ref_name }}'
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}
