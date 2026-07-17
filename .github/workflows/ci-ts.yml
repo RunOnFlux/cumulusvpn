@@ -69,6 +69,11 @@ jobs:
       - name: Install (immutable)
         run: yarn install --immutable
 
+      # web and desktop import @cumulusvpn/core via its built dist (types + js),
+      # so build it before the per-package checks run on a clean checkout.
+      - name: Build @cumulusvpn/core
+        run: yarn workspace @cumulusvpn/core run build
+
       - name: format:check
         run: yarn workspace ${{ matrix.pkg }} run format:check
 
@@ -114,8 +119,10 @@ jobs:
           yarn install --immutable
           yarn workspace @cumulusvpn/core run build
 
+      # @cumulusvpn/core is a file:../core-ts dep whose content-hash drifts as
+      # core-ts changes; CI defaults to immutable installs, so opt out here.
       - name: Install
-        run: yarn install
+        run: yarn install --no-immutable
 
       - name: format:check
         run: yarn format:check
