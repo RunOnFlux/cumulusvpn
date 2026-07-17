@@ -53,6 +53,13 @@ updates:
     groups:
       android-gradle:
         patterns: ["*"]
+    ignore:
+      # Hold the Gradle wrapper at RN 0.86's version (9.3.x). 9.6.1 ships Kotlin
+      # 2.3+, which @react-native/gradle-plugin (compiled against Kotlin <=2.2)
+      # cannot compile — it breaks the APK build. ci-ts never runs a gradle build,
+      # so this only fails in android-release. Revisit when RN ships a plugin built
+      # for newer Kotlin. (The com.wireguard.android:tunnel bumps stay allowed.)
+      - dependency-name: "gradle-wrapper"
 
   - package-ecosystem: gomod
     directory: "/gateway" # Go gateway
