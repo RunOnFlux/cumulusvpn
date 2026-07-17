@@ -46,13 +46,13 @@ for (const c of wanted) {
 
   // ---- plaintext inner spec (encrypted before broadcast) ----
   const plain = {
-    contacts: ['abuse@cumulusvpn.com', 'ops@cumulusvpn.com'],
+    contacts: ['info@cumulusvpn.com'],
     components: [
       {
         name: 'gateway',
         description: `CumulusVPN gateway (${c.cc.toUpperCase()})`,
         repotag,
-        repoauth: 'REGISTRY_USER:REGISTRY_TOKEN', // filled from env/secret at encrypt time
+        repoauth: '', // PUBLIC GHCR image — no auth needed (set only if you switch to a private registry)
         ports: defaults.ports,
         containerPorts: defaults.ports,
         domains: defaults.ports.map(() => ''),

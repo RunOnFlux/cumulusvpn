@@ -12,7 +12,7 @@ Bundle ID: `com.cumulusvpn.app` · Tunnel extension: `com.cumulusvpn.app.PacketT
 CumulusVPN
 ```
 Note: The generic "FluxVPN" name is crowded on the stores (see docs/08). We ship as
-**CumulusVPN** and describe "powered by the Flux network" in the subtitle/body rather than in
+**CumulusVPN** and describe "powered by Flux Cloud" in the subtitle/body rather than in
 the app name, to keep the name clearable and distinct.
 
 ## Subtitle (max 30) — 24 chars
@@ -108,7 +108,7 @@ Premium speed is purchased with FLUX cryptocurrency from your own wallet on our 
 app itself never asks you for money and contains no purchase screen. Once your key is upgraded,
 your phone unlocks premium automatically.
 
-Built by the Flux team. Powered by the Flux network. Privacy that is structural, not a slogan.
+Built by the Flux team. Powered by Flux Cloud. Privacy that is structural, not a slogan.
 
 WireGuard is a registered trademark of Jason A. Donenfeld.
 ```

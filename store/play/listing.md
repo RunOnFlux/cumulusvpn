@@ -56,7 +56,7 @@ Premium speed is optional and is purchased with FLUX cryptocurrency from your ow
 website. Once your key is upgraded, your phone unlocks premium automatically. The app itself does
 not ask you for money.
 
-Powered by the Flux network. Privacy that is structural, not a slogan.
+Powered by Flux Cloud. Privacy that is structural, not a slogan.
 
 Permissions: CumulusVPN uses Android's VpnService to create the encrypted tunnel. That is the
 only sensitive capability it needs. It does not request your location, contacts, camera,
@@ -71,7 +71,7 @@ WireGuard is a registered trademark of Jason A. Donenfeld.
 - Tags: VPN, privacy, security
 
 ## Contact Details
-- Email: `support@cumulusvpn.com`
+- Email: `info@cumulusvpn.com`
 - Website: `https://cumulusvpn.com`
 - Phone: optional (leave blank if none)
 

@@ -76,7 +76,7 @@ Uses NEPacketTunnelProvider + WireGuardKit (official Apple Network Extension API
 APIs. See the VPN justification we provided with the entitlement request.
 
 CONTACT
-Reviewer questions: appreview@cumulusvpn.com
+Reviewer questions: info@cumulusvpn.com
 ```
 
 ---

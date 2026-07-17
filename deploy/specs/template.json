@@ -18,7 +18,7 @@
     {
       "name": "gateway",
       "description": "gateway",
-      "repotag": "registry.cumulusvpn.com/gateway:v0.1.0",
+      "repotag": "ghcr.io/runonflux/cumulusvpn-gateway:v0.1.0",
       "ports": [51820, 51821],
       "containerPorts": [51820, 51821],
       "domains": ["", ""],

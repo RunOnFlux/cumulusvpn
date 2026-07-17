@@ -2,7 +2,7 @@
   "name": "cumulusvpn",
   "version": "0.1.0",
   "private": true,
-  "description": "CumulusVPN — decentralized VPN on the Flux Network (monorepo)",
+  "description": "CumulusVPN — decentralized VPN on Flux Cloud (monorepo)",
   "packageManager": "yarn@4.5.0",
   "workspaces": [
     "clients/core-ts",

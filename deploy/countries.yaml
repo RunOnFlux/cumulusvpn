@@ -17,7 +17,7 @@ defaults:
   staticip: true # stable WG endpoints
   datacenter: true # enterprise-only v8 flag → datacenter nodes, not homes
   ports: [51820, 51821] # WG (TCP+UDP auto) + control API
-  repotag: 'registry.cumulusvpn.com/gateway:v0.1.0' # PRIVATE registry (repoauth), not public
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:v0.1.0' # PUBLIC GHCR image (auto-built), no repoauth
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:

@@ -46,7 +46,7 @@ must be **granted by Apple** before a build using it will validate/upload.
 
 ### A4. Domain + email + policy hosting
 - `cumulusvpn.com` must resolve and host `/privacy`, `/support` (from `store/privacy-policy.md`).
-- Working inboxes: `support@`, `privacy@`, `abuse@`, `appreview@cumulusvpn.com`.
+- Working inboxes: `support@`, `privacy@`, `abuse@`, `info@cumulusvpn.com`.
 - **Missing/manual:** DNS + mailboxes + publishing the policy page.
 
 ---
@@ -144,7 +144,7 @@ In App Store Connect → CumulusVPN → the new version:
    still to be captured from the running app).
 5. **App Review Information → Notes:** paste the reviewer notes from
    `store/app-store/app-review.md` §2 (the 3.1.1 "manage-on-web / no IAP" explanation is the key
-   part). Contact email `appreview@cumulusvpn.com`.
+   part). Contact email `info@cumulusvpn.com`.
 6. **Age Rating:** answer per §4 (all None; VPN=yes where asked) → 4+/17+.
 7. **Export Compliance:** already handled by the Info.plist key; if prompted, answer per §5 (no
    CCATS/ERN — standard crypto exemption).

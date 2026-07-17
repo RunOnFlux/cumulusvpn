@@ -20,13 +20,29 @@ Everything here is verified against FluxOS source (`repos/flux`, ZelBack) and li
 | `RestartPolicy: 'no'` — FluxOS manages lifecycle; instances migrate between nodes over time | `dockerService.js` | Gateway must be stateless-restart-safe: peers re-enroll automatically (clients handle endpoint changes; see 05). |
 | containerData supports `s:` (Syncthing-replicated) volumes | validator/docs | We do NOT want replicated state; use plain volume or none. Entitlements rebuild from chain on boot. |
 
-## The app spec (v8) — enterprise + datacenter (decided)
+## The app spec (v8) — public image on GHCR; enterprise/datacenter optional
 
-Every spec is an **enterprise app** with `datacenter: true` and `staticip: true`. The `enterprise`
-field is an encrypted blob holding the real `{contacts, components}` — image, `repoauth` (private
-registry), and env — so the deployment details are hidden from the public marketplace and the app
-runs only on KYC'd ArcaneOS **datacenter** nodes (not people's homes). See `deploy/` for the
-two-layer generation (plaintext inner spec → encrypted `enterprise`).
+**Image (decided):** the gateway is a **public image on GHCR**,
+`ghcr.io/runonflux/cumulusvpn-gateway`, auto-built by CI (`.github/workflows/gateway-image.yml`):
+`:latest` + `:sha-…` on every push to main, `:X.Y.Z` on tags. No private registry, no `repoauth` —
+Flux pulls the public image directly. This fits the open/decentralized stance ("anyone can verify,
+anyone can deploy") and removes the `registry.cumulusvpn.com` dependency.
+
+**Enterprise + datacenter (now OPTIONAL — a legal choice, not an image-hiding one).** With a public
+image, the only remaining reason to use `enterprise` + `datacenter: true` is **placement on KYC'd
+datacenter nodes instead of homes**, for the abuse/legal posture (docs/06). That is now decoupled
+from the image:
+- **Open variant** (simplest, cheapest, most nodes, matches the openness stance): a plain v8 spec
+  with `staticip: true`, public GHCR image, no `enterprise`, no encryption. Anyone can read the
+  spec; anyone could run their own gateway. Accepts residential nodes (weaker legal posture).
+- **Datacenter variant** (stronger legal posture): still `enterprise` + `datacenter: true` for
+  node placement, but the encrypted blob now just wraps a **public** image + env (nothing secret to
+  hide) — so encryption buys only placement, at the +0.8 scope surcharge.
+
+Decision pending in docs/08 #1a. The example below shows the datacenter variant; the open variant
+drops `datacenter`/`enterprise` and inlines the public `compose`.
+
+On-chain wrapper `deploy/specs/onchain/cumulusde.json`:
 
 On-chain wrapper `deploy/specs/onchain/cumulusde.json` (top-level fields are public; components
 are encrypted):
@@ -45,7 +61,7 @@ are encrypted):
   "enterprise": "<AES+per-node-RSA ciphertext of {contacts, components}>",   // +0.8 scope surcharge
   "compose": [{                          // shape only; real image/env live encrypted above
     "name": "gateway", "description": "gateway",
-    "repotag": "registry.cumulusvpn.com/gateway:v0.1.0",
+    "repotag": "ghcr.io/runonflux/cumulusvpn-gateway:v0.1.0",
     "ports": [51820, 51821], "containerPorts": [51820, 51821], "domains": ["", ""],
     "environmentParameters": [], "commands": [],
     "containerData": "/data", "cpu": 1.0, "ram": 1000, "hdd": 5

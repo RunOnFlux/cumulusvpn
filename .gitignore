@@ -40,3 +40,6 @@ clients/mobile/ios/vendor/wireguard-apple/Sources/WireGuardKitGo/.tmp/
 
 # --- desktop wireguard-go sidecar binary (regenerate via scripts/fetch-wireguard-go.sh) ---
 clients/desktop/src-tauri/binaries/wireguard-go-*
+
+# --- RN machine-local (per-developer node path) ---
+clients/mobile/ios/.xcode.env.local

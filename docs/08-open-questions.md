@@ -20,18 +20,24 @@
      submission / trademark filing.
    - Reserves: ZelVPN (flagged by sweep as cleanest heritage option), Weber, Umbra.
      Ruled out: FluxVPN (1M+-download Play squatter). Home vpn.runonflux.com (single domain, no
-     .io/.app); descriptor "Decentralized VPN on the Flux Network"; memo tag `CVPN1:` / env
+     .io/.app); descriptor "Decentralized VPN on Flux Cloud"; memo tag `CVPN1:` / env
      `CVPN_*`.
 
-1a. **Enterprise + datacenter deployment (DECIDED).** All specs are enterprise v8 with
-   `datacenter: true`: datacenter-only nodes (not homes), private image via `repoauth`, encrypted
-   `enterprise` blob hiding the deployment. **Open tension to hold in view:** we promise "open
-   source," yet hide the running image. Resolution stance — the gateway/client *source* is fully
-   open and the build reproducible; what's private is only the *deployment* (which registry, which
-   nodes, registry creds). That's deployment privacy + abuse reduction, not closed source, and not
-   real security (clients reveal endpoints). Message it honestly. Still open: (a) confirm enough
-   enterprise/datacenter nodes exist per target country (`generate.mjs --check`); (b) our owner
-   ZelID on the enterprise whitelist; (c) stand up `registry.cumulusvpn.com`.
+1a. **Image & deployment model — UPDATED 2026-07-17 toward open.** DECIDED: the gateway image is
+   **public on GHCR** (`ghcr.io/runonflux/cumulusvpn-gateway`, auto-built by CI — `:latest`/`:sha`
+   on main, `:X.Y.Z` on tags). No private registry, no `repoauth`. This matches the "open, anyone
+   can verify/deploy" stance and drops the `registry.cumulusvpn.com` dependency entirely.
+   **Now-open sub-decision — keep `enterprise` + `datacenter: true` at all?** With a public image,
+   encryption no longer hides anything; its ONLY remaining value is **datacenter-node placement**
+   (v8 gates `datacenter` behind enterprise) for the legal/abuse posture (docs/06). Two paths:
+   - **Open variant:** plain v8 spec, `staticip: true`, public image, no enterprise/encryption.
+     Cheapest, most nodes, anyone can read the spec / run their own gateway. Weaker legal posture
+     (residential nodes possible). Most aligned with the openness stance.
+   - **Datacenter variant:** keep enterprise + `datacenter: true` for placement only (encrypted blob
+     wraps a *public* image), +0.8 scope surcharge, needs the enterprise-owner whitelist.
+   Recommendation: given the "fine with anyone deploying" stance, lean **open variant** for launch,
+   revisit datacenter placement only if abuse complaints materialize. Still open: which variant, and
+   (if datacenter) the enterprise-owner whitelist + per-country enterprise-node coverage.
 
 2. **First-party vs neutral.** DECIDED: first-party, our own Flux branding and clients. Unblocks
    `flux*` app-spec names (we whitelist our own prefix) and marketplace placement. The legal

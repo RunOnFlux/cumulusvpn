@@ -13,7 +13,7 @@ or shared."
 |---|---|
 | Does your app collect or share any of the required user data types? | **No** |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** (traffic is WireGuard-encrypted; discovery/API use TLS) — declare "encrypted in transit" even though we collect nothing, since Google asks about the transport. |
-| Do you provide a way for users to request that their data be deleted? | **Yes** — users can delete their key on-device (fully severs the pseudonymous link); there is no server-side personal-data store to delete. Provide the deletion/contact info: privacy@cumulusvpn.com and https://cumulusvpn.com/privacy. |
+| Do you provide a way for users to request that their data be deleted? | **Yes** — users can delete their key on-device (fully severs the pseudonymous link); there is no server-side personal-data store to delete. Provide the deletion/contact info: info@cumulusvpn.com and https://cumulusvpn.com/privacy. |
 
 Because the answer to "collect or share" is **No**, Google will show **"No data collected"** and
 **"No data shared with third parties"** on the listing. You still complete the security section
@@ -49,7 +49,7 @@ Declare **not collected / not shared** for every category. Reference list:
 | Question | Answer |
 |---|---|
 | Is data encrypted in transit? | **Yes** — WireGuard for the tunnel; TLS for discovery and API calls. |
-| Do you provide a way to request data deletion? | **Yes** — on-device key deletion + privacy@cumulusvpn.com. There is no persistent personal-data store; server peer state is RAM-only. |
+| Do you provide a way to request data deletion? | **Yes** — on-device key deletion + info@cumulusvpn.com. There is no persistent personal-data store; server peer state is RAM-only. |
 | Has your app been independently validated against a security standard? | Optional. Answer **No** unless/until we complete a MASA (App Defense Alliance Mobile App Security Assessment). Recommended before or shortly after launch for a VPN app to strengthen trust. |
 | Committed to Play Families policy? | **No** (not a Families/child-directed app). |
 

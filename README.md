@@ -1,7 +1,22 @@
-# CumulusVPN — Decentralized VPN on the Flux Network
+<p align="center">
+  <img src="brand/generated/marketing/hero-social-1280x640.png" alt="CumulusVPN — Decentralized VPN on Flux Cloud" width="760">
+</p>
 
-**Powered by RunOnFlux.** Home: cumulusvpn.com (single domain, itself deployed on Flux).
-Name committed 2026-07-16 (cumulusvpn.com registered); see `docs/08-open-questions.md` for the
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-informational"></a>
+  <img alt="Status: pre-launch" src="https://img.shields.io/badge/status-pre--launch-orange">
+  <img alt="Platforms" src="https://img.shields.io/badge/platforms-Flux%20%C2%B7%20macOS%20%C2%B7%20Windows%20%C2%B7%20Linux%20%C2%B7%20iOS%20%C2%B7%20Android-2b9">
+</p>
+
+# CumulusVPN — Decentralized VPN on Flux Cloud
+
+> 🚧 **Pre-launch — in active development.** The apps build (desktop, Android, iOS) and the gateway
+> compiles and is tested, but there is **no live network yet**: gateways aren't deployed on Flux,
+> the on-chain registration/payment plumbing is scaffolded, and some native tunnel paths are stubs.
+> Not usable end-to-end yet. Follow along — issues and contributions welcome.
+
+**Powered by RunOnFlux.** Home: [cumulusvpn.com](https://cumulusvpn.com) · Org:
+[github.com/CumulusVPN](https://github.com/CumulusVPN). See `docs/08-open-questions.md` for the
 naming trail and the remaining trademark knockout.
 
 A fully decentralized VPN that runs entirely as **enterprise Flux apps** on datacenter nodes

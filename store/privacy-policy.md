@@ -8,8 +8,8 @@ what we do and do not collect. It is short because the service is built to colle
 nothing. If a claim here is ever wrong, that is a bug we will fix — the architecture is
 described publicly at https://cumulusvpn.com and in our source code.
 
-Contact for privacy questions and data requests: **privacy@cumulusvpn.com**
-Abuse reports: **abuse@cumulusvpn.com**
+Contact for privacy questions and data requests: **info@cumulusvpn.com**
+Abuse reports: **info@cumulusvpn.com**
 
 ---
 
@@ -198,7 +198,7 @@ is anonymous:
 - **Do-not-sell / do-not-share:** We do not sell or share personal data, so there is nothing to
   opt out of.
 
-To exercise any right, email **privacy@cumulusvpn.com**. We may be unable to identify you in our
+To exercise any right, email **info@cumulusvpn.com**. We may be unable to identify you in our
 (nonexistent) records precisely because the service is anonymous — that is the design, not an
 evasion. You also have the right to lodge a complaint with your local data protection authority.
 
@@ -232,8 +232,8 @@ mailing list, the website is the authoritative source for the current policy.
 
 ## 14. Contact
 
-- Privacy and data requests: **privacy@cumulusvpn.com**
-- Abuse / network complaints: **abuse@cumulusvpn.com**
+- Privacy and data requests: **info@cumulusvpn.com**
+- Abuse / network complaints: **info@cumulusvpn.com**
 - Website: **https://cumulusvpn.com**
 
 WireGuard is a registered trademark of Jason A. Donenfeld. CumulusVPN is an independent project

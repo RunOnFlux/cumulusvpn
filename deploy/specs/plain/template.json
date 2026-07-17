@@ -2,13 +2,13 @@
   "//": "PLAINTEXT inner spec (contacts + components). SECRET — gitignored. generate.mjs writes one",
   "//2": "per country here; encrypt.mjs turns {contacts, components} into the on-chain `enterprise`",
   "//3": "ciphertext. This holds the private image + repoauth + env that we do NOT publish.",
-  "contacts": ["abuse@cumulusvpn.com", "ops@cumulusvpn.com"],
+  "contacts": ["info@cumulusvpn.com"],
   "components": [
     {
       "name": "gateway",
       "description": "Userspace WireGuard gateway (wireguard-go + netstack)",
-      "repotag": "registry.cumulusvpn.com/gateway:v0.1.0",
-      "repoauth": "REGISTRY_USER:REGISTRY_TOKEN",
+      "repotag": "ghcr.io/runonflux/cumulusvpn-gateway:v0.1.0",
+      "repoauth": "",
       "ports": [51820, 51821],
       "containerPorts": [51820, 51821],
       "domains": ["", ""],
