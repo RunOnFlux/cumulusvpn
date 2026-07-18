@@ -64,6 +64,8 @@ export interface VpnModel {
   readonly tier: Tier;
   /** True while the initial discovery/enroll bootstrap is running. */
   readonly booting: boolean;
+  /** True while a fleet discovery is in flight (initial or pull-to-refresh). */
+  readonly discovering: boolean;
   readonly error: string | null;
   /** Payment identity for the (web) upgrade screen. */
   readonly payment: PaymentIdentity | null;
@@ -132,6 +134,10 @@ export function useVpn(): VpnModel & VpnActions {
   const [status, setStatus] = useState<TunnelStatus | null>(null);
   const [tier, setTier] = useState<Tier>('free');
   const [booting, setBooting] = useState(true);
+  // True while a fleet discovery is in flight (initial + pull-to-refresh). Lets
+  // the UI show a lightweight "finding servers" hint instead of pinning the
+  // full-screen boot splash for the whole discovery + latency pass.
+  const [discovering, setDiscovering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<EnrollResponse | null>(null);
   const [routeStyle, setRouteStyleState] = useState<RouteStyle>('single');
@@ -183,27 +189,55 @@ export function useVpn(): VpnModel & VpnActions {
   }, [keypair, enrollment]);
 
   // ---- bootstrap: key + discovery ----------------------------------------
+  // Latency pass, run AFTER first paint. Measuring each country's best gateway
+  // is N network round-trips; doing it before showing the list is what kept the
+  // boot splash up "for quite some time". So the list paints from discovery
+  // alone and the latency dots fill in here, asynchronously.
+  const measureLatencies = useCallback(
+    async (gateways: readonly GatewayInfo[], grouped: readonly Country[]): Promise<void> => {
+      const measured = await Promise.all(
+        grouped.map(async (c) => [c.best.ip, await measureLatency(c.best)] as const),
+      );
+      const latencyByIp: Record<string, number> = {};
+      for (const [ip, ms] of measured) {
+        if (ms !== null) {
+          latencyByIp[ip] = ms;
+        }
+      }
+      setCountries(groupByCountry(gateways, latencyByIp));
+    },
+    [],
+  );
+
   const refresh = useCallback(async (): Promise<void> => {
     setError(null);
-    const gateways = await discoverFleet();
-    gatewaysRef.current = gateways;
-    // POC: measure latency only for the least-loaded gateway per country to
-    // keep first paint fast; a background pass can fill in the rest.
-    const firstPass = groupByCountry(gateways);
-    const measured = await Promise.all(
-      firstPass.map(async (c) => [c.best.ip, await measureLatency(c.best)] as const),
-    );
-    const latencyByIp: Record<string, number> = {};
-    for (const [ip, ms] of measured) {
-      if (ms !== null) {
-        latencyByIp[ip] = ms;
-      }
+    setDiscovering(true);
+    try {
+      const gateways = await discoverFleet();
+      gatewaysRef.current = gateways;
+      // Paint the server list immediately (this dismisses the boot splash);
+      // latency dots stream in from the background pass so first paint isn't
+      // blocked on the ping round-trips.
+      const grouped = groupByCountry(gateways);
+      setCountries(grouped);
+      void measureLatencies(gateways, grouped);
+    } finally {
+      setDiscovering(false);
     }
-    setCountries(groupByCountry(gateways, latencyByIp));
-  }, []);
+  }, [measureLatencies]);
 
   useEffect(() => {
     let alive = true;
+    // Hard cap: never hold the boot splash longer than this. If discovery is
+    // slow (an unreachable gateway can stall up to the fetch timeout), reveal
+    // the app anyway — discovery keeps running in the background and the list
+    // populates when it resolves. (The splash also clears the moment countries
+    // paint, via the `booting && countries.length === 0` gate in App.tsx.)
+    const bootCap = setTimeout(() => {
+      if (alive) {
+        setBooting(false);
+      }
+    }, 2500);
     (async () => {
       try {
         const restored = (await loadKeypair()) ?? generateKeypair();
@@ -232,6 +266,7 @@ export function useVpn(): VpnModel & VpnActions {
     })();
     return () => {
       alive = false;
+      clearTimeout(bootCap);
     };
   }, [refresh]);
 
@@ -454,6 +489,7 @@ export function useVpn(): VpnModel & VpnActions {
     status,
     tier,
     booting,
+    discovering,
     error,
     payment,
     routeStyle,

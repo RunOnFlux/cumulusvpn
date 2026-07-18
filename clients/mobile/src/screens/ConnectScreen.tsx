@@ -99,7 +99,9 @@ export function ConnectScreen({
         ) : (
           <View style={styles.loc}>
             <Text style={styles.notConnected}>
-              {vpn.booting ? 'Finding nearest gateway…' : 'Not connected'}
+              {vpn.booting || (vpn.discovering && vpn.countries.length === 0)
+                ? 'Finding fastest servers…'
+                : 'Not connected'}
             </Text>
           </View>
         )}
