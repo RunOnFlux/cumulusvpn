@@ -6,8 +6,9 @@
  * state machine — no react-navigation dependency for a three-screen app keeps
  * the bundle lean and the typecheck clean.
  */
-import { useState } from 'react';
-import { ActivityIndicator, SafeAreaView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, BackHandler, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { useVpn } from './src/state/useVpn';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { CountryPickerScreen } from './src/screens/CountryPickerScreen';
@@ -20,53 +21,70 @@ function App(): React.JSX.Element {
   const vpn = useVpn();
   const [route, setRoute] = useState<Route>('connect');
 
+  // Android hardware back: from any sub-screen, return to Connect instead of
+  // closing the app; on Connect, fall through to the default (exit).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (route !== 'connect') {
+        setRoute('connect');
+        return true;
+      }
+      return false;
+    });
+    return () => sub.remove();
+  }, [route]);
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor={color.sky1} />
-      <View style={styles.screen}>
-        {vpn.booting && vpn.countries.length === 0 ? (
-          <View style={styles.boot}>
-            <ActivityIndicator color={color.cyan} />
-            <Text style={styles.bootText}>Connecting to the Flux network…</Text>
-          </View>
-        ) : route === 'countries' ? (
-          <CountryPickerScreen
-            countries={vpn.countries}
-            selectedCode={vpn.selected?.code ?? null}
-            onSelect={(code) => void vpn.selectCountry(code)}
-            onClose={() => setRoute('connect')}
-          />
-        ) : route === 'entry' ? (
-          <CountryPickerScreen
-            countries={vpn.countries}
-            selectedCode={vpn.entry?.code ?? null}
-            onSelect={(code) => void vpn.selectEntryCountry(code)}
-            onClose={() => setRoute('connect')}
-          />
-        ) : route === 'exit' ? (
-          <CountryPickerScreen
-            countries={vpn.countries}
-            selectedCode={vpn.exit?.code ?? null}
-            onSelect={(code) => void vpn.selectExitCountry(code)}
-            onClose={() => setRoute('connect')}
-          />
-        ) : route === 'upgrade' ? (
-          <UpgradeScreen
-            tier={vpn.tier}
-            payment={vpn.payment}
-            onClose={() => setRoute('connect')}
-          />
-        ) : (
-          <ConnectScreen
-            vpn={vpn}
-            onOpenCountries={() => setRoute('countries')}
-            onOpenUpgrade={() => setRoute('upgrade')}
-            onOpenEntry={() => setRoute('entry')}
-            onOpenExit={() => setRoute('exit')}
-          />
-        )}
-      </View>
-    </SafeAreaView>
+    <SafeAreaProvider>
+      {/* Transparent status bar; the SafeAreaView below insets content past it
+          (Android 15+ / SDK 36 is edge-to-edge, so a bar background is ignored). */}
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+        <View style={styles.screen}>
+          {vpn.booting && vpn.countries.length === 0 ? (
+            <View style={styles.boot}>
+              <ActivityIndicator color={color.cyan} />
+              <Text style={styles.bootText}>Connecting to the Flux network…</Text>
+            </View>
+          ) : route === 'countries' ? (
+            <CountryPickerScreen
+              countries={vpn.countries}
+              selectedCode={vpn.selected?.code ?? null}
+              onSelect={(code) => void vpn.selectCountry(code)}
+              onClose={() => setRoute('connect')}
+            />
+          ) : route === 'entry' ? (
+            <CountryPickerScreen
+              countries={vpn.countries}
+              selectedCode={vpn.entry?.code ?? null}
+              onSelect={(code) => void vpn.selectEntryCountry(code)}
+              onClose={() => setRoute('connect')}
+            />
+          ) : route === 'exit' ? (
+            <CountryPickerScreen
+              countries={vpn.countries}
+              selectedCode={vpn.exit?.code ?? null}
+              onSelect={(code) => void vpn.selectExitCountry(code)}
+              onClose={() => setRoute('connect')}
+            />
+          ) : route === 'upgrade' ? (
+            <UpgradeScreen
+              tier={vpn.tier}
+              payment={vpn.payment}
+              onClose={() => setRoute('connect')}
+            />
+          ) : (
+            <ConnectScreen
+              vpn={vpn}
+              onOpenCountries={() => setRoute('countries')}
+              onOpenUpgrade={() => setRoute('upgrade')}
+              onOpenEntry={() => setRoute('entry')}
+              onOpenExit={() => setRoute('exit')}
+            />
+          )}
+        </View>
+      </SafeAreaView>
+    </SafeAreaProvider>
   );
 }
 

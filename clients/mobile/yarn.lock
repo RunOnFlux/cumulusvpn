@@ -840,12 +840,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=e9b520&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=d0900f&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.2.0"
     "@noble/hashes": "npm:2.2.0"
     "@scure/base": "npm:2.2.0"
-  checksum: 10c0/7304ad29624e0a479929bcbb6915b28f19cdfd260144d24f1e40fec8e6c483cf3781fa13053f9c4a7a73ee71b37943d3c5131a952a51656b5d086856bc1f2a65
+  checksum: 10c0/891a009f629f7ed8694fdadd2b05af01e5c5ffa1979f377c40602796368d9a93f89b363c2d8fcdba667f9f81853c380406841b57649b7ff5729e8979fe52e462
   languageName: node
   linkType: hard
 
@@ -871,6 +871,7 @@ __metadata:
     react: "npm:19.2.7"
     react-native: "npm:0.86.0"
     react-native-get-random-values: "npm:1.11.0"
+    react-native-safe-area-context: "npm:5.8.0"
     react-test-renderer: "npm:19.2.7"
     text-encoding-polyfill: "npm:0.6.7"
     typescript: "npm:5.9.3"
@@ -5688,6 +5689,16 @@ __metadata:
   peerDependencies:
     react-native: ">=0.56"
   checksum: 10c0/2ce71f1ab7f5b36d4a9dd59cc80b4aa75526f047c6680a7f1a388fa8b9a62efdacaf7b7de3be593c73e882773b2eee74916b00f7c8b158e40b46388998218586
+  languageName: node
+  linkType: hard
+
+"react-native-safe-area-context@npm:5.8.0":
+  version: 5.8.0
+  resolution: "react-native-safe-area-context@npm:5.8.0"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/86d1375ce17d549b541d157148d9d093f9e918de47d3b0a5cbc4cb6afe619aa52e99f07dc62ee0878eaa70e8da3411193b24cfee1b7b271ffd295d0fce83d128
   languageName: node
   linkType: hard
 

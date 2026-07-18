@@ -243,6 +243,18 @@ export function useVpn(): VpnModel & VpnActions {
     setError(null);
     setState('connecting');
     try {
+      // Android/iOS require explicit VPN consent before a tunnel can be created;
+      // without it the native backend throws (Android: GoBackend BackendException).
+      // Ask once — no-op if already granted (VpnService.prepare()==null).
+      if (!(await CumulusTunnel.isPrepared())) {
+        const granted = await CumulusTunnel.requestPermission();
+        if (!granted) {
+          setState('error');
+          setError('VPN permission is required to connect.');
+          return;
+        }
+      }
+
       if (isMultihop(routeStyle)) {
         await connectMultihop({
           keypair,
