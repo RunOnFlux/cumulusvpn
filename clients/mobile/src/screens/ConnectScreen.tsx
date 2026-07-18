@@ -69,7 +69,7 @@ export function ConnectScreen({
             <Text style={styles.flag}>{target.flag}</Text>
             <Text style={styles.country}>{target.name}</Text>
             <Text style={styles.ip}>
-              exit {vpn.status ? formatBytes(vpn.status.rxBytes) : '—'} · {target.city}
+              {target.city ? `Protected · ${target.city}` : 'Protected'}
             </Text>
           </View>
         ) : (
