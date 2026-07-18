@@ -104,15 +104,22 @@ ships — so wire the build phase and build for `iphoneos` with the human's sign
 
 - **iOS builds** — `** BUILD SUCCEEDED **`, app + Packet Tunnel extension with the real WireGuard
   engine linked. All three blockers cleared and verified.
-- **Persistence wiring (to make a plain `xcodebuild` / the signed build "just work")** — not yet
-  applied to the project; each is a standard, low-risk change:
-  1. Repoint the Xcode SPM reference to the local vendored `wireguard-apple` (so Fix 1a's header
-     patch is used automatically instead of a re-fetched upstream checkout).
-  2. Add `SWIFT_ENABLE_EXPLICIT_MODULES = NO` and the `LIBRARY_SEARCH_PATHS` entry as project build
-     settings (instead of `xcodebuild` flags).
-  3. Add a Run Script build phase to `CumulusTunnelExtension` that runs the WireGuardKitGo Makefile
-     (Go 1.22 on PATH) so `libwg-go.a` rebuilds per arch/SDK automatically — the standard
-     wireguard-apple pattern.
+- **Persistence wiring (to make a plain `xcodebuild` / the signed build "just work")** — **APPLIED**
+  to the project file via `scripts/apply-build-wiring.rb` (idempotent; re-run any time). It performs:
+  1. Repoints the Xcode SPM reference to the local vendored `wireguard-apple` (so Fix 1a's header
+     patch is used automatically instead of a re-fetched upstream checkout) — the package reference
+     is now an `XCLocalSwiftPackageReference` → `vendor/wireguard-apple`, and the `PacketTunnelExtension`
+     `WireGuardKit` product dependency points at it.
+  2. Sets `SWIFT_ENABLE_EXPLICIT_MODULES = NO` on both targets and adds `$(CONFIGURATION_BUILD_DIR)`
+     to the extension's `LIBRARY_SEARCH_PATHS` (instead of `xcodebuild` flags).
+  3. Adds a first (pre-link) Run Script build phase "Build libwg-go.a" to `CumulusTunnelExtension`
+     that runs the WireGuardKitGo Makefile — the standard wireguard-apple pattern. **You still need
+     Go 1.22 on PATH** for that phase (Go 1.26 breaks the pinned build); the Xcode Cloud
+     `ci_post_clone.sh` provisions it, and a local Xcode build needs it too.
+
+  What remains is entirely on your Mac: open the project, let SPM resolve the local package, and do
+  the signed device build with your Apple Developer account. (A stale remote pin may linger in
+  `Package.resolved`; Xcode reconciles it to the local package on first resolve.)
 - The signed device/store build (the human's Mac + Apple Developer account) then produces the
   archive and links it exactly as proven above — this is the normal iOS-WireGuard path.
 
