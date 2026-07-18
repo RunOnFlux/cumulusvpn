@@ -3,6 +3,7 @@ package com.cumulusvpn.tunnel
 import android.app.Activity
 import android.content.Intent
 import android.net.VpnService
+import android.provider.Settings
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.BaseActivityEventListener
@@ -54,9 +55,17 @@ class CumulusTunnelModule(
 
     override fun getName(): String = "CumulusTunnel"
 
-    /** startTunnel(wgConfig, serverName): Promise<void> */
+    /**
+     * startTunnel(wgConfig, serverName, killSwitch): Promise<void>
+     *
+     * `killSwitch` is accepted for cross-platform parity but is a native no-op on
+     * Android: a true always-on kill switch is the OS "Block connections without
+     * VPN" (lockdown) setting, which apps cannot toggle programmatically — the JS
+     * layer routes the user to it via [openVpnSettings]. While our VpnService
+     * holds the tun, traffic is already captured, so there is no in-session leak.
+     */
     @ReactMethod
-    fun startTunnel(wgConfig: String, serverName: String, promise: Promise) {
+    fun startTunnel(wgConfig: String, serverName: String, killSwitch: Boolean, promise: Promise) {
         try {
             CumulusTunnelController.startTunnel(reactContext, wgConfig)
             promise.resolve(null)
@@ -65,14 +74,38 @@ class CumulusTunnelModule(
         }
     }
 
-    /** startMultihop(outerConfig, innerConfig, routeLabel): Promise<void> */
+    /** startMultihop(outerConfig, innerConfig, routeLabel, killSwitch): Promise<void> */
     @ReactMethod
-    fun startMultihop(outerConfig: String, innerConfig: String, routeLabel: String, promise: Promise) {
+    fun startMultihop(
+        outerConfig: String,
+        innerConfig: String,
+        routeLabel: String,
+        killSwitch: Boolean,
+        promise: Promise,
+    ) {
         try {
             CumulusTunnelController.startMultihop(reactContext, outerConfig, innerConfig)
             promise.resolve(null)
         } catch (t: Throwable) {
             promise.reject("E_START_MULTIHOP", t.message, t)
+        }
+    }
+
+    /**
+     * openVpnSettings(): Promise<void> — open the OS VPN settings so the user can
+     * turn on "Always-on VPN" + "Block connections without VPN" (the Android
+     * lockdown kill switch, which apps may not enable programmatically).
+     */
+    @ReactMethod
+    fun openVpnSettings(promise: Promise) {
+        try {
+            val intent = Intent(Settings.ACTION_VPN_SETTINGS).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            reactContext.startActivity(intent)
+            promise.resolve(null)
+        } catch (t: Throwable) {
+            promise.reject("E_SETTINGS", t.message, t)
         }
     }
 

@@ -27,6 +27,7 @@ final class CumulusTunnelModule: RCTEventEmitter {
     func startTunnel(
         _ wgConfig: String,
         serverName: String,
+        killSwitch: Bool,
         resolver resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock
     ) {
@@ -37,6 +38,7 @@ final class CumulusTunnelModule: RCTEventEmitter {
             ["mode": "single" as NSString, "wgConfig": wgConfig as NSString],
             label: "CumulusVPN — \(serverName)",
             serverAddress: serverName,
+            killSwitch: killSwitch,
             resolve: resolve,
             reject: reject
         )
@@ -46,11 +48,12 @@ final class CumulusTunnelModule: RCTEventEmitter {
     // Opt-in nested-onion route (docs/11). The extension runs two stacked
     // WireGuard interfaces sharing the same key K; here we just hand both
     // rendered configs to the PacketTunnelProvider.
-    @objc(startMultihop:innerConfig:routeLabel:resolver:rejecter:)
+    @objc(startMultihop:innerConfig:routeLabel:killSwitch:resolver:rejecter:)
     func startMultihop(
         _ outerConfig: String,
         innerConfig: String,
         routeLabel: String,
+        killSwitch: Bool,
         resolver resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock
     ) {
@@ -62,6 +65,7 @@ final class CumulusTunnelModule: RCTEventEmitter {
             ],
             label: "CumulusVPN — \(routeLabel)",
             serverAddress: routeLabel,
+            killSwitch: killSwitch,
             resolve: resolve,
             reject: reject
         )
@@ -72,6 +76,7 @@ final class CumulusTunnelModule: RCTEventEmitter {
         _ providerConfiguration: [String: NSObject],
         label: String,
         serverAddress: String,
+        killSwitch: Bool,
         resolve: @escaping RCTPromiseResolveBlock,
         reject: @escaping RCTPromiseRejectBlock
     ) {
@@ -85,9 +90,25 @@ final class CumulusTunnelModule: RCTEventEmitter {
             // iOS requires a non-empty server address for the OS VPN UI.
             proto.serverAddress = serverAddress
             proto.providerConfiguration = providerConfiguration
+            // Kill switch: route every network through the tunnel (no leaks),
+            // excluding local networks so LAN/AirDrop still work.
+            proto.includeAllNetworks = killSwitch
+            proto.excludeLocalNetworks = killSwitch
             mgr.protocolConfiguration = proto
             mgr.localizedDescription = label
             mgr.isEnabled = true
+            // Kill switch: on-demand keeps the VPN mandatory — if it drops, iOS
+            // blocks matching traffic until it reconnects. A single connect rule
+            // matching any interface makes it an always-on block.
+            if killSwitch {
+                let rule = NEOnDemandRuleConnect()
+                rule.interfaceTypeMatch = .any
+                mgr.onDemandRules = [rule]
+                mgr.isOnDemandEnabled = true
+            } else {
+                mgr.onDemandRules = []
+                mgr.isOnDemandEnabled = false
+            }
             mgr.saveToPreferences { saveErr in
                 if let saveErr { reject("E_SAVE", saveErr.localizedDescription, saveErr); return }
                 mgr.loadFromPreferences { _ in
@@ -109,7 +130,31 @@ final class CumulusTunnelModule: RCTEventEmitter {
         _ resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock
     ) {
-        manager?.connection.stopVPNTunnel()
+        guard let mgr = manager else { resolve(nil); return }
+        // If the kill switch (on-demand) is on, iOS re-dials the tunnel the moment
+        // we stop it — so disable on-demand and save before tearing down.
+        if mgr.isOnDemandEnabled {
+            mgr.isOnDemandEnabled = false
+            mgr.onDemandRules = []
+            mgr.saveToPreferences { _ in
+                mgr.connection.stopVPNTunnel()
+                resolve(nil)
+            }
+        } else {
+            mgr.connection.stopVPNTunnel()
+            resolve(nil)
+        }
+    }
+
+    // openVpnSettings(): Promise<void>
+    // On iOS the kill switch is entirely in-app (on-demand + includeAllNetworks),
+    // so there is no system lockdown toggle to send the user to — resolve as a
+    // no-op. (Android navigates to the OS VPN settings.)
+    @objc(openVpnSettings:rejecter:)
+    func openVpnSettings(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
         resolve(nil)
     }
 

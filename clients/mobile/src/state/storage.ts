@@ -57,6 +57,16 @@ export async function saveRouteStyle(style: RouteStyle): Promise<void> {
   mem.set('routeStyle', style);
 }
 
+/** Load the kill-switch preference (default off). */
+export async function loadKillSwitch(): Promise<boolean> {
+  return mem.get('killSwitch') === '1';
+}
+
+/** Persist the kill-switch preference. */
+export async function saveKillSwitch(enabled: boolean): Promise<void> {
+  mem.set('killSwitch', enabled ? '1' : '0');
+}
+
 /** Load the multi-hop entry country code, or null for auto-pick. */
 export async function loadEntryCountry(): Promise<string | null> {
   return mem.get('entryCountry') ?? null;

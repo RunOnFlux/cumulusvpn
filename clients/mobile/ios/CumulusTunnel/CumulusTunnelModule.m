@@ -11,16 +11,21 @@
 
 RCT_EXTERN_METHOD(startTunnel:(NSString *)wgConfig
                   serverName:(NSString *)serverName
+                  killSwitch:(BOOL)killSwitch
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(startMultihop:(NSString *)outerConfig
                   innerConfig:(NSString *)innerConfig
                   routeLabel:(NSString *)routeLabel
+                  killSwitch:(BOOL)killSwitch
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(stopTunnel:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(openVpnSettings:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
 RCT_EXTERN_METHOD(getStatus:(RCTPromiseResolveBlock)resolve

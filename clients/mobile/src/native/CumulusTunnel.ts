@@ -78,8 +78,11 @@ export interface CumulusTunnelModule {
    * Resolves once the OS reports the tunnel started (not yet handshaked).
    * @param wgConfig - `.conf` text from core `buildWgConfig`.
    * @param serverName - Human label shown in the OS VPN UI, e.g. "Germany".
+   * @param killSwitch - When true, block all non-tunnel traffic (iOS: on-demand
+   *   + `includeAllNetworks`; Android: a no-op here — the OS lockdown toggle is
+   *   reached via {@link openVpnSettings}).
    */
-  startTunnel(wgConfig: string, serverName: string): Promise<void>;
+  startTunnel(wgConfig: string, serverName: string, killSwitch: boolean): Promise<void>;
 
   /**
    * Bring up an opt-in **multi-hop** tunnel: two stacked WireGuard interfaces
@@ -99,11 +102,26 @@ export interface CumulusTunnelModule {
    * @param outerConfig - wg-entry `.conf` (`MultihopConfig.outer`).
    * @param innerConfig - wg-exit `.conf` (`MultihopConfig.inner`).
    * @param routeLabel - Human label for the OS VPN UI, e.g. "Germany → Japan".
+   * @param killSwitch - See {@link startTunnel}.
    */
-  startMultihop(outerConfig: string, innerConfig: string, routeLabel: string): Promise<void>;
+  startMultihop(
+    outerConfig: string,
+    innerConfig: string,
+    routeLabel: string,
+    killSwitch: boolean,
+  ): Promise<void>;
 
   /** Tear the tunnel down. Idempotent. */
   stopTunnel(): Promise<void>;
+
+  /**
+   * Open the OS VPN settings so the user can enable the system kill switch
+   * ("Always-on VPN" / "Block connections without VPN" on Android). Apps cannot
+   * toggle lockdown programmatically, so this is the correct hand-off. On iOS the
+   * kill switch is fully in-app (see the `killSwitch` params) and this resolves
+   * without navigating.
+   */
+  openVpnSettings(): Promise<void>;
 
   /** One-shot status poll (also emitted continuously via the event emitter). */
   getStatus(): Promise<TunnelStatus>;

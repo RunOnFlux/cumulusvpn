@@ -33,11 +33,13 @@ import {
   loadEntryCountry,
   loadExitCountry,
   loadKeypair,
+  loadKillSwitch,
   loadRouteStyle,
   loadSelectedCountry,
   saveEntryCountry,
   saveExitCountry,
   saveKeypair,
+  saveKillSwitch,
   saveRouteStyle,
   saveSelectedCountry,
 } from './storage';
@@ -71,6 +73,8 @@ export interface VpnModel {
   readonly entry: Country | null;
   /** Chosen multi-hop exit country, or null to auto-pick a well-connected exit. */
   readonly exit: Country | null;
+  /** Kill switch: block all non-tunnel traffic while connected (persisted). */
+  readonly killSwitch: boolean;
 }
 
 /** Chain-payment identity derived from the device key + last enrollment. */
@@ -97,6 +101,10 @@ export interface VpnActions {
   selectEntryCountry(code: string | null): Promise<void>;
   /** Pick the multi-hop exit country (`null` = auto-pick); persisted. */
   selectExitCountry(code: string | null): Promise<void>;
+  /** Toggle the kill switch (persisted). Applies on the next connect. */
+  setKillSwitch(enabled: boolean): Promise<void>;
+  /** Open the OS VPN settings (Android lockdown hand-off; no-op on iOS). */
+  openVpnSettings(): Promise<void>;
 }
 
 const STATUS_POLL_MS = 30_000;
@@ -114,6 +122,7 @@ export function useVpn(): VpnModel & VpnActions {
   const [routeStyle, setRouteStyleState] = useState<RouteStyle>('single');
   const [entryCode, setEntryCode] = useState<string | null>(null);
   const [exitCode, setExitCode] = useState<string | null>(null);
+  const [killSwitch, setKillSwitchState] = useState(false);
 
   // Latest enrolled gateway IP, kept in a ref for the status poller.
   const gatewayIpRef = useRef<string | null>(null);
@@ -182,6 +191,7 @@ export function useVpn(): VpnModel & VpnActions {
         setRouteStyleState(await loadRouteStyle());
         setEntryCode(await loadEntryCountry());
         setExitCode(await loadExitCountry());
+        setKillSwitchState(await loadKillSwitch());
         await refresh();
       } catch (e) {
         if (alive) {
@@ -264,6 +274,7 @@ export function useVpn(): VpnModel & VpnActions {
           exitCountry: exitCode,
           gatewayIpRef,
           setEnrollment,
+          killSwitch,
         });
         return;
       }
@@ -288,12 +299,12 @@ export function useVpn(): VpnModel & VpnActions {
         serverPubKey: resp.server_pubkey,
         endpoint: resp.endpoint,
       });
-      await CumulusTunnel.startTunnel(wgConfig, target.name);
+      await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
     } catch (e) {
       setState('error');
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [keypair, countries, selectedCode, routeStyle, entryCode, exitCode]);
+  }, [keypair, countries, selectedCode, routeStyle, entryCode, exitCode, killSwitch]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     setState('disconnecting');
@@ -324,6 +335,15 @@ export function useVpn(): VpnModel & VpnActions {
     await saveExitCountry(code);
   }, []);
 
+  const setKillSwitch = useCallback(async (enabled: boolean): Promise<void> => {
+    setKillSwitchState(enabled);
+    await saveKillSwitch(enabled);
+  }, []);
+
+  const openVpnSettings = useCallback(async (): Promise<void> => {
+    await CumulusTunnel.openVpnSettings();
+  }, []);
+
   return {
     keypair,
     countries,
@@ -338,6 +358,7 @@ export function useVpn(): VpnModel & VpnActions {
     multihop,
     entry,
     exit,
+    killSwitch,
     connect,
     disconnect,
     selectCountry,
@@ -345,6 +366,8 @@ export function useVpn(): VpnModel & VpnActions {
     setRouteStyle,
     selectEntryCountry,
     selectExitCountry,
+    setKillSwitch,
+    openVpnSettings,
   };
 }
 
@@ -363,9 +386,18 @@ async function connectMultihop(args: {
   exitCountry: string | null;
   gatewayIpRef: { current: string | null };
   setEnrollment: (r: EnrollResponse) => void;
+  killSwitch: boolean;
 }): Promise<void> {
-  const { keypair, routeStyle, gateways, entryCountry, exitCountry, gatewayIpRef, setEnrollment } =
-    args;
+  const {
+    keypair,
+    routeStyle,
+    gateways,
+    entryCountry,
+    exitCountry,
+    gatewayIpRef,
+    setEnrollment,
+    killSwitch,
+  } = args;
 
   // core enforces entry !== exit and the per-style jurisdiction rule; a null
   // country means "auto-pick" (nearest healthy entry / well-connected exit).
@@ -396,5 +428,5 @@ async function connectMultihop(args: {
   });
 
   const label = `${hops.entry.country} → ${hops.exit.country}`;
-  await CumulusTunnel.startMultihop(mh.outer, mh.inner, label);
+  await CumulusTunnel.startMultihop(mh.outer, mh.inner, label, killSwitch);
 }

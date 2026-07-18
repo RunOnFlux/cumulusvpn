@@ -4,7 +4,7 @@
  * Orb + tier pill + a country selector row + the big connect/disconnect button,
  * plus live down/up/ping stats when connected. Everything is driven by `useVpn`.
  */
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { RouteStyle } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
 import type { PaymentIdentity, VpnActions, VpnModel } from '../state/useVpn';
@@ -126,6 +126,21 @@ export function ConnectScreen({
           <Text style={styles.chev}>›</Text>
         </Pressable>
       )}
+
+      {/* Kill switch — block all traffic if the tunnel drops (docs/05). */}
+      <KillSwitchRow
+        enabled={vpn.killSwitch}
+        disabled={connected || busy}
+        onToggle={(v) => {
+          void vpn.setKillSwitch(v);
+          // Android can't force lockdown from code — send the user to the OS
+          // toggle the moment they turn it on so the intent is obvious.
+          if (v && Platform.OS === 'android') {
+            void vpn.openVpnSettings();
+          }
+        }}
+        onOpenSettings={() => void vpn.openVpnSettings()}
+      />
 
       {/* Free-tier upsell line — store-compliant, no purchase UI (docs/05). */}
       {vpn.tier === 'free' ? <UpgradeLine payment={vpn.payment} onPress={onOpenUpgrade} /> : null}
@@ -292,6 +307,68 @@ function HopButton({
   );
 }
 
+/**
+ * Kill-switch row: a glass card with a shield, a plain-language explanation, and
+ * a toggle. On iOS the toggle fully controls it (on-demand + includeAllNetworks
+ * applied on the next connect); on Android — where apps can't force lockdown — it
+ * additionally hands the user to the OS VPN settings.
+ */
+function KillSwitchRow({
+  enabled,
+  disabled,
+  onToggle,
+  onOpenSettings,
+}: {
+  readonly enabled: boolean;
+  readonly disabled: boolean;
+  readonly onToggle: (value: boolean) => void;
+  readonly onOpenSettings: () => void;
+}): React.JSX.Element {
+  const isAndroid = Platform.OS === 'android';
+  const sub = enabled
+    ? isAndroid
+      ? 'On — finish setup in Android VPN settings'
+      : 'On — blocks all traffic if the VPN drops'
+    : 'Blocks all traffic if the VPN ever drops';
+  return (
+    <View style={[styles.ksRow, disabled && styles.ksRowDisabled]}>
+      <Text style={styles.ksIcon}>🛡️</Text>
+      <View style={styles.ksMeta}>
+        <Text style={styles.ksTitle}>Kill switch</Text>
+        <Text style={styles.ksSub}>{sub}</Text>
+        {enabled && isAndroid ? (
+          <Pressable onPress={onOpenSettings} accessibilityRole="link" hitSlop={6}>
+            <Text style={styles.ksLink}>Open VPN settings ›</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      <Toggle value={enabled} disabled={disabled} onValueChange={onToggle} />
+    </View>
+  );
+}
+
+/** A compact custom switch matching the app's glass/cyan aesthetic. */
+function Toggle({
+  value,
+  disabled,
+  onValueChange,
+}: {
+  readonly value: boolean;
+  readonly disabled: boolean;
+  readonly onValueChange: (value: boolean) => void;
+}): React.JSX.Element {
+  return (
+    <Pressable
+      onPress={disabled ? undefined : () => onValueChange(!value)}
+      accessibilityRole="switch"
+      accessibilityState={{ checked: value, disabled }}
+      style={[styles.track, value && styles.trackOn, disabled && styles.trackDisabled]}
+    >
+      <View style={[styles.thumb, value && styles.thumbOn]} />
+    </Pressable>
+  );
+}
+
 function UpgradeLine({
   payment,
   onPress,
@@ -451,6 +528,36 @@ const styles = StyleSheet.create({
   locBtnTitle: { color: color.ink, fontWeight: '600', fontSize: 15 },
   locBtnSub: { color: color.inkDim, fontSize: 12, marginTop: 2 },
   chev: { color: color.inkDim, fontSize: 22 },
+  // Kill-switch row.
+  ksRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: color.glass,
+    borderColor: color.hairline,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: space.md,
+    gap: space.md,
+    marginBottom: space.md,
+  },
+  ksRowDisabled: { opacity: 0.5 },
+  ksIcon: { fontSize: 20 },
+  ksMeta: { flex: 1 },
+  ksTitle: { color: color.ink, fontWeight: '600', fontSize: 15 },
+  ksSub: { color: color.inkDim, fontSize: 12, marginTop: 2 },
+  ksLink: { color: color.cyan, fontSize: 12, fontWeight: '600', marginTop: 5 },
+  track: {
+    width: 46,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: color.hairlineStrong,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  trackOn: { backgroundColor: color.cyan },
+  trackDisabled: { opacity: 0.6 },
+  thumb: { width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff', alignSelf: 'flex-start' },
+  thumbOn: { alignSelf: 'flex-end' },
   upsell: { alignItems: 'center', marginBottom: space.md },
   upsellText: { color: color.inkMuted, fontSize: 13 },
   upsellAccent: { color: color.amber, fontWeight: '600' },
