@@ -152,6 +152,8 @@ export function App(): JSX.Element {
           onPick={picker === 'exit' ? conn.selectExit : conn.select}
           onClose={() => setPicker(null)}
           onRefresh={conn.refresh}
+          favorites={conn.favorites}
+          onToggleFavorite={conn.toggleFavorite}
         />
       )}
 

@@ -33,6 +33,7 @@ import {
   loadAutoConnect,
   loadEntryCountry,
   loadExitCountry,
+  loadFavorites,
   loadKeypair,
   loadKillSwitch,
   loadRouteStyle,
@@ -40,6 +41,7 @@ import {
   saveAutoConnect,
   saveEntryCountry,
   saveExitCountry,
+  saveFavorites,
   saveKeypair,
   saveKillSwitch,
   saveRouteStyle,
@@ -81,6 +83,8 @@ export interface VpnModel {
   readonly autoConnect: boolean;
   /** Unix-ms when the active session connected, or null when not connected. */
   readonly connectedSince: number | null;
+  /** Favorited (pinned) country codes, surfaced first in the picker. */
+  readonly favorites: readonly string[];
 }
 
 /** Chain-payment identity derived from the device key + last enrollment. */
@@ -111,6 +115,8 @@ export interface VpnActions {
   setKillSwitch(enabled: boolean): Promise<void>;
   /** Toggle auto-connect on launch (persisted). */
   setAutoConnect(enabled: boolean): Promise<void>;
+  /** Pin/unpin a country as a favorite (persisted). */
+  toggleFavorite(code: string): Promise<void>;
   /** Open the OS VPN settings (Android lockdown hand-off; no-op on iOS). */
   openVpnSettings(): Promise<void>;
 }
@@ -132,6 +138,7 @@ export function useVpn(): VpnModel & VpnActions {
   const [exitCode, setExitCode] = useState<string | null>(null);
   const [killSwitch, setKillSwitchState] = useState(false);
   const [autoConnect, setAutoConnectState] = useState(false);
+  const [favorites, setFavorites] = useState<readonly string[]>([]);
   const autoConnectedRef = useRef(false);
   // Unix-ms when the current session connected, for the session timer.
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
@@ -210,6 +217,7 @@ export function useVpn(): VpnModel & VpnActions {
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
         setAutoConnectState(await loadAutoConnect());
+        setFavorites(await loadFavorites());
         await refresh();
       } catch (e) {
         if (alive) {
@@ -423,6 +431,15 @@ export function useVpn(): VpnModel & VpnActions {
     await saveAutoConnect(enabled);
   }, []);
 
+  const toggleFavorite = useCallback(async (code: string): Promise<void> => {
+    let next: string[] = [];
+    setFavorites((prev) => {
+      next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code];
+      return next;
+    });
+    await saveFavorites(next);
+  }, []);
+
   const openVpnSettings = useCallback(async (): Promise<void> => {
     await CumulusTunnel.openVpnSettings();
   }, []);
@@ -444,6 +461,7 @@ export function useVpn(): VpnModel & VpnActions {
     killSwitch,
     autoConnect,
     connectedSince,
+    favorites,
     connect,
     disconnect,
     selectCountry,
@@ -453,6 +471,7 @@ export function useVpn(): VpnModel & VpnActions {
     selectExitCountry,
     setKillSwitch,
     setAutoConnect,
+    toggleFavorite,
     openVpnSettings,
   };
 }

@@ -718,6 +718,15 @@ button {
   font-size: 11px;
   color: var(--ink-3);
 }
+.crow .star {
+  font-size: 15px;
+  color: var(--ink-3);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.crow .star.on {
+  color: var(--amber);
+}
 .crow .qlabel {
   font-size: 12px;
   font-weight: 600;

@@ -72,6 +72,10 @@ export interface ConnectionModel {
   readonly connectedSince: number | null;
   /** Re-discover the fleet (re-test node load/quality); keeps the selection. */
   readonly refresh: () => Promise<void>;
+  /** Favorited (pinned) country codes, surfaced first in the picker. */
+  readonly favorites: readonly string[];
+  /** Pin/unpin a country. */
+  readonly toggleFavorite: (code: string) => void;
 }
 
 const DOWN: TunnelStatus = {
@@ -121,6 +125,9 @@ export function useConnection(): ConnectionModel {
   // whether we ever reached 'connected' this session (for auto-reconnect).
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
   const wasConnectedRef = useRef(false);
+  const [favorites, setFavorites] = useState<readonly string[]>(() =>
+    (localStorage.getItem('cvpn.favorites') ?? '').split(',').filter(Boolean),
+  );
 
   // Bootstrap: discover the fleet and restore the last-selected country.
   useEffect(() => {
@@ -194,6 +201,14 @@ export function useConnection(): ConnectionModel {
   const setAutoConnect = useCallback((on: boolean) => {
     setAutoConnectState(on);
     localStorage.setItem('cvpn.autoConnect', on ? '1' : '0');
+  }, []);
+
+  const toggleFavorite = useCallback((code: string) => {
+    setFavorites((prev) => {
+      const next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code];
+      localStorage.setItem('cvpn.favorites', next.join(','));
+      return next;
+    });
   }, []);
 
   /** Poll chain entitlement from the metering gateway; never drops the tunnel. */
@@ -340,5 +355,7 @@ export function useConnection(): ConnectionModel {
     setAutoConnect,
     connectedSince,
     refresh,
+    favorites,
+    toggleFavorite,
   };
 }

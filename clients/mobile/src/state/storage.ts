@@ -77,6 +77,17 @@ export async function saveAutoConnect(enabled: boolean): Promise<void> {
   mem.set('autoConnect', enabled ? '1' : '0');
 }
 
+/** Load the set of favorited (pinned) country codes. */
+export async function loadFavorites(): Promise<string[]> {
+  const raw = mem.get('favorites');
+  return raw ? raw.split(',').filter(Boolean) : [];
+}
+
+/** Persist the favorited country codes. */
+export async function saveFavorites(codes: readonly string[]): Promise<void> {
+  mem.set('favorites', codes.join(','));
+}
+
 /** Load the multi-hop entry country code, or null for auto-pick. */
 export async function loadEntryCountry(): Promise<string | null> {
   return mem.get('entryCountry') ?? null;

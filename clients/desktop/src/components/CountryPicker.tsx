@@ -11,6 +11,10 @@ interface Props {
   readonly onClose: () => void;
   /** Re-discover the fleet (re-test node load/quality). */
   readonly onRefresh: () => Promise<void>;
+  /** Favorited country codes (surfaced first). */
+  readonly favorites: readonly string[];
+  /** Pin/unpin a country. */
+  readonly onToggleFavorite: (code: string) => void;
 }
 
 /** Quality-tone → CSS colour var (green best … red busiest). */
@@ -28,6 +32,8 @@ export function CountryPicker({
   onPick,
   onClose,
   onRefresh,
+  favorites,
+  onToggleFavorite,
 }: Props): JSX.Element {
   const [q, setQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -41,13 +47,16 @@ export function CountryPicker({
   };
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    if (!needle) {
-      return countries;
-    }
-    return countries.filter(
-      (c) => c.name.toLowerCase().includes(needle) || c.code.toLowerCase().includes(needle),
-    );
-  }, [countries, q]);
+    const matched = needle
+      ? countries.filter(
+          (c) => c.name.toLowerCase().includes(needle) || c.code.toLowerCase().includes(needle),
+        )
+      : countries;
+    // Favorites first, then the rest in their existing order.
+    const fav = matched.filter((c) => favorites.includes(c.code));
+    const rest = matched.filter((c) => !favorites.includes(c.code));
+    return [...fav, ...rest];
+  }, [countries, q, favorites]);
 
   return (
     <div className="sheet">
@@ -76,6 +85,17 @@ export function CountryPicker({
                 onClose();
               }}
             >
+              <span
+                className={`star ${favorites.includes(c.code) ? 'on' : ''}`}
+                role="button"
+                aria-label={favorites.includes(c.code) ? 'Unpin' : 'Pin'}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(c.code);
+                }}
+              >
+                {favorites.includes(c.code) ? '★' : '☆'}
+              </span>
               <span className="flag">{c.flag}</span>
               <span className="cn">{c.name}</span>
               <span className="qlabel" style={{ color: TONE_VAR[q.tone] }}>

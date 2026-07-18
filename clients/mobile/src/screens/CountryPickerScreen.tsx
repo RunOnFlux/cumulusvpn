@@ -33,6 +33,10 @@ interface Props {
   readonly onClose: () => void;
   /** Re-run discovery + an active latency re-test of the fleet. */
   readonly onRefresh: () => Promise<void>;
+  /** Favorited country codes (surfaced first). */
+  readonly favorites: readonly string[];
+  /** Pin/unpin a country. */
+  readonly onToggleFavorite: (code: string) => void;
 }
 
 export function CountryPickerScreen({
@@ -41,6 +45,8 @@ export function CountryPickerScreen({
   onSelect,
   onClose,
   onRefresh,
+  favorites,
+  onToggleFavorite,
 }: Props): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -56,13 +62,16 @@ export function CountryPickerScreen({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) {
-      return countries;
-    }
-    return countries.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q),
-    );
-  }, [countries, query]);
+    const matched = q
+      ? countries.filter(
+          (c) => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q),
+        )
+      : countries;
+    // Favorites first, otherwise keep the incoming (latency-sorted) order.
+    const fav = matched.filter((c) => favorites.includes(c.code));
+    const rest = matched.filter((c) => !favorites.includes(c.code));
+    return [...fav, ...rest];
+  }, [countries, query, favorites]);
 
   return (
     <View style={styles.root}>
@@ -105,6 +114,7 @@ export function CountryPickerScreen({
         }
         renderItem={({ item }) => {
           const q = gatewayQuality(item.latencyMs, item.best.load);
+          const pinned = favorites.includes(item.code);
           return (
             <Pressable
               style={[styles.row, item.code === selectedCode && styles.rowSelected]}
@@ -114,6 +124,14 @@ export function CountryPickerScreen({
               }}
               accessibilityRole="button"
             >
+              <Pressable
+                onPress={() => onToggleFavorite(item.code)}
+                accessibilityRole="button"
+                accessibilityLabel={pinned ? 'Unpin' : 'Pin'}
+                hitSlop={8}
+              >
+                <Text style={[styles.star, pinned && styles.starOn]}>{pinned ? '★' : '☆'}</Text>
+              </Pressable>
               <Text style={styles.flag}>{item.flag}</Text>
               <View style={styles.meta}>
                 <Text style={styles.name}>{item.name}</Text>
@@ -175,6 +193,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(52,228,218,0.4)',
     borderWidth: 1,
   },
+  star: { fontSize: 17, color: color.inkFaint },
+  starOn: { color: color.amber },
   flag: { fontSize: 24 },
   meta: { flex: 1 },
   name: { color: color.ink, fontSize: 15, fontWeight: '600' },

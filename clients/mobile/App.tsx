@@ -54,6 +54,8 @@ function App(): React.JSX.Element {
               onSelect={(code) => void vpn.selectCountry(code)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
+              favorites={vpn.favorites}
+              onToggleFavorite={(code) => void vpn.toggleFavorite(code)}
             />
           ) : route === 'entry' ? (
             <CountryPickerScreen
@@ -62,6 +64,8 @@ function App(): React.JSX.Element {
               onSelect={(code) => void vpn.selectEntryCountry(code)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
+              favorites={vpn.favorites}
+              onToggleFavorite={(code) => void vpn.toggleFavorite(code)}
             />
           ) : route === 'exit' ? (
             <CountryPickerScreen
@@ -70,6 +74,8 @@ function App(): React.JSX.Element {
               onSelect={(code) => void vpn.selectExitCountry(code)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
+              favorites={vpn.favorites}
+              onToggleFavorite={(code) => void vpn.toggleFavorite(code)}
             />
           ) : route === 'upgrade' ? (
             <UpgradeScreen
