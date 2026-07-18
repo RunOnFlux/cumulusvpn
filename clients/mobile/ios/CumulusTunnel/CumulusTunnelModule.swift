@@ -9,6 +9,7 @@
 // POC: bodies are scaffolded with the real NetworkExtension calls; the manager
 // save/load flow is outlined but not exhaustively error-handled.
 
+import CryptoKit
 import Foundation
 import NetworkExtension
 import React
@@ -191,6 +192,58 @@ final class CumulusTunnelModule: RCTEventEmitter {
             guard let mgr else { resolve(false); return }
             mgr.saveToPreferences { err in resolve(err == nil) }
         }
+    }
+
+    // solvePow(publicKeyB64, bits): Promise<String>
+    // Solve the enroll anti-flood proof-of-work natively: find a decimal-string
+    // nonce such that sha256(pubkey||nonce) has `bits` leading zero bits. Runs on
+    // a background queue; CryptoKit SHA-256 clears the 20-bit difficulty in well
+    // under a second (the pure-JS Hermes solver takes seconds and freezes the UI).
+    // Mirrors core `solvePoW`/`hasLeadingZeroBits`.
+    @objc(solvePow:bits:resolver:rejecter:)
+    func solvePow(
+        _ publicKeyB64: String,
+        bits: NSNumber,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        let n = bits.intValue
+        DispatchQueue.global(qos: .userInitiated).async {
+            resolve(Self.solvePowSync(publicKeyB64, bits: n))
+        }
+    }
+
+    private static func solvePowSync(_ publicKeyB64: String, bits: Int) -> String {
+        let pub = Array(publicKeyB64.utf8)
+        // Random start so repeated solves for the same key yield DIFFERENT valid
+        // nonces (the gateway single-uses each (pubkey, nonce) pair).
+        var i = UInt64.random(in: 0..<0x4000_0000)
+        while true {
+            let nonce = String(i)
+            var buf = pub
+            buf.append(contentsOf: nonce.utf8)
+            if hasLeadingZeroBits(SHA256.hash(data: buf), bits: bits) {
+                return nonce
+            }
+            i += 1
+        }
+    }
+
+    /// True if `digest` starts with at least `bits` zero bits (mirrors core).
+    private static func hasLeadingZeroBits(_ digest: SHA256.Digest, bits: Int) -> Bool {
+        let bytes = Array(digest)
+        let full = bits / 8
+        for k in 0..<full where bytes[k] != 0 {
+            return false
+        }
+        let rem = bits % 8
+        if rem != 0 {
+            let mask = UInt8((0xff << (8 - rem)) & 0xff)
+            if (bytes[full] & mask) != 0 {
+                return false
+            }
+        }
+        return true
     }
 
     // MARK: - internals

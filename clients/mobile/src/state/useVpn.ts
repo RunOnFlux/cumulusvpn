@@ -29,6 +29,7 @@ import {
   type TunnelStatus,
 } from '../native/CumulusTunnel';
 import { discoverFleet, groupByCountry, measureLatency, type Country } from '../lib/gateways';
+import { solvePowFast } from '../lib/pow';
 import {
   loadAutoConnect,
   loadEntryCountry,
@@ -337,6 +338,7 @@ export function useVpn(): VpnModel & VpnActions {
       }
       const resp = await enroll(target.best.ip, keypair.publicKey, {
         signPubKey: target.best.sign_pubkey,
+        powSolver: solvePowFast,
       });
       gatewayIpRef.current = target.best.ip;
       setEnrollment(resp);
@@ -515,12 +517,19 @@ async function connectMultihop(args: {
   }
 
   // Enroll key K at both hops. Same key → premium at both automatically.
-  const entryEnroll = await enroll(hops.entry.ip, keypair.publicKey, {
-    signPubKey: hops.entry.sign_pubkey,
-  });
-  const exitEnroll = await enroll(hops.exit.ip, keypair.publicKey, {
-    signPubKey: hops.exit.sign_pubkey,
-  });
+  // Run both concurrently: each solves an independent PoW, and the native
+  // solver runs them off the JS thread (on separate cores), so the two solves
+  // overlap instead of adding up — roughly halving multi-hop setup time.
+  const [entryEnroll, exitEnroll] = await Promise.all([
+    enroll(hops.entry.ip, keypair.publicKey, {
+      signPubKey: hops.entry.sign_pubkey,
+      powSolver: solvePowFast,
+    }),
+    enroll(hops.exit.ip, keypair.publicKey, {
+      signPubKey: hops.exit.sign_pubkey,
+      powSolver: solvePowFast,
+    }),
+  ]);
 
   // Poll entitlement against the entry (key K is premium on both hops).
   gatewayIpRef.current = hops.entry.ip;

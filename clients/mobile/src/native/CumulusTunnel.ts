@@ -137,6 +137,17 @@ export interface CumulusTunnelModule {
    * `VpnService.prepare()` consent dialog). Resolves true if granted.
    */
   requestPermission(): Promise<boolean>;
+
+  /**
+   * Solve the enroll proof-of-work natively (off the JS thread): find a
+   * decimal-string nonce whose `sha256(pubkey||nonce)` has `bits` leading zero
+   * bits. Native SHA-256 clears the 20-bit difficulty in well under a second,
+   * where the pure-JS Hermes solver takes many seconds and freezes the UI.
+   *
+   * Optional: absent on older native builds — callers fall back to core
+   * `solvePoW` (see `lib/pow.ts`).
+   */
+  solvePow?(publicKeyB64: string, bits: number): Promise<string>;
 }
 
 const LINKING_ERROR =

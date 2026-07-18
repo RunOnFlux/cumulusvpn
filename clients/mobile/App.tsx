@@ -9,6 +9,7 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { PoweredByFlux } from './src/components/PoweredByFlux';
 import { useVpn } from './src/state/useVpn';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { CountryPickerScreen } from './src/screens/CountryPickerScreen';
@@ -44,8 +45,13 @@ function App(): React.JSX.Element {
         <View style={styles.screen}>
           {vpn.booting && vpn.countries.length === 0 ? (
             <View style={styles.boot}>
-              <ActivityIndicator color={color.cyan} />
-              <Text style={styles.bootText}>Connecting to the Flux network…</Text>
+              <View style={styles.bootCenter}>
+                <ActivityIndicator color={color.cyan} />
+                <Text style={styles.bootText}>Connecting to the decentralized Flux network…</Text>
+              </View>
+              <View style={styles.bootFooter}>
+                <PoweredByFlux />
+              </View>
             </View>
           ) : route === 'countries' ? (
             <CountryPickerScreen
@@ -106,8 +112,16 @@ const styles = StyleSheet.create({
   // future react-native-linear-gradient pass renders the full 3-stop gradient.
   safe: { flex: 1, backgroundColor: color.sky1 },
   screen: { flex: 1, backgroundColor: color.sky2 },
-  boot: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14 },
-  bootText: { color: color.inkDim, fontSize: 14 },
+  boot: { flex: 1 },
+  bootCenter: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    paddingHorizontal: 32,
+  },
+  bootText: { color: color.inkDim, fontSize: 14, textAlign: 'center' },
+  bootFooter: { paddingBottom: 20, alignItems: 'center' },
 });
 
 export default App;

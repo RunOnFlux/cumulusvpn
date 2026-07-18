@@ -5,6 +5,7 @@
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
+import { PoweredByFlux } from '../components/PoweredByFlux';
 import { Toggle } from '../components/Toggle';
 import { color, font, radius, space } from '../theme/tokens';
 
@@ -59,8 +60,12 @@ export function SettingsScreen({ vpn, onClose }: Props): React.JSX.Element {
         </Pressable>
 
         <Text style={styles.footer}>
-          Decentralized WireGuard on Flux. No logs; your key never leaves this device.
+          Decentralized WireGuard VPN on Flux Cloud. No logs; your key never leaves this device.
         </Text>
+
+        <View style={styles.poweredBy}>
+          <PoweredByFlux />
+        </View>
       </ScrollView>
     </View>
   );
@@ -158,4 +163,5 @@ const styles = StyleSheet.create({
   linkText: { color: color.cyan, fontSize: 15, fontWeight: '600' },
   chev: { color: color.inkDim, fontSize: 20 },
   footer: { color: color.inkFaint, fontSize: 11.5, lineHeight: 17, marginTop: space.md },
+  poweredBy: { marginTop: space.lg, alignItems: 'center' },
 });

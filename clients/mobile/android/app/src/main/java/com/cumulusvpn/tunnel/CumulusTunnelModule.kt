@@ -4,6 +4,9 @@ import android.app.Activity
 import android.content.Intent
 import android.net.VpnService
 import android.provider.Settings
+import java.security.MessageDigest
+import java.util.concurrent.Executors
+import kotlin.random.Random
 import com.facebook.react.bridge.ActivityEventListener
 import com.facebook.react.bridge.Arguments
 import com.facebook.react.bridge.BaseActivityEventListener
@@ -31,6 +34,11 @@ class CumulusTunnelModule(
 ) : ReactContextBaseJavaModule(reactContext) {
 
     private var permissionPromise: Promise? = null
+
+    // A small pool so the two multi-hop enrollments can solve their PoW
+    // concurrently on separate cores instead of serialising. Native SHA-256 is
+    // ~100x the Hermes JS solver, so each 20-bit solve is well under a second.
+    private val powExecutor = Executors.newCachedThreadPool()
 
     private val activityListener: ActivityEventListener =
         object : BaseActivityEventListener() {
@@ -159,6 +167,63 @@ class CumulusTunnelModule(
         }
         permissionPromise = promise
         activity.startActivityForResult(consent, VPN_PERMISSION_REQUEST)
+    }
+
+    /**
+     * solvePow(publicKeyB64, bits): Promise<String>
+     *
+     * Solve the enroll anti-flood proof-of-work natively: find a decimal-string
+     * `nonce` such that `sha256(pubkey||nonce)` has `bits` leading zero bits.
+     * Runs off the JS thread on [powExecutor]; native SHA-256 clears the 20-bit
+     * difficulty in well under a second (the pure-JS Hermes solver takes many
+     * seconds and freezes the UI). Mirrors core `solvePoW`/`hasLeadingZeroBits`.
+     */
+    @ReactMethod
+    fun solvePow(publicKeyB64: String, bits: Double, promise: Promise) {
+        powExecutor.execute {
+            try {
+                promise.resolve(solvePowSync(publicKeyB64, bits.toInt()))
+            } catch (t: Throwable) {
+                promise.reject("E_POW", t.message, t)
+            }
+        }
+    }
+
+    private fun solvePowSync(publicKeyB64: String, bits: Int): String {
+        val md = MessageDigest.getInstance("SHA-256")
+        val pub = publicKeyB64.toByteArray(Charsets.UTF_8)
+        // Random start so repeated solves for the same key yield DIFFERENT valid
+        // nonces — the gateway single-uses each (pubkey, nonce) pair, so a fixed
+        // start would make a re-enroll look like a replay ("bad_pow").
+        var i = Random.nextLong(0, 0x40000000L)
+        while (true) {
+            val nonce = i.toString()
+            md.reset()
+            md.update(pub)
+            md.update(nonce.toByteArray(Charsets.UTF_8))
+            if (hasLeadingZeroBits(md.digest(), bits)) {
+                return nonce
+            }
+            i++
+        }
+    }
+
+    /** True if `digest` starts with at least `bits` zero bits (mirrors core). */
+    private fun hasLeadingZeroBits(digest: ByteArray, bits: Int): Boolean {
+        val full = bits / 8
+        for (k in 0 until full) {
+            if (digest[k].toInt() != 0) {
+                return false
+            }
+        }
+        val rem = bits % 8
+        if (rem != 0) {
+            val mask = (0xff shl (8 - rem)) and 0xff
+            if ((digest[full].toInt() and mask) != 0) {
+                return false
+            }
+        }
+        return true
     }
 
     // Required for RN's NativeEventEmitter (JS-side addListener/removeListeners).

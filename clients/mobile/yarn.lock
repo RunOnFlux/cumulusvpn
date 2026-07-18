@@ -840,12 +840,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=d0900f&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=a6318a&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.2.0"
     "@noble/hashes": "npm:2.2.0"
     "@scure/base": "npm:2.2.0"
-  checksum: 10c0/891a009f629f7ed8694fdadd2b05af01e5c5ffa1979f377c40602796368d9a93f89b363c2d8fcdba667f9f81853c380406841b57649b7ff5729e8979fe52e462
+  checksum: 10c0/c841941ffba648ab3de48cd217fb0ea1fdad8c8b9f43d4987a5c894fea3d9172e461566f29894b07628b4a1c2492d5712062a2f0b0af8fc0611c7c644f62c8b7
   languageName: node
   linkType: hard
 

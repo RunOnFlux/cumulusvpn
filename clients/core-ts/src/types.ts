@@ -132,6 +132,16 @@ export interface EnrollOptions {
   /** Proof-of-work difficulty; defaults to {@link POW_BITS}. */
   readonly powBits?: number;
   /**
+   * Override the proof-of-work solver. The default JS solver runs ~1M SHA-256
+   * hashes on the calling thread — seconds on a phone's Hermes engine, which
+   * both stalls the connect and janks the UI. Native clients pass a solver that
+   * loops in Kotlin/Swift (millions of hashes/sec, off the JS thread), so a
+   * 20-bit solve finishes in well under a second. Must satisfy the same
+   * contract as core `solvePoW` (return a decimal-string nonce whose
+   * `sha256(pubkey||nonce)` has `bits` leading zero bits).
+   */
+  readonly powSolver?: (publicKeyB64: string, bits: number) => Promise<string>;
+  /**
    * Pinned gateway signing pubkey (base64). When set, the response signature
    * must verify against it; otherwise the pubkey advertised in the response
    * header is trusted on first use.

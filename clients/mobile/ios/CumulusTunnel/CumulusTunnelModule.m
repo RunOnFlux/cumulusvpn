@@ -37,4 +37,9 @@ RCT_EXTERN_METHOD(isPrepared:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(requestPermission:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(solvePow:(NSString *)publicKeyB64
+                  bits:(nonnull NSNumber *)bits
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

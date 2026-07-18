@@ -5,7 +5,7 @@
  * plus live down/up/ping stats when connected. Everything is driven by `useVpn`.
  */
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { RouteStyle } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
 import type { PaymentIdentity, VpnActions, VpnModel } from '../state/useVpn';
@@ -68,7 +68,12 @@ export function ConnectScreen({
   const elapsed = vpn.connectedSince ? formatDuration(now - vpn.connectedSince) : null;
 
   return (
-    <View style={styles.root}>
+    <ScrollView
+      style={styles.rootScroll}
+      contentContainerStyle={styles.root}
+      showsVerticalScrollIndicator={false}
+      bounces={false}
+    >
       <View style={styles.top}>
         <Text style={styles.brand}>CumulusVPN</Text>
         <View style={styles.topRight}>
@@ -189,7 +194,7 @@ export function ConnectScreen({
       </Pressable>
 
       {vpn.error ? <Text style={styles.error}>{vpn.error}</Text> : null}
-    </View>
+    </ScrollView>
   );
 }
 
@@ -426,7 +431,17 @@ function formatDuration(ms: number): string {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: space.xl, paddingBottom: space.xxl, paddingTop: space.sm },
+  // ScrollView so short screens scroll instead of the orb overlapping the
+  // Fast/Multi-hop toggle. `root` is the content container: flexGrow lets it
+  // fill (and vertically centre the orb) on tall screens, and grow past the
+  // viewport — scrolling — on short ones.
+  rootScroll: { flex: 1 },
+  root: {
+    flexGrow: 1,
+    paddingHorizontal: space.xl,
+    paddingBottom: space.xxl,
+    paddingTop: space.sm,
+  },
   top: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -436,7 +451,17 @@ const styles = StyleSheet.create({
   brand: { color: color.ink, fontWeight: '700', fontSize: 15, letterSpacing: -0.2 },
   topRight: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   gear: { color: color.inkMuted, fontSize: 20 },
-  orbWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.xl },
+  // minHeight floors the orb area (orb 168 + gap + label) so a short screen
+  // can't squeeze it into the toggle below; flex:1 still centres it when there
+  // is spare room. paddingVertical keeps breathing space at the floor height.
+  orbWrap: {
+    flex: 1,
+    minHeight: 240,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.xl,
+    paddingVertical: space.md,
+  },
   loc: { alignItems: 'center' },
   flag: { fontSize: 30, lineHeight: 34 },
   country: { fontSize: 21, fontWeight: '700', color: color.ink, marginTop: space.xs },

@@ -22,16 +22,24 @@ export interface PingResult {
  *
  * @param controlUrl - The gateway control base URL, e.g. `http://<ip>:51821`.
  * @param options - `samples` (default 4), `timeoutMs` per sample (default 4000),
- *   and an optional `fetchImpl`.
+ *   an optional `fetchImpl`, and an optional `now` clock (default `Date.now`;
+ *   injectable so tests are deterministic rather than dependent on OS timer
+ *   jitter).
  * @returns Median RTT, jitter, and loss over the samples.
  */
 export async function pingGateway(
   controlUrl: string,
-  options: { samples?: number; timeoutMs?: number; fetchImpl?: FetchImpl } = {},
+  options: {
+    samples?: number;
+    timeoutMs?: number;
+    fetchImpl?: FetchImpl;
+    now?: () => number;
+  } = {},
 ): Promise<PingResult> {
   const samples = Math.max(1, options.samples ?? 4);
   const timeoutMs = options.timeoutMs ?? 4000;
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+  const now = options.now ?? Date.now;
 
   const rtts: number[] = [];
   let failures = 0;
@@ -39,7 +47,7 @@ export async function pingGateway(
   for (let i = 0; i < samples; i += 1) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    const started = Date.now();
+    const started = now();
     try {
       const res = await fetchImpl(`${controlUrl}/v1/info`, {
         method: 'GET',
@@ -48,7 +56,7 @@ export async function pingGateway(
       // Drain the body so the socket can be reused/closed on all runtimes.
       await res.arrayBuffer().catch(() => undefined);
       if (res.ok) {
-        rtts.push(Date.now() - started);
+        rtts.push(now() - started);
       } else {
         failures += 1;
       }
