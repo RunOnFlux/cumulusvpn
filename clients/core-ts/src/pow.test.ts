@@ -38,12 +38,21 @@ describe('solvePoW / verifyPoW', () => {
     expect(verifyPoW(pub, nonce, 12)).toBe(true);
   });
 
-  it('finds the smallest qualifying nonce (counts from 0)', () => {
-    const nonce = solvePoW(pub, 10);
+  it('with an explicit start of 0, finds the smallest qualifying nonce', () => {
+    const nonce = solvePoW(pub, 10, 0);
     const n = Number(nonce);
     for (let i = 0; i < n; i++) {
       expect(hasLeadingZeroBits(powHash(pub, String(i)), 10)).toBe(false);
     }
+  });
+
+  it('uses a random start by default → repeated solves differ but all verify', () => {
+    const a = solvePoW(pub, 8);
+    const b = solvePoW(pub, 8);
+    expect(verifyPoW(pub, a, 8)).toBe(true);
+    expect(verifyPoW(pub, b, 8)).toBe(true);
+    // Astronomically unlikely to collide across the 2^30 start range.
+    expect(a).not.toBe(b);
   });
 
   it('rejects a wrong nonce and the empty nonce', () => {

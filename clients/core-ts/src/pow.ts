@@ -52,18 +52,26 @@ export function hasLeadingZeroBits(digest: Uint8Array, bits: number): boolean {
 }
 
 /**
- * Solve the enroll anti-flood proof-of-work: find the smallest counter whose
+ * Solve the enroll anti-flood proof-of-work: find a counter whose
  * {@link powHash} has at least `bits` leading zero bits.
  *
- * Counting from `0` upward makes the search deterministic and identical across
- * client implementations, which keeps the flow testable end to end.
+ * The search starts at a RANDOM offset by default so repeated solves for the
+ * same key yield DIFFERENT valid nonces. The gateway single-uses each
+ * `(pubkey, nonce)` pair, so a fixed start (always 0) makes re-enrolling the
+ * same key fail as a replay ("invalid or missing proof-of-work"). Pass an
+ * explicit `startFrom` for a deterministic search (tests).
  *
  * @param publicKeyB64 - Base64 WireGuard public key.
  * @param bits - Difficulty in leading zero bits; defaults to {@link POW_BITS} (20).
+ * @param startFrom - Counter to start the search at; defaults to a random offset.
  * @returns The winning nonce as a decimal string.
  */
-export function solvePoW(publicKeyB64: string, bits: number = POW_BITS): string {
-  for (let i = 0; ; i++) {
+export function solvePoW(
+  publicKeyB64: string,
+  bits: number = POW_BITS,
+  startFrom: number = Math.floor(Math.random() * 0x40000000),
+): string {
+  for (let i = startFrom; ; i++) {
     const nonce = i.toString();
     if (hasLeadingZeroBits(powHash(publicKeyB64, nonce), bits)) {
       return nonce;
