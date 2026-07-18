@@ -15,6 +15,8 @@ export { discoverGateways, directoryVerify } from './discovery.js';
 export { enroll, status } from './enroll.js';
 export { buildWgConfig } from './wgconfig.js';
 export { selectHops, buildMultihopConfig } from './multihop.js';
+export { gatewayQuality } from './quality.js';
+export type { GatewayQuality, QualityTone } from './quality.js';
 export type {
   RouteStyle,
   Hop,

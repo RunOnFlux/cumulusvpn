@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { JSX } from 'react';
+import { gatewayQuality } from '@cumulusvpn/core';
+import type { QualityTone } from '@cumulusvpn/core';
 import type { CountryOption } from '../lib/session.js';
 
 interface Props {
@@ -9,16 +11,13 @@ interface Props {
   readonly onClose: () => void;
 }
 
-/** Map a 0..1 load into a latency-dot severity class. */
-function pingClass(load: number): string {
-  if (load < 0.4) {
-    return 'ping';
-  }
-  if (load < 0.75) {
-    return 'ping mid';
-  }
-  return 'ping far';
-}
+/** Quality-tone → CSS colour var (green best … red busiest). */
+const TONE_VAR: Record<QualityTone, string> = {
+  excellent: 'var(--green)',
+  good: 'var(--cyan)',
+  fair: 'var(--amber)',
+  busy: 'var(--red)',
+};
 
 /** Full-window country sheet with search — map-flavoured picker per the mockup. */
 export function CountryPicker({ countries, selectedCode, onPick, onClose }: Props): JSX.Element {
@@ -44,21 +43,27 @@ export function CountryPicker({ countries, selectedCode, onPick, onClose }: Prop
         autoFocus
       />
       <div className="clist">
-        {filtered.map((c) => (
-          <button
-            key={c.code}
-            className={`crow ${c.code === selectedCode ? 'sel' : ''}`}
-            onClick={() => {
-              onPick(c.code);
-              onClose();
-            }}
-          >
-            <span className="flag">{c.flag}</span>
-            <span className="cn">{c.name}</span>
-            <span className={pingClass(c.load)} />
-            <span className="lat">{Math.round(c.load * 100)}%</span>
-          </button>
-        ))}
+        {filtered.map((c) => {
+          const q = gatewayQuality(null, c.load);
+          return (
+            <button
+              key={c.code}
+              className={`crow ${c.code === selectedCode ? 'sel' : ''}`}
+              onClick={() => {
+                onPick(c.code);
+                onClose();
+              }}
+            >
+              <span className="flag">{c.flag}</span>
+              <span className="cn">{c.name}</span>
+              <span className="qlabel" style={{ color: TONE_VAR[q.tone] }}>
+                {q.label}
+              </span>
+              <span className="qdot" style={{ background: TONE_VAR[q.tone] }} />
+              <span className="lat">{q.loadPct}%</span>
+            </button>
+          );
+        })}
         {filtered.length === 0 && (
           <div className="lat" style={{ padding: '12px 4px' }}>
             No matching locations.

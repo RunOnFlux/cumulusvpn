@@ -5,10 +5,18 @@
  */
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { gatewayQuality } from '@cumulusvpn/core';
+import type { QualityTone } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
-import { latencyBand } from '../lib/gateways';
-import { LatencyDot } from '../components/LatencyDot';
 import { color, font, radius, space } from '../theme/tokens';
+
+/** Quality-tone → accent colour (green best … red busiest). */
+const TONE_COLOR: Record<QualityTone, string> = {
+  excellent: color.green,
+  good: color.cyan,
+  fair: color.amber,
+  busy: color.red,
+};
 
 interface Props {
   readonly countries: readonly Country[];
@@ -61,30 +69,36 @@ export function CountryPickerScreen({
         ListEmptyComponent={
           <Text style={styles.empty}>No gateways reachable — pull to refresh.</Text>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            style={[styles.row, item.code === selectedCode && styles.rowSelected]}
-            onPress={() => {
-              onSelect(item.code);
-              onClose();
-            }}
-            accessibilityRole="button"
-          >
-            <Text style={styles.flag}>{item.flag}</Text>
-            <View style={styles.meta}>
-              <Text style={styles.name}>{item.name}</Text>
-              <Text style={styles.sub}>
-                {item.nodeCount} {item.nodeCount === 1 ? 'node' : 'nodes'} · {item.city}
-              </Text>
-            </View>
-            <View style={styles.ping}>
-              <LatencyDot band={latencyBand(item.latencyMs)} />
-              <Text style={styles.pingText}>
-                {item.latencyMs === null ? '—' : `${item.latencyMs} ms`}
-              </Text>
-            </View>
-          </Pressable>
-        )}
+        renderItem={({ item }) => {
+          const q = gatewayQuality(item.latencyMs, item.best.load);
+          return (
+            <Pressable
+              style={[styles.row, item.code === selectedCode && styles.rowSelected]}
+              onPress={() => {
+                onSelect(item.code);
+                onClose();
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.flag}>{item.flag}</Text>
+              <View style={styles.meta}>
+                <Text style={styles.name}>{item.name}</Text>
+                <Text style={styles.sub}>
+                  {item.nodeCount} {item.nodeCount === 1 ? 'node' : 'nodes'} · {item.city}
+                </Text>
+              </View>
+              <View style={styles.qual}>
+                <View style={styles.qualTop}>
+                  <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
+                  <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
+                </View>
+                <Text style={styles.qualSub}>
+                  {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
+                </Text>
+              </View>
+            </Pressable>
+          );
+        }}
       />
     </View>
   );
@@ -129,7 +143,10 @@ const styles = StyleSheet.create({
   meta: { flex: 1 },
   name: { color: color.ink, fontSize: 15, fontWeight: '600' },
   sub: { color: color.inkDim, fontSize: 12, marginTop: 2 },
-  ping: { flexDirection: 'row', alignItems: 'center' },
-  pingText: { fontFamily: font.mono, fontSize: 12, color: color.inkMuted },
+  qual: { alignItems: 'flex-end' },
+  qualTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  qualDot: { width: 7, height: 7, borderRadius: 4 },
+  qualLabel: { fontSize: 12.5, fontWeight: '600' },
+  qualSub: { fontFamily: font.mono, fontSize: 10.5, color: color.inkFaint, marginTop: 2 },
   empty: { color: color.inkDim, textAlign: 'center', marginTop: 40, fontSize: 14 },
 });

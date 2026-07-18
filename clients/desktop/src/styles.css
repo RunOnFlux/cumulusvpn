@@ -613,6 +613,16 @@ button {
   font-size: 11px;
   color: var(--ink-3);
 }
+.crow .qlabel {
+  font-size: 12px;
+  font-weight: 600;
+}
+.crow .qdot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
 .sheet .close {
   margin-top: 12px;
   text-align: center;
