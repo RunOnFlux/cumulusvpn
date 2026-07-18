@@ -1,0 +1,3 @@
+# gomobile bind outputs (build artifacts; produced by build-android.sh).
+wgmobile.aar
+wgmobile-sources.jar

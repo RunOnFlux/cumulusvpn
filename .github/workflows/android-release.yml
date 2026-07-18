@@ -38,9 +38,20 @@ jobs:
         with:
           node-version: 22
 
+      # The multi-hop tunnel .so (wgmobile.aar) is built from Go via gomobile.
+      - uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+
       - name: Enable Corepack
         run: corepack enable
         working-directory: ${{ github.workspace }}
+
+      # Build the nested-tunnel AAR (gomobile bind → libgojni.so) that the app's
+      # gradle build consumes. Gitignored artifact; must exist before assemble.
+      - name: Build wgnest multi-hop AAR
+        working-directory: ${{ github.workspace }}
+        run: bash clients/native/wgnest/build-android.sh
 
       # The RN bundle imports @cumulusvpn/core (file:../core-ts) via its built
       # dist, so build the shared core before installing/bundling the app.

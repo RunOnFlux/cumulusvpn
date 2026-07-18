@@ -1,6 +1,7 @@
 package com.cumulusvpn.tunnel
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import com.wireguard.android.backend.Backend
 import com.wireguard.android.backend.GoBackend
@@ -52,6 +53,10 @@ object CumulusTunnelController {
 
     @Volatile
     private var listener: StateListener? = null
+
+    /** True while the active tunnel is the nested (multi-hop) service, not GoBackend. */
+    @Volatile
+    private var multihopActive: Boolean = false
 
     /** The active tunnel handle, if any. Named [TUNNEL_NAME]. */
     private val tunnel =
@@ -108,17 +113,12 @@ object CumulusTunnelController {
      * `outerConfig` is the wg-entry `.conf`; `innerConfig` is the wg-exit `.conf`
      * (both from core `buildMultihopConfig`).
      *
-     * POC (unavoidable library seam): the stock [GoBackend] binds exactly ONE
-     * wireguard-go device to the tun and owns the real UDP socket, with no hook
-     * to interpose a second device between that socket and the network. True
-     * nesting therefore requires a bundled/forked wireguard-go whose INNER
-     * device's UDP "bind" feeds the OUTER device instead of the raw socket
-     * (the approach Mullvad ships). Until that `.so` is vendored, we bring up the
-     * OUTER (entry) hop as the active device — which already hides the user's
-     * real destination from the entry operator and pins the route to the exit IP
-     * — and log the inner-device seam. The two parsed configs and the routing
-     * facts below are exactly what the bundled wg-go consumes; nothing above this
-     * layer (core, JS bridge, RN module) changes when the seam is filled.
+     * Genuine nesting runs in the userspace `wgnest` core (two stacked
+     * wireguard-go devices, the inner's socket a UDP conn on the outer's
+     * netstack), bound to Android via the [Wgmobile] AAR. This controller only
+     * extracts the two hops' keys/IPs from the parsed configs and hands them to
+     * [CumulusMultihopVpnService], which owns the OS tun. The service reports
+     * back through [onMultihopState].
      */
     fun startMultihop(context: Context, outerConfig: String, innerConfig: String) {
         setState(STATE_CONNECTING)
@@ -126,40 +126,66 @@ object CumulusTunnelController {
             val outer = parse(outerConfig) // wg-entry: AllowedIPs = <exitIp>/32, MTU 1420
             val inner = parse(innerConfig) // wg-exit:  AllowedIPs = 0.0.0.0/0, MTU 1340
 
-            // The exit endpoint the inner device targets and the outer device
-            // must route (AllowedIPs pin). Kept explicit so the bundled wg-go
-            // seam has everything it needs.
-            val exitPeer = inner.peers.firstOrNull()
-            val entryPeer = outer.peers.firstOrNull()
-            Log.i(
-                TAG,
-                "startMultihop: entry=${entryPeer?.endpoint?.orElse(null)} " +
-                    "exit=${exitPeer?.endpoint?.orElse(null)} " +
-                    "innerMtu=${inner.`interface`.mtu.orElse(0)}",
-            )
+            val entryPeer = outer.peers.first()
+            val exitPeer = inner.peers.first()
+            // The client key K is shared by both hops (one payment, two devices).
+            val clientPriv = outer.`interface`.keyPair.privateKey.toBase64()
+            val entryAssigned = outer.`interface`.addresses.first().address.hostAddress
+            val exitAssigned = inner.`interface`.addresses.first().address.hostAddress
+            val entryIp = entryPeer.endpoint.get().host
+            val exitIp = exitPeer.endpoint.get().host
+            val exitDns = inner.`interface`.dnsServers.firstOrNull()?.hostAddress ?: "1.1.1.1"
 
-            // POC: bring up the OUTER (entry) device via the stock backend. The
-            // INNER device (real 0.0.0.0/0 traffic, encrypted to EXIT) must be
-            // layered by a vendored wireguard-go whose UDP bind is redirected
-            // into this outer device — see the kdoc above. `inner` is parsed and
-            // validated here so that seam is a drop-in.
-            backend(context).setState(tunnel, Tunnel.State.UP, outer)
-            setState(STATE_CONNECTED)
+            Log.i(TAG, "startMultihop: entry=$entryIp exit=$exitIp (nested)")
+
+            val intent = Intent(context, CumulusMultihopVpnService::class.java).apply {
+                action = CumulusMultihopVpnService.ACTION_START
+                putExtra(CumulusMultihopVpnService.EXTRA_CLIENT_PRIV, clientPriv)
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_PUB, entryPeer.publicKey.toBase64())
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_IP, entryIp)
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_ASSIGNED, entryAssigned)
+                putExtra(CumulusMultihopVpnService.EXTRA_EXIT_PUB, exitPeer.publicKey.toBase64())
+                putExtra(CumulusMultihopVpnService.EXTRA_EXIT_IP, exitIp)
+                putExtra(CumulusMultihopVpnService.EXTRA_EXIT_ASSIGNED, exitAssigned)
+                putExtra(CumulusMultihopVpnService.EXTRA_EXIT_DNS, exitDns)
+            }
+            multihopActive = true
+            // Connect is always user-initiated (app in foreground), so a plain
+            // startService is allowed; the established tun keeps the service alive.
+            context.startService(intent)
+            // State advances to CONNECTED/ERROR asynchronously via onMultihopState.
         } catch (t: Throwable) {
             Log.e(TAG, "startMultihop failed", t)
+            multihopActive = false
             setState(STATE_ERROR)
             throw t
         }
     }
 
-    /** Tear the tunnel down. Idempotent. */
+    /** Called by [CumulusMultihopVpnService] as the nested tunnel changes state. */
+    fun onMultihopState(state: String) {
+        if (state == STATE_DISCONNECTED || state == STATE_ERROR) {
+            multihopActive = false
+        }
+        setState(state)
+    }
+
+    /** Tear the tunnel down. Idempotent. Routes to whichever backend is active. */
     fun stopTunnel(context: Context) {
         setState(STATE_DISCONNECTING)
         try {
-            backend?.setState(tunnel, Tunnel.State.DOWN, null)
+            if (multihopActive) {
+                val intent = Intent(context, CumulusMultihopVpnService::class.java).apply {
+                    action = CumulusMultihopVpnService.ACTION_STOP
+                }
+                context.startService(intent)
+                // onMultihopState(DISCONNECTED) fires from the service's teardown.
+            } else {
+                backend?.setState(tunnel, Tunnel.State.DOWN, null)
+                setState(STATE_DISCONNECTED)
+            }
         } catch (t: Throwable) {
             Log.e(TAG, "stopTunnel failed", t)
-        } finally {
             setState(STATE_DISCONNECTED)
         }
     }

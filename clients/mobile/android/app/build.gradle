@@ -127,6 +127,12 @@ dependencies {
     // ABI, so no NDK/Go step is needed to consume it. See CumulusVpnService.kt.
     implementation("com.wireguard.android:tunnel:1.0.20260102")
 
+    // CumulusVPN nested (multi-hop) tunnel — gomobile-built AAR wrapping the
+    // userspace wgnest core (two stacked wireguard-go devices). Bundles
+    // libgojni.so for arm64-v8a + x86_64. Built by clients/native/wgnest via
+    // `gomobile bind`. See CumulusMultihopVpnService.kt.
+    implementation(files("libs/wgmobile.aar"))
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {
