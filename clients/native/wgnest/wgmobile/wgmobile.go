@@ -1,8 +1,11 @@
-//go:build android
+//go:build android || ios
 
 // Package wgmobile is the gomobile-bound surface of the nested multi-hop tunnel.
-// It exposes a tiny string/int API that Kotlin can call: Start over a VpnService
-// tun file descriptor, and Stop by handle. All heavy lifting is in wgnest.
+// It exposes a tiny string/int API that Kotlin (Android) and Swift (iOS) can
+// call: Start over a tun file descriptor — the Android VpnService fd, or the
+// iOS NEPacketTunnelFlow utun fd — and Stop by handle. All heavy lifting is in
+// wgnest. The one platform difference (how to wrap the fd as a tun.Device) is
+// isolated in tunFromFD (tun_android.go / tun_ios.go).
 package wgmobile
 
 import (
@@ -33,7 +36,7 @@ func Start(
 	exitPub, exitIP, exitAssigned string,
 	tunFd int,
 ) (int64, error) {
-	innerTun, _, err := tun.CreateUnmonitoredTUNFromFD(tunFd)
+	innerTun, err := tunFromFD(tunFd)
 	if err != nil {
 		return 0, fmt.Errorf("wrap tun fd: %w", err)
 	}

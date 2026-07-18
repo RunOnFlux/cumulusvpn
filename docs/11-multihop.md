@@ -119,8 +119,16 @@ entry==exit and enforces cross-country when asked.
   `<exitIp>/32 → wg-entry` and default route `→ wg-exit`. Straightforward.
 - **Mobile:** the NEPacketTunnelProvider (iOS) / VpnService (Android) gives one tun. Inside the
   extension, chain two userspace wireguard-go instances: tun packet → encrypt to EXIT (inner) →
-  the resulting UDP-to-EXIT packet → encrypt to ENTRY (outer) → real socket. This is the fiddly
-  part and the main cost of the feature; the packet flow is well-trodden (Mullvad/wireguard-go).
+  the resulting UDP-to-EXIT packet → encrypt to ENTRY (outer) → real socket. **Implemented** in
+  the shared Go core `clients/native/wgnest` (two stacked wireguard-go devices where the inner
+  device's `conn.Bind` is a UDP socket on the outer device's gVisor netstack — no forked
+  wireguard-go). It's gomobile-bound to a tiny `Wgmobile.start(…, tunFd)` / `stop` surface:
+  `build-android.sh` → `wgmobile.aar` (consumed by `CumulusMultihopVpnService`), `build-ios.sh` →
+  `Wgnest.xcframework` (consumed by `PacketTunnelProvider.startMultihop`). Both route
+  `0.0.0.0/0` minus the entry IP so the outer device's one real socket bypasses the tun (Android
+  synthesises the split routes; iOS uses `NEIPv4Settings.excludedRoutes`). Verified end-to-end
+  against the live DE fleet via `clients/native/wgnest/cmd/nesttest` (traffic egresses with the
+  exit node's IP).
 - **Web / official-client export:** produce both `.conf` files + a short routing note. True nesting
   with the stock WireGuard app is awkward (one tunnel at a time) — multi-hop is really an
   our-apps feature; the web page can still hand out the two configs for advanced users.
@@ -134,6 +142,7 @@ or multi-hop breaks. Noted in `config` and `docs/06`.
 
 ## Roadmap
 
-- **v1:** core-ts multihop + desktop UI/logic + mobile UI + native-nesting scaffold + web export.
+- **v1:** core-ts multihop + desktop UI/logic (two-device) + mobile UI + **native nesting**
+  (`wgnest`: Android AAR + iOS xcframework, proven against the live fleet) + web export.
 - **v1.5:** distinct-key-per-hop (payment-key indirection) for both-hops-collude resistance.
 - **v2:** 3-hop for the truly paranoid (diminishing returns, more latency); auto route optimization.

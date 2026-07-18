@@ -115,3 +115,24 @@ ships — so wire the build phase and build for `iphoneos` with the human's sign
      wireguard-apple pattern.
 - The signed device/store build (the human's Mac + Apple Developer account) then produces the
   archive and links it exactly as proven above — this is the normal iOS-WireGuard path.
+
+## Multi-hop (nested) tunnel — Wgnest.xcframework
+
+True multi-hop on iOS runs the shared Go core `clients/native/wgnest` (two stacked wireguard-go
+devices; see `docs/11-multihop.md`) inside the Packet Tunnel extension, because WireGuardKit's
+`WireGuardAdapter` binds exactly one device to the tun. It ships as a gomobile-built xcframework:
+
+- **Build:** `bash clients/native/wgnest/build-ios.sh` → `clients/mobile/ios/Frameworks/Wgnest.xcframework`
+  (device + simulator slices, ~43 MB, gitignored). Needs **Go ≥ 1.23** — build it *before* the Go
+  1.22 symlink that WireGuardKit's `libwg-go.a` needs (the Xcode Cloud `ci_post_clone.sh` does this
+  ordering; do the same locally).
+- **Wiring:** `ruby clients/mobile/ios/scripts/add-wgnest-framework.rb` links + embeds the
+  xcframework into `PacketTunnelExtension` and adds `FRAMEWORK_SEARCH_PATHS` (idempotent). Already
+  applied to the project file.
+- **Seam:** `PacketTunnelProvider.startMultihop` builds `NEPacketTunnelNetworkSettings` (exit
+  address, exit DNS, MTU 1340, `excludedRoutes = entryIP/32` so the outer socket bypasses the tun),
+  finds the utun fd (the WireGuardKit getpeername scan), and calls `WgmobileStart(…, tunFd)`. Stop
+  calls `WgmobileStop(handle)`.
+- **Note:** the extension now hosts gVisor netstack + two wireguard-go devices — heavier than
+  single-hop. Watch the NEPacketTunnelProvider memory budget on-device; if tight, drop the
+  simulator slice and profile.

@@ -17,6 +17,14 @@ corepack enable
 yarn install --immutable
 yarn workspace @cumulusvpn/core build
 
+# --- wgnest multi-hop xcframework (gomobile bind; needs Go >= 1.23) ---
+# Build it now with a CURRENT Go, BEFORE the Go 1.22 symlink below: WireGuardKit's
+# libwg-go.a build phase needs Go 1.22, but gomobile/wgnest needs 1.23+. The result
+# (clients/mobile/ios/Frameworks/Wgnest.xcframework) is a gitignored artifact the
+# Xcode build links + embeds into PacketTunnelExtension.
+brew install go || true
+PATH="$(brew --prefix go)/bin:$PATH" bash clients/native/wgnest/build-ios.sh
+
 # --- mobile deps ---
 cd clients/mobile
 yarn install --no-immutable

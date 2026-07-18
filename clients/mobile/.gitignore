@@ -23,6 +23,7 @@ android/local.properties
 *.log
 .DS_Store
 
-# wgnest multi-hop AAR + sources — build artifacts produced by
-# clients/native/wgnest/build-android.sh (gomobile bind). Rebuilt in CI/locally.
+# wgnest multi-hop native cores — build artifacts produced by
+# clients/native/wgnest/build-{android,ios}.sh (gomobile bind). Rebuilt in CI/locally.
 android/app/libs/
+ios/Frameworks/Wgnest.xcframework/
