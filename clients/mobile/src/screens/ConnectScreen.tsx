@@ -4,6 +4,7 @@
  * Orb + tier pill + a country selector row + the big connect/disconnect button,
  * plus live down/up/ping stats when connected. Everything is driven by `useVpn`.
  */
+import { useEffect, useState } from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { RouteStyle } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
@@ -55,6 +56,17 @@ export function ConnectScreen({
   const target: Country | null = vpn.selected ?? vpn.countries[0] ?? null;
   const busy = vpn.state === 'connecting' || vpn.state === 'disconnecting';
 
+  // Tick every second while connected so the session timer stays live.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!connected) {
+      return undefined;
+    }
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [connected]);
+  const elapsed = vpn.connectedSince ? formatDuration(now - vpn.connectedSince) : null;
+
   return (
     <View style={styles.root}>
       <View style={styles.top}>
@@ -77,9 +89,7 @@ export function ConnectScreen({
           <View style={styles.loc}>
             <Text style={styles.flag}>{target.flag}</Text>
             <Text style={styles.country}>{target.name}</Text>
-            <Text style={styles.ip}>
-              {target.city ? `Protected · ${target.city}` : 'Protected'}
-            </Text>
+            <Text style={styles.ip}>{elapsed ? `Protected · ${elapsed}` : 'Protected'}</Text>
           </View>
         ) : (
           <View style={styles.loc}>
@@ -398,6 +408,21 @@ function formatBytes(n: number): string {
 
 function sinceSec(unixSec: number): number {
   return Math.max(0, Math.round(Date.now() / 1000 - unixSec));
+}
+
+/** Compact elapsed duration: "45s", "12m 03s", "2h 09m". */
+function formatDuration(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) {
+    return `${h}h ${String(m).padStart(2, '0')}m`;
+  }
+  if (m > 0) {
+    return `${m}m ${String(sec).padStart(2, '0')}s`;
+  }
+  return `${sec}s`;
 }
 
 const styles = StyleSheet.create({

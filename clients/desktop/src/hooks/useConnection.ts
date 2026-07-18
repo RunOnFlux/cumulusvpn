@@ -68,6 +68,8 @@ export interface ConnectionModel {
   readonly autoConnect: boolean;
   /** Toggle auto-connect on launch. */
   readonly setAutoConnect: (on: boolean) => void;
+  /** Unix-ms when the active session connected, or null when not connected. */
+  readonly connectedSince: number | null;
 }
 
 const DOWN: TunnelStatus = {
@@ -113,6 +115,10 @@ export function useConnection(): ConnectionModel {
     () => localStorage.getItem('cvpn.autoConnect') === '1',
   );
   const autoConnectedRef = useRef(false);
+  // Unix-ms when the current session connected (for the session timer), and
+  // whether we ever reached 'connected' this session (for auto-reconnect).
+  const [connectedSince, setConnectedSince] = useState<number | null>(null);
+  const wasConnectedRef = useRef(false);
 
   // Bootstrap: discover the fleet and restore the last-selected country.
   useEffect(() => {
@@ -230,6 +236,7 @@ export function useConnection(): ConnectionModel {
   }, [selected, exit, multihop, routeStyle, phase, keypair, killSwitch, refreshEntitlement]);
 
   const disconnect = useCallback(() => {
+    wasConnectedRef.current = false;
     void (async () => {
       try {
         const s = await teardown();
@@ -241,6 +248,30 @@ export function useConnection(): ConnectionModel {
       }
     })();
   }, []);
+
+  // Session timer + drop detection: stamp the connect time, remember we reached
+  // 'connected', and clear on idle.
+  useEffect(() => {
+    if (phase === 'connected') {
+      wasConnectedRef.current = true;
+      setConnectedSince((prev) => prev ?? Date.now());
+    } else if (phase === 'idle') {
+      setConnectedSince(null);
+    }
+  }, [phase]);
+
+  // Auto-reconnect an unexpected drop: if the tunnel errors out after having been
+  // connected (not a user disconnect, not an initial connect failure), bring it
+  // back up shortly.
+  useEffect(() => {
+    if (phase === 'error' && wasConnectedRef.current) {
+      wasConnectedRef.current = false;
+      setConnectedSince(null);
+      const id = setTimeout(() => connect(), 3000);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [phase, connect]);
 
   // Auto-connect on launch (opt-in): once discovery settles and a location is
   // selected, bring the tunnel up automatically.
@@ -261,8 +292,10 @@ export function useConnection(): ConnectionModel {
         try {
           const s = await nativeStatus();
           setTunnel(s);
-          if (s.state === 'error') {
-            setError(s.error ?? 'tunnel error');
+          // A drop shows up as an error or a 'down' state while we think we're
+          // connected — surface it as an error so auto-reconnect can kick in.
+          if (s.state === 'error' || s.state === 'down') {
+            setError(s.error ?? 'connection lost');
             setPhase('error');
           }
         } catch {
@@ -293,5 +326,6 @@ export function useConnection(): ConnectionModel {
     setKillSwitch,
     autoConnect,
     setAutoConnect,
+    connectedSince,
   };
 }

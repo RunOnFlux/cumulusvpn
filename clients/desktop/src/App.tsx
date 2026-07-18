@@ -6,6 +6,7 @@ import { CountryPicker } from './components/CountryPicker.js';
 import { MultihopPanel } from './components/MultihopPanel.js';
 import { TierBadge } from './components/TierBadge.js';
 import { StatBar } from './components/StatBar.js';
+import { SessionTimer } from './components/SessionTimer.js';
 import { Settings } from './components/Settings.js';
 import { UPGRADE_URL } from './lib/directory.js';
 
@@ -64,6 +65,8 @@ export function App(): JSX.Element {
         phase={conn.phase}
         onToggle={connected || busy ? conn.disconnect : conn.connect}
       />
+
+      {connected && conn.connectedSince && <SessionTimer since={conn.connectedSince} />}
 
       <button
         className="loc-btn"

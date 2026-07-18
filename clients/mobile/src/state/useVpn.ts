@@ -79,6 +79,8 @@ export interface VpnModel {
   readonly killSwitch: boolean;
   /** Auto-connect on app launch once discovery completes (persisted). */
   readonly autoConnect: boolean;
+  /** Unix-ms when the active session connected, or null when not connected. */
+  readonly connectedSince: number | null;
 }
 
 /** Chain-payment identity derived from the device key + last enrollment. */
@@ -131,6 +133,13 @@ export function useVpn(): VpnModel & VpnActions {
   const [killSwitch, setKillSwitchState] = useState(false);
   const [autoConnect, setAutoConnectState] = useState(false);
   const autoConnectedRef = useRef(false);
+  // Unix-ms when the current session connected, for the session timer.
+  const [connectedSince, setConnectedSince] = useState<number | null>(null);
+  // Whether the user currently wants a tunnel (true after connect, false after
+  // an explicit disconnect) + whether we reached 'connected' — together these
+  // distinguish an unexpected drop from a user disconnect, for auto-reconnect.
+  const wantConnectedRef = useRef(false);
+  const wasConnectedRef = useRef(false);
 
   // Latest enrolled gateway IP, kept in a ref for the status poller.
   const gatewayIpRef = useRef<string | null>(null);
@@ -222,6 +231,11 @@ export function useVpn(): VpnModel & VpnActions {
     const sub = onTunnelStatus((s) => {
       setStatus(s);
       setState(s.state);
+      if (s.state === 'connected') {
+        setConnectedSince((prev) => prev ?? Date.now());
+      } else if (s.state === 'disconnected' || s.state === 'error') {
+        setConnectedSince(null);
+      }
     });
     return () => sub.remove();
   }, []);
@@ -276,6 +290,7 @@ export function useVpn(): VpnModel & VpnActions {
     if (!keypair) {
       return;
     }
+    wantConnectedRef.current = true;
     setError(null);
     setState('connecting');
     try {
@@ -333,6 +348,8 @@ export function useVpn(): VpnModel & VpnActions {
   }, [keypair, countries, selectedCode, routeStyle, entryCode, exitCode, killSwitch]);
 
   const disconnect = useCallback(async (): Promise<void> => {
+    wantConnectedRef.current = false;
+    wasConnectedRef.current = false;
     setState('disconnecting');
     try {
       await CumulusTunnel.stopTunnel();
@@ -340,6 +357,24 @@ export function useVpn(): VpnModel & VpnActions {
       setError(e instanceof Error ? e.message : String(e));
     }
   }, []);
+
+  // ---- auto-reconnect on an unexpected drop ------------------------------
+  // If the tunnel drops while the user still wants it (they didn't tap
+  // Disconnect) and we had reached 'connected', bring it back up shortly. Only
+  // reconnects a genuine drop — initial connect failures are handled by the
+  // watchdog + the error message, not a retry loop.
+  useEffect(() => {
+    if (state === 'connected') {
+      wasConnectedRef.current = true;
+      return;
+    }
+    if (state === 'disconnected' && wantConnectedRef.current && wasConnectedRef.current) {
+      wasConnectedRef.current = false;
+      const id = setTimeout(() => void connect(), 3000);
+      return () => clearTimeout(id);
+    }
+    return undefined;
+  }, [state, connect]);
 
   // ---- auto-connect on launch (opt-in) -----------------------------------
   // Once, after the first successful discovery, if the user enabled auto-connect
@@ -408,6 +443,7 @@ export function useVpn(): VpnModel & VpnActions {
     exit,
     killSwitch,
     autoConnect,
+    connectedSince,
     connect,
     disconnect,
     selectCountry,
