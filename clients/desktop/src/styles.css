@@ -239,6 +239,72 @@ button {
 .loc-btn .chev {
   color: var(--ink-3);
 }
+
+/* Kill-switch row (leak protection toggle) */
+.ks-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px 14px;
+  margin-top: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.ks-row:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--cyan) 40%, var(--line));
+}
+.ks-row:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.ks-icon {
+  font-size: 18px;
+}
+.ks-meta {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.ks-title {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 14px;
+}
+.ks-sub {
+  color: var(--ink-3);
+  font-size: 12px;
+  margin-top: 2px;
+}
+.ks-track {
+  flex-shrink: 0;
+  width: 42px;
+  height: 25px;
+  border-radius: 13px;
+  background: var(--line);
+  padding: 3px;
+  display: flex;
+  transition: background 0.2s;
+}
+.ks-track.on {
+  background: var(--cyan);
+}
+.ks-thumb {
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.2s;
+}
+.ks-track.on .ks-thumb {
+  transform: translateX(17px);
+}
+
 .ping {
   width: 8px;
   height: 8px;

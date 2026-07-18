@@ -157,6 +157,7 @@ function toGatewayInfo(country: CountryOption): GatewayInfo {
 export async function establish(
   country: CountryOption,
   keypair: Keypair,
+  killSwitch: boolean,
   fetchImpl?: typeof fetch,
 ): Promise<EstablishResult> {
   const enrollOpts = enrollOptsFor(country, fetchImpl);
@@ -175,6 +176,7 @@ export async function establish(
     wgConfig,
     endpoint: reply.endpoint,
     assignedIp: reply.assigned_ip,
+    killSwitch,
   });
 
   return { gatewayIp: country.gatewayIp, enroll: reply, tunnel: tunnelStatus };
@@ -204,6 +206,7 @@ export async function establishMultihop(
   exitCountry: CountryOption,
   style: RouteStyle,
   keypair: Keypair,
+  killSwitch: boolean,
   fetchImpl?: typeof fetch,
 ): Promise<MultihopResult> {
   // Let the core contract pick + validate the ordered hops from the two picks.
@@ -242,6 +245,7 @@ export async function establishMultihop(
     exitEndpoint: cfg.exitEndpoint,
     innerMtu: cfg.innerMtu,
     assignedIp: exitReply.assigned_ip,
+    killSwitch,
   });
 
   return {

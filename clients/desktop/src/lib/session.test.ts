@@ -104,7 +104,7 @@ describe('establish', () => {
   it('enrolls the key, pins the gateway sign key, and brings the tunnel up', async () => {
     mockedEnroll.mockResolvedValue(enrollReply);
 
-    const result = await establish(country, keypair);
+    const result = await establish(country, keypair, true);
 
     expect(mockedEnroll).toHaveBeenCalledWith(
       '198.51.100.2',

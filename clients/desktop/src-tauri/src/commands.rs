@@ -21,10 +21,11 @@ pub async fn connect(
     wg_config: String,
     endpoint: String,
     assigned_ip: String,
+    kill_switch: bool,
     manager: State<'_, TunnelManager>,
 ) -> Result<TunnelStatus, String> {
     manager
-        .connect(&country, &wg_config, &endpoint, &assigned_ip)
+        .connect(&country, &wg_config, &endpoint, &assigned_ip, kill_switch)
         .map_err(|e| e.to_string())
 }
 
@@ -44,6 +45,7 @@ pub async fn connect_multihop(
     exit_endpoint: String,
     inner_mtu: u16,
     assigned_ip: String,
+    kill_switch: bool,
     manager: State<'_, TunnelManager>,
 ) -> Result<TunnelStatus, String> {
     manager
@@ -56,6 +58,7 @@ pub async fn connect_multihop(
             exit_endpoint: &exit_endpoint,
             inner_mtu,
             assigned_ip: &assigned_ip,
+            kill_switch,
         })
         .map_err(|e| e.to_string())
 }

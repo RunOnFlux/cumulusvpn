@@ -58,6 +58,12 @@ export interface ConnectionModel {
   readonly setRouteStyle: (style: MultihopStyle) => void;
   /** Pick the EXIT country for multi-hop. */
   readonly selectExit: (code: string) => void;
+
+  // ---- kill switch (leak protection) -------------------------------------
+  /** Whether to engage the kill switch when connecting (persisted; default on). */
+  readonly killSwitch: boolean;
+  /** Toggle the kill switch; applies on the next connect. */
+  readonly setKillSwitch: (on: boolean) => void;
 }
 
 const DOWN: TunnelStatus = {
@@ -95,6 +101,10 @@ export function useConnection(): ConnectionModel {
   const [multihop, setMultihopState] = useState(false);
   const [routeStyle, setRouteStyleState] = useState<MultihopStyle>('multihop-same-country');
   const [exit, setExit] = useState<CountryOption | null>(null);
+  // Kill switch defaults ON (leak protection by default); persisted in localStorage.
+  const [killSwitch, setKillSwitchState] = useState(
+    () => localStorage.getItem('cvpn.killSwitch') !== '0',
+  );
 
   // Bootstrap: discover the fleet and restore the last-selected country.
   useEffect(() => {
@@ -150,6 +160,11 @@ export function useConnection(): ConnectionModel {
   const setMultihop = useCallback((on: boolean) => setMultihopState(on), []);
   const setRouteStyle = useCallback((style: MultihopStyle) => setRouteStyleState(style), []);
 
+  const setKillSwitch = useCallback((on: boolean) => {
+    setKillSwitchState(on);
+    localStorage.setItem('cvpn.killSwitch', on ? '1' : '0');
+  }, []);
+
   /** Poll chain entitlement from the metering gateway; never drops the tunnel. */
   const refreshEntitlement = useCallback(
     async (gatewayIp: string, signPubKey: string) => {
@@ -183,12 +198,12 @@ export function useConnection(): ConnectionModel {
       try {
         if (multihop && exit) {
           // Same key K enrolls at both hops (one payment); exit meters egress.
-          const result = await establishMultihop(entry, exit, routeStyle, keypair);
+          const result = await establishMultihop(entry, exit, routeStyle, keypair, killSwitch);
           setTunnel(result.tunnel);
           setPhase('connected');
           await refreshEntitlement(result.exitGatewayIp, exit.signPubKey);
         } else {
-          const result = await establish(entry, keypair);
+          const result = await establish(entry, keypair, killSwitch);
           setTunnel(result.tunnel);
           setPhase('connected');
           await refreshEntitlement(result.gatewayIp, entry.signPubKey);
@@ -199,7 +214,7 @@ export function useConnection(): ConnectionModel {
         setPhase('error');
       }
     })();
-  }, [selected, exit, multihop, routeStyle, phase, keypair, refreshEntitlement]);
+  }, [selected, exit, multihop, routeStyle, phase, keypair, killSwitch, refreshEntitlement]);
 
   const disconnect = useCallback(() => {
     void (async () => {
@@ -252,5 +267,7 @@ export function useConnection(): ConnectionModel {
     setMultihop,
     setRouteStyle,
     selectExit,
+    killSwitch,
+    setKillSwitch,
   };
 }

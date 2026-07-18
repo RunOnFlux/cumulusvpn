@@ -42,6 +42,8 @@ export interface ConnectArgs {
   readonly endpoint: string;
   /** Assigned tunnel address, surfaced back in status. */
   readonly assignedIp: string;
+  /** Engage the leak-protection kill switch (firewall rules) for this session. */
+  readonly killSwitch: boolean;
 }
 
 /**
@@ -69,6 +71,8 @@ export interface MultihopConnectArgs {
   readonly innerMtu: number;
   /** Inner (exit) assigned tunnel address, surfaced back in status. */
   readonly assignedIp: string;
+  /** Engage the leak-protection kill switch (firewall rules) for this session. */
+  readonly killSwitch: boolean;
 }
 
 const DOWN: TunnelStatus = {
@@ -142,6 +146,7 @@ export async function connect(args: ConnectArgs): Promise<TunnelStatus> {
     wgConfig: args.wgConfig,
     endpoint: args.endpoint,
     assignedIp: args.assignedIp,
+    killSwitch: args.killSwitch,
   });
 }
 
@@ -163,6 +168,7 @@ export async function connectMultihop(args: MultihopConnectArgs): Promise<Tunnel
     exitEndpoint: args.exitEndpoint,
     innerMtu: args.innerMtu,
     assignedIp: args.assignedIp,
+    killSwitch: args.killSwitch,
   });
 }
 

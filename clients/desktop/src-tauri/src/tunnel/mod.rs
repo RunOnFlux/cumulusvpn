@@ -60,6 +60,8 @@ pub struct MultihopParams<'a> {
     pub inner_mtu: u16,
     /// Inner (exit) assigned tunnel address, surfaced back in status.
     pub assigned_ip: &'a str,
+    /// Whether to engage the leak-protection kill switch for this session.
+    pub kill_switch: bool,
 }
 
 /// Anything that can go wrong bringing a tunnel up or down.
@@ -180,6 +182,7 @@ impl TunnelManager {
         wg_config: &str,
         endpoint: &str,
         assigned_ip: &str,
+        kill_switch: bool,
     ) -> Result<TunnelStatus, TunnelError> {
         let config = WgConfig::parse(wg_config)?;
 
@@ -200,8 +203,10 @@ impl TunnelManager {
         inner.endpoint = Some(endpoint.to_string());
         inner.error = None;
 
-        killswitch::engage(inner.backend, endpoint, IFACE)
-            .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        if kill_switch {
+            killswitch::engage(inner.backend, endpoint, IFACE)
+                .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        }
 
         let sidecar = match Sidecar::spawn(IFACE) {
             Ok(s) => s,
@@ -290,8 +295,10 @@ impl TunnelManager {
 
         // Kill switch allow-lists the entry endpoint only — the exit is reached
         // *through* the entry tunnel, never directly from the host.
-        killswitch::engage(inner.backend, params.entry_endpoint, IFACE_ENTRY)
-            .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        if params.kill_switch {
+            killswitch::engage(inner.backend, params.entry_endpoint, IFACE_ENTRY)
+                .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        }
 
         // Helper: unwind everything set up so far on any failure.
         let fail = |inner: &mut Inner,

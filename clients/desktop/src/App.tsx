@@ -90,6 +90,26 @@ export function App(): JSX.Element {
         locked={locked}
       />
 
+      <button
+        type="button"
+        className="ks-row"
+        role="switch"
+        aria-checked={conn.killSwitch}
+        onClick={() => !locked && conn.setKillSwitch(!conn.killSwitch)}
+        disabled={locked}
+      >
+        <span className="ks-icon">🛡️</span>
+        <span className="ks-meta">
+          <span className="ks-title">Kill switch</span>
+          <span className="ks-sub">
+            {conn.killSwitch ? 'Blocks all traffic if the VPN drops' : 'Off — traffic can leak if the VPN drops'}
+          </span>
+        </span>
+        <span className={`ks-track ${conn.killSwitch ? 'on' : ''}`}>
+          <span className="ks-thumb" />
+        </span>
+      </button>
+
       {connected && <StatBar tunnel={conn.tunnel} />}
 
       {conn.error && <div className="err">{conn.error}</div>}
