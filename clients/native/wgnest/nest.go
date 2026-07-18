@@ -1,0 +1,139 @@
+// Package wgnest builds a genuinely nested (multi-hop) WireGuard tunnel entirely
+// in userspace, using the same wireguard-go + gVisor netstack stack as the
+// CumulusVPN gateway. No forked wireguard-go is required.
+//
+// Topology (docs/11-multihop.md):
+//
+//	inner tun (0.0.0.0/0) → INNER device (peer = EXIT) → UDP to <exitIP>:51820
+//	  ─ via ─→ OUTER device (peer = ENTRY, AllowedIPs = <exitIP>/32) → real socket
+//
+// The trick is the INNER device's conn.Bind: instead of a real UDP socket, it
+// dials a UDP socket ON THE OUTER DEVICE'S NETSTACK to <exitIP>:51820. The outer
+// netstack routes that (dst = exitIP) out its default route into the OUTER
+// wireguard device, which — because its only AllowedIPs is <exitIP>/32 —
+// encrypts it to the ENTRY gateway. The entry gateway forwards UDP:51820 to the
+// exit (fleet-allow), the exit terminates the INNER WireGuard session and
+// egresses. Return traffic reverses. The client key K is the same at both hops
+// (one payment covers both), and no single gateway sees both who you are and
+// where you go.
+//
+// The OUTER device is created here (netstack). The INNER device's tun is
+// supplied by the caller: on a phone it is the VpnService fd; in tests it is a
+// second netstack so traffic can be driven through the tunnel.
+package wgnest
+
+import (
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
+	"net/netip"
+
+	"golang.zx2c4.com/wireguard/conn"
+	"golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/tun"
+	"golang.zx2c4.com/wireguard/tun/netstack"
+)
+
+const (
+	wgPort   = 51820
+	outerMTU = 1420 // one WireGuard header of headroom
+)
+
+// Gateway identifies one hop: its WireGuard server public key, public IP, and
+// the tunnel address this client was assigned when it enrolled there.
+type Gateway struct {
+	PubKeyB64  string     // WireGuard server public key (base64)
+	IP         netip.Addr // gateway public IP
+	AssignedIP netip.Addr // this client's assigned 10.8.x.y at this gateway
+}
+
+// NestedTunnel owns the two stacked wireguard-go devices. Close() tears both
+// down (inner first, then outer).
+type NestedTunnel struct {
+	inner *device.Device
+	outer *device.Device
+}
+
+// Start brings up the nested tunnel. `clientPrivB64` is the client's WireGuard
+// private key (base64), shared by both hops. `innerTun` is the tun the real
+// 0.0.0.0/0 traffic flows over (caller-owned). `logLevel` is a device.LogLevel*.
+func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLevel int) (*NestedTunnel, error) {
+	privHex, err := b64ToHex(clientPrivB64)
+	if err != nil {
+		return nil, fmt.Errorf("client key: %w", err)
+	}
+	entryPubHex, err := b64ToHex(entry.PubKeyB64)
+	if err != nil {
+		return nil, fmt.Errorf("entry key: %w", err)
+	}
+	exitPubHex, err := b64ToHex(exit.PubKeyB64)
+	if err != nil {
+		return nil, fmt.Errorf("exit key: %w", err)
+	}
+
+	// ---- OUTER device: a netstack whose only route to the exit IP goes through
+	// the entry tunnel. Its client address is the ENTRY-assigned IP. ----
+	outerTun, outerNet, err := netstack.CreateNetTUN(
+		[]netip.Addr{entry.AssignedIP},
+		[]netip.Addr{entry.AssignedIP}, // DNS unused by the outer device
+		outerMTU,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("outer netstack: %w", err)
+	}
+	outer := device.NewDevice(outerTun, conn.NewDefaultBind(), device.NewLogger(logLevel, "outer "))
+	outerCfg := fmt.Sprintf(
+		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\nallowed_ip=%s/32\npersistent_keepalive_interval=15\n",
+		privHex, entryPubHex, entry.IP, wgPort, exit.IP,
+	)
+	if err := outer.IpcSet(outerCfg); err != nil {
+		outer.Close()
+		return nil, fmt.Errorf("outer IpcSet: %w", err)
+	}
+	if err := outer.Up(); err != nil {
+		outer.Close()
+		return nil, fmt.Errorf("outer up: %w", err)
+	}
+
+	// ---- INNER device: real traffic tun, but its socket is a UDP conn ON the
+	// outer netstack to <exitIP>:51820, so its packets ride the outer tunnel. ----
+	exitEndpoint := netip.AddrPortFrom(exit.IP, wgPort)
+	inner := device.NewDevice(innerTun, newNetstackBind(outerNet, exitEndpoint), device.NewLogger(logLevel, "inner "))
+	innerCfg := fmt.Sprintf(
+		"private_key=%s\npublic_key=%s\nendpoint=%s\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
+		privHex, exitPubHex, exitEndpoint,
+	)
+	if err := inner.IpcSet(innerCfg); err != nil {
+		inner.Close()
+		outer.Close()
+		return nil, fmt.Errorf("inner IpcSet: %w", err)
+	}
+	if err := inner.Up(); err != nil {
+		inner.Close()
+		outer.Close()
+		return nil, fmt.Errorf("inner up: %w", err)
+	}
+
+	return &NestedTunnel{inner: inner, outer: outer}, nil
+}
+
+// Close tears the tunnel down.
+func (t *NestedTunnel) Close() {
+	if t.inner != nil {
+		t.inner.Close()
+	}
+	if t.outer != nil {
+		t.outer.Close()
+	}
+}
+
+func b64ToHex(b64 string) (string, error) {
+	raw, err := base64.StdEncoding.DecodeString(b64)
+	if err != nil {
+		return "", err
+	}
+	if len(raw) != 32 {
+		return "", fmt.Errorf("key must be 32 bytes, got %d", len(raw))
+	}
+	return hex.EncodeToString(raw), nil
+}
