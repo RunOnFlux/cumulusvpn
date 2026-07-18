@@ -31,24 +31,24 @@ describe('powHash', () => {
 describe('solvePoW / verifyPoW', () => {
   const pub = 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=';
 
-  it('finds a nonce that satisfies the difficulty', () => {
-    const nonce = solvePoW(pub, 12);
+  it('finds a nonce that satisfies the difficulty', async () => {
+    const nonce = await solvePoW(pub, 12);
     expect(nonce).toMatch(/^\d+$/);
     expect(hasLeadingZeroBits(powHash(pub, nonce), 12)).toBe(true);
     expect(verifyPoW(pub, nonce, 12)).toBe(true);
   });
 
-  it('with an explicit start of 0, finds the smallest qualifying nonce', () => {
-    const nonce = solvePoW(pub, 10, 0);
+  it('with an explicit start of 0, finds the smallest qualifying nonce', async () => {
+    const nonce = await solvePoW(pub, 10, 0);
     const n = Number(nonce);
     for (let i = 0; i < n; i++) {
       expect(hasLeadingZeroBits(powHash(pub, String(i)), 10)).toBe(false);
     }
   });
 
-  it('uses a random start by default → repeated solves differ but all verify', () => {
-    const a = solvePoW(pub, 8);
-    const b = solvePoW(pub, 8);
+  it('uses a random start by default → repeated solves differ but all verify', async () => {
+    const a = await solvePoW(pub, 8);
+    const b = await solvePoW(pub, 8);
     expect(verifyPoW(pub, a, 8)).toBe(true);
     expect(verifyPoW(pub, b, 8)).toBe(true);
     // Astronomically unlikely to collide across the 2^30 start range.

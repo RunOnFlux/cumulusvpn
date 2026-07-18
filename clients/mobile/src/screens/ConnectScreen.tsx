@@ -131,14 +131,26 @@ export function ConnectScreen({
       {vpn.tier === 'free' ? <UpgradeLine payment={vpn.payment} onPress={onOpenUpgrade} /> : null}
 
       <Pressable
-        style={[styles.bigBtn, connected ? styles.bigDisc : styles.bigConnect]}
-        onPress={() => (connected ? void vpn.disconnect() : void vpn.connect())}
+        style={[
+          styles.bigBtn,
+          connected ? styles.bigDisc : styles.bigConnect,
+          busy && styles.bigBtnBusy,
+        ]}
+        onPress={busy ? undefined : () => (connected ? void vpn.disconnect() : void vpn.connect())}
+        disabled={busy}
         accessibilityRole="button"
+        accessibilityState={{ disabled: busy }}
       >
         <Text
           style={[styles.bigBtnLabel, connected ? styles.bigDiscLabel : styles.bigConnectLabel]}
         >
-          {connected ? 'Disconnect' : 'Connect'}
+          {busy
+            ? vpn.state === 'disconnecting'
+              ? 'Disconnecting…'
+              : 'Connecting…'
+            : connected
+              ? 'Disconnect'
+              : 'Connect'}
         </Text>
       </Pressable>
 
@@ -444,6 +456,8 @@ const styles = StyleSheet.create({
   upsellAccent: { color: color.amber, fontWeight: '600' },
   upsellMemo: { fontFamily: font.mono, fontSize: 10.5, color: color.inkFaint, marginTop: 2 },
   bigBtn: { borderRadius: radius.md, paddingVertical: 16, alignItems: 'center' },
+  // Clearly-disabled look while connecting/disconnecting (was too subtle before).
+  bigBtnBusy: { opacity: 0.45 },
   bigConnect: { backgroundColor: color.cyan },
   bigDisc: { backgroundColor: color.glass, borderColor: color.hairlineStrong, borderWidth: 1 },
   bigBtnLabel: { fontSize: 16, fontWeight: '700' },

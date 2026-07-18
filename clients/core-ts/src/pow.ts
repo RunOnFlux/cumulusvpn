@@ -66,15 +66,22 @@ export function hasLeadingZeroBits(digest: Uint8Array, bits: number): boolean {
  * @param startFrom - Counter to start the search at; defaults to a random offset.
  * @returns The winning nonce as a decimal string.
  */
-export function solvePoW(
+export async function solvePoW(
   publicKeyB64: string,
   bits: number = POW_BITS,
   startFrom: number = Math.floor(Math.random() * 0x40000000),
-): string {
+): Promise<string> {
   for (let i = startFrom; ; i++) {
     const nonce = i.toString();
     if (hasLeadingZeroBits(powHash(publicKeyB64, nonce), bits)) {
       return nonce;
+    }
+    // Yield to the event loop periodically. A 20-bit solve is ~1M hashes —
+    // seconds on a phone's JS engine (Hermes) — and running it synchronously
+    // freezes the UI thread ("stuck connecting", unresponsive controls). This
+    // keeps the app responsive during the solve; the total time is unchanged.
+    if ((i & 0x3fff) === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
 }

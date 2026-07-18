@@ -24,7 +24,7 @@ export async function enroll(
 ): Promise<EnrollResponse> {
   const fetchImpl = options.fetchImpl ?? globalThis.fetch;
   const bits = options.powBits ?? POW_BITS;
-  const nonce = solvePoW(publicKeyB64, bits);
+  const nonce = await solvePoW(publicKeyB64, bits);
 
   const { data } = await fetchSigned<EnrollResponse>(
     `http://${gatewayIp}:${CONTROL_PORT}/v1/enroll`,
