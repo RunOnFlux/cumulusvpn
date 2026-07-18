@@ -28,6 +28,12 @@ import os
 import WireGuardKit
 #endif
 
+// WireGuardKitC vends the patched ctl_info / sockaddr_ctl / CTLIOCGINFO used by
+// tunnelFileDescriptor (the utun-fd scan), the same as WireGuardKit's adapter.
+#if canImport(WireGuardKitC)
+import WireGuardKitC
+#endif
+
 // Wgnest.xcframework — the gomobile-built nested-tunnel core (two stacked
 // wireguard-go devices behind one tun). Built by clients/native/wgnest/build-ios.sh.
 #if canImport(Wgnest)

@@ -102,8 +102,14 @@ ships — so wire the build phase and build for `iphoneos` with the human's sign
 
 ## Bottom line
 
-- **iOS builds** — `** BUILD SUCCEEDED **`, app + Packet Tunnel extension with the real WireGuard
-  engine linked. All three blockers cleared and verified.
+- **iOS builds — re-verified with the wiring applied.** `** BUILD SUCCEEDED **` for a device,
+  unsigned build (`-sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`) with
+  `scripts/apply-build-wiring.rb` applied and Go 1.22 building `libwg-go.a`. Produces
+  `CumulusVPN.app` + `PlugIns/PacketTunnelExtension.appex` with **`Wgnest.framework`** (the multi-hop
+  nesting core) embedded in the extension. Two build-only bugs were caught + fixed doing this:
+  `PacketTunnelProvider` needed `import WireGuardKitC` (for `ctl_info`/`sockaddr_ctl`/`CTLIOCGINFO`),
+  and `startTunnel`'s `@objc` selector was missing the new `killSwitch:` argument. Only the **signed**
+  build (Apple Developer account, for on-device install) remains — it links exactly as above.
 - **Persistence wiring (to make a plain `xcodebuild` / the signed build "just work")** — **APPLIED**
   to the project file via `scripts/apply-build-wiring.rb` (idempotent; re-run any time). It performs:
   1. Repoints the Xcode SPM reference to the local vendored `wireguard-apple` (so Fix 1a's header

@@ -22,8 +22,8 @@ final class CumulusTunnelModule: RCTEventEmitter {
 
     override func supportedEvents() -> [String]! { ["CumulusTunnelStatus"] }
 
-    // startTunnel(wgConfig, serverName): Promise<void>
-    @objc(startTunnel:serverName:resolver:rejecter:)
+    // startTunnel(wgConfig, serverName, killSwitch): Promise<void>
+    @objc(startTunnel:serverName:killSwitch:resolver:rejecter:)
     func startTunnel(
         _ wgConfig: String,
         serverName: String,
