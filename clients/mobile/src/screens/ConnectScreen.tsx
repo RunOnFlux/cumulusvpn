@@ -5,7 +5,15 @@
  * plus live down/up/ping stats when connected. Everything is driven by `useVpn`.
  */
 import { useEffect, useState } from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { RouteStyle } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
 import type { PaymentIdentity, VpnActions, VpnModel } from '../state/useVpn';
@@ -114,6 +122,14 @@ export function ConnectScreen({
               k="Handshake"
               v={vpn.status.lastHandshake ? `${sinceSec(vpn.status.lastHandshake)}s` : '—'}
             />
+          </View>
+        ) : null}
+
+        {/* Serving the cached fleet while a background refresh fetches fresh. */}
+        {vpn.discovering && vpn.countries.length > 0 ? (
+          <View style={styles.updating}>
+            <ActivityIndicator size="small" color={color.inkFaint} />
+            <Text style={styles.updatingText}>Updating servers…</Text>
           </View>
         ) : null}
       </View>
@@ -465,6 +481,8 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
   },
   loc: { alignItems: 'center' },
+  updating: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  updatingText: { color: color.inkFaint, fontSize: 11.5 },
   flag: { fontSize: 30, lineHeight: 34 },
   country: { fontSize: 21, fontWeight: '700', color: color.ink, marginTop: space.xs },
   ip: { fontFamily: font.mono, fontSize: 11.5, color: color.inkDim, marginTop: 3 },

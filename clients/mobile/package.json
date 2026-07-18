@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@cumulusvpn/core": "file:../core-ts",
+    "@react-native-async-storage/async-storage": "3.1.1",
     "react": "19.2.7",
     "react-native": "0.86.0",
     "react-native-get-random-values": "1.11.0",

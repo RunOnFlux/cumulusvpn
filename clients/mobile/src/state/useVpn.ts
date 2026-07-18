@@ -35,6 +35,7 @@ import {
   loadEntryCountry,
   loadExitCountry,
   loadFavorites,
+  loadFleet,
   loadKeypair,
   loadKillSwitch,
   loadRouteStyle,
@@ -43,6 +44,7 @@ import {
   saveEntryCountry,
   saveExitCountry,
   saveFavorites,
+  saveFleet,
   saveKeypair,
   saveKillSwitch,
   saveRouteStyle,
@@ -205,6 +207,8 @@ export function useVpn(): VpnModel & VpnActions {
         }
       }
       setCountries(groupByCountry(gateways, latencyByIp));
+      // Persist this good snapshot as the launch cache (best-effort).
+      void saveFleet(gateways, latencyByIp, Date.now()).catch(() => undefined);
     },
     [],
   );
@@ -253,6 +257,14 @@ export function useVpn(): VpnModel & VpnActions {
         setKillSwitchState(await loadKillSwitch());
         setAutoConnectState(await loadAutoConnect());
         setFavorites(await loadFavorites());
+        // Paint the cached fleet first (instant, dismisses the splash), then
+        // refresh live in the background. On a cold first launch there's no
+        // cache, so this is a no-op and the splash waits for live discovery.
+        const cached = await loadFleet();
+        if (alive && cached) {
+          gatewaysRef.current = cached.gateways;
+          setCountries(groupByCountry(cached.gateways, cached.latencyByIp));
+        }
         await refresh();
       } catch (e) {
         if (alive) {

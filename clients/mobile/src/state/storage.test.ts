@@ -1,12 +1,11 @@
 /**
- * Unit tests for the persistence seam.
- *
- * The POC uses an in-memory Map behind the real async signatures, so these
- * tests exercise the observable contract every screen relies on: keypair
- * round-trips, route-style validation/defaulting, and the null-clears-auto-pick
- * behaviour of the entry/exit country setters.
+ * Unit tests for the persistence seam (AsyncStorage-backed; the native module is
+ * swapped for its in-memory jest mock in jest.setup.js). These exercise the
+ * observable contract every screen relies on: keypair round-trips, route-style
+ * validation/defaulting, the null-clears-auto-pick behaviour of the entry/exit
+ * setters, and the discovery (fleet) cache round-trip + corruption guard.
  */
-import type { Keypair } from '@cumulusvpn/core';
+import type { GatewayInfo, Keypair } from '@cumulusvpn/core';
 import {
   loadKeypair,
   saveKeypair,
@@ -18,9 +17,25 @@ import {
   saveEntryCountry,
   loadExitCountry,
   saveExitCountry,
+  loadFleet,
+  saveFleet,
 } from './storage';
 
 const KP: Keypair = { publicKey: 'pub-abc', privateKey: 'priv-xyz' };
+
+const GW: GatewayInfo = {
+  ip: '1.2.3.4',
+  controlUrl: 'http://1.2.3.4:51821',
+  country: 'DE',
+  region: 'EU',
+  city: 'Frankfurt',
+  load: 0.1,
+  capacity: 90,
+  version: '0.1.0',
+  min_client_version: '0.1.0',
+  server_pubkey: 'srv-pub',
+  sign_pubkey: 'sign-pub',
+};
 
 describe('keypair persistence', () => {
   it('returns null before anything is saved', async () => {
@@ -68,5 +83,24 @@ describe('multi-hop entry/exit country', () => {
     await expect(loadExitCountry()).resolves.toBe('JP');
     await saveExitCountry(null);
     await expect(loadExitCountry()).resolves.toBeNull();
+  });
+});
+
+describe('fleet cache', () => {
+  it('is null before anything is cached', async () => {
+    await expect(loadFleet()).resolves.toBeNull();
+  });
+
+  it('round-trips a saved snapshot with gateways + latency', async () => {
+    await saveFleet([GW], { [GW.ip]: 42 }, 1_700_000_000_000);
+    const got = await loadFleet();
+    expect(got?.gateways).toEqual([GW]);
+    expect(got?.latencyByIp).toEqual({ [GW.ip]: 42 });
+    expect(got?.savedAt).toBe(1_700_000_000_000);
+  });
+
+  it('treats an empty gateway list as no cache', async () => {
+    await saveFleet([], {}, 1_700_000_000_000);
+    await expect(loadFleet()).resolves.toBeNull();
   });
 });

@@ -33,6 +33,8 @@ interface Props {
   readonly onClose: () => void;
   /** Re-run discovery + an active latency re-test of the fleet. */
   readonly onRefresh: () => Promise<void>;
+  /** True while an automatic background discovery is in flight. */
+  readonly discovering?: boolean;
   /** Favorited country codes (surfaced first). */
   readonly favorites: readonly string[];
   /** Pin/unpin a country. */
@@ -45,11 +47,14 @@ export function CountryPickerScreen({
   onSelect,
   onClose,
   onRefresh,
+  discovering = false,
   favorites,
   onToggleFavorite,
 }: Props): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  // Spin for either a manual re-test or an automatic background refresh.
+  const busy = refreshing || discovering;
 
   const doRefresh = async (): Promise<void> => {
     setRefreshing(true);
@@ -79,11 +84,11 @@ export function CountryPickerScreen({
         <Text style={styles.title}>Choose location</Text>
         <View style={styles.headerRight}>
           <Pressable
-            onPress={refreshing ? undefined : () => void doRefresh()}
+            onPress={busy ? undefined : () => void doRefresh()}
             accessibilityRole="button"
             hitSlop={10}
           >
-            {refreshing ? (
+            {busy ? (
               <ActivityIndicator size="small" color={color.cyan} />
             ) : (
               <Text style={styles.retest}>↻ Re-test</Text>

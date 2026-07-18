@@ -23,4 +23,6 @@ module.exports = {
   },
   testMatch: ['**/src/**/*.test.ts', '**/src/**/*.test.tsx'],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
+  // Mock the native AsyncStorage module (see jest.setup.js).
+  setupFiles: ['<rootDir>/jest.setup.js'],
 };
