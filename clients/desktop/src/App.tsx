@@ -101,7 +101,9 @@ export function App(): JSX.Element {
         <span className="ks-meta">
           <span className="ks-title">Kill switch</span>
           <span className="ks-sub">
-            {conn.killSwitch ? 'Blocks all traffic if the VPN drops' : 'Off — traffic can leak if the VPN drops'}
+            {conn.killSwitch
+              ? 'Blocks all traffic if the VPN drops'
+              : 'Off — traffic can leak if the VPN drops'}
           </span>
         </span>
         <span className={`ks-track ${conn.killSwitch ? 'on' : ''}`}>
