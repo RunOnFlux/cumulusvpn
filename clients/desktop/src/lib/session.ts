@@ -21,9 +21,36 @@ import type {
   RouteStyle,
   StatusResponse,
 } from '@cumulusvpn/core';
+import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
+
+/**
+ * Enroll at a gateway — or, when running outside Tauri (a plain browser: dev,
+ * Storybook, the headless UI render), return a mock enrollment. The gateway
+ * fetch isn't reachable/CORS-allowed from a browser, so this keeps the *whole*
+ * flow (through the connected state) demoable, mirroring the mock tunnel in
+ * `tauri.js`. No effect in the shipped desktop app (`isTauri()` is true there).
+ */
+async function enrollOrMock(
+  gatewayIp: string,
+  publicKey: string,
+  options: ReturnType<typeof enrollOptsFor>,
+): Promise<EnrollResponse> {
+  if (isTauri()) {
+    return enroll(gatewayIp, publicKey, options);
+  }
+  return {
+    server_pubkey: '2YOz4coIWsUlxKe3TNGFZqri7gX0nDJECrJ8olPG/AA=',
+    endpoint: `${gatewayIp}:51820`,
+    assigned_ip: '10.8.0.2',
+    dns: '1.1.1.1',
+    payment_address: BUNDLED_DIRECTORY.payment_address,
+    payment_memo: 'CVPN1:demo',
+    price_flux: BUNDLED_DIRECTORY.price_flux,
+  };
+}
 
 /** A pickable location in the UI, backed by the least-loaded gateway there. */
 export interface CountryOption {
@@ -101,6 +128,26 @@ export async function discoverCountries(fetchImpl?: typeof fetch): Promise<Count
   if (gateways.length > 0) {
     return toCountryOptions(gateways);
   }
+  // Browser demo (dev / Storybook / headless render): the Flux discovery API
+  // isn't reachable from a plain browser, so synthesize the fleet's countries
+  // from the signed directory specs. No effect in the shipped app.
+  if (!isTauri()) {
+    return BUNDLED_DIRECTORY.specs
+      .map((spec): CountryOption => {
+        const code = spec.replace(/^cumulusvpn/, '').toUpperCase();
+        const meta = countryMeta(code);
+        return {
+          code,
+          name: meta.name,
+          flag: meta.flag,
+          gatewayIp: '10.0.0.1',
+          city: 'demo',
+          load: 0.2,
+          signPubKey: '',
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
   // Offline cold-start: synthesize options from the signed seed list. Skip the
   // 0.0.0.0 placeholder seeds (live discovery resolves real IPs), matching the
   // mobile client — better to show nothing than an unconnectable gateway.
@@ -164,7 +211,7 @@ export async function establish(
   fetchImpl?: typeof fetch,
 ): Promise<EstablishResult> {
   const enrollOpts = enrollOptsFor(country, fetchImpl);
-  const reply = await enroll(country.gatewayIp, keypair.publicKey, enrollOpts);
+  const reply = await enrollOrMock(country.gatewayIp, keypair.publicKey, enrollOpts);
 
   const wgConfig = buildWgConfig({
     privateKey: keypair.privateKey,
@@ -222,12 +269,12 @@ export async function establishMultihop(
   }
 
   // Enroll the SAME key K at both gateways — one payment, premium follows K.
-  const entryReply = await enroll(
+  const entryReply = await enrollOrMock(
     hops.entry.ip,
     keypair.publicKey,
     enrollOptsFor(entryCountry, fetchImpl),
   );
-  const exitReply = await enroll(
+  const exitReply = await enrollOrMock(
     hops.exit.ip,
     keypair.publicKey,
     enrollOptsFor(exitCountry, fetchImpl),

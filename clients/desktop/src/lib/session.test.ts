@@ -10,6 +10,23 @@ vi.mock('@cumulusvpn/core', async (importOriginal) => {
   return { ...actual, discoverGateways: vi.fn(), enroll: vi.fn() };
 });
 
+// Exercise the production (in-Tauri) path: isTauri()=true so establish uses the
+// real (mocked) enroll rather than the browser demo fallback, and invoke echoes
+// a connected status back from the "native" side.
+vi.mock('@tauri-apps/api/core', () => ({
+  isTauri: () => true,
+  invoke: vi.fn(async (_cmd: string, args: Record<string, unknown>) => ({
+    state: 'up',
+    country: (args?.country as string) ?? null,
+    endpoint: (args?.endpoint as string) ?? null,
+    assignedIp: (args?.assignedIp as string) ?? null,
+    rxBytes: 0,
+    txBytes: 0,
+    lastHandshake: null,
+    error: null,
+  })),
+}));
+
 const mockedDiscover = vi.mocked(discoverGateways);
 const mockedEnroll = vi.mocked(enroll);
 
