@@ -3,40 +3,49 @@
 //!
 //! The policy is identical everywhere: allow loopback, allow the WireGuard
 //! endpoint (UDP :51820) and the tunnel, drop the rest of the plaintext egress.
-//! Only the mechanism differs per OS.
+//! Only the mechanism differs per OS — pf (macOS), nftables (Linux), Windows
+//! Firewall / NetSecurity, which sits on top of WFP (Windows).
 //!
 //! **Timing.** `engage` is called *before* the wireguard-go sidecars spawn (so
 //! there is a fail-closed window from the very start), which means the real
 //! kernel tun name (`utunN` on macOS) is not known yet. Two consequences:
-//!   - **Linux** wireguard-go uses the logical interface name, so we allow it by
-//!     the `cvpn*` prefix (covers `cvpn0`, `cvpn-entry`, `cvpn-exit`).
+//!   - **Linux + Windows** wireguard-go uses the logical interface name, so we
+//!     allow it by the `cvpn*` prefix (covers `cvpn0`, `cvpn-entry`, `cvpn-exit`).
 //!   - **macOS** cannot name the tun, so we instead block only on the *physical*
 //!     interface — which is the actual leak path (plaintext falling back to the
 //!     physical default if the tun routes vanish). Traffic on the tun is never
 //!     touched, so we don't need its name.
 //!
-//! **Self-contained + removable.** Everything lives in a dedicated pf anchor
-//! (`com.cumulusvpn`) / nftables table (`inet cumulusvpn`); [`disengage`] removes
-//! exactly that and nothing else, so the user's own firewall rules are untouched.
+//! **Self-contained + removable.** Everything lives in a dedicated scope — a pf
+//! anchor (`com.cumulusvpn`), an nftables table (`inet cumulusvpn`), or a
+//! firewall-rule group (`CumulusVPN`) — and [`disengage`] removes exactly that
+//! and nothing else, so the user's own firewall rules are untouched. The one
+//! exception is the OS-wide default-outbound policy (macOS main ruleset / Windows
+//! `DefaultOutboundAction`), which we flip to block while connected and restore
+//! on teardown — the standard "own the firewall while up" pattern.
 //!
-//! **Privilege + lifecycle (seam).** `pfctl`/`nft` need root; in a shipped build
-//! they run through the platform privileged helper, which must also clean up if
-//! the app dies while engaged (otherwise the fail-closed block persists — the
-//! intended behaviour for a kill switch, but the helper owns un-blocking).
-//! **Windows** (WFP) remains a seam.
+//! **Privilege + lifecycle (seam).** `pfctl`/`nft`/`powershell` need root/Admin;
+//! in a shipped build they run through the platform privileged helper, which must
+//! also clean up if the app dies while engaged (otherwise the fail-closed block
+//! persists — the intended behaviour for a kill switch, but the helper owns
+//! un-blocking).
 
+use std::process::Command;
 #[cfg(unix)]
 use std::io::Write;
 #[cfg(unix)]
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 use super::TunnelError;
 
-/// pf anchor (macOS) / nft table (Linux) name — our dedicated, removable scope.
+/// pf anchor (macOS) / nft table (Linux) / firewall-rule group (Windows) name —
+/// our dedicated, removable scope.
 #[cfg(target_os = "macos")]
 const ANCHOR: &str = "com.cumulusvpn";
 #[cfg(target_os = "linux")]
 const TABLE: &str = "cumulusvpn";
+#[cfg(target_os = "windows")]
+const GROUP: &str = "CumulusVPN";
 
 /// Where the leak-protection rules get installed, per platform.
 #[derive(Debug, Clone, Copy)]
@@ -45,7 +54,7 @@ pub enum Backend {
     MacosPf,
     /// Linux netfilter (`nftables`).
     LinuxNftables,
-    /// Windows Filtering Platform (WFP) via the wireguard-nt helper.
+    /// Windows Firewall via the NetSecurity cmdlets (WFP under the hood).
     WindowsWfp,
 }
 
@@ -70,8 +79,8 @@ pub fn detect_backend() -> Backend {
 /// Idempotent — re-engaging replaces the rule set.
 ///
 /// `interface` is the *logical* label (the real tun name isn't known yet — see
-/// the module docs); the rules match the tun by prefix (Linux) or ignore it and
-/// block on the physical (macOS).
+/// the module docs); the rules match the tun by prefix (Linux/Windows) or ignore
+/// it and block on the physical (macOS).
 pub fn engage(backend: Backend, endpoint: &str, interface: &str) -> Result<(), TunnelError> {
     let _ = interface;
     let endpoint_ip = strip_port(endpoint);
@@ -80,7 +89,10 @@ pub fn engage(backend: Backend, endpoint: &str, interface: &str) -> Result<(), T
         Backend::MacosPf => engage_macos(endpoint_ip),
         #[cfg(target_os = "linux")]
         Backend::LinuxNftables => engage_linux(endpoint_ip),
-        // Windows, or a backend that isn't native to this build: seam.
+        #[cfg(target_os = "windows")]
+        Backend::WindowsWfp => engage_windows(endpoint_ip),
+        // A backend that isn't native to this build: seam.
+        #[allow(unreachable_patterns)]
         _ => {
             let _ = endpoint_ip;
             Ok(())
@@ -97,6 +109,9 @@ pub fn disengage(backend: Backend) -> Result<(), TunnelError> {
         Backend::MacosPf => disengage_macos(),
         #[cfg(target_os = "linux")]
         Backend::LinuxNftables => disengage_linux(),
+        #[cfg(target_os = "windows")]
+        Backend::WindowsWfp => disengage_windows(),
+        #[allow(unreachable_patterns)]
         _ => {}
     }
     Ok(())
@@ -197,6 +212,64 @@ fn disengage_linux() {
     run_best_effort("nft", &["delete", "table", "inet", TABLE]);
 }
 
+// ---- Windows (Windows Firewall / NetSecurity) ------------------------------
+
+#[cfg(target_os = "windows")]
+fn engage_windows(endpoint_ip: &str) -> Result<(), TunnelError> {
+    // Clear any stale rules from a previous run, then add our allow rules BEFORE
+    // flipping the default policy to block — so there's never a window where the
+    // block is active without the exceptions in place.
+    run_best_effort(
+        "powershell",
+        &["-NoProfile", "-Command", &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue")],
+    );
+
+    // Allow the WireGuard endpoint handshake out (loopback is exempt from Windows
+    // Firewall filtering, so it needs no rule).
+    run(
+        "powershell",
+        &["-NoProfile", "-Command", &format!(
+            "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — endpoint' -Group '{GROUP}' \
+             -Direction Outbound -Action Allow -Protocol UDP -RemoteAddress {endpoint_ip} -RemotePort 51820 | Out-Null"
+        )],
+        "failed to add endpoint allow rule",
+    )?;
+
+    // Allow all traffic out the tunnel adapter(s): cvpn0 (single) / cvpn-entry +
+    // cvpn-exit (multi-hop). -InterfaceAlias accepts a wildcard.
+    run(
+        "powershell",
+        &["-NoProfile", "-Command", &format!(
+            "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — tunnel' -Group '{GROUP}' \
+             -Direction Outbound -Action Allow -InterfaceAlias 'cvpn*' | Out-Null"
+        )],
+        "failed to add tunnel allow rule",
+    )?;
+
+    // Block everything else outbound by default; the allow rules above take
+    // precedence over the default block.
+    run(
+        "powershell",
+        &["-NoProfile", "-Command", "Set-NetFirewallProfile -All -DefaultOutboundAction Block"],
+        "failed to set block policy",
+    )?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn disengage_windows() {
+    // Restore the default (allow) policy first so traffic flows again, then drop
+    // our rules.
+    run_best_effort(
+        "powershell",
+        &["-NoProfile", "-Command", "Set-NetFirewallProfile -All -DefaultOutboundAction Allow"],
+    );
+    run_best_effort(
+        "powershell",
+        &["-NoProfile", "-Command", &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue")],
+    );
+}
+
 // ---- process helpers -------------------------------------------------------
 
 /// Run a command, feeding `stdin_data` on stdin; map failure to `err`.
@@ -223,8 +296,16 @@ fn run_stdin(
     }
 }
 
+/// Run a command (args only), mapping a non-zero exit or spawn failure to `err`.
+#[cfg(target_os = "windows")]
+fn run(program: &str, args: &[&str], err: &'static str) -> Result<(), TunnelError> {
+    match Command::new(program).args(args).output() {
+        Ok(out) if out.status.success() => Ok(()),
+        _ => Err(TunnelError::KillSwitch(err)),
+    }
+}
+
 /// Best-effort command for teardown paths: never fails the caller.
-#[cfg(unix)]
 fn run_best_effort(program: &str, args: &[&str]) {
     let _ = Command::new(program).args(args).output();
 }
