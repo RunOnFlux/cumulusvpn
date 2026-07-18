@@ -272,7 +272,7 @@ function MultihopControls({
 
       {/* v1 same-key caveat (docs/11 §Entitlement & cost). */}
       <Text style={styles.caveat}>
-        v1: both hops use the same key. One $0.99 payment covers both, but an adversary who controls
+        v1: both hops use the same key. A single payment covers both, but an adversary who controls
         both of your chosen hops could still correlate you via that shared key. Distinct-key-per-hop
         lands in v1.5.
       </Text>
