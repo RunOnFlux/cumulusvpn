@@ -192,10 +192,17 @@ object CumulusTunnelController {
 
     /**
      * Live byte counters from the running device, or zeros when down.
-     * POC: `lastHandshake` stays 0 — the per-peer handshake accessor on
-     * [Statistics] differs across library versions; totalRx/totalTx are stable.
+     *
+     * Multi-hop runs in [CumulusMultihopVpnService] (the Go core owns the tun),
+     * so its counters come from there; single-hop reads the wireguard-android
+     * backend. POC: single-hop `lastHandshake` stays 0 — the per-peer handshake
+     * accessor on [Statistics] differs across library versions; totalRx/totalTx
+     * are stable (multi-hop reports a real handshake time from the Go core).
      */
     fun statistics(context: Context): Stats {
+        if (multihopActive) {
+            return CumulusMultihopVpnService.statistics()
+        }
         val b = backend ?: return Stats(0, 0, 0)
         return try {
             val s: Statistics = b.getStatistics(tunnel)

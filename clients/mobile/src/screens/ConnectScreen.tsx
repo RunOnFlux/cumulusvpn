@@ -109,7 +109,10 @@ export function ConnectScreen({
               {vpn.activeExit.flag} {vpn.activeExit.name}
             </Text>
             <Text style={styles.ip}>
-              Entry {vpn.activeEntry.ip} · Exit {vpn.activeExit.ip}
+              Entry {vpn.activeEntry.city} · {vpn.activeEntry.ip}
+            </Text>
+            <Text style={styles.ip}>
+              Exit {vpn.activeExit.city} · {vpn.activeExit.ip}
             </Text>
             <Text style={styles.ip}>{elapsed ? `Protected · ${elapsed}` : 'Protected'}</Text>
           </View>
@@ -118,7 +121,9 @@ export function ConnectScreen({
           <View style={styles.loc}>
             <Text style={styles.flag}>{vpn.activeEntry.flag}</Text>
             <Text style={styles.country}>{vpn.activeEntry.name}</Text>
-            <Text style={styles.ip}>IP {vpn.activeEntry.ip}</Text>
+            <Text style={styles.ip}>
+              {vpn.activeEntry.city} · {vpn.activeEntry.ip}
+            </Text>
             <Text style={styles.ip}>{elapsed ? `Protected · ${elapsed}` : 'Protected'}</Text>
           </View>
         ) : (
@@ -131,15 +136,19 @@ export function ConnectScreen({
           </View>
         )}
 
-        {connected && vpn.status ? (
-          <View style={styles.statRow}>
-            <Stat k="Rx" v={formatBytes(vpn.status.rxBytes)} />
-            <Stat k="Tx" v={formatBytes(vpn.status.txBytes)} />
-            <Stat
-              k="Handshake"
-              v={vpn.status.lastHandshake ? `${sinceSec(vpn.status.lastHandshake)}s` : '—'}
-            />
-          </View>
+        {connected ? (
+          <>
+            <View style={styles.statRow}>
+              <Stat k="Download" v={`${formatBytes(vpn.speed.down)}/s`} />
+              <Stat k="Upload" v={`${formatBytes(vpn.speed.up)}/s`} />
+              <Stat k="Ping" v={vpn.pingMs === null ? '—' : `${vpn.pingMs} ms`} />
+            </View>
+            {vpn.status ? (
+              <Text style={styles.dataLine}>
+                Data used ↓ {formatBytes(vpn.status.rxBytes)} · ↑ {formatBytes(vpn.status.txBytes)}
+              </Text>
+            ) : null}
+          </>
         ) : null}
 
         {/* Serving the cached fleet while a background refresh fetches fresh. */}
@@ -451,10 +460,6 @@ function formatBytes(n: number): string {
   return `${v.toFixed(1)} ${units[i]}`;
 }
 
-function sinceSec(unixSec: number): number {
-  return Math.max(0, Math.round(Date.now() / 1000 - unixSec));
-}
-
 /** Compact elapsed duration: "45s", "12m 03s", "2h 09m". */
 function formatDuration(ms: number): string {
   const s = Math.max(0, Math.floor(ms / 1000));
@@ -518,6 +523,13 @@ const styles = StyleSheet.create({
   ip: { fontFamily: font.mono, fontSize: 11.5, color: color.inkDim, marginTop: 3 },
   notConnected: { fontSize: 16, color: color.inkMuted },
   statRow: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: space.xs },
+  dataLine: {
+    fontFamily: font.mono,
+    fontSize: 11.5,
+    color: color.inkFaint,
+    textAlign: 'center',
+    marginTop: space.sm,
+  },
   stat: {
     flex: 1,
     backgroundColor: color.glass,

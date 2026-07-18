@@ -95,12 +95,14 @@ class CumulusMultihopVpnService : VpnService() {
             exitPub, exitIp, exitAssigned,
             fd.toLong(),
         )
+        activeHandle = handle
         Log.i(TAG, "nested tunnel up: entry=$entryIp exit=$exitIp handle=$handle")
     }
 
     private fun teardown() {
         val h = handle
         handle = 0
+        activeHandle = 0
         if (h != 0L) {
             try {
                 Wgmobile.stop(h)
@@ -136,6 +138,33 @@ class CumulusMultihopVpnService : VpnService() {
 
         const val ACTION_START = "com.cumulusvpn.multihop.START"
         const val ACTION_STOP = "com.cumulusvpn.multihop.STOP"
+
+        // Handle of the live nested tunnel, so the controller can read its live
+        // counters (the service instance owns the tun; stats are per-handle).
+        @Volatile
+        private var activeHandle: Long = 0
+
+        /**
+         * Live counters for the running nested tunnel. The Go core returns them
+         * as the CSV "rx,tx,lastHandshakeSec" (from the inner device, which
+         * carries all real traffic); zeros mean "no tunnel / no data yet".
+         */
+        fun statistics(): CumulusTunnelController.Stats {
+            val h = activeHandle
+            if (h == 0L) {
+                return CumulusTunnelController.Stats(0, 0, 0)
+            }
+            return try {
+                val parts = Wgmobile.getStats(h).split(",")
+                CumulusTunnelController.Stats(
+                    parts.getOrNull(0)?.toLongOrNull() ?: 0,
+                    parts.getOrNull(1)?.toLongOrNull() ?: 0,
+                    parts.getOrNull(2)?.toLongOrNull() ?: 0,
+                )
+            } catch (t: Throwable) {
+                CumulusTunnelController.Stats(0, 0, 0)
+            }
+        }
 
         const val EXTRA_CLIENT_PRIV = "clientPriv"
         const val EXTRA_ENTRY_PUB = "entryPub"

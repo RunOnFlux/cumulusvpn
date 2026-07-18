@@ -59,6 +59,8 @@ export interface RouteEndpoint {
   readonly city: string;
   /** Gateway public IP — for the exit hop this is the egress the world sees. */
   readonly ip: string;
+  /** `http://<ip>:51821` control URL — used to live-ping this hop. */
+  readonly controlUrl: string;
 }
 
 /** Build a {@link RouteEndpoint} (country + IP) from a concrete gateway. */
@@ -69,6 +71,7 @@ export function routeEndpoint(gw: GatewayInfo): RouteEndpoint {
     name: COUNTRY_NAMES[gw.country] ?? gw.country,
     city: gw.city,
     ip: gw.ip,
+    controlUrl: gw.controlUrl,
   };
 }
 

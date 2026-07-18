@@ -18,6 +18,7 @@ import {
   generateKeypair,
   paymentCode,
   paymentMemo,
+  pingGateway,
   selectHops,
   status as fetchStatus,
 } from '@cumulusvpn/core';
@@ -106,6 +107,10 @@ export interface VpnModel {
    * for single-hop (entry === exit) and when not connected.
    */
   readonly activeExit: RouteEndpoint | null;
+  /** Live throughput in bytes/sec (down = rx rate, up = tx rate). */
+  readonly speed: { readonly down: number; readonly up: number };
+  /** Live round-trip to the connected exit gateway in ms, or null. */
+  readonly pingMs: number | null;
   /** Favorited (pinned) country codes, surfaced first in the picker. */
   readonly favorites: readonly string[];
 }
@@ -174,6 +179,11 @@ export function useVpn(): VpnModel & VpnActions {
   // display. activeExit is null for single-hop.
   const [activeEntry, setActiveEntry] = useState<RouteEndpoint | null>(null);
   const [activeExit, setActiveExit] = useState<RouteEndpoint | null>(null);
+  // Live metrics while connected: down/up bytes/sec (from counter deltas) and a
+  // round-trip ping to the exit. Derived by the polling effects below.
+  const [speed, setSpeed] = useState<{ down: number; up: number }>({ down: 0, up: 0 });
+  const [pingMs, setPingMs] = useState<number | null>(null);
+  const lastSampleRef = useRef<{ rx: number; tx: number; t: number } | null>(null);
   // Whether the user currently wants a tunnel (true after connect, false after
   // an explicit disconnect) + whether we reached 'connected' — together these
   // distinguish an unexpected drop from a user disconnect, for auto-reconnect.
@@ -318,6 +328,74 @@ export function useVpn(): VpnModel & VpnActions {
     });
     return () => sub.remove();
   }, []);
+
+  // ---- live counters + speed: poll while connected -----------------------
+  // The event stream only fires on state changes, so the byte/handshake
+  // counters never move without an explicit poll. Sample every 1.5s and derive
+  // down/up throughput from the deltas.
+  useEffect(() => {
+    if (state !== 'connected') {
+      lastSampleRef.current = null;
+      setSpeed({ down: 0, up: 0 });
+      return undefined;
+    }
+    let alive = true;
+    const tick = async (): Promise<void> => {
+      try {
+        const s = await CumulusTunnel.getStatus();
+        if (!alive) {
+          return;
+        }
+        setStatus(s);
+        const t = Date.now();
+        const prev = lastSampleRef.current;
+        if (prev) {
+          const dt = (t - prev.t) / 1000;
+          if (dt > 0) {
+            setSpeed({
+              down: Math.max(0, (s.rxBytes - prev.rx) / dt),
+              up: Math.max(0, (s.txBytes - prev.tx) / dt),
+            });
+          }
+        }
+        lastSampleRef.current = { rx: s.rxBytes, tx: s.txBytes, t };
+      } catch {
+        // Ignore a transient poll failure; keep the last sample.
+      }
+    };
+    const id = setInterval(() => void tick(), 1500);
+    void tick();
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [state]);
+
+  // ---- live ping to the exit gateway while connected ---------------------
+  useEffect(() => {
+    const hop = activeExit ?? activeEntry;
+    if (state !== 'connected' || !hop) {
+      setPingMs(null);
+      return undefined;
+    }
+    let alive = true;
+    const ping = async (): Promise<void> => {
+      try {
+        const { rttMs } = await pingGateway(hop.controlUrl, { samples: 1 });
+        if (alive) {
+          setPingMs(rttMs);
+        }
+      } catch {
+        // Ignore; keep the last reading.
+      }
+    };
+    const id = setInterval(() => void ping(), 5000);
+    void ping();
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [state, activeExit, activeEntry]);
 
   // ---- connect watchdog: never hang on "connecting" forever --------------
   // The enroll network step is bounded by core's fetch timeout, but a config
@@ -550,6 +628,8 @@ export function useVpn(): VpnModel & VpnActions {
     connectedSince,
     activeEntry,
     activeExit,
+    speed,
+    pingMs,
     favorites,
     connect,
     disconnect,

@@ -27,6 +27,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"net/netip"
+	"strconv"
+	"strings"
 
 	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
@@ -115,6 +117,39 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 	}
 
 	return &NestedTunnel{inner: inner, outer: outer}, nil
+}
+
+// Stats reports the inner tunnel's cumulative byte counters and the last
+// handshake time (unix seconds). The INNER device carries all real traffic
+// (AllowedIPs 0.0.0.0/0), so its counters are the user-visible totals. Values
+// are read from wireguard-go's IPC surface; zeros mean "no data yet".
+func (t *NestedTunnel) Stats() (rxBytes, txBytes, lastHandshakeSec int64) {
+	if t.inner == nil {
+		return 0, 0, 0
+	}
+	get, err := t.inner.IpcGet()
+	if err != nil {
+		return 0, 0, 0
+	}
+	for _, line := range strings.Split(get, "\n") {
+		key, val, ok := strings.Cut(line, "=")
+		if !ok {
+			continue
+		}
+		n, err := strconv.ParseInt(strings.TrimSpace(val), 10, 64)
+		if err != nil {
+			continue
+		}
+		switch key {
+		case "rx_bytes":
+			rxBytes = n
+		case "tx_bytes":
+			txBytes = n
+		case "last_handshake_time_sec":
+			lastHandshakeSec = n
+		}
+	}
+	return rxBytes, txBytes, lastHandshakeSec
 }
 
 // Close tears the tunnel down.

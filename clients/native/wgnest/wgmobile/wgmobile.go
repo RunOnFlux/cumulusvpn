@@ -20,10 +20,10 @@ import (
 )
 
 var (
-	mu      sync.Mutex
-	byID    = map[int64]*wgnest.NestedTunnel{}
-	nextID  int64
-	tunFDs  = map[int64]tun.Device{}
+	mu     sync.Mutex
+	byID   = map[int64]*wgnest.NestedTunnel{}
+	nextID int64
+	tunFDs = map[int64]tun.Device{}
 )
 
 // Start brings up a nested (multi-hop) WireGuard tunnel over the supplied
@@ -91,4 +91,20 @@ func Stop(handle int64) {
 	if t != nil {
 		t.Close()
 	}
+}
+
+// GetStats returns the tunnel's live counters as the CSV string
+// "rxBytes,txBytes,lastHandshakeSec" (or "0,0,0" for an unknown/closed handle).
+// A CSV keeps the gomobile surface to a plain string — no struct binding — and
+// the caller (Kotlin/Swift) splits it. The values come from the inner device,
+// which carries all real traffic, so they are the user-visible totals.
+func GetStats(handle int64) string {
+	mu.Lock()
+	t := byID[handle]
+	mu.Unlock()
+	if t == nil {
+		return "0,0,0"
+	}
+	rx, tx, hs := t.Stats()
+	return fmt.Sprintf("%d,%d,%d", rx, tx, hs)
 }
