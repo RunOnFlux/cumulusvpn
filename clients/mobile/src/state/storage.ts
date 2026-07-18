@@ -67,6 +67,16 @@ export async function saveKillSwitch(enabled: boolean): Promise<void> {
   mem.set('killSwitch', enabled ? '1' : '0');
 }
 
+/** Load the auto-connect-on-launch preference (default off). */
+export async function loadAutoConnect(): Promise<boolean> {
+  return mem.get('autoConnect') === '1';
+}
+
+/** Persist the auto-connect-on-launch preference. */
+export async function saveAutoConnect(enabled: boolean): Promise<void> {
+  mem.set('autoConnect', enabled ? '1' : '0');
+}
+
 /** Load the multi-hop entry country code, or null for auto-pick. */
 export async function loadEntryCountry(): Promise<string | null> {
   return mem.get('entryCountry') ?? null;

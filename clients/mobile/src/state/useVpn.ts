@@ -30,12 +30,14 @@ import {
 } from '../native/CumulusTunnel';
 import { discoverFleet, groupByCountry, measureLatency, type Country } from '../lib/gateways';
 import {
+  loadAutoConnect,
   loadEntryCountry,
   loadExitCountry,
   loadKeypair,
   loadKillSwitch,
   loadRouteStyle,
   loadSelectedCountry,
+  saveAutoConnect,
   saveEntryCountry,
   saveExitCountry,
   saveKeypair,
@@ -75,6 +77,8 @@ export interface VpnModel {
   readonly exit: Country | null;
   /** Kill switch: block all non-tunnel traffic while connected (persisted). */
   readonly killSwitch: boolean;
+  /** Auto-connect on app launch once discovery completes (persisted). */
+  readonly autoConnect: boolean;
 }
 
 /** Chain-payment identity derived from the device key + last enrollment. */
@@ -103,6 +107,8 @@ export interface VpnActions {
   selectExitCountry(code: string | null): Promise<void>;
   /** Toggle the kill switch (persisted). Applies on the next connect. */
   setKillSwitch(enabled: boolean): Promise<void>;
+  /** Toggle auto-connect on launch (persisted). */
+  setAutoConnect(enabled: boolean): Promise<void>;
   /** Open the OS VPN settings (Android lockdown hand-off; no-op on iOS). */
   openVpnSettings(): Promise<void>;
 }
@@ -123,6 +129,8 @@ export function useVpn(): VpnModel & VpnActions {
   const [entryCode, setEntryCode] = useState<string | null>(null);
   const [exitCode, setExitCode] = useState<string | null>(null);
   const [killSwitch, setKillSwitchState] = useState(false);
+  const [autoConnect, setAutoConnectState] = useState(false);
+  const autoConnectedRef = useRef(false);
 
   // Latest enrolled gateway IP, kept in a ref for the status poller.
   const gatewayIpRef = useRef<string | null>(null);
@@ -192,6 +200,7 @@ export function useVpn(): VpnModel & VpnActions {
         setEntryCode(await loadEntryCountry());
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
+        setAutoConnectState(await loadAutoConnect());
         await refresh();
       } catch (e) {
         if (alive) {
@@ -332,6 +341,23 @@ export function useVpn(): VpnModel & VpnActions {
     }
   }, []);
 
+  // ---- auto-connect on launch (opt-in) -----------------------------------
+  // Once, after the first successful discovery, if the user enabled auto-connect
+  // and nothing is up yet, bring the tunnel up automatically.
+  useEffect(() => {
+    if (
+      autoConnect &&
+      !autoConnectedRef.current &&
+      !booting &&
+      keypair &&
+      state === 'disconnected' &&
+      countries.length > 0
+    ) {
+      autoConnectedRef.current = true;
+      void connect();
+    }
+  }, [autoConnect, booting, keypair, state, countries, connect]);
+
   const selectCountry = useCallback(async (code: string): Promise<void> => {
     setSelectedCode(code);
     await saveSelectedCountry(code);
@@ -357,6 +383,11 @@ export function useVpn(): VpnModel & VpnActions {
     await saveKillSwitch(enabled);
   }, []);
 
+  const setAutoConnect = useCallback(async (enabled: boolean): Promise<void> => {
+    setAutoConnectState(enabled);
+    await saveAutoConnect(enabled);
+  }, []);
+
   const openVpnSettings = useCallback(async (): Promise<void> => {
     await CumulusTunnel.openVpnSettings();
   }, []);
@@ -376,6 +407,7 @@ export function useVpn(): VpnModel & VpnActions {
     entry,
     exit,
     killSwitch,
+    autoConnect,
     connect,
     disconnect,
     selectCountry,
@@ -384,6 +416,7 @@ export function useVpn(): VpnModel & VpnActions {
     selectEntryCountry,
     selectExitCountry,
     setKillSwitch,
+    setAutoConnect,
     openVpnSettings,
   };
 }

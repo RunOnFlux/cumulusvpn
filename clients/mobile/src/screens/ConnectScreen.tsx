@@ -10,6 +10,7 @@ import type { Country } from '../lib/gateways';
 import type { PaymentIdentity, VpnActions, VpnModel } from '../state/useVpn';
 import { Orb } from '../components/Orb';
 import { TierPill } from '../components/TierPill';
+import { Toggle } from '../components/Toggle';
 import { color, font, radius, space } from '../theme/tokens';
 
 interface Props {
@@ -20,6 +21,8 @@ interface Props {
   readonly onOpenEntry: () => void;
   /** Open the picker to choose the multi-hop exit country. */
   readonly onOpenExit: () => void;
+  /** Open the settings screen. */
+  readonly onOpenSettings: () => void;
 }
 
 /** The multi-hop route styles offered in the UI (excludes single-hop). */
@@ -46,6 +49,7 @@ export function ConnectScreen({
   onOpenUpgrade,
   onOpenEntry,
   onOpenExit,
+  onOpenSettings,
 }: Props): React.JSX.Element {
   const connected = vpn.state === 'connected';
   const target: Country | null = vpn.selected ?? vpn.countries[0] ?? null;
@@ -55,7 +59,12 @@ export function ConnectScreen({
     <View style={styles.root}>
       <View style={styles.top}>
         <Text style={styles.brand}>CumulusVPN</Text>
-        <TierPill tier={vpn.tier} />
+        <View style={styles.topRight}>
+          <TierPill tier={vpn.tier} />
+          <Pressable onPress={onOpenSettings} accessibilityRole="button" hitSlop={10}>
+            <Text style={styles.gear}>⚙</Text>
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.orbWrap}>
@@ -347,28 +356,6 @@ function KillSwitchRow({
   );
 }
 
-/** A compact custom switch matching the app's glass/cyan aesthetic. */
-function Toggle({
-  value,
-  disabled,
-  onValueChange,
-}: {
-  readonly value: boolean;
-  readonly disabled: boolean;
-  readonly onValueChange: (value: boolean) => void;
-}): React.JSX.Element {
-  return (
-    <Pressable
-      onPress={disabled ? undefined : () => onValueChange(!value)}
-      accessibilityRole="switch"
-      accessibilityState={{ checked: value, disabled }}
-      style={[styles.track, value && styles.trackOn, disabled && styles.trackDisabled]}
-    >
-      <View style={[styles.thumb, value && styles.thumbOn]} />
-    </Pressable>
-  );
-}
-
 function UpgradeLine({
   payment,
   onPress,
@@ -422,6 +409,8 @@ const styles = StyleSheet.create({
     marginTop: space.sm,
   },
   brand: { color: color.ink, fontWeight: '700', fontSize: 15, letterSpacing: -0.2 },
+  topRight: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  gear: { color: color.inkMuted, fontSize: 20 },
   orbWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: space.xl },
   loc: { alignItems: 'center' },
   flag: { fontSize: 30, lineHeight: 34 },
@@ -546,24 +535,6 @@ const styles = StyleSheet.create({
   ksTitle: { color: color.ink, fontWeight: '600', fontSize: 15 },
   ksSub: { color: color.inkDim, fontSize: 12, marginTop: 2 },
   ksLink: { color: color.cyan, fontSize: 12, fontWeight: '600', marginTop: 5 },
-  track: {
-    width: 46,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: color.hairlineStrong,
-    padding: 3,
-    justifyContent: 'center',
-  },
-  trackOn: { backgroundColor: color.cyan },
-  trackDisabled: { opacity: 0.6 },
-  thumb: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#fff',
-    alignSelf: 'flex-start',
-  },
-  thumbOn: { alignSelf: 'flex-end' },
   upsell: { alignItems: 'center', marginBottom: space.md },
   upsellText: { color: color.inkMuted, fontSize: 13 },
   upsellAccent: { color: color.amber, fontWeight: '600' },

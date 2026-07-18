@@ -13,9 +13,10 @@ import { useVpn } from './src/state/useVpn';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { CountryPickerScreen } from './src/screens/CountryPickerScreen';
 import { UpgradeScreen } from './src/screens/UpgradeScreen';
+import { SettingsScreen } from './src/screens/SettingsScreen';
 import { color } from './src/theme/tokens';
 
-type Route = 'connect' | 'countries' | 'upgrade' | 'entry' | 'exit';
+type Route = 'connect' | 'countries' | 'upgrade' | 'entry' | 'exit' | 'settings';
 
 function App(): React.JSX.Element {
   const vpn = useVpn();
@@ -73,6 +74,8 @@ function App(): React.JSX.Element {
               payment={vpn.payment}
               onClose={() => setRoute('connect')}
             />
+          ) : route === 'settings' ? (
+            <SettingsScreen vpn={vpn} onClose={() => setRoute('connect')} />
           ) : (
             <ConnectScreen
               vpn={vpn}
@@ -80,6 +83,7 @@ function App(): React.JSX.Element {
               onOpenUpgrade={() => setRoute('upgrade')}
               onOpenEntry={() => setRoute('entry')}
               onOpenExit={() => setRoute('exit')}
+              onOpenSettings={() => setRoute('settings')}
             />
           )}
         </View>
