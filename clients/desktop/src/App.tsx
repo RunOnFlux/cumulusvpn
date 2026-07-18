@@ -6,6 +6,7 @@ import { CountryPicker } from './components/CountryPicker.js';
 import { MultihopPanel } from './components/MultihopPanel.js';
 import { TierBadge } from './components/TierBadge.js';
 import { StatBar } from './components/StatBar.js';
+import { Settings } from './components/Settings.js';
 import { UPGRADE_URL } from './lib/directory.js';
 
 /** Which hop the country picker is currently editing, or closed. */
@@ -40,6 +41,7 @@ function pingClass(load: number): string {
 export function App(): JSX.Element {
   const conn = useConnection();
   const [picker, setPicker] = useState<PickerTarget>(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const connected = conn.phase === 'connected';
   const busy = conn.phase === 'connecting';
@@ -53,6 +55,9 @@ export function App(): JSX.Element {
           <span className="dot" />
           CumulusVPN
         </div>
+        <button className="gear" onClick={() => setShowSettings(true)} aria-label="Settings">
+          ⚙
+        </button>
       </div>
 
       <ConnectOrb
@@ -143,6 +148,16 @@ export function App(): JSX.Element {
           selectedCode={picker === 'exit' ? (conn.exit?.code ?? null) : (selected?.code ?? null)}
           onPick={picker === 'exit' ? conn.selectExit : conn.select}
           onClose={() => setPicker(null)}
+        />
+      )}
+
+      {showSettings && (
+        <Settings
+          autoConnect={conn.autoConnect}
+          killSwitch={conn.killSwitch}
+          onAutoConnect={conn.setAutoConnect}
+          onKillSwitch={conn.setKillSwitch}
+          onClose={() => setShowSettings(false)}
         />
       )}
     </div>

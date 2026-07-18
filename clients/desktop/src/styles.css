@@ -298,6 +298,79 @@ button {
   transform: translateX(17px);
 }
 
+/* Settings — gear button + sheet rows */
+.titlebar .gear {
+  font-size: 15px;
+  color: var(--ink-3);
+  padding: 3px 7px;
+  border-radius: 8px;
+  line-height: 1;
+}
+.titlebar .gear:hover {
+  color: var(--ink);
+  background: var(--surface-2);
+}
+.setsec {
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--ink-3);
+  margin: 16px 4px 8px;
+}
+.setrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 13px;
+  margin-bottom: 8px;
+}
+.setmeta {
+  display: flex;
+  flex-direction: column;
+}
+.setlabel {
+  color: var(--ink);
+  font-weight: 600;
+  font-size: 13.5px;
+}
+.setsub {
+  color: var(--ink-3);
+  font-size: 11.5px;
+  margin-top: 2px;
+}
+.setinfo {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 13px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.setinfo .lat {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-3);
+}
+.setlink {
+  color: var(--cyan);
+  font-weight: 600;
+}
+.setlink .chev {
+  color: var(--ink-3);
+  font-size: 18px;
+}
+
 .ping {
   width: 8px;
   height: 8px;

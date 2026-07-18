@@ -64,6 +64,10 @@ export interface ConnectionModel {
   readonly killSwitch: boolean;
   /** Toggle the kill switch; applies on the next connect. */
   readonly setKillSwitch: (on: boolean) => void;
+  /** Auto-connect on launch once discovery settles (persisted; default off). */
+  readonly autoConnect: boolean;
+  /** Toggle auto-connect on launch. */
+  readonly setAutoConnect: (on: boolean) => void;
 }
 
 const DOWN: TunnelStatus = {
@@ -105,6 +109,10 @@ export function useConnection(): ConnectionModel {
   const [killSwitch, setKillSwitchState] = useState(
     () => localStorage.getItem('cvpn.killSwitch') !== '0',
   );
+  const [autoConnect, setAutoConnectState] = useState(
+    () => localStorage.getItem('cvpn.autoConnect') === '1',
+  );
+  const autoConnectedRef = useRef(false);
 
   // Bootstrap: discover the fleet and restore the last-selected country.
   useEffect(() => {
@@ -163,6 +171,11 @@ export function useConnection(): ConnectionModel {
   const setKillSwitch = useCallback((on: boolean) => {
     setKillSwitchState(on);
     localStorage.setItem('cvpn.killSwitch', on ? '1' : '0');
+  }, []);
+
+  const setAutoConnect = useCallback((on: boolean) => {
+    setAutoConnectState(on);
+    localStorage.setItem('cvpn.autoConnect', on ? '1' : '0');
   }, []);
 
   /** Poll chain entitlement from the metering gateway; never drops the tunnel. */
@@ -229,6 +242,15 @@ export function useConnection(): ConnectionModel {
     })();
   }, []);
 
+  // Auto-connect on launch (opt-in): once discovery settles and a location is
+  // selected, bring the tunnel up automatically.
+  useEffect(() => {
+    if (autoConnect && !autoConnectedRef.current && phase === 'idle' && selected) {
+      autoConnectedRef.current = true;
+      connect();
+    }
+  }, [autoConnect, phase, selected, connect]);
+
   // Poll native tunnel status (byte counters, handshake) while connected.
   useEffect(() => {
     if (phase !== 'connected') {
@@ -269,5 +291,7 @@ export function useConnection(): ConnectionModel {
     selectExit,
     killSwitch,
     setKillSwitch,
+    autoConnect,
+    setAutoConnect,
   };
 }
