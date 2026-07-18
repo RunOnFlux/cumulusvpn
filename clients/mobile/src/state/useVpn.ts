@@ -28,7 +28,14 @@ import {
   type TunnelState,
   type TunnelStatus,
 } from '../native/CumulusTunnel';
-import { discoverFleet, groupByCountry, measureLatency, type Country } from '../lib/gateways';
+import {
+  discoverFleet,
+  groupByCountry,
+  measureLatency,
+  routeEndpoint,
+  type Country,
+  type RouteEndpoint,
+} from '../lib/gateways';
 import { solvePowFast } from '../lib/pow';
 import {
   loadAutoConnect,
@@ -88,6 +95,17 @@ export interface VpnModel {
   readonly autoConnect: boolean;
   /** Unix-ms when the active session connected, or null when not connected. */
   readonly connectedSince: number | null;
+  /**
+   * The actual entry hop of the live route (country + gateway IP). Reflects what
+   * `selectHops` really chose — NOT the picker selection — so the connected
+   * screen can't disagree with reality. Null when not connected.
+   */
+  readonly activeEntry: RouteEndpoint | null;
+  /**
+   * The actual exit hop for a multi-hop route (the egress the world sees). Null
+   * for single-hop (entry === exit) and when not connected.
+   */
+  readonly activeExit: RouteEndpoint | null;
   /** Favorited (pinned) country codes, surfaced first in the picker. */
   readonly favorites: readonly string[];
 }
@@ -108,7 +126,8 @@ export interface PaymentIdentity {
 export interface VpnActions {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
-  selectCountry(code: string): Promise<void>;
+  /** Pick the single-hop country (`null` = Automatic / nearest); persisted. */
+  selectCountry(code: string | null): Promise<void>;
   refresh(): Promise<void>;
   /** Switch route style (Fast vs the two multi-hop styles); persisted. */
   setRouteStyle(style: RouteStyle): Promise<void>;
@@ -151,6 +170,10 @@ export function useVpn(): VpnModel & VpnActions {
   const autoConnectedRef = useRef(false);
   // Unix-ms when the current session connected, for the session timer.
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
+  // The route actually established (from selectHops), for an honest connected
+  // display. activeExit is null for single-hop.
+  const [activeEntry, setActiveEntry] = useState<RouteEndpoint | null>(null);
+  const [activeExit, setActiveExit] = useState<RouteEndpoint | null>(null);
   // Whether the user currently wants a tunnel (true after connect, false after
   // an explicit disconnect) + whether we reached 'connected' — together these
   // distinguish an unexpected drop from a user disconnect, for auto-reconnect.
@@ -363,16 +386,26 @@ export function useVpn(): VpnModel & VpnActions {
       }
 
       if (isMultihop(routeStyle)) {
-        await connectMultihop({
+        // Auto entry: prefer the NEAREST measured country (countries are
+        // latency-sorted) that can satisfy the route, instead of letting
+        // selectHops fall back to the globally least-loaded gateway — which can
+        // be on another continent (the "I picked auto and got Canada" surprise).
+        const autoEntry =
+          routeStyle === 'multihop-same-country'
+            ? countries.find((c) => c.nodeCount >= 2)?.code
+            : countries[0]?.code;
+        const hops = await connectMultihop({
           keypair,
           routeStyle,
           gateways: gatewaysRef.current,
-          entryCountry: entryCode,
+          entryCountry: entryCode ?? autoEntry ?? null,
           exitCountry: exitCode,
           gatewayIpRef,
           setEnrollment,
           killSwitch,
         });
+        setActiveEntry(routeEndpoint(hops.entry));
+        setActiveExit(routeEndpoint(hops.exit));
         return;
       }
 
@@ -389,6 +422,8 @@ export function useVpn(): VpnModel & VpnActions {
       });
       gatewayIpRef.current = target.best.ip;
       setEnrollment(resp);
+      setActiveEntry(routeEndpoint(target.best));
+      setActiveExit(null);
 
       const wgConfig = buildWgConfig({
         privateKey: keypair.privateKey,
@@ -408,6 +443,8 @@ export function useVpn(): VpnModel & VpnActions {
     wantConnectedRef.current = false;
     wasConnectedRef.current = false;
     setState('disconnecting');
+    setActiveEntry(null);
+    setActiveExit(null);
     try {
       await CumulusTunnel.stopTunnel();
     } catch (e) {
@@ -450,7 +487,7 @@ export function useVpn(): VpnModel & VpnActions {
     }
   }, [autoConnect, booting, keypair, state, countries, connect]);
 
-  const selectCountry = useCallback(async (code: string): Promise<void> => {
+  const selectCountry = useCallback(async (code: string | null): Promise<void> => {
     setSelectedCode(code);
     await saveSelectedCountry(code);
   }, []);
@@ -511,6 +548,8 @@ export function useVpn(): VpnModel & VpnActions {
     killSwitch,
     autoConnect,
     connectedSince,
+    activeEntry,
+    activeExit,
     favorites,
     connect,
     disconnect,
@@ -542,7 +581,7 @@ async function connectMultihop(args: {
   gatewayIpRef: { current: string | null };
   setEnrollment: (r: EnrollResponse) => void;
   killSwitch: boolean;
-}): Promise<void> {
+}): Promise<{ entry: GatewayInfo; exit: GatewayInfo }> {
   const {
     keypair,
     routeStyle,
@@ -591,4 +630,5 @@ async function connectMultihop(args: {
 
   const label = `${hops.entry.country} → ${hops.exit.country}`;
   await CumulusTunnel.startMultihop(mh.outer, mh.inner, label, killSwitch);
+  return { entry: hops.entry, exit: hops.exit };
 }

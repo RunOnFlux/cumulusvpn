@@ -47,6 +47,31 @@ const COUNTRY_NAMES: Readonly<Record<string, string>> = {
   SG: 'Singapore',
 };
 
+/** A resolved end of the active route (one hop), for the connected display. */
+export interface RouteEndpoint {
+  /** ISO alpha-2 country code. */
+  readonly code: string;
+  /** Flag emoji for `code`. */
+  readonly flag: string;
+  /** Human country name. */
+  readonly name: string;
+  /** Representative city. */
+  readonly city: string;
+  /** Gateway public IP — for the exit hop this is the egress the world sees. */
+  readonly ip: string;
+}
+
+/** Build a {@link RouteEndpoint} (country + IP) from a concrete gateway. */
+export function routeEndpoint(gw: GatewayInfo): RouteEndpoint {
+  return {
+    code: gw.country,
+    flag: flagEmoji(gw.country),
+    name: COUNTRY_NAMES[gw.country] ?? gw.country,
+    city: gw.city,
+    ip: gw.ip,
+  };
+}
+
 /** Turn an ISO alpha-2 code into its flag emoji (regional-indicator pair). */
 export function flagEmoji(code: string): string {
   const cc = code.trim().toUpperCase();

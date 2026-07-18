@@ -61,6 +61,8 @@ export function ConnectScreen({
   onOpenSettings,
 }: Props): React.JSX.Element {
   const connected = vpn.state === 'connected';
+  // No explicit single-hop country chosen → Automatic (route to the nearest).
+  const auto = vpn.selected === null;
   const target: Country | null = vpn.selected ?? vpn.countries[0] ?? null;
   const busy = vpn.state === 'connecting' || vpn.state === 'disconnecting';
 
@@ -98,10 +100,25 @@ export function ConnectScreen({
           onPress={() => (connected ? void vpn.disconnect() : void vpn.connect())}
         />
 
-        {connected && target ? (
+        {connected && vpn.activeExit && vpn.activeEntry ? (
+          /* Multi-hop: show the real entry → exit route + both gateway IPs. */
           <View style={styles.loc}>
-            <Text style={styles.flag}>{target.flag}</Text>
-            <Text style={styles.country}>{target.name}</Text>
+            <Text style={styles.route}>
+              {vpn.activeEntry.flag} {vpn.activeEntry.name}
+              <Text style={styles.routeArrow}>{'  →  '}</Text>
+              {vpn.activeExit.flag} {vpn.activeExit.name}
+            </Text>
+            <Text style={styles.ip}>
+              Entry {vpn.activeEntry.ip} · Exit {vpn.activeExit.ip}
+            </Text>
+            <Text style={styles.ip}>{elapsed ? `Protected · ${elapsed}` : 'Protected'}</Text>
+          </View>
+        ) : connected && vpn.activeEntry ? (
+          /* Single-hop: the entry gateway is also the egress. */
+          <View style={styles.loc}>
+            <Text style={styles.flag}>{vpn.activeEntry.flag}</Text>
+            <Text style={styles.country}>{vpn.activeEntry.name}</Text>
+            <Text style={styles.ip}>IP {vpn.activeEntry.ip}</Text>
             <Text style={styles.ip}>{elapsed ? `Protected · ${elapsed}` : 'Protected'}</Text>
           </View>
         ) : (
@@ -154,14 +171,19 @@ export function ConnectScreen({
           onOpenExit={onOpenExit}
         />
       ) : (
-        /* Single-hop country selector row (mockup .loc-btn) */
+        /* Single-hop country selector row (mockup .loc-btn). `auto` = no explicit
+           country chosen → we route to the nearest (`target`). */
         <Pressable style={styles.locBtn} onPress={onOpenCountries} accessibilityRole="button">
-          <Text style={styles.locBtnFlag}>{target?.flag ?? '🌐'}</Text>
+          <Text style={styles.locBtnFlag}>{auto ? '⚡' : (target?.flag ?? '🌐')}</Text>
           <View style={styles.locBtnMeta}>
-            <Text style={styles.locBtnTitle}>{target?.name ?? 'Choose location'}</Text>
+            <Text style={styles.locBtnTitle}>
+              {auto ? 'Automatic' : (target?.name ?? 'Choose location')}
+            </Text>
             <Text style={styles.locBtnSub}>
               {target
-                ? `${target.city} · ${target.latencyMs ?? '—'} ms · ${target.nodeCount} nodes`
+                ? auto
+                  ? `Nearest: ${target.name} · ${target.latencyMs ?? '—'} ms`
+                  : `${target.city} · ${target.latencyMs ?? '—'} ms · ${target.nodeCount} nodes`
                 : 'Tap to pick a country'}
             </Text>
           </View>
@@ -480,9 +502,17 @@ const styles = StyleSheet.create({
     gap: space.xl,
     paddingVertical: space.md,
   },
-  loc: { alignItems: 'center' },
+  loc: { alignItems: 'center', paddingHorizontal: space.md },
   updating: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   updatingText: { color: color.inkFaint, fontSize: 11.5 },
+  route: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: color.ink,
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  routeArrow: { color: color.cyan, fontWeight: '600' },
   flag: { fontSize: 30, lineHeight: 34 },
   country: { fontSize: 21, fontWeight: '700', color: color.ink, marginTop: space.xs },
   ip: { fontFamily: font.mono, fontSize: 11.5, color: color.inkDim, marginTop: 3 },

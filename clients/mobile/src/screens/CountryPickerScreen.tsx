@@ -35,6 +35,11 @@ interface Props {
   readonly onRefresh: () => Promise<void>;
   /** True while an automatic background discovery is in flight. */
   readonly discovering?: boolean;
+  /**
+   * Choose "Automatic" (let the app pick the nearest / best node). When set, an
+   * Auto row is shown at the top and `selectedCode === null` marks it active.
+   */
+  readonly onSelectAuto?: () => void;
   /** Favorited country codes (surfaced first). */
   readonly favorites: readonly string[];
   /** Pin/unpin a country. */
@@ -48,6 +53,7 @@ export function CountryPickerScreen({
   onClose,
   onRefresh,
   discovering = false,
+  onSelectAuto,
   favorites,
   onToggleFavorite,
 }: Props): React.JSX.Element {
@@ -114,6 +120,25 @@ export function CountryPickerScreen({
         data={filtered}
         keyExtractor={(c) => c.code}
         keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          onSelectAuto && query.trim() === '' ? (
+            <Pressable
+              style={[styles.row, styles.autoRow, selectedCode === null && styles.rowSelected]}
+              onPress={() => {
+                onSelectAuto();
+                onClose();
+              }}
+              accessibilityRole="button"
+            >
+              <Text style={styles.flag}>⚡</Text>
+              <View style={styles.meta}>
+                <Text style={styles.name}>Automatic</Text>
+                <Text style={styles.sub}>Pick the nearest, least-busy node for me</Text>
+              </View>
+              {selectedCode === null ? <Text style={styles.autoCheck}>✓</Text> : null}
+            </Pressable>
+          ) : null
+        }
         ListEmptyComponent={
           <Text style={styles.empty}>No gateways reachable — pull to refresh.</Text>
         }
@@ -198,6 +223,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(52,228,218,0.4)',
     borderWidth: 1,
   },
+  autoRow: { marginBottom: space.xs },
+  autoCheck: { color: color.cyan, fontSize: 16, fontWeight: '700' },
   star: { fontSize: 17, color: color.inkFaint },
   starOn: { color: color.amber },
   flag: { fontSize: 24 },

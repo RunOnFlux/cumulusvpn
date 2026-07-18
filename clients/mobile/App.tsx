@@ -58,6 +58,7 @@ function App(): React.JSX.Element {
               countries={vpn.countries}
               selectedCode={vpn.selected?.code ?? null}
               onSelect={(code) => void vpn.selectCountry(code)}
+              onSelectAuto={() => void vpn.selectCountry(null)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
               discovering={vpn.discovering}
@@ -69,6 +70,7 @@ function App(): React.JSX.Element {
               countries={vpn.countries}
               selectedCode={vpn.entry?.code ?? null}
               onSelect={(code) => void vpn.selectEntryCountry(code)}
+              onSelectAuto={() => void vpn.selectEntryCountry(null)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
               discovering={vpn.discovering}
@@ -80,6 +82,7 @@ function App(): React.JSX.Element {
               countries={vpn.countries}
               selectedCode={vpn.exit?.code ?? null}
               onSelect={(code) => void vpn.selectExitCountry(code)}
+              onSelectAuto={() => void vpn.selectExitCountry(null)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
               discovering={vpn.discovering}

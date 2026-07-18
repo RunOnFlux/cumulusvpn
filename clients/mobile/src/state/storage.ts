@@ -49,14 +49,18 @@ export async function saveKeypair(kp: Keypair): Promise<void> {
   await AsyncStorage.setItem(K.keypair, JSON.stringify(kp));
 }
 
-/** Load the last selected country code, or null. */
+/** Load the last selected country code, or null (= Automatic / nearest). */
 export async function loadSelectedCountry(): Promise<string | null> {
   return AsyncStorage.getItem(K.country);
 }
 
-/** Persist the selected country code. */
-export async function saveSelectedCountry(code: string): Promise<void> {
-  await AsyncStorage.setItem(K.country, code);
+/** Persist the selected country code (null clears back to Automatic). */
+export async function saveSelectedCountry(code: string | null): Promise<void> {
+  if (code) {
+    await AsyncStorage.setItem(K.country, code);
+  } else {
+    await AsyncStorage.removeItem(K.country);
+  }
 }
 
 /** Load the persisted route style, defaulting to single-hop (multi-hop off). */
