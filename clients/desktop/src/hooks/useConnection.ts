@@ -70,6 +70,8 @@ export interface ConnectionModel {
   readonly setAutoConnect: (on: boolean) => void;
   /** Unix-ms when the active session connected, or null when not connected. */
   readonly connectedSince: number | null;
+  /** Re-discover the fleet (re-test node load/quality); keeps the selection. */
+  readonly refresh: () => Promise<void>;
 }
 
 const DOWN: TunnelStatus = {
@@ -148,6 +150,16 @@ export function useConnection(): ConnectionModel {
     return () => {
       alive = false;
     };
+  }, []);
+
+  // Re-discover the fleet on demand (re-tests each node's live load, updating
+  // the quality ratings). Keeps the current selection.
+  const refresh = useCallback(async (): Promise<void> => {
+    try {
+      setCountries(await discoverCountries());
+    } catch (err) {
+      setError(messageOf(err));
+    }
   }, []);
 
   const select = useCallback(
@@ -327,5 +339,6 @@ export function useConnection(): ConnectionModel {
     autoConnect,
     setAutoConnect,
     connectedSince,
+    refresh,
   };
 }

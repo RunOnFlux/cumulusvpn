@@ -6,7 +6,7 @@
  * count, a representative city and a latency reading for the dot colour. This
  * module does that shaping and nothing else — all networking lives in core.
  */
-import { discoverGateways } from '@cumulusvpn/core';
+import { discoverGateways, pingGateway } from '@cumulusvpn/core';
 import type { GatewayInfo } from '@cumulusvpn/core';
 import { bundledSpecs, seedNodeIps } from './directory';
 
@@ -124,16 +124,10 @@ export function groupByCountry(
  * the dot and order the list.
  */
 export async function measureLatency(gw: GatewayInfo): Promise<number | null> {
-  const started = Date.now();
-  try {
-    const res = await fetch(`${gw.controlUrl}/v1/info`, { method: 'GET' });
-    if (!res.ok) {
-      return null;
-    }
-    return Date.now() - started;
-  } catch {
-    return null;
-  }
+  // A 2-sample active ping (median RTT) — steadier than a single request, and
+  // the same primitive the picker's on-demand re-test uses.
+  const { rttMs } = await pingGateway(gw.controlUrl, { samples: 2 });
+  return rttMs;
 }
 
 /**

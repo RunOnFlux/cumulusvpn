@@ -379,6 +379,30 @@ button {
   margin-top: -4px;
 }
 
+.sheethead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sheethead h2 {
+  margin: 0;
+}
+.retest {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 5px 9px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+.retest:hover:not(:disabled) {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--cyan) 40%, var(--line));
+}
+.retest:disabled {
+  opacity: 0.6;
+}
+
 .ping {
   width: 8px;
   height: 8px;

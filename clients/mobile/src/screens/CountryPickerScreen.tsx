@@ -4,7 +4,15 @@
  * core discovery; tap a row to select and return to Connect.
  */
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { gatewayQuality } from '@cumulusvpn/core';
 import type { QualityTone } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
@@ -23,6 +31,8 @@ interface Props {
   readonly selectedCode: string | null;
   readonly onSelect: (code: string) => void;
   readonly onClose: () => void;
+  /** Re-run discovery + an active latency re-test of the fleet. */
+  readonly onRefresh: () => Promise<void>;
 }
 
 export function CountryPickerScreen({
@@ -30,8 +40,19 @@ export function CountryPickerScreen({
   selectedCode,
   onSelect,
   onClose,
+  onRefresh,
 }: Props): React.JSX.Element {
   const [query, setQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const doRefresh = async (): Promise<void> => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -47,9 +68,22 @@ export function CountryPickerScreen({
     <View style={styles.root}>
       <View style={styles.header}>
         <Text style={styles.title}>Choose location</Text>
-        <Pressable onPress={onClose} accessibilityRole="button" hitSlop={12}>
-          <Text style={styles.done}>Done</Text>
-        </Pressable>
+        <View style={styles.headerRight}>
+          <Pressable
+            onPress={refreshing ? undefined : () => void doRefresh()}
+            accessibilityRole="button"
+            hitSlop={10}
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" color={color.cyan} />
+            ) : (
+              <Text style={styles.retest}>↻ Re-test</Text>
+            )}
+          </Pressable>
+          <Pressable onPress={onClose} accessibilityRole="button" hitSlop={12}>
+            <Text style={styles.done}>Done</Text>
+          </Pressable>
+        </View>
       </View>
 
       <TextInput
@@ -114,6 +148,8 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   title: { color: color.ink, fontWeight: '700', fontSize: 17 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
+  retest: { color: color.inkMuted, fontWeight: '600', fontSize: 13 },
   done: { color: color.cyan, fontWeight: '600', fontSize: 15 },
   search: {
     backgroundColor: color.glass,

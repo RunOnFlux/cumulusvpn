@@ -9,6 +9,8 @@ interface Props {
   readonly selectedCode: string | null;
   readonly onPick: (code: string) => void;
   readonly onClose: () => void;
+  /** Re-discover the fleet (re-test node load/quality). */
+  readonly onRefresh: () => Promise<void>;
 }
 
 /** Quality-tone → CSS colour var (green best … red busiest). */
@@ -20,8 +22,23 @@ const TONE_VAR: Record<QualityTone, string> = {
 };
 
 /** Full-window country sheet with search — map-flavoured picker per the mockup. */
-export function CountryPicker({ countries, selectedCode, onPick, onClose }: Props): JSX.Element {
+export function CountryPicker({
+  countries,
+  selectedCode,
+  onPick,
+  onClose,
+  onRefresh,
+}: Props): JSX.Element {
   const [q, setQ] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const doRefresh = async (): Promise<void> => {
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (!needle) {
@@ -34,7 +51,12 @@ export function CountryPicker({ countries, selectedCode, onPick, onClose }: Prop
 
   return (
     <div className="sheet">
-      <h2>Choose location</h2>
+      <div className="sheethead">
+        <h2>Choose location</h2>
+        <button className="retest" disabled={refreshing} onClick={() => void doRefresh()}>
+          {refreshing ? 'Testing…' : '↻ Re-test'}
+        </button>
+      </div>
       <input
         className="searchbar"
         placeholder="Search country…"

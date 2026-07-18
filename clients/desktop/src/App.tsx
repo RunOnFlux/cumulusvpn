@@ -151,6 +151,7 @@ export function App(): JSX.Element {
           selectedCode={picker === 'exit' ? (conn.exit?.code ?? null) : (selected?.code ?? null)}
           onPick={picker === 'exit' ? conn.selectExit : conn.select}
           onClose={() => setPicker(null)}
+          onRefresh={conn.refresh}
         />
       )}
 
