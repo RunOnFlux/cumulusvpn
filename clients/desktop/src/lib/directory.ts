@@ -2,48 +2,32 @@
  * Bundled signed `directory.json` snapshot + the directory Ed25519 pubkey the
  * client ships and pins. Cold-start / all-unreachable fallback per
  * `docs/10-api-contract.md` (order: disk cache → live discovery → this
- * snapshot). Every path is signature-checked via `core.directoryVerify`.
+ * snapshot). Every path is signature-checked via core `directoryVerify`.
  *
- * // POC: these are placeholder seed endpoints + an unset pinned key. A real
- * release regenerates this file from cumulusvpn.com and the Tauri updater ships
- * a fresh snapshot with every binary. `verifyDirectory()` is wired but the
- * bundled `sig` here is a placeholder, so we treat an unset pin as "trust on
- * first probe" during the POC.
+ * The snapshot here is the real artifact published from cumulusvpn.com (a copy
+ * of `deploy/directory/directory.signed.json`), identical to the one the mobile
+ * app ships, so the desktop discovers the same live fleet. Live discovery
+ * resolves the `specs` to gateway IPs through Flux; the `seed_gateways` are only
+ * the emergency direct-probe fallback.
  */
+import { directoryVerify } from '@cumulusvpn/core';
 import type { Directory } from '@cumulusvpn/core';
+import bundled from '../data/directory.json';
 
-/** Base64 Ed25519 directory public key clients pin. // POC: unset placeholder. */
-export const CVPN_DIRECTORY_PUBKEY = '';
+/**
+ * Pinned directory Ed25519 public key (`CVPN_DIRECTORY_PUBKEY`), base64.
+ * Baked into the binary; the whole trust chain hangs off this constant. Matches
+ * the mobile app's pin so both clients trust the same directory signer.
+ */
+export const CVPN_DIRECTORY_PUBKEY = '1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=';
 
-/** Last-known fleet snapshot baked into the release. */
-export const BUNDLED_DIRECTORY: Directory = {
-  version: 1,
-  updated: '2026-07-01T00:00:00Z',
-  payment_address: 't1PLACEHOLDERpaymentAddressREPLACEatRelease0',
-  price_flux: 20,
-  specs: [
-    'cumulusvpnau',
-    'cumulusvpnbr',
-    'cumulusvpnca',
-    'cumulusvpncz',
-    'cumulusvpnde',
-    'cumulusvpnfr',
-    'cumulusvpngb',
-    'cumulusvpnjp',
-    'cumulusvpnnl',
-    'cumulusvpnpl',
-    'cumulusvpnsg',
-    'cumulusvpnus',
-  ],
-  seed_gateways: [
-    { ip: '203.0.113.10', country: 'DE', sign_pubkey: '' },
-    { ip: '203.0.113.20', country: 'US', sign_pubkey: '' },
-    { ip: '203.0.113.30', country: 'NL', sign_pubkey: '' },
-  ],
-  // POC: placeholder signature; regenerated + verified against the pinned key
-  // in production. See discovery.directoryVerify.
-  sig: '',
-};
+/** Last-known fleet snapshot baked into the release, typed as core `Directory`. */
+export const BUNDLED_DIRECTORY: Directory = bundled as Directory;
+
+/** True iff the bundled snapshot verifies against the pinned directory key. */
+export function bundledDirectoryIsValid(): boolean {
+  return directoryVerify(BUNDLED_DIRECTORY, CVPN_DIRECTORY_PUBKEY);
+}
 
 /** Human display metadata for the countries the fleet serves. */
 export interface CountryMeta {
@@ -62,6 +46,10 @@ const COUNTRY_META: Record<string, CountryMeta> = {
   FR: { code: 'FR', name: 'France', flag: '🇫🇷' },
   CA: { code: 'CA', name: 'Canada', flag: '🇨🇦' },
   JP: { code: 'JP', name: 'Japan', flag: '🇯🇵' },
+  AU: { code: 'AU', name: 'Australia', flag: '🇦🇺' },
+  BR: { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
+  CZ: { code: 'CZ', name: 'Czechia', flag: '🇨🇿' },
+  PL: { code: 'PL', name: 'Poland', flag: '🇵🇱' },
 };
 
 /** Resolve display metadata for an ISO country code, with a safe fallback. */

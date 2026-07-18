@@ -67,16 +67,15 @@ describe('discoverCountries', () => {
     expect(de.signPubKey).toBe('sign-de');
   });
 
-  it('falls back to the bundled seed gateways when nothing is reachable', async () => {
+  it('drops 0.0.0.0 placeholder seeds when nothing is reachable', async () => {
     mockedDiscover.mockResolvedValue([]);
 
     const options = await discoverCountries();
 
-    expect(options.map((o) => o.code)).toEqual(['DE', 'NL', 'US']);
-    for (const o of options) {
-      expect(o.load).toBe(0);
-      expect(o.city).toBe('');
-    }
+    // The real signed directory ships only placeholder (0.0.0.0) seeds — live
+    // discovery resolves the real IPs — so the offline fallback is empty rather
+    // than a list of unconnectable gateways (matches the mobile client).
+    expect(options).toEqual([]);
   });
 });
 

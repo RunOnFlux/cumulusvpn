@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { BUNDLED_DIRECTORY, UPGRADE_URL, countryMeta } from './directory';
+import {
+  BUNDLED_DIRECTORY,
+  CVPN_DIRECTORY_PUBKEY,
+  UPGRADE_URL,
+  bundledDirectoryIsValid,
+  countryMeta,
+} from './directory';
 
 describe('countryMeta', () => {
   it('resolves display metadata for known countries', () => {
@@ -30,6 +36,13 @@ describe('BUNDLED_DIRECTORY', () => {
   it('lists a spec per fleet country', () => {
     expect(BUNDLED_DIRECTORY.specs).toContain('cumulusvpnde');
     expect(BUNDLED_DIRECTORY.specs.every((s) => s.startsWith('cumulus'))).toBe(true);
+  });
+
+  it('is the real signed snapshot that verifies against the pinned key', () => {
+    // Guards against shipping a directory whose signature does not match the
+    // pinned CVPN_DIRECTORY_PUBKEY (the whole trust chain hangs off this).
+    expect(CVPN_DIRECTORY_PUBKEY).not.toBe('');
+    expect(bundledDirectoryIsValid()).toBe(true);
   });
 });
 

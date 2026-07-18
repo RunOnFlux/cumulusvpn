@@ -101,8 +101,11 @@ export async function discoverCountries(fetchImpl?: typeof fetch): Promise<Count
   if (gateways.length > 0) {
     return toCountryOptions(gateways);
   }
-  // Offline cold-start: synthesize options from the signed seed list.
+  // Offline cold-start: synthesize options from the signed seed list. Skip the
+  // 0.0.0.0 placeholder seeds (live discovery resolves real IPs), matching the
+  // mobile client — better to show nothing than an unconnectable gateway.
   return BUNDLED_DIRECTORY.seed_gateways
+    .filter((seed) => seed.ip !== '0.0.0.0')
     .map((seed): CountryOption => {
       const meta = countryMeta(seed.country);
       return {

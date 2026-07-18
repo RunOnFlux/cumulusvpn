@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "updated": "2026-07-17T14:12:07Z",
+  "payment_address": "t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ",
+  "price_flux": 20,
+  "specs": [
+    "cumulusvpnau",
+    "cumulusvpnbr",
+    "cumulusvpnca",
+    "cumulusvpncz",
+    "cumulusvpnde",
+    "cumulusvpnfr",
+    "cumulusvpngb",
+    "cumulusvpnjp",
+    "cumulusvpnnl",
+    "cumulusvpnpl",
+    "cumulusvpnsg",
+    "cumulusvpnus"
+  ],
+  "seed_gateways": [
+    {
+      "ip": "0.0.0.0",
+      "country": "DE",
+      "sign_pubkey": "REPLACE_GATEWAY_ED25519_PUBKEY_B64"
+    }
+  ],
+  "sign_pubkey": "1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=",
+  "sig": "TsQTer0bKqMjb0mUZGKwwy5Lr0bDVaUKXynxZRoCJKk3Ps7D4Q/AREEgAZWuTT6Ob7SZQmRpf8ARwo4rK9LHAA=="
+}
