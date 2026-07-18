@@ -214,6 +214,8 @@ button {
   font-size: 22px;
 }
 .loc-btn .meta {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 0;
 }
