@@ -53,7 +53,6 @@ export function App(): JSX.Element {
           <span className="dot" />
           CumulusVPN
         </div>
-        <span className="badge-flux">powered by Flux</span>
       </div>
 
       <ConnectOrb

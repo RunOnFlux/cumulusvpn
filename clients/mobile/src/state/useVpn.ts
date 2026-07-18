@@ -217,6 +217,23 @@ export function useVpn(): VpnModel & VpnActions {
     return () => sub.remove();
   }, []);
 
+  // ---- connect watchdog: never hang on "connecting" forever --------------
+  // The enroll network step is bounded by core's fetch timeout, but a config
+  // that never completes the WireGuard handshake would otherwise leave the UI
+  // stuck. If we're still connecting after a generous window (multi-hop enrolls
+  // twice + handshakes twice), fail cleanly and tear down.
+  useEffect(() => {
+    if (state !== 'connecting') {
+      return;
+    }
+    const id = setTimeout(() => {
+      setState('error');
+      setError('Connection timed out. Try another location.');
+      void CumulusTunnel.stopTunnel().catch(() => undefined);
+    }, 40_000);
+    return () => clearTimeout(id);
+  }, [state]);
+
   // ---- entitlement polling (tier unlocks ~1 min after on-chain payment) ---
   useEffect(() => {
     if (!keypair) {

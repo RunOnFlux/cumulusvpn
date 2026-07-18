@@ -38,34 +38,50 @@ export interface SignedResult<T> {
  * signature must verify against it; otherwise the header-advertised key is used
  * (trust-on-first-use).
  *
+ * A gateway that is slow or unreachable is bounded by `timeoutMs` (default 12s)
+ * via an `AbortController`, so callers fail cleanly instead of hanging forever
+ * (which showed up as an endless "Connecting…" in the clients).
+ *
  * @throws {ApiError} If the envelope status is `error`.
- * @throws {Error} If a success body fails signature verification.
+ * @throws {Error} If the request times out, or a success body fails verification.
  */
 export async function fetchSigned<T>(
   url: string,
   fetchImpl: FetchImpl,
   init?: RequestInit,
   pinnedSignPubKey?: string,
+  timeoutMs = 12_000,
 ): Promise<SignedResult<T>> {
-  const res = await fetchImpl(url, init);
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  const parsed = JSON.parse(decoder.decode(bytes)) as ApiEnvelope<T>;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetchImpl(url, { ...init, signal: controller.signal });
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    const parsed = JSON.parse(decoder.decode(bytes)) as ApiEnvelope<T>;
 
-  if (parsed.status === 'error') {
-    throw new ApiError(parsed.data);
+    if (parsed.status === 'error') {
+      throw new ApiError(parsed.data);
+    }
+
+    const headerPub = res.headers.get('X-CVPN-Sign-PubKey');
+    const signature = res.headers.get('X-CVPN-Signature');
+    const signPubKey = pinnedSignPubKey ?? headerPub;
+
+    let verified = false;
+    if (signature && signPubKey) {
+      verified = verifySignedResponse(bytes, signature, signPubKey);
+    }
+    if (!verified) {
+      throw new Error(`fetchSigned: unverified signed response from ${url}`);
+    }
+
+    return { data: parsed.data, signPubKey, verified };
+  } catch (err) {
+    if (controller.signal.aborted) {
+      throw new Error(`gateway ${url} timed out after ${timeoutMs / 1000}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
   }
-
-  const headerPub = res.headers.get('X-CVPN-Sign-PubKey');
-  const signature = res.headers.get('X-CVPN-Signature');
-  const signPubKey = pinnedSignPubKey ?? headerPub;
-
-  let verified = false;
-  if (signature && signPubKey) {
-    verified = verifySignedResponse(bytes, signature, signPubKey);
-  }
-  if (!verified) {
-    throw new Error(`fetchSigned: unverified signed response from ${url}`);
-  }
-
-  return { data: parsed.data, signPubKey, verified };
 }

@@ -101,15 +101,6 @@ button {
   background: var(--cyan);
   box-shadow: 0 0 10px var(--cyan);
 }
-.badge-flux {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  color: var(--ink-3);
-  border: 1px solid var(--line);
-  padding: 4px 9px;
-  border-radius: 20px;
-}
-
 /* ---- connect orb ---------------------------------------------------- */
 .orb-wrap {
   display: flex;
