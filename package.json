@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "build": "yarn workspaces foreach -Apt run build",
+    "build:web": "yarn workspace @cumulusvpn/core run build && yarn workspace @cumulusvpn/web run build",
     "typecheck": "yarn workspaces foreach -Apt run typecheck",
     "test": "yarn workspaces foreach -Apt run test",
     "lint": "yarn workspaces foreach -Apt run lint",
