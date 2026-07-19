@@ -48,17 +48,35 @@ describe('buildCountryOptions', () => {
     expect(de.bestGateway).toBeNull();
   });
 
-  it('picks the least-loaded gateway as best and counts nodes per country', () => {
+  it('groups same-city gateways into one row, least-loaded as best', () => {
     const options = buildCountryOptions(
       ['cumulusvpnde'],
-      [gateway('DE', 0.8, 'Berlin'), gateway('DE', 0.2, 'Frankfurt')],
+      [gateway('DE', 0.8, 'Frankfurt'), gateway('DE', 0.2, 'Frankfurt')],
     );
+    expect(options).toHaveLength(1);
     const de = options[0]!;
     expect(de.status).toBe('live');
     expect(de.nodeCount).toBe(2);
     expect(de.bestGateway?.load).toBe(0.2);
     // The live gateway's own city wins over the static table.
     expect(de.city).toBe('Frankfurt');
+    expect(de.id).toBe('DE:Frankfurt');
+  });
+
+  it('splits a country into one selectable row per city', () => {
+    const options = buildCountryOptions(
+      ['cumulusvpnde'],
+      [gateway('DE', 0.8, 'Berlin'), gateway('DE', 0.2, 'Frankfurt')],
+    );
+    // Two distinct cities → two rows, each with its own least-loaded best.
+    expect(options).toHaveLength(2);
+    const berlin = options.find((o) => o.id === 'DE:Berlin')!;
+    const frankfurt = options.find((o) => o.id === 'DE:Frankfurt')!;
+    expect(berlin.nodeCount).toBe(1);
+    expect(frankfurt.nodeCount).toBe(1);
+    expect(frankfurt.bestGateway?.load).toBe(0.2);
+    expect(berlin.cc).toBe('DE');
+    expect(frankfurt.cc).toBe('DE');
   });
 
   it('sorts live countries before seed-only ones, then alphabetically', () => {

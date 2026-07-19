@@ -136,7 +136,7 @@ export function ConnectPage({
             ) : (
               <CountryPicker
                 options={discovery.options}
-                selectedCc={selected?.cc ?? null}
+                selectedId={selected?.id ?? null}
                 onSelect={onSelect}
               />
             )}

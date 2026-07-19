@@ -4,7 +4,7 @@ import { healthOf } from '../lib/gateways';
 
 interface CountryPickerProps {
   readonly options: readonly CountryOption[];
-  readonly selectedCc: string | null;
+  readonly selectedId: string | null;
   readonly onSelect: (option: CountryOption) => void;
 }
 
@@ -33,7 +33,7 @@ function subline(option: CountryOption): string {
 }
 
 /** Searchable country list with latency dots and node counts (mockup `.clist`). */
-export function CountryPicker({ options, selectedCc, onSelect }: CountryPickerProps) {
+export function CountryPicker({ options, selectedId, onSelect }: CountryPickerProps) {
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
@@ -61,11 +61,11 @@ export function CountryPicker({ options, selectedCc, onSelect }: CountryPickerPr
       />
       <div className="clist" role="listbox" aria-label="Countries">
         {filtered.map((option) => {
-          const selected = option.cc === selectedCc;
+          const selected = option.id === selectedId;
           return (
             <button
               type="button"
-              key={option.spec}
+              key={option.id}
               className={`crow${selected ? ' sel' : ''}`}
               role="option"
               aria-selected={selected}

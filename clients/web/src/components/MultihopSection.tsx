@@ -16,9 +16,22 @@ interface MultihopResult {
   readonly exitIp: string;
 }
 
-/** Country code + display name pairs available as hop picks. */
+/**
+ * Country code + display name pairs available as hop picks. Multi-hop is a
+ * COUNTRY-level choice (jurisdiction), so dedupe the per-city single-hop options
+ * back to one entry per country.
+ */
 function hopChoices(discovery: DiscoveryState): { cc: string; name: string; flag: string }[] {
-  return discovery.options.map((o) => ({ cc: o.cc, name: o.name, flag: o.flag }));
+  const seen = new Set<string>();
+  const out: { cc: string; name: string; flag: string }[] = [];
+  for (const o of discovery.options) {
+    if (seen.has(o.cc)) {
+      continue;
+    }
+    seen.add(o.cc);
+    out.push({ cc: o.cc, name: o.name, flag: o.flag });
+  }
+  return out;
 }
 
 /**

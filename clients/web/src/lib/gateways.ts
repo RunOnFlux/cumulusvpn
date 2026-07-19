@@ -1,8 +1,14 @@
 import type { GatewayInfo } from '@cumulusvpn/core';
 import { cityOf, flagOf, nameOf, specToCountryCode } from './countries';
 
-/** A pickable country row: directory-derived, enriched with live discovery. */
+/** A pickable location row: directory-derived, enriched with live discovery. */
 export interface CountryOption {
+  /**
+   * Stable row id: the country code for a country-level (seed / single-city)
+   * row, or `"<cc>:<city>"` when a country's live gateways span several cities,
+   * so each city is a distinct, selectable row.
+   */
+  readonly id: string;
   readonly cc: string;
   readonly spec: string;
   readonly name: string;
@@ -54,27 +60,69 @@ export function buildCountryOptions(
     byCountry.set(cc, list);
   }
 
-  const options: CountryOption[] = specs.map((spec) => {
+  const options: CountryOption[] = [];
+  for (const spec of specs) {
     const cc = specToCountryCode(spec);
     const live = (byCountry.get(cc) ?? []).slice().sort((a, b) => a.load - b.load);
-    const best = live[0] ?? null;
-    return {
-      cc,
-      spec,
-      name: nameOf(cc),
-      flag: flagOf(cc),
-      city: best?.city ?? cityOf(cc),
-      nodeCount: live.length,
-      bestGateway: best,
-      status: best ? 'live' : 'seed',
-    };
-  });
+
+    if (live.length === 0) {
+      // No live gateway discovered — a single seed row from the directory.
+      options.push({
+        id: cc,
+        cc,
+        spec,
+        name: nameOf(cc),
+        flag: flagOf(cc),
+        city: cityOf(cc),
+        nodeCount: 0,
+        bestGateway: null,
+        status: 'seed',
+      });
+      continue;
+    }
+
+    // Split the country's live gateways by locality so a spread fleet (e.g.
+    // US-East New York vs US-West California) shows one selectable row per city.
+    // Gateways with no reported city collapse to a single row via the fallback.
+    const byCity = new Map<string, GatewayInfo[]>();
+    for (const gw of live) {
+      const city = (gw.city || cityOf(cc)).trim();
+      const key = city || cc;
+      const bucket = byCity.get(key);
+      if (bucket) {
+        bucket.push(gw);
+      } else {
+        byCity.set(key, [gw]);
+      }
+    }
+    for (const bucket of byCity.values()) {
+      const best = bucket[0]; // least-loaded in this city (live is load-sorted)
+      if (!best) {
+        continue;
+      }
+      const city = best.city || cityOf(cc);
+      options.push({
+        id: city ? `${cc}:${city}` : cc,
+        cc,
+        spec,
+        name: nameOf(cc),
+        flag: flagOf(cc),
+        city,
+        nodeCount: bucket.length,
+        bestGateway: best,
+        status: 'live',
+      });
+    }
+  }
 
   options.sort((a, b) => {
     if (a.status !== b.status) {
       return a.status === 'live' ? -1 : 1;
     }
-    return a.name.localeCompare(b.name);
+    if (a.name !== b.name) {
+      return a.name.localeCompare(b.name);
+    }
+    return a.city.localeCompare(b.city);
   });
 
   return options;
