@@ -25,10 +25,13 @@ COPY . .
 # SOURCE_DATE_EPOCH lets CI stamp a deterministic build time.
 ARG SOURCE_DATE_EPOCH=0
 ARG TARGETARCH=amd64
+# GIT_COMMIT is stamped into /v1/info so the fleet dashboard can flag out-of-date
+# instances (the semver tag doesn't change between rebuilds). Defaults to "dev".
+ARG GIT_COMMIT=dev
 RUN GOARCH=${TARGETARCH} go build \
         -trimpath \
         -buildvcs=false \
-        -ldflags "-s -w -buildid=" \
+        -ldflags "-s -w -buildid= -X github.com/runonflux/cumulusvpn-gateway/internal/api.BuildCommit=${GIT_COMMIT}" \
         -o /out/gateway ./cmd/gateway
 
 # ---- runtime stage ----------------------------------------------------------

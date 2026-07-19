@@ -33,6 +33,15 @@ const Version = "0.1.0-poc"
 // MinClientVersion is the oldest client the gateway will happily serve.
 const MinClientVersion = "0.1.0"
 
+// BuildCommit is the git short-SHA of this build, injected at compile time via
+//
+//	-ldflags "-X github.com/runonflux/cumulusvpn-gateway/internal/api.BuildCommit=<sha>"
+//
+// It defaults to "dev" for local builds. Surfaced in /v1/info so the fleet
+// dashboard can flag instances running an out-of-date image (the semver Version
+// string alone can't — it doesn't change between rebuilds of the same tag).
+var BuildCommit = "dev"
+
 // dnsServer is advertised to clients; forwarded like any other flow so client
 // DNS never leaks via the node resolver (POC: run an in-process DoH/DoT
 // resolver and hand out 10.8.0.1 as the DNS instead — docs/03-gateway.md).
@@ -49,6 +58,7 @@ type Info struct {
 	ServerPubKey     string  `json:"server_pubkey"` // WG pubkey (base64)
 	SignPubKey       string  `json:"sign_pubkey"`   // ed25519 verify key (base64)
 	MinClientVersion string  `json:"min_client_version"`
+	BuildCommit      string  `json:"build_commit"` // git short-SHA of the image build
 }
 
 // Server is the control API.
@@ -91,6 +101,7 @@ func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.M
 	s.info.SignPubKey = base64.StdEncoding.EncodeToString(s.signKey.Public().(ed25519.PublicKey))
 	s.info.Version = Version
 	s.info.MinClientVersion = MinClientVersion
+	s.info.BuildCommit = BuildCommit
 	return s
 }
 
