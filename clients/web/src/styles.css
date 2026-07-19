@@ -1,6 +1,38 @@
 /* CumulusVPN web client — design tokens ported verbatim from design/mockups.html.
    Cyan = connect, amber = premium, mono for data. Dark by default, light override. */
 
+/* Inter, self-hosted (latin subset) — the SSP/Flux ecosystem typeface, so the
+   product renders identically on every platform instead of falling back to
+   Segoe/Roboto. 700 + tight tracking is the display treatment. */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/inter-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/inter-500.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/inter-600.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/inter-700.woff2") format("woff2");
+}
+
 :root {
   --bg: #f5f8fb;
   --bg-2: #eaf0f6;
@@ -20,7 +52,8 @@
   --radius: 18px;
   --maxw: 1160px;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif;
 
   /* Signature: one confident cyan→blue gradient for "connect" moments. */
   --blue: #5b7dff;
@@ -99,6 +132,8 @@ body {
   color: var(--ink);
   font-family: var(--sans);
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-synthesis: none; /* 800 headings map to the real Inter 700 — no fake bold */
   line-height: 1.5;
   min-height: 100vh;
 }
