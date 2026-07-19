@@ -32,6 +32,7 @@ import {
 import {
   discoverFleet,
   groupByCountry,
+  groupByLocation,
   measureLatency,
   routeEndpoint,
   type Country,
@@ -68,6 +69,8 @@ export function isMultihop(style: RouteStyle): boolean {
 export interface VpnModel {
   readonly keypair: Keypair | null;
   readonly countries: readonly Country[];
+  /** Per-city rows for the single-hop picker (see `groupByLocation`). */
+  readonly locations: readonly Country[];
   readonly selected: Country | null;
   readonly state: TunnelState;
   readonly status: TunnelStatus | null;
@@ -155,6 +158,10 @@ const STATUS_POLL_MS = 30_000;
 export function useVpn(): VpnModel & VpnActions {
   const [keypair, setKeypair] = useState<Keypair | null>(null);
   const [countries, setCountries] = useState<readonly Country[]>([]);
+  // Per-CITY rows for the single-hop picker (a country can appear as several
+  // cities, e.g. US New York / California). Country-level `countries` still
+  // drives multi-hop entry/exit (jurisdiction is a country, not a city).
+  const [locations, setLocations] = useState<readonly Country[]>([]);
   const [selectedCode, setSelectedCode] = useState<string | null>(null);
   const [state, setState] = useState<TunnelState>('disconnected');
   const [status, setStatus] = useState<TunnelStatus | null>(null);
@@ -196,9 +203,12 @@ export function useVpn(): VpnModel & VpnActions {
   // whole list (not just the per-country `best`) to find a distinct exit.
   const gatewaysRef = useRef<readonly GatewayInfo[]>([]);
 
+  // Single-hop selection is a LOCATION (city) id; `selectedCode` holds it. Old
+  // persisted country codes still resolve because a single-city country's id
+  // equals its code.
   const selected = useMemo<Country | null>(
-    () => countries.find((c) => c.code === selectedCode) ?? null,
-    [countries, selectedCode],
+    () => locations.find((l) => l.id === selectedCode) ?? null,
+    [locations, selectedCode],
   );
 
   const entry = useMemo<Country | null>(
@@ -229,9 +239,21 @@ export function useVpn(): VpnModel & VpnActions {
   // boot splash up "for quite some time". So the list paints from discovery
   // alone and the latency dots fill in here, asynchronously.
   const measureLatencies = useCallback(
-    async (gateways: readonly GatewayInfo[], grouped: readonly Country[]): Promise<void> => {
+    async (
+      gateways: readonly GatewayInfo[],
+      countryRows: readonly Country[],
+      locationRows: readonly Country[],
+    ): Promise<void> => {
+      // Ping every distinct "best" across both groupings (deduped by IP).
+      const bests = new Map<string, GatewayInfo>();
+      for (const c of countryRows) {
+        bests.set(c.best.ip, c.best);
+      }
+      for (const l of locationRows) {
+        bests.set(l.best.ip, l.best);
+      }
       const measured = await Promise.all(
-        grouped.map(async (c) => [c.best.ip, await measureLatency(c.best)] as const),
+        [...bests.values()].map(async (gw) => [gw.ip, await measureLatency(gw)] as const),
       );
       const latencyByIp: Record<string, number> = {};
       for (const [ip, ms] of measured) {
@@ -240,6 +262,7 @@ export function useVpn(): VpnModel & VpnActions {
         }
       }
       setCountries(groupByCountry(gateways, latencyByIp));
+      setLocations(groupByLocation(gateways, latencyByIp));
       // Persist this good snapshot as the launch cache (best-effort).
       void saveFleet(gateways, latencyByIp, Date.now()).catch(() => undefined);
     },
@@ -255,9 +278,11 @@ export function useVpn(): VpnModel & VpnActions {
       // Paint the server list immediately (this dismisses the boot splash);
       // latency dots stream in from the background pass so first paint isn't
       // blocked on the ping round-trips.
-      const grouped = groupByCountry(gateways);
-      setCountries(grouped);
-      void measureLatencies(gateways, grouped);
+      const countryRows = groupByCountry(gateways);
+      const locationRows = groupByLocation(gateways);
+      setCountries(countryRows);
+      setLocations(locationRows);
+      void measureLatencies(gateways, countryRows, locationRows);
     } finally {
       setDiscovering(false);
     }
@@ -297,6 +322,7 @@ export function useVpn(): VpnModel & VpnActions {
         if (alive && cached) {
           gatewaysRef.current = cached.gateways;
           setCountries(groupByCountry(cached.gateways, cached.latencyByIp));
+          setLocations(groupByLocation(cached.gateways, cached.latencyByIp));
         }
         await refresh();
       } catch (e) {
@@ -488,7 +514,8 @@ export function useVpn(): VpnModel & VpnActions {
       }
 
       // ---- single-hop (Fast, default) ----
-      const target = countries.find((c) => c.code === selectedCode) ?? countries[0] ?? null;
+      // `selectedCode` is a LOCATION id; auto (null) → nearest location.
+      const target = locations.find((l) => l.id === selectedCode) ?? locations[0] ?? null;
       if (!target) {
         setState('error');
         setError('No gateways reachable');
@@ -515,7 +542,7 @@ export function useVpn(): VpnModel & VpnActions {
       setState('error');
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [keypair, countries, selectedCode, routeStyle, entryCode, exitCode, killSwitch]);
+  }, [keypair, countries, locations, selectedCode, routeStyle, entryCode, exitCode, killSwitch]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     wantConnectedRef.current = false;
@@ -611,6 +638,7 @@ export function useVpn(): VpnModel & VpnActions {
   return {
     keypair,
     countries,
+    locations,
     selected,
     state,
     status,

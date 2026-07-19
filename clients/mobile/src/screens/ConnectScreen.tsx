@@ -61,9 +61,9 @@ export function ConnectScreen({
   onOpenSettings,
 }: Props): React.JSX.Element {
   const connected = vpn.state === 'connected';
-  // No explicit single-hop country chosen → Automatic (route to the nearest).
+  // No explicit single-hop location chosen → Automatic (route to the nearest).
   const auto = vpn.selected === null;
-  const target: Country | null = vpn.selected ?? vpn.countries[0] ?? null;
+  const target: Country | null = vpn.selected ?? vpn.locations[0] ?? null;
   const busy = vpn.state === 'connecting' || vpn.state === 'disconnecting';
 
   // Tick every second while connected so the session timer stays live.

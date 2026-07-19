@@ -55,9 +55,9 @@ function App(): React.JSX.Element {
             </View>
           ) : route === 'countries' ? (
             <CountryPickerScreen
-              countries={vpn.countries}
-              selectedCode={vpn.selected?.code ?? null}
-              onSelect={(code) => void vpn.selectCountry(code)}
+              countries={vpn.locations}
+              selectedCode={vpn.selected?.id ?? null}
+              onSelect={(id) => void vpn.selectCountry(id)}
               onSelectAuto={() => void vpn.selectCountry(null)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}

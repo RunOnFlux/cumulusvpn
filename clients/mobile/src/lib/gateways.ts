@@ -13,8 +13,15 @@ import { bundledSpecs, seedNodeIps } from './directory';
 /** Latency band that drives the coloured dot in the picker (mockup g/y/r). */
 export type LatencyBand = 'good' | 'ok' | 'slow';
 
-/** One country row in the picker, aggregated from all its gateways. */
+/** One row in a picker, aggregated from its gateways. */
 export interface Country {
+  /**
+   * Stable row id. {@link groupByCountry} sets it to {@link code} (country-level
+   * rows for multi-hop entry/exit). {@link groupByLocation} sets it to
+   * `"<cc>:<city>"` (or just `<cc>` when no locality is known), so two cities in
+   * the same country are distinct, selectable single-hop rows.
+   */
+  readonly id: string;
   /** ISO-3166 alpha-2, e.g. `"DE"`. */
   readonly code: string;
   /** Flag emoji derived from `code`. */
@@ -176,6 +183,7 @@ export function groupByCountry(
     }
     const latency = latencyByIp[best.ip];
     countries.push({
+      id: code,
       code,
       flag: flagEmoji(code),
       name: COUNTRY_NAMES[code] ?? code,
@@ -186,16 +194,68 @@ export function groupByCountry(
     });
   }
 
-  // Sort by measured latency (unmeasured last), then name — nearest first.
-  countries.sort((a, b) => {
+  return sortByNearest(countries);
+}
+
+/**
+ * Group discovered gateways into per-CITY rows (single-hop picker): one row per
+ * (country, locality), so a multi-city country like the US shows "New York" and
+ * "California" as separate, selectable locations. Locality comes from the
+ * gateway's reported region/city (see {@link localityOf}); a country whose
+ * gateways report no locality collapses to a single country-level row.
+ */
+export function groupByLocation(
+  gateways: readonly GatewayInfo[],
+  latencyByIp: Readonly<Record<string, number>> = {},
+): Country[] {
+  const byLoc = new Map<string, GatewayInfo[]>();
+  for (const gw of gateways) {
+    const city = localityOf(gw.city, gw.country);
+    const key = city ? `${gw.country}:${city}` : gw.country;
+    const list = byLoc.get(key);
+    if (list) {
+      list.push(gw);
+    } else {
+      byLoc.set(key, [gw]);
+    }
+  }
+
+  const rows: Country[] = [];
+  for (const [id, list] of byLoc) {
+    const best = list[0];
+    if (!best) {
+      continue;
+    }
+    const code = best.country;
+    rows.push({
+      id,
+      code,
+      flag: flagEmoji(code),
+      name: COUNTRY_NAMES[code] ?? code,
+      city: localityOf(best.city, code),
+      nodeCount: list.length,
+      best,
+      latencyMs: latencyByIp[best.ip] ?? null,
+    });
+  }
+
+  return sortByNearest(rows);
+}
+
+/** Sort rows by measured latency (unmeasured last), then name — nearest first. */
+function sortByNearest(rows: Country[]): Country[] {
+  rows.sort((a, b) => {
     const la = a.latencyMs ?? Number.POSITIVE_INFINITY;
     const lb = b.latencyMs ?? Number.POSITIVE_INFINITY;
     if (la !== lb) {
       return la - lb;
     }
-    return a.name < b.name ? -1 : 1;
+    if (a.name !== b.name) {
+      return a.name < b.name ? -1 : 1;
+    }
+    return a.city < b.city ? -1 : 1;
   });
-  return countries;
+  return rows;
 }
 
 /**

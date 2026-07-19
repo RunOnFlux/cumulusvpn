@@ -118,7 +118,7 @@ export function CountryPickerScreen({
 
       <FlatList
         data={filtered}
-        keyExtractor={(c) => c.code}
+        keyExtractor={(c) => c.id}
         keyboardShouldPersistTaps="handled"
         ListHeaderComponent={
           onSelectAuto && query.trim() === '' ? (
@@ -147,9 +147,9 @@ export function CountryPickerScreen({
           const pinned = favorites.includes(item.code);
           return (
             <Pressable
-              style={[styles.row, item.code === selectedCode && styles.rowSelected]}
+              style={[styles.row, item.id === selectedCode && styles.rowSelected]}
               onPress={() => {
-                onSelect(item.code);
+                onSelect(item.id);
                 onClose();
               }}
               accessibilityRole="button"
