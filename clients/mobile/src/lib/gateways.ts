@@ -31,21 +31,73 @@ export interface Country {
   readonly latencyMs: number | null;
 }
 
-/** Minimal ISO code → display name map for the launch fleet (docs/deploy specs). */
+/**
+ * ISO code → display name for the whole planned fleet (beta + GA, per
+ * deploy/countries.yaml). Any `cumulusvpn<cc>` spec is auto-discovered, so this
+ * only needs the display name; an unknown code falls back to the raw code.
+ */
 const COUNTRY_NAMES: Readonly<Record<string, string>> = {
-  DE: 'Germany',
+  // Beta
   US: 'United States',
-  NL: 'Netherlands',
-  GB: 'United Kingdom',
-  FR: 'France',
-  JP: 'Japan',
   CA: 'Canada',
-  BR: 'Brazil',
-  AU: 'Australia',
+  DE: 'Germany',
+  NL: 'Netherlands',
+  FR: 'France',
+  GB: 'United Kingdom',
   CZ: 'Czechia',
   PL: 'Poland',
   SG: 'Singapore',
+  JP: 'Japan',
+  AU: 'Australia',
+  BR: 'Brazil',
+  // GA additions
+  ES: 'Spain',
+  IT: 'Italy',
+  SE: 'Sweden',
+  CH: 'Switzerland',
+  AT: 'Austria',
+  FI: 'Finland',
+  MX: 'Mexico',
+  KR: 'South Korea',
+  IN: 'India',
+  ZA: 'South Africa',
 };
+
+/**
+ * Representative datacenter city per country — a cosmetic fallback for when a
+ * gateway hasn't reported its own locality yet. The live gateway's `/v1/info`
+ * (now its FluxOS region, e.g. a US state) wins whenever present.
+ */
+const COUNTRY_CITIES: Readonly<Record<string, string>> = {
+  US: 'Multiple cities',
+  CA: 'Toronto',
+  DE: 'Frankfurt',
+  NL: 'Amsterdam',
+  FR: 'Paris',
+  GB: 'London',
+  CZ: 'Prague',
+  PL: 'Warsaw',
+  SG: 'Singapore',
+  JP: 'Tokyo',
+  AU: 'Sydney',
+  BR: 'São Paulo',
+  ES: 'Madrid',
+  IT: 'Milan',
+  SE: 'Stockholm',
+  CH: 'Zürich',
+  AT: 'Vienna',
+  FI: 'Helsinki',
+  MX: 'Mexico City',
+  KR: 'Seoul',
+  IN: 'Mumbai',
+  ZA: 'Johannesburg',
+};
+
+/** Best locality label for a gateway: its reported city/region, else a fallback. */
+function localityOf(cityFromGateway: string, code: string): string {
+  const c = cityFromGateway.trim();
+  return c || COUNTRY_CITIES[code] || '';
+}
 
 /** A resolved end of the active route (one hop), for the connected display. */
 export interface RouteEndpoint {
@@ -69,7 +121,7 @@ export function routeEndpoint(gw: GatewayInfo): RouteEndpoint {
     code: gw.country,
     flag: flagEmoji(gw.country),
     name: COUNTRY_NAMES[gw.country] ?? gw.country,
-    city: gw.city,
+    city: localityOf(gw.city, gw.country),
     ip: gw.ip,
     controlUrl: gw.controlUrl,
   };
@@ -127,7 +179,7 @@ export function groupByCountry(
       code,
       flag: flagEmoji(code),
       name: COUNTRY_NAMES[code] ?? code,
-      city: best.city,
+      city: localityOf(best.city, code),
       nodeCount: list.length,
       best,
       latencyMs: latency ?? null,

@@ -48,7 +48,12 @@ func run() error {
 	} else {
 		info.Country = hi.Geo.Country
 		info.Region = hi.Geo.Region
-		info.City = hi.Geo.Continent // POC: hostinfo has no city; map real field
+		// FluxOS hostinfo has no city, only region (US state / province). Use the
+		// region as the locality so clients can distinguish deployments within a
+		// country (e.g. US-East "New York" vs US-West "California") instead of the
+		// old bug that reported the CONTINENT as the city. A future pass can add a
+		// geoIP lookup of the public IP for true city-level precision.
+		info.City = hi.Geo.Region
 		if hi.IP != "" {
 			nodePublicIP = hi.IP
 		}
