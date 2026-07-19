@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CumulusVPN — Fleet status</title>
+<meta name="description" content="Live status and health of the CumulusVPN gateway fleet on the Flux network — instances, load, capacity and build version, by country." />
+<meta name="theme-color" content="#070B11" />
+<style>
+  @font-face { font-family:"Inter"; font-weight:400; font-display:swap; src:url("/fonts/inter-400.woff2") format("woff2"); }
+  @font-face { font-family:"Inter"; font-weight:500; font-display:swap; src:url("/fonts/inter-500.woff2") format("woff2"); }
+  @font-face { font-family:"Inter"; font-weight:600; font-display:swap; src:url("/fonts/inter-600.woff2") format("woff2"); }
+  @font-face { font-family:"Inter"; font-weight:700; font-display:swap; src:url("/fonts/inter-700.woff2") format("woff2"); }
+
+  :root {
+    --bg:#F5F8FB; --bg-2:#EAF0F6; --surface:#FFFFFF; --surface-2:#F0F4F8;
+    --ink:#0C1420; --ink-2:#46586B; --ink-3:#7B8D9E; --line:#DCE5EE;
+    --cyan:#0FB9AE; --cyan-glow:#34E4DA; --blue:#5b7dff; --amber:#C77F17; --amber-2:#F5B23D;
+    --green:#1F9D6B; --green-2:#34D399; --red:#EF6A5A; --slate:#8496A8;
+    --radius:16px; --maxw:1200px;
+    --mono: ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Menlo,monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --grad:linear-gradient(135deg,var(--cyan-glow),var(--blue));
+    --grad-soft:linear-gradient(135deg,color-mix(in srgb,var(--cyan-glow) 16%,transparent),color-mix(in srgb,var(--blue) 16%,transparent));
+    --shadow-card:0 1px 0 rgba(255,255,255,.04) inset,0 30px 64px -40px rgba(3,8,16,.55);
+    --ring:0 0 0 3px color-mix(in srgb,var(--cyan-glow) 32%,transparent);
+    --ease:cubic-bezier(.2,.7,.2,1);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#070B11; --bg-2:#0C121B; --surface:#10171F; --surface-2:#161F2A;
+      --ink:#EAF1F8; --ink-2:#A6B6C6; --ink-3:#6C7E90; --line:#1E2A37;
+      --cyan:#34E4DA; --amber:#F5B23D; --green:#34D399; --slate:#64748B; }
+  }
+  :root[data-theme="light"] { --bg:#F5F8FB; --bg-2:#EAF0F6; --surface:#FFFFFF; --surface-2:#F0F4F8;
+    --ink:#0C1420; --ink-2:#46586B; --ink-3:#7B8D9E; --line:#DCE5EE; --cyan:#0FB9AE; --amber:#C77F17; --green:#1F9D6B; }
+  :root[data-theme="dark"] { --bg:#070B11; --bg-2:#0C121B; --surface:#10171F; --surface-2:#161F2A;
+    --ink:#EAF1F8; --ink-2:#A6B6C6; --ink-3:#6C7E90; --line:#1E2A37; --cyan:#34E4DA; --amber:#F5B23D; --green:#34D399; }
+
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; font-synthesis:none;
+    line-height:1.5; min-height:100vh; }
+  body::before { content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(42rem 30rem at 84% -8%,color-mix(in srgb,var(--cyan-glow) 12%,transparent),transparent 60%),
+      radial-gradient(38rem 28rem at 4% 6%,color-mix(in srgb,var(--blue) 10%,transparent),transparent 55%); }
+  a { color:var(--cyan); text-decoration:none; }
+  .mono { font-family:var(--mono); }
+  .wrap { max-width:var(--maxw); margin:0 auto; padding:0 22px; }
+
+  header.top { position:sticky; top:0; z-index:20; border-bottom:1px solid var(--line);
+    background:color-mix(in srgb,var(--bg) 88%,transparent); backdrop-filter:blur(10px); }
+  .top .wrap { display:flex; align-items:center; justify-content:space-between; height:60px; gap:16px; }
+  .brand { display:flex; align-items:center; gap:10px; font-weight:700; letter-spacing:-.02em; font-size:17px; color:var(--ink); }
+  .mark { width:24px; height:24px; }
+  .top-right { display:flex; align-items:center; gap:14px; }
+  .pbf { display:inline-flex; align-items:center; line-height:0; opacity:.92; }
+  .pbf:hover { opacity:1; }
+  .pbf img { height:15px; width:auto; display:none; }
+  .pbf .on-light { display:inline; }
+  @media (prefers-color-scheme: dark){ .pbf .on-light{display:none} .pbf .on-dark{display:inline} }
+  :root[data-theme="light"] .pbf .on-light{display:inline} :root[data-theme="light"] .pbf .on-dark{display:none}
+  :root[data-theme="dark"] .pbf .on-light{display:none} :root[data-theme="dark"] .pbf .on-dark{display:inline}
+  .theme-btn { background:transparent; border:1px solid var(--line); color:var(--ink-2); border-radius:20px;
+    width:32px; height:32px; cursor:pointer; font-size:14px; }
+  .theme-btn:hover { color:var(--ink); border-color:var(--ink-3); }
+
+  .hero { padding:40px 0 8px; }
+  .eyebrow { display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:11px;
+    letter-spacing:.14em; text-transform:uppercase; color:var(--cyan); font-weight:600; padding:5px 12px;
+    border-radius:999px; border:1px solid color-mix(in srgb,var(--cyan) 28%,var(--line)); background:var(--grad-soft); }
+  h1 { font-size:clamp(28px,4vw,40px); letter-spacing:-.035em; font-weight:800; margin:14px 0 0; }
+  .hero p { color:var(--ink-2); font-size:15.5px; margin:10px 0 0; max-width:60ch; }
+  .updated { display:inline-flex; align-items:center; gap:8px; margin-top:16px; font-family:var(--mono);
+    font-size:12px; color:var(--ink-3); }
+  .live-dot { width:8px; height:8px; border-radius:50%; background:var(--green); box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 60%,transparent);
+    animation:pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--green) 55%,transparent)} 70%{box-shadow:0 0 0 7px transparent} 100%{box-shadow:0 0 0 0 transparent} }
+  @media (prefers-reduced-motion: reduce){ .live-dot{animation:none} }
+
+  /* KPI cards */
+  .kpis { display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin:26px 0 10px; }
+  .kpi { position:relative; background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; box-shadow:var(--shadow-card); }
+  .kpi::after { content:""; position:absolute; inset:0 0 auto 0; height:1px; border-radius:var(--radius) var(--radius) 0 0;
+    background:linear-gradient(90deg,transparent,color-mix(in srgb,var(--cyan-glow) 34%,transparent),transparent); opacity:.5; }
+  .kpi .n { font-family:var(--mono); font-size:26px; font-weight:700; letter-spacing:-.02em; }
+  .kpi .l { font-size:12px; color:var(--ink-3); margin-top:4px; text-transform:uppercase; letter-spacing:.05em; }
+  .kpi .n.good{ color:var(--green); } .kpi .n.warn{ color:var(--amber); } .kpi .n.bad{ color:var(--red); }
+
+  section.fleet { padding:22px 0 60px; }
+  .sec-title { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-3); margin:26px 0 12px; font-weight:600; }
+  .countries { display:grid; grid-template-columns:repeat(auto-fill,minmax(420px,1fr)); gap:16px; }
+  .country { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow-card); }
+  .country-head { display:flex; align-items:center; gap:12px; padding:14px 16px; border-bottom:1px solid var(--line); }
+  .country-head .flag { font-size:24px; }
+  .country-head .cname { font-weight:700; font-size:15px; flex:1; }
+  .country-head .count { font-family:var(--mono); font-size:12px; color:var(--ink-3); }
+  .rows { display:flex; flex-direction:column; }
+  .inst { display:grid; grid-template-columns:14px 1fr auto; gap:10px; align-items:center; padding:11px 16px; border-top:1px solid color-mix(in srgb,var(--line) 60%,transparent); }
+  .inst:first-child { border-top:0; }
+  .dot { width:9px; height:9px; border-radius:50%; }
+  .dot.up{ background:var(--green); } .dot.down{ background:var(--red); }
+  .inst .meta { min-width:0; }
+  .inst .ip { font-family:var(--mono); font-size:13px; font-weight:600; }
+  .inst .sub { font-family:var(--mono); font-size:10.5px; color:var(--ink-3); margin-top:2px; display:flex; gap:8px; flex-wrap:wrap; }
+  .badge { font-family:var(--mono); font-size:9.5px; padding:2px 6px; border-radius:6px; white-space:nowrap; }
+  .badge.latest{ color:var(--green); background:color-mix(in srgb,var(--green) 16%,transparent); }
+  .badge.stale{ color:var(--amber); background:color-mix(in srgb,var(--amber-2) 18%,transparent); }
+  .badge.down{ color:var(--red); background:color-mix(in srgb,var(--red) 15%,transparent); }
+  .inst .right { text-align:right; min-width:96px; }
+  .loadbar { width:96px; height:6px; border-radius:6px; background:var(--surface-2); overflow:hidden; margin-left:auto; }
+  .loadbar > i { display:block; height:100%; border-radius:6px; }
+  .loadbar > i.g{ background:var(--green); } .loadbar > i.y{ background:var(--amber-2); } .loadbar > i.r{ background:var(--red); }
+  .inst .cap { font-family:var(--mono); font-size:10.5px; color:var(--ink-3); margin-top:4px; }
+  .inst .dash { font-family:var(--mono); font-size:11px; color:var(--ink-3); }
+
+  .planned { display:flex; flex-wrap:wrap; gap:8px; }
+  .chip { display:inline-flex; align-items:center; gap:7px; font-size:12.5px; color:var(--ink-2); background:var(--surface-2);
+    border:1px solid var(--line); border-radius:999px; padding:6px 12px; }
+  .chip .flag { font-size:15px; }
+
+  .state { text-align:center; color:var(--ink-3); padding:60px 0; font-size:15px; }
+  .empty-note { color:var(--ink-3); font-size:13px; padding:6px 2px; }
+
+  footer { border-top:1px solid var(--line); padding:26px 0 44px; color:var(--ink-3); font-size:13px; }
+  footer .wrap { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:center; }
+
+  @media (max-width:920px){ .kpis{ grid-template-columns:repeat(2,1fr); } .countries{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <div class="brand">
+    <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+      <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+    </svg>
+    CumulusVPN <span style="color:var(--ink-3);font-weight:600">· Fleet</span>
+  </div>
+  <div class="top-right">
+    <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux">
+      <img class="on-light" src="/powered_by_dark.svg" alt="Powered by Flux" />
+      <img class="on-dark" src="/powered_by_light.svg" alt="" aria-hidden="true" />
+    </a>
+    <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle theme" title="Toggle theme">◐</button>
+  </div>
+</div></header>
+
+<div class="wrap">
+  <div class="hero">
+    <span class="eyebrow">Fleet status · live</span>
+    <h1>CumulusVPN gateway fleet</h1>
+    <p>Real-time health of every gateway on the Flux network — status, load, free capacity and build
+      version, by country. Probed server-side and refreshed automatically.</p>
+    <div class="updated"><span class="live-dot"></span><span id="updated">Loading…</span></div>
+  </div>
+
+  <div class="kpis" id="kpis" hidden></div>
+
+  <section class="fleet">
+    <div id="content"><div class="state">Probing the fleet…</div></div>
+  </section>
+</div>
+
+<footer><div class="wrap">
+  <span>CumulusVPN — Decentralized VPN on Flux Cloud · dashboard.cumulusvpn.com</span>
+  <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux">
+    <img class="on-light" src="/powered_by_dark.svg" alt="Powered by Flux" />
+    <img class="on-dark" src="/powered_by_light.svg" alt="" aria-hidden="true" />
+  </a>
+</div></footer>
+
+<script>
+  // ---- theme toggle ----
+  (function () {
+    var root = document.documentElement, KEY = 'cumulusvpn-theme';
+    try { var s = localStorage.getItem(KEY); if (s === 'light' || s === 'dark') root.setAttribute('data-theme', s); } catch (e) {}
+    function cur(){ var a = root.getAttribute('data-theme'); if (a==='light'||a==='dark') return a;
+      return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    var b = document.getElementById('themeToggle');
+    b && b.addEventListener('click', function(){ var n = cur()==='dark'?'light':'dark'; root.setAttribute('data-theme', n);
+      try { localStorage.setItem(KEY, n); } catch(e){} });
+  })();
+
+  // ---- helpers ----
+  var regionNames;
+  try { regionNames = new Intl.DisplayNames(['en'], { type:'region' }); } catch(e){}
+  function nameOf(cc){ try { return regionNames ? (regionNames.of(cc) || cc) : cc; } catch(e){ return cc; } }
+  function flagOf(cc){ if(!/^[A-Za-z]{2}$/.test(cc)) return '🏳️'; var b=0x1F1E6, u=cc.toUpperCase();
+    return String.fromCodePoint(b+u.charCodeAt(0)-65, b+u.charCodeAt(1)-65); }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+  function pct(load){ return load==null ? '—' : Math.round(load*100)+'%'; }
+  function loadClass(load){ if(load==null) return 'g'; if(load<0.34) return 'g'; if(load<0.67) return 'y'; return 'r'; }
+  function ago(ms){ var s=Math.max(0,Math.round((Date.now()-ms)/1000)); return s<60? s+'s ago' : Math.round(s/60)+'m ago'; }
+
+  function buildBadge(inst, latest){
+    if(!inst.up) return '<span class="badge down">offline</span>';
+    if(inst.buildCommit && latest && inst.buildCommit === latest)
+      return '<span class="badge latest">✓ latest · '+esc(inst.buildCommit.slice(0,7))+'</span>';
+    if(inst.buildCommit) return '<span class="badge stale">'+esc(inst.buildCommit.slice(0,7))+' · behind</span>';
+    return '<span class="badge stale">outdated image</span>';
+  }
+
+  function instRow(inst, latest){
+    var locality = [inst.region, inst.city].filter(Boolean).join(' · ');
+    var right = inst.up
+      ? '<div class="loadbar"><i class="'+loadClass(inst.load)+'" style="width:'+Math.round((inst.load||0)*100)+'%"></i></div>'
+        + '<div class="cap">'+pct(inst.load)+' load'+(inst.capacity!=null? ' · '+inst.capacity+' free':'')+'</div>'
+      : '<div class="dash">unreachable</div>';
+    return '<div class="inst">'
+      + '<span class="dot '+(inst.up?'up':'down')+'"></span>'
+      + '<div class="meta"><div class="ip">'+esc(inst.ip)+'</div>'
+      + '<div class="sub">'+ (inst.up? (esc(inst.version||'?')) : 'no response')
+      + (locality? ' · '+esc(locality):'') + ' '+buildBadge(inst,latest)+'</div></div>'
+      + '<div class="right">'+right+'</div></div>';
+  }
+
+  function render(data){
+    var instances = data.instances || [], latest = data.latestCommit;
+    window.__last = data.generatedAt;
+    document.getElementById('updated').textContent = 'Updated ' + ago(data.generatedAt) + ' · auto-refresh 30s';
+
+    var up = instances.filter(function(i){return i.up;});
+    var byCc = {};
+    instances.forEach(function(i){ (byCc[i.cc] = byCc[i.cc] || []).push(i); });
+    var liveCcs = Object.keys(byCc).sort();
+    var countriesLive = liveCcs.filter(function(cc){ return byCc[cc].some(function(i){return i.up;}); }).length;
+    var totalCap = up.reduce(function(a,i){ return a + (i.capacity||0); }, 0);
+    var loads = up.map(function(i){return i.load;}).filter(function(x){return x!=null;});
+    var avgLoad = loads.length ? loads.reduce(function(a,b){return a+b;},0)/loads.length : 0;
+    var healthPct = instances.length ? Math.round(up.length/instances.length*100) : 0;
+
+    // KPIs
+    var hClass = healthPct>=90?'good':healthPct>=60?'warn':'bad';
+    var kpis = document.getElementById('kpis');
+    kpis.hidden = false;
+    kpis.innerHTML =
+      kpi(up.length + '<span style="font-size:16px;color:var(--ink-3)"> / '+instances.length+'</span>', 'Instances online') +
+      kpi(String(countriesLive), 'Countries live') +
+      kpi(healthPct + '%', 'Healthy', hClass) +
+      kpi(totalCap.toLocaleString(), 'Free slots') +
+      kpi(Math.round(avgLoad*100) + '%', 'Avg load', loadClass(avgLoad)==='g'?'good':loadClass(avgLoad)==='y'?'warn':'bad');
+
+    // Country cards (only those with any instances), sorted by name
+    var withInst = liveCcs.filter(function(cc){ return byCc[cc].length; });
+    withInst.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b)); });
+
+    var html = '';
+    if (withInst.length) {
+      html += '<div class="sec-title">Live gateways</div><div class="countries">';
+      withInst.forEach(function(cc){
+        var list = byCc[cc].slice().sort(function(a,b){ return (a.ip||'').localeCompare(b.ip||''); });
+        var onl = list.filter(function(i){return i.up;}).length;
+        html += '<div class="country"><div class="country-head">'
+          + '<span class="flag">'+flagOf(cc)+'</span>'
+          + '<span class="cname">'+esc(nameOf(cc))+'</span>'
+          + '<span class="count">'+onl+'/'+list.length+' up</span></div>'
+          + '<div class="rows">' + list.map(function(i){return instRow(i,latest);}).join('') + '</div></div>';
+      });
+      html += '</div>';
+    } else {
+      html += '<div class="state">No live gateways responded. If instances were just (re)deployed, give them a minute.</div>';
+    }
+
+    // Planned (declared in the manifest but no instances discovered yet)
+    var planned = (data.planned || []).map(function(c){return c.toUpperCase();})
+      .filter(function(cc){ return !byCc[cc]; });
+    if (planned.length) {
+      planned.sort(function(a,b){ return nameOf(a).localeCompare(nameOf(b)); });
+      html += '<div class="sec-title">Planned · not yet deployed</div><div class="planned">'
+        + planned.map(function(cc){ return '<span class="chip"><span class="flag">'+flagOf(cc)+'</span>'+esc(nameOf(cc))+'</span>'; }).join('')
+        + '</div>';
+    }
+
+    document.getElementById('content').innerHTML = html;
+  }
+
+  function kpi(n, l, cls){ return '<div class="kpi"><div class="n '+(cls||'')+'">'+n+'</div><div class="l">'+esc(l)+'</div></div>'; }
+
+  async function refresh(){
+    try {
+      var r = await fetch('/api/fleet', { cache:'no-store' });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      var data = await r.json();
+      render(data);
+    } catch(e){
+      var c = document.getElementById('content');
+      if (c && !c.querySelector('.country')) c.innerHTML = '<div class="state">Couldn’t reach the fleet API. Retrying…</div>';
+    }
+  }
+  refresh();
+  setInterval(refresh, 30000);
+  // Keep the "updated Xs ago" label ticking between refreshes.
+  setInterval(function(){ var el=document.getElementById('updated'); if(el && window.__last) el.textContent='Updated '+ago(window.__last)+' · auto-refresh 30s'; }, 5000);
+</script>
+</body>
+</html>

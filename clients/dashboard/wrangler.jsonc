@@ -1,0 +1,23 @@
+// Cloudflare Worker for dashboard.cumulusvpn.com — the public fleet monitor.
+// Static page in ./public + worker.js (serves assets + /api/fleet aggregation).
+//
+// This is a SEPARATE Cloudflare Worker from the main site (name below). Point a
+// Git-connected build at this config:
+//   Root directory:  /
+//   Build command:   (none — the page is static)
+//   Deploy command:  npx wrangler deploy --config clients/dashboard/wrangler.jsonc
+// Then add the custom domain dashboard.cumulusvpn.com in the Worker's settings.
+{
+  "name": "cumulusvpn-dashboard",
+  // Paths are relative to THIS config file (clients/dashboard/), so
+  // `wrangler deploy --config clients/dashboard/wrangler.jsonc` resolves them.
+  "main": "worker.js",
+  "compatibility_date": "2026-07-17",
+  "assets": {
+    "directory": "public",
+    "binding": "ASSETS",
+    // Worker runs first so /api/fleet reaches it before asset routing.
+    "run_worker_first": true,
+    "not_found_handling": "single-page-application"
+  }
+}
