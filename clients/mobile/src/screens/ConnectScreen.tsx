@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import type { RouteStyle } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
-import type { PaymentIdentity, VpnActions, VpnModel } from '../state/useVpn';
+import type { VpnActions, VpnModel } from '../state/useVpn';
 import { Orb } from '../components/Orb';
 import { TierPill } from '../components/TierPill';
 import { Toggle } from '../components/Toggle';
@@ -216,7 +216,7 @@ export function ConnectScreen({
       />
 
       {/* Free-tier upsell line — store-compliant, no purchase UI (docs/05). */}
-      {vpn.tier === 'free' ? <UpgradeLine payment={vpn.payment} onPress={onOpenUpgrade} /> : null}
+      {vpn.tier === 'free' ? <UpgradeLine onPress={onOpenUpgrade} /> : null}
 
       <Pressable
         style={[
@@ -420,19 +420,12 @@ function KillSwitchRow({
   );
 }
 
-function UpgradeLine({
-  payment,
-  onPress,
-}: {
-  readonly payment: PaymentIdentity | null;
-  readonly onPress: () => void;
-}): React.JSX.Element {
+function UpgradeLine({ onPress }: { readonly onPress: () => void }): React.JSX.Element {
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={styles.upsell}>
       <Text style={styles.upsellText}>
-        Free · 100 KB/s — <Text style={styles.upsellAccent}>Upgrade at cumulusvpn.com</Text>
+        Free · 100 KB/s — <Text style={styles.upsellAccent}>Go Premium for full speed ›</Text>
       </Text>
-      {payment ? <Text style={styles.upsellMemo}>{payment.memo}</Text> : null}
     </Pressable>
   );
 }
@@ -448,7 +441,9 @@ function Stat({ k, v }: { readonly k: string; readonly v: string }): React.JSX.E
 
 function formatBytes(n: number): string {
   if (n < 1024) {
-    return `${n} B`;
+    // Round: speeds are fractional bytes/sec, so `${n}` would print a long tail
+    // of decimals (e.g. "523.7481 B/s").
+    return `${Math.round(n)} B`;
   }
   const units = ['KB', 'MB', 'GB', 'TB'];
   let v = n / 1024;
@@ -650,7 +645,6 @@ const styles = StyleSheet.create({
   upsell: { alignItems: 'center', marginBottom: space.md },
   upsellText: { color: color.inkMuted, fontSize: 13 },
   upsellAccent: { color: color.amber, fontWeight: '600' },
-  upsellMemo: { fontFamily: font.mono, fontSize: 10.5, color: color.inkFaint, marginTop: 2 },
   bigBtn: { borderRadius: radius.md, paddingVertical: 16, alignItems: 'center' },
   // Clearly-disabled look while connecting/disconnecting (was too subtle before).
   bigBtnBusy: { opacity: 0.45 },
