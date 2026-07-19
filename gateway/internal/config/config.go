@@ -42,6 +42,10 @@ type Config struct {
 	MaxPeersFree int
 	// MaxPeersTotal caps total enrolled peers (free + premium).
 	MaxPeersTotal int
+	// CapacityMbps is the node's aggregate egress capacity in megabits/s — the
+	// denominator for the throughput component of the /v1/info load figure.
+	// Datacenter default 1000 (1 Gbit/s uplink).
+	CapacityMbps int
 	// EgressAllowPorts, when non-empty, is a destination-port allowlist for
 	// forwarded traffic. Empty means "allow everything except the hard SMTP
 	// blocklist". docs/06-legal-abuse.md says v1 launches with a
@@ -85,6 +89,7 @@ func Load() (*Config, error) {
 		PremiumRateMbps:   envInt("CVPN_PREMIUM_RATE_MBPS", 50),
 		MaxPeersFree:      envInt("CVPN_MAX_PEERS_FREE", 500),
 		MaxPeersTotal:     envInt("CVPN_MAX_PEERS_TOTAL", 2000),
+		CapacityMbps:      envInt("CVPN_CAPACITY_MBPS", 1000),
 		NodeHostIP:        os.Getenv("FLUX_NODE_HOST_IP"),
 		AppName:           os.Getenv("FLUX_APP_NAME"),
 		KeyFile:           envStr("CVPN_KEY_FILE", "/data/server.key"),

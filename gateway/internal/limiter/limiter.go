@@ -128,6 +128,19 @@ func (m *Manager) Counts() (free, total int) {
 	return int(m.freeCount.Load()), len(m.peers)
 }
 
+// TotalBytes returns the aggregate bytes forwarded across all live peers since
+// boot (both directions). Sampled over time it yields the gateway's real
+// throughput, which drives the /v1/info load figure.
+func (m *Manager) TotalBytes() uint64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var total uint64
+	for _, p := range m.peers {
+		total += p.Bytes()
+	}
+	return total
+}
+
 // POC: add an aggregate free-pool limiter (single shared rate.Limiter sized
 // at ~30% of instance throughput) chained after the per-peer one, so the sum
 // of free-tier traffic can never starve premium peers (docs/03-gateway.md

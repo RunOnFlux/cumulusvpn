@@ -96,6 +96,7 @@ func run() error {
 
 	// --- control API ---
 	srv := api.New(cfg, dev, ent, lim, info, nodePublicIP)
+	go srv.SampleLoad(ctx) // live throughput → real /v1/info load
 	httpSrv := &http.Server{
 		Addr:              addr(config.APIPort),
 		Handler:           srv.Handler(),

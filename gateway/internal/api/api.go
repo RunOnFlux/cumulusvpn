@@ -7,6 +7,7 @@
 package api
 
 import (
+	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
 	"encoding/base64"
@@ -17,6 +18,7 @@ import (
 	"net/netip"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/runonflux/cumulusvpn-gateway/internal/config"
@@ -63,6 +65,10 @@ type Server struct {
 	nextHost uint32               // rolling host part for 10.8.x.y assignment
 	enrollIP map[string]time.Time // per-IP last enroll (rate limit)
 	powSeen  map[string]struct{}  // spent PoW nonces (replay guard)
+
+	// throughputBps is the current aggregate forwarding rate in bytes/s, updated
+	// by SampleLoad; feeds the real (bandwidth) component of /v1/info load.
+	throughputBps atomic.Uint64
 }
 
 // New builds the control API server. info fields (geo) come from fluxnode;
@@ -249,12 +255,50 @@ func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 		remaining = 0
 	}
 	info.Capacity = remaining
-	// POC: replace with a real utilisation metric (aggregate throughput vs
-	// benchmark, or CPU) so clients load-balance meaningfully.
+	// Load is the BINDING constraint — whichever of peer-occupancy or real
+	// bandwidth is more saturated — so clients load-balance on what actually
+	// limits a node. Peer ratio catches "full of idle peers"; throughput ratio
+	// (live sampler ÷ configured capacity) catches "few heavy peers".
+	var load float64
 	if s.cfg.MaxPeersTotal > 0 {
-		info.Load = float64(total) / float64(s.cfg.MaxPeersTotal)
+		load = float64(total) / float64(s.cfg.MaxPeersTotal)
 	}
+	// bytesPerMbit: 1 Mbit/s = 125_000 bytes/s (base-10 networking units).
+	if capBps := float64(s.cfg.CapacityMbps) * 125_000; capBps > 0 {
+		if bw := float64(s.throughputBps.Load()) / capBps; bw > load {
+			load = bw
+		}
+	}
+	if load > 1 {
+		load = 1
+	}
+	info.Load = load
 	s.writeSigned(w, info)
+}
+
+// SampleLoad periodically samples aggregate throughput so /v1/info reports a
+// real bandwidth-utilisation figure, not just a peer-count ratio. It runs until
+// ctx is cancelled; start it once from main (`go srv.SampleLoad(ctx)`).
+func (s *Server) SampleLoad(ctx context.Context) {
+	const interval = 5 * time.Second
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	last := s.lim.TotalBytes()
+	lastAt := time.Now()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-t.C:
+			total := s.lim.TotalBytes()
+			// Counters are monotonic (bytes since boot); a peer removal can only
+			// lower the sum, so guard against a negative delta.
+			if dt := now.Sub(lastAt).Seconds(); dt > 0 && total >= last {
+				s.throughputBps.Store(uint64(float64(total-last) / dt))
+			}
+			last, lastAt = total, now
+		}
+	}
 }
 
 // --- signing + helpers ---

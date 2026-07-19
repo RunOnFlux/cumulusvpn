@@ -57,3 +57,20 @@ func TestTierRatesAndCounts(t *testing.T) {
 		t.Fatalf("total after remove = %d, want 0", total)
 	}
 }
+
+func TestTotalBytes(t *testing.T) {
+	m := New(100, 50)
+	if got := m.TotalBytes(); got != 0 {
+		t.Fatalf("TotalBytes on empty manager = %d, want 0", got)
+	}
+	m.Get("peerA").Count(1000)
+	m.Get("peerB").Count(2500)
+	m.Get("peerA").Count(500) // same peer accumulates
+	if got := m.TotalBytes(); got != 4000 {
+		t.Fatalf("TotalBytes = %d, want 4000 (1000+2500+500)", got)
+	}
+	m.Remove("peerB")
+	if got := m.TotalBytes(); got != 1500 {
+		t.Fatalf("TotalBytes after removing peerB = %d, want 1500", got)
+	}
+}
