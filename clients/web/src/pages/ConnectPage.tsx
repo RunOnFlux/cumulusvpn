@@ -180,7 +180,17 @@ export function ConnectPage({
             {result ? (
               <div className="config-out">
                 <div className="conf-row">
-                  <pre className="conf mono">{result.config}</pre>
+                  <div className="conf-wrap">
+                    <div className="conf-bar">
+                      <span className="dots">
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      <span className="fname">cumulusvpn-{result.cc.toLowerCase()}.conf</span>
+                    </div>
+                    <pre className="conf mono">{result.config}</pre>
+                  </div>
                   <div className="conf-qr">
                     <Qr value={result.config} size={168} />
                     <span className="qr-cap mono">Scan into the WireGuard app</span>
