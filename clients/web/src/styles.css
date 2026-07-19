@@ -186,6 +186,51 @@ header.top {
   padding: 4px 9px;
   border-radius: 20px;
 }
+
+/* Official "Powered by Flux" lockup — two art variants swapped by theme. */
+.pbf {
+  display: inline-flex;
+  align-items: center;
+  line-height: 0;
+  opacity: 0.92;
+  transition: opacity 0.15s ease;
+}
+.pbf:hover {
+  opacity: 1;
+}
+.pbf img {
+  width: auto;
+  display: none;
+}
+.pbf .pbf-on-light {
+  display: inline;
+} /* default (light theme) → dark art */
+@media (prefers-color-scheme: dark) {
+  .pbf .pbf-on-light {
+    display: none;
+  }
+  .pbf .pbf-on-dark {
+    display: inline;
+  }
+}
+:root[data-theme='light'] .pbf .pbf-on-light {
+  display: inline;
+}
+:root[data-theme='light'] .pbf .pbf-on-dark {
+  display: none;
+}
+:root[data-theme='dark'] .pbf .pbf-on-light {
+  display: none;
+}
+:root[data-theme='dark'] .pbf .pbf-on-dark {
+  display: inline;
+}
+.footer-credit {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
 .theme-toggle {
   font: inherit;
   font-size: 15px;

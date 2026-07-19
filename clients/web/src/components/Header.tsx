@@ -1,5 +1,6 @@
 import type { Route } from '../hooks/useRoute';
 import type { ThemeMode } from '../hooks/useTheme';
+import { PoweredByFlux } from './PoweredByFlux';
 
 interface HeaderProps {
   readonly route: Route;
@@ -76,7 +77,7 @@ export function Header({ route, onNavigate, themeMode, onToggleTheme }: HeaderPr
           >
             {THEME_ICON[themeMode]}
           </button>
-          <span className="badge-flux">Powered by RunOnFlux</span>
+          <PoweredByFlux height={16} />
         </div>
       </div>
     </header>

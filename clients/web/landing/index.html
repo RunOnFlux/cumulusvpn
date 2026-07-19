@@ -64,6 +64,19 @@
   .top .right { display: flex; align-items: center; gap: 14px; }
   .badge-flux { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line);
     padding: 4px 9px; border-radius: 20px; white-space: nowrap; }
+  /* Official "Powered by Flux" lockup — two art variants swapped by theme. */
+  .pbf { display: inline-flex; align-items: center; line-height: 0; opacity: 0.92; }
+  .pbf:hover { opacity: 1; }
+  .pbf img { width: auto; display: none; }
+  .pbf .pbf-on-light { display: inline; }
+  @media (prefers-color-scheme: dark) {
+    .pbf .pbf-on-light { display: none; }
+    .pbf .pbf-on-dark { display: inline; }
+  }
+  :root[data-theme="light"] .pbf .pbf-on-light { display: inline; }
+  :root[data-theme="light"] .pbf .pbf-on-dark { display: none; }
+  :root[data-theme="dark"] .pbf .pbf-on-light { display: none; }
+  :root[data-theme="dark"] .pbf .pbf-on-dark { display: inline; }
   .theme-btn { background: transparent; border: 1px solid var(--line); color: var(--ink-2); border-radius: 20px;
     width: 34px; height: 34px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
     font-size: 15px; line-height: 1; }
@@ -244,7 +257,10 @@
     <a href="#apps">Get the app</a><a href="#trust">Privacy</a>
   </nav>
   <div class="right">
-    <span class="badge-flux">Powered by RunOnFlux</span>
+    <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux — opens runonflux.com">
+      <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
+      <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
+    </a>
     <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">◐</button>
   </div>
 </div></header>
@@ -499,7 +515,7 @@
     </div>
     <div class="col">
       <h4>Network</h4>
-      <a href="https://runonflux.io">Powered by RunOnFlux</a>
+      <a href="https://runonflux.com">Powered by Flux</a>
       <a href="https://home.runonflux.io">Flux dashboard</a>
     </div>
   </div>
