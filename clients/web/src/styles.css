@@ -21,6 +21,21 @@
   --maxw: 1160px;
   --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  /* Signature: one confident cyan→blue gradient for "connect" moments. */
+  --blue: #5b7dff;
+  --grad: linear-gradient(135deg, var(--cyan-glow), var(--blue));
+  --grad-amber: linear-gradient(135deg, var(--amber-2), #ffcf6b);
+  --grad-soft: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cyan-glow) 16%, transparent),
+    color-mix(in srgb, var(--blue) 16%, transparent)
+  );
+  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 30px 64px -40px rgba(3, 8, 16, 0.55);
+  --shadow-btn: 0 10px 26px -12px color-mix(in srgb, var(--cyan-glow) 65%, transparent);
+  --shadow-amber: 0 10px 26px -12px color-mix(in srgb, var(--amber-2) 60%, transparent);
+  --ring: 0 0 0 3px color-mix(in srgb, var(--cyan-glow) 32%, transparent);
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -87,6 +102,25 @@ body {
   line-height: 1.5;
   min-height: 100vh;
 }
+/* Ambient signature glow — a faint cyan/blue aurora fixed behind the page. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      42rem 30rem at 82% -6%,
+      color-mix(in srgb, var(--cyan-glow) 14%, transparent),
+      transparent 60%
+    ),
+    radial-gradient(
+      38rem 28rem at 6% 8%,
+      color-mix(in srgb, var(--blue) 12%, transparent),
+      transparent 55%
+    );
+}
 
 h1,
 h2,
@@ -117,12 +151,22 @@ a:hover {
 }
 
 .eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.16em;
+  font-size: 11.5px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--cyan);
   font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--cyan) 28%, var(--line));
+  background: var(--grad-soft);
+}
+.page-head.center .eyebrow {
+  margin: 0 auto;
 }
 
 /* ---- top bar ---- */
@@ -260,19 +304,28 @@ header.top {
   text-align: center;
 }
 .page-head h1 {
-  font-size: clamp(30px, 4.4vw, 48px);
-  line-height: 1;
-  letter-spacing: -0.035em;
+  font-size: clamp(34px, 5vw, 56px);
+  line-height: 1.02;
+  letter-spacing: -0.04em;
   font-weight: 800;
-  margin-top: 12px;
+  margin-top: 14px;
 }
 .page-head h1 .glow {
-  color: var(--cyan);
+  background: var(--grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .lede {
   font-size: 17px;
+  line-height: 1.6;
   color: var(--ink-2);
   margin: 18px 0 0;
+  max-width: 60ch;
+  text-wrap: pretty;
+}
+.page-head.center .lede {
+  margin-inline: auto;
 }
 
 .grid {
@@ -284,11 +337,28 @@ header.top {
 
 /* ---- cards ---- */
 .card {
+  position: relative;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 22px;
-  box-shadow: 0 24px 60px -40px rgba(6, 12, 22, 0.5);
+  padding: 24px;
+  box-shadow: var(--shadow-card);
+}
+/* A hairline top highlight so cards read as lit from above. */
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in srgb, var(--cyan-glow) 40%, transparent),
+    transparent
+  );
+  opacity: 0.5;
+  pointer-events: none;
 }
 .card + .card,
 .card.ident {
@@ -468,16 +538,38 @@ header.top {
   justify-content: center;
   gap: 9px;
 }
+.btn {
+  transition:
+    transform 0.18s var(--ease),
+    box-shadow 0.18s var(--ease),
+    border-color 0.18s var(--ease);
+}
 .btn:hover {
   text-decoration: none;
 }
+.btn.primary,
+.btn.amber {
+  color: #04201d;
+  box-shadow: var(--shadow-btn);
+}
+.btn.primary:hover,
+.btn.amber:hover {
+  transform: translateY(-1px);
+}
+.btn.primary:active,
+.btn.amber:active {
+  transform: translateY(0);
+}
 .btn.primary {
-  background: var(--cyan);
-  color: #05201e;
+  background: var(--grad);
 }
 .btn.amber {
-  background: var(--amber-2);
+  background: var(--grad-amber);
   color: #3a2606;
+  box-shadow: var(--shadow-amber);
+}
+.btn.ghost:hover {
+  border-color: var(--cyan);
 }
 .btn.ghost {
   background: transparent;
@@ -859,5 +951,50 @@ footer .wrap {
   }
   .badge-flux {
     display: none;
+  }
+  .page-head h1 {
+    font-size: clamp(30px, 9vw, 40px);
+  }
+}
+
+/* ---- focus, motion, finishing ---- */
+:where(a, button, input, select, summary, [tabindex]):focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+  border-radius: 10px;
+}
+
+/* Premium price picks up the amber signature gradient (matches primary/amber). */
+.amount .big {
+  background: var(--grad-amber);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .page-head,
+  .grid > .card,
+  .pay-card,
+  .card.ident,
+  .card.mh {
+    animation: rise 0.5s var(--ease) both;
+  }
+  .grid > .card:nth-child(2) {
+    animation-delay: 0.07s;
+  }
+  .card.ident,
+  .card.mh {
+    animation-delay: 0.12s;
+  }
+  @keyframes rise {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
   }
 }
