@@ -33,6 +33,7 @@ import {
   discoverFleet,
   groupByCountry,
   groupByLocation,
+  localityOf,
   measureLatency,
   routeEndpoint,
   type Country,
@@ -202,6 +203,47 @@ export function useVpn(): VpnModel & VpnActions {
   // Flat, verified fleet from the last discovery — core `selectHops` needs the
   // whole list (not just the per-country `best`) to find a distinct exit.
   const gatewaysRef = useRef<readonly GatewayInfo[]>([]);
+  // Failover: gateway IP → unix-ms until which it's avoided (a node that just
+  // dropped/failed us). Lets a reconnect hop to the next-best node instead of
+  // re-dialling the dead one. Entries expire; a manual disconnect clears them.
+  const avoidRef = useRef<Map<string, number>>(new Map());
+  const AVOID_MS = 90_000;
+
+  /** Mark a gateway IP as recently-failed so failover skips it for a while. */
+  const avoidGateway = useCallback((ip: string | null): void => {
+    if (ip) {
+      avoidRef.current.set(ip, Date.now() + AVOID_MS);
+    }
+  }, []);
+
+  /**
+   * Pick the gateway to dial for a single-hop location, preferring the least-
+   * loaded node that isn't currently avoided: same city first, then anywhere in
+   * the country, then the location's default as a last resort.
+   */
+  const pickGateway = useCallback((location: Country): GatewayInfo => {
+    const now = Date.now();
+    const all = gatewaysRef.current;
+    const free = (gs: readonly GatewayInfo[]): GatewayInfo[] =>
+      gs.filter((g) => (avoidRef.current.get(g.ip) ?? 0) <= now);
+    const inCity = all.filter(
+      (g) => g.country === location.code && localityOf(g.city, g.country) === location.city,
+    );
+    const inCountry = all.filter((g) => g.country === location.code);
+    for (const pool of [free(inCity), free(inCountry)]) {
+      if (pool.length > 0) {
+        return [...pool].sort((a, b) => a.load - b.load)[0]!;
+      }
+    }
+    return location.best;
+  }, []);
+
+  /** The fleet minus currently-avoided nodes (fallback: everything). */
+  const availableGateways = useCallback((): readonly GatewayInfo[] => {
+    const now = Date.now();
+    const free = gatewaysRef.current.filter((g) => (avoidRef.current.get(g.ip) ?? 0) <= now);
+    return free.length > 0 ? free : gatewaysRef.current;
+  }, []);
 
   // Single-hop selection is a LOCATION (city) id; `selectedCode` holds it. Old
   // persisted country codes still resolve because a single-city country's id
@@ -501,7 +543,7 @@ export function useVpn(): VpnModel & VpnActions {
         const hops = await connectMultihop({
           keypair,
           routeStyle,
-          gateways: gatewaysRef.current,
+          gateways: availableGateways(),
           entryCountry: entryCode ?? autoEntry ?? null,
           exitCountry: exitCode,
           gatewayIpRef,
@@ -521,28 +563,48 @@ export function useVpn(): VpnModel & VpnActions {
         setError('No gateways reachable');
         return;
       }
-      const resp = await enroll(target.best.ip, keypair.publicKey, {
-        signPubKey: target.best.sign_pubkey,
-        powSolver: solvePowFast,
-      });
-      gatewayIpRef.current = target.best.ip;
-      setEnrollment(resp);
-      setActiveEntry(routeEndpoint(target.best));
-      setActiveExit(null);
+      // Failover-aware: skip any node that just dropped/failed us.
+      const gw = pickGateway(target);
+      gatewayIpRef.current = gw.ip;
+      try {
+        const resp = await enroll(gw.ip, keypair.publicKey, {
+          signPubKey: gw.sign_pubkey,
+          powSolver: solvePowFast,
+        });
+        setEnrollment(resp);
+        setActiveEntry(routeEndpoint(gw));
+        setActiveExit(null);
 
-      const wgConfig = buildWgConfig({
-        privateKey: keypair.privateKey,
-        assignedIp: resp.assigned_ip,
-        dns: resp.dns,
-        serverPubKey: resp.server_pubkey,
-        endpoint: resp.endpoint,
-      });
-      await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
+        const wgConfig = buildWgConfig({
+          privateKey: keypair.privateKey,
+          assignedIp: resp.assigned_ip,
+          dns: resp.dns,
+          serverPubKey: resp.server_pubkey,
+          endpoint: resp.endpoint,
+        });
+        await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
+      } catch (e) {
+        // This node failed — avoid it so the reconnect/retry hops elsewhere.
+        avoidGateway(gw.ip);
+        throw e;
+      }
     } catch (e) {
       setState('error');
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [keypair, countries, locations, selectedCode, routeStyle, entryCode, exitCode, killSwitch]);
+  }, [
+    keypair,
+    countries,
+    locations,
+    selectedCode,
+    routeStyle,
+    entryCode,
+    exitCode,
+    killSwitch,
+    pickGateway,
+    avoidGateway,
+    availableGateways,
+  ]);
 
   const disconnect = useCallback(async (): Promise<void> => {
     wantConnectedRef.current = false;
@@ -550,6 +612,8 @@ export function useVpn(): VpnModel & VpnActions {
     setState('disconnecting');
     setActiveEntry(null);
     setActiveExit(null);
+    // A deliberate disconnect is a clean slate — forget failed-node history.
+    avoidRef.current.clear();
     try {
       await CumulusTunnel.stopTunnel();
     } catch (e) {
@@ -569,11 +633,14 @@ export function useVpn(): VpnModel & VpnActions {
     }
     if (state === 'disconnected' && wantConnectedRef.current && wasConnectedRef.current) {
       wasConnectedRef.current = false;
+      // The node we were on just dropped us — avoid it so the reconnect fails
+      // OVER to the next-best node instead of re-dialling the dead one.
+      avoidGateway(gatewayIpRef.current);
       const id = setTimeout(() => void connect(), 3000);
       return () => clearTimeout(id);
     }
     return undefined;
-  }, [state, connect]);
+  }, [state, connect, avoidGateway]);
 
   // ---- auto-connect on launch (opt-in) -----------------------------------
   // Once, after the first successful discovery, if the user enabled auto-connect

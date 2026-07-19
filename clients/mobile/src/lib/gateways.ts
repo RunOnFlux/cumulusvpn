@@ -101,7 +101,7 @@ const COUNTRY_CITIES: Readonly<Record<string, string>> = {
 };
 
 /** Best locality label for a gateway: its reported city/region, else a fallback. */
-function localityOf(cityFromGateway: string, code: string): string {
+export function localityOf(cityFromGateway: string, code: string): string {
   const c = cityFromGateway.trim();
   return c || COUNTRY_CITIES[code] || '';
 }
