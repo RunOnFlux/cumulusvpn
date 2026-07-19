@@ -5,6 +5,7 @@ import { resolveDirectory } from '../lib/directory';
 import type { DirectorySource } from '../lib/directory';
 import { buildCountryOptions } from '../lib/gateways';
 import type { CountryOption } from '../lib/gateways';
+import { proxiedFetch } from '../lib/gatewayFetch';
 
 export interface DiscoveryState {
   readonly loading: boolean;
@@ -50,7 +51,7 @@ export function useDiscovery(): DiscoveryState {
 
       let gateways: GatewayInfo[] = [];
       try {
-        gateways = await discoverGateways(directory.specs);
+        gateways = await discoverGateways(directory.specs, { fetchImpl: proxiedFetch });
       } catch {
         gateways = [];
       }

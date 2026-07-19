@@ -4,6 +4,7 @@ import type { EnrollResponse, Keypair } from '@cumulusvpn/core';
 import type { CountryOption } from '../lib/gateways';
 import type { DiscoveryState } from '../hooks/useDiscovery';
 import { downloadText } from '../lib/download';
+import { proxiedFetch } from '../lib/gatewayFetch';
 import { CountryPicker } from '../components/CountryPicker';
 import { CopyField } from '../components/CopyField';
 import { MultihopSection } from '../components/MultihopSection';
@@ -66,7 +67,10 @@ export function ConnectPage({
     setError(null);
     setResult(null);
     try {
-      const data = await enroll(gw.ip, keypair.publicKey, { signPubKey: gw.sign_pubkey });
+      const data = await enroll(gw.ip, keypair.publicKey, {
+        signPubKey: gw.sign_pubkey,
+        fetchImpl: proxiedFetch,
+      });
       const config = buildWgConfig({
         privateKey: keypair.privateKey,
         assignedIp: data.assigned_ip,

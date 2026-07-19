@@ -1,16 +1,23 @@
-// Cloudflare Workers (Static Assets) config for the CumulusVPN web app (vpn.cumulusvpn.com).
-// Serves the built SPA in clients/web/dist as a static site — no Worker code, just assets.
+// Cloudflare Worker for the CumulusVPN web app (vpn.cumulusvpn.com).
+// Serves the built SPA in clients/web/dist AND runs worker.js, which proxies the
+// app's plain-http gateway calls (/gw/<ip>:<port>/…) so an https page can reach
+// them without a mixed-content block. See clients/web/worker.js.
 //
-// Cloudflare "Build command" (set in the dashboard):
-//   corepack enable && yarn install && yarn workspace @cumulusvpn/core build && yarn workspace @cumulusvpn/web build
-// Deploy command:  npx wrangler deploy   (reads this file, uploads clients/web/dist)
+// Cloudflare "Build command" (dashboard):
+//   corepack enable && yarn install && yarn build:web
+// Deploy command:  npx wrangler deploy   (reads this file)
 {
   "name": "cumulusvpn",
+  "main": "clients/web/worker.js",
   "compatibility_date": "2026-07-17",
   "assets": {
     "directory": "clients/web/dist",
-    // SPA fallback: unknown paths return index.html (the app uses hash routing,
-    // so this is just belt-and-suspenders).
+    // The Worker serves assets through this binding (env.ASSETS.fetch).
+    "binding": "ASSETS",
+    // run_worker_first: the Worker runs on every request so it can intercept the
+    // /gw/* proxy routes before asset routing (incl. the SPA fallback) would.
+    "run_worker_first": true,
+    // SPA fallback: unknown paths return index.html (the app uses hash routing).
     "not_found_handling": "single-page-application"
   }
 }

@@ -3,6 +3,7 @@ import { ApiError, buildMultihopConfig, enroll, selectHops } from '@cumulusvpn/c
 import type { Keypair, MultihopConfig, RouteStyle } from '@cumulusvpn/core';
 import type { DiscoveryState } from '../hooks/useDiscovery';
 import { downloadText } from '../lib/download';
+import { proxiedFetch } from '../lib/gatewayFetch';
 
 interface MultihopSectionProps {
   readonly keypair: Keypair;
@@ -89,8 +90,14 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
       // Enroll the SAME key K at both gateways — entitlement follows the key on
       // every gateway, so one payment covers both hops (no gateway change).
       const [entryEnroll, exitEnroll] = await Promise.all([
-        enroll(hops.entry.ip, keypair.publicKey, { signPubKey: hops.entry.sign_pubkey }),
-        enroll(exitGw.ip, keypair.publicKey, { signPubKey: exitGw.sign_pubkey }),
+        enroll(hops.entry.ip, keypair.publicKey, {
+          signPubKey: hops.entry.sign_pubkey,
+          fetchImpl: proxiedFetch,
+        }),
+        enroll(exitGw.ip, keypair.publicKey, {
+          signPubKey: exitGw.sign_pubkey,
+          fetchImpl: proxiedFetch,
+        }),
       ]);
 
       const config = buildMultihopConfig({
