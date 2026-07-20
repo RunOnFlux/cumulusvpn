@@ -46,6 +46,10 @@ echo "export PATH=\"$GO122:\$PATH\"" >> "$HOME/.zprofile" || true
 ln -sf "$GO122/go" /usr/local/bin/go || sudo ln -sf "$GO122/go" /usr/local/bin/go || true
 
 # --- CocoaPods ---
+# RN 0.86's hermes-engine.podspec resolves `which!('cmake')` when the podspec is
+# *loaded* (even though Hermes ships prebuilt and isn't built from source here),
+# so `pod install` aborts if cmake is missing. Xcode Cloud runners don't ship it.
+brew install cmake || true
 cd ios
 pod install --repo-update
 
