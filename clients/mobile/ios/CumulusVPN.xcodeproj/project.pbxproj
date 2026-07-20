@@ -14,15 +14,15 @@
 		29ACB8647C16BEBFA6932E52 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */; };
 		3BF6692ECB65D0B4DA70D012 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91B3F55BAF0D274712D54CE8 /* Foundation.framework */; };
 		531D8A843A12C2646FE0C95D /* Wgnest.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 739B2C180B93FF5024705C79 /* Wgnest.xcframework */; };
+		5526E7FCB8B6E5895E26F1EF /* Wgnest.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 739B2C180B93FF5024705C79 /* Wgnest.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7F43D3B13C700C6BBF80B48A /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		AA01CE0000000000000000C3 /* WireGuardKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA01CE0000000000000000B2 /* WireGuardKit */; };
-		AA01CE0000000000000000D4 /* WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01CE0000000000000000E5 /* WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift */; };
-		AA01CE0000000000000000D6 /* WireGuardKitWgQuick/String+ArrayConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01CE0000000000000000E7 /* WireGuardKitWgQuick/String+ArrayConversion.swift */; };
+		AA01CE0000000000000000D4 /* TunnelConfiguration+WgQuickConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01CE0000000000000000E5 /* TunnelConfiguration+WgQuickConfig.swift */; };
+		AA01CE0000000000000000D6 /* String+ArrayConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01CE0000000000000000E7 /* String+ArrayConversion.swift */; };
 		DD0160FCAB9793E9B91B94C4 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */; };
 		E9976E5A87F43075035A9B6E /* CumulusTunnelModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACC8C2FEFF9349B78B1F82D /* CumulusTunnelModule.swift */; };
-		F96BE314EE2515F2A58C5DAB /* Wgnest.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 739B2C180B93FF5024705C79 /* Wgnest.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		FB4CBE1334AD5A3E6263A849 /* CumulusTunnelModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 370E7D7ADE72014F94A4D2E0 /* CumulusTunnelModule.m */; };
 /* End PBXBuildFile section */
 
@@ -37,13 +37,13 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		73220304755C508085B885FB /* Embed Frameworks */ = {
+		437881A36623AC0D9EF648DD /* Embed Frameworks */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
 			dstSubfolderSpec = 10;
 			files = (
-				F96BE314EE2515F2A58C5DAB /* Wgnest.xcframework in Embed Frameworks */,
+				5526E7FCB8B6E5895E26F1EF /* Wgnest.xcframework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -76,8 +76,8 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CumulusVPN/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = CumulusVPN/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		91B3F55BAF0D274712D54CE8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		AA01CE0000000000000000E5 /* WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift"; sourceTree = "<group>"; };
-		AA01CE0000000000000000E7 /* WireGuardKitWgQuick/String+ArrayConversion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WireGuardKitWgQuick/String+ArrayConversion.swift"; sourceTree = "<group>"; };
+		AA01CE0000000000000000E5 /* TunnelConfiguration+WgQuickConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift"; sourceTree = "<group>"; };
+		AA01CE0000000000000000E7 /* String+ArrayConversion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WireGuardKitWgQuick/String+ArrayConversion.swift"; sourceTree = "<group>"; };
 		B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/NetworkExtension.framework; sourceTree = DEVELOPER_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
@@ -193,8 +193,8 @@
 			isa = PBXGroup;
 			children = (
 				F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */,
-				AA01CE0000000000000000E5 /* WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift */,
-				AA01CE0000000000000000E7 /* WireGuardKitWgQuick/String+ArrayConversion.swift */,
+				AA01CE0000000000000000E5 /* TunnelConfiguration+WgQuickConfig.swift */,
+				AA01CE0000000000000000E7 /* String+ArrayConversion.swift */,
 			);
 			path = CumulusTunnelExtension;
 			sourceTree = SOURCE_ROOT;
@@ -214,6 +214,7 @@
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 				EF4E5B255CECF29C823E0D6E /* Embed App Extensions */,
+				437881A36623AC0D9EF648DD /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -233,7 +234,6 @@
 				344ECB49226EB16E2BB959C5 /* Sources */,
 				DAC40A76BB0C3A30356AEC29 /* Frameworks */,
 				99A4B4281DECAF6D69C09A70 /* Resources */,
-				73220304755C508085B885FB /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -270,7 +270,7 @@
 			);
 			mainGroup = 83CBB9F61A601CBA00E9B192;
 			packageReferences = (
-				8B0D978A00B377A24CC0B524 /* XCLocalSwiftPackageReference "vendor/wireguard-apple" */,
+				8B0D978A00B377A24CC0B524 /* XCLocalSwiftPackageReference "wireguard-apple" */,
 			);
 			productRefGroup = 83CBBA001A601CBA00E9B192 /* Products */;
 			projectDirPath = "";
@@ -419,8 +419,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				7F43D3B13C700C6BBF80B48A /* PacketTunnelProvider.swift in Sources */,
-				AA01CE0000000000000000D4 /* WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift in Sources */,
-				AA01CE0000000000000000D6 /* WireGuardKitWgQuick/String+ArrayConversion.swift in Sources */,
+				AA01CE0000000000000000D4 /* TunnelConfiguration+WgQuickConfig.swift in Sources */,
+				AA01CE0000000000000000D6 /* String+ArrayConversion.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -481,6 +481,10 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = URVD95GYQ7;
 				ENABLE_BITCODE = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
 				INFOPLIST_FILE = CumulusVPN/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -513,6 +517,10 @@
 				CODE_SIGN_ENTITLEMENTS = CumulusVPN/CumulusVPN.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = URVD95GYQ7;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Frameworks",
+				);
 				INFOPLIST_FILE = CumulusVPN/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -762,7 +770,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		8B0D978A00B377A24CC0B524 /* XCLocalSwiftPackageReference "vendor/wireguard-apple" */ = {
+		8B0D978A00B377A24CC0B524 /* XCLocalSwiftPackageReference "wireguard-apple" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "vendor/wireguard-apple";
 		};
@@ -771,7 +779,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		AA01CE0000000000000000B2 /* WireGuardKit */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 8B0D978A00B377A24CC0B524 /* XCLocalSwiftPackageReference "vendor/wireguard-apple" */;
+			package = 8B0D978A00B377A24CC0B524 /* XCLocalSwiftPackageReference "wireguard-apple" */;
 			productName = WireGuardKit;
 		};
 /* End XCSwiftPackageProductDependency section */
