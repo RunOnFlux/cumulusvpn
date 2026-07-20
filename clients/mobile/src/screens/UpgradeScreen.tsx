@@ -285,8 +285,6 @@ const styles = StyleSheet.create({
   tip: {
     marginTop: space.lg,
     backgroundColor: color.orbCoreOn,
-    borderLeftColor: color.amber,
-    borderLeftWidth: 2,
     borderRadius: radius.sm,
     paddingVertical: space.md,
     paddingHorizontal: space.md,
