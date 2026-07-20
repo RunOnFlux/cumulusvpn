@@ -1,21 +1,24 @@
 /**
- * Upgrade — MANAGE-ON-WEB (docs/05 option 1, the store-compliant path).
+ * Upgrade — in-app pay-in-FLUX flow.
  *
- * STORE COMPLIANCE (read before touching this file):
- *  - The FLUX payment unlocks *app functionality* (premium speed), so it falls
- *    under Apple 3.1.1(a) / Google Play Payments. A live "send FLUX to unlock"
- *    screen inside the store build would be rejected.
- *  - So this screen is INFORMATIONAL: it explains exactly how to upgrade and
- *    shows this device's reference so the user can match it on the web, but it
- *    renders NO pay-to-address, NO QR, NO "Buy" button, and does NOT open an
- *    external purchase link (the URL is inert, selectable text). The actual
- *    prefilled pay-to-address flow lives on the web app (vpn.cumulusvpn.com).
- *  - Entitlement is chain-based and keyed to the WG pubkey, so once paid on the
- *    web the phone unlocks automatically within ~1 minute — nothing to enter.
+ * Shows the prefilled payment (amount + pay-to address + message), a QR of the
+ * `flux:` payment URI, and an "Open in wallet" button that hands that URI to an
+ * installed FLUX wallet (Zelcore / SSP) via its registered scheme so it opens
+ * pre-populated. Entitlement is chain-based and keyed to the device WG pubkey,
+ * so the phone unlocks automatically ~1 min after the transfer confirms.
+ *
+ * STORE NOTE: this is a crypto transfer to the user's own recipient, not an
+ * in-app purchase of digital goods through the store's billing — but Apple 3.1.1
+ * can still view "pay crypto to unlock a feature" as IAP circumvention. If App
+ * Store review pushes back, platform-gate this (full flow on Android, the older
+ * "manage on web" copy on iOS). Kept as one flow per product decision.
  */
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { walletDeepLink } from '@cumulusvpn/core';
 import type { Tier } from '@cumulusvpn/core';
 import type { PaymentIdentity } from '../state/useVpn';
+import { Qr } from '../components/Qr';
 import { TierPill } from '../components/TierPill';
 import { color, font, radius, space } from '../theme/tokens';
 
@@ -25,13 +28,34 @@ interface Props {
   readonly onClose: () => void;
 }
 
-/** Where the prefilled pay-to-address upgrade flow lives (the web app). */
-const UPGRADE_URL = 'vpn.cumulusvpn.com';
-
 export function UpgradeScreen({ tier, payment, onClose }: Props): React.JSX.Element {
   const premium = tier === 'premium';
+  const [walletError, setWalletError] = useState<string | null>(null);
+
+  const deepLink = payment
+    ? walletDeepLink(payment.address, payment.priceFlux, payment.memo)
+    : null;
+
+  const openWallet = async (): Promise<void> => {
+    if (!deepLink) {
+      return;
+    }
+    setWalletError(null);
+    try {
+      await Linking.openURL(deepLink);
+    } catch {
+      setWalletError(
+        'No FLUX wallet found. Install Zelcore or SSP Wallet, or scan the QR / copy the details below.',
+      );
+    }
+  };
+
   return (
-    <View style={styles.root}>
+    <ScrollView
+      style={styles.root}
+      contentContainerStyle={styles.body}
+      showsVerticalScrollIndicator={false}
+    >
       <View style={styles.header}>
         <Text style={styles.title}>{premium ? 'Your plan' : 'Upgrade to Premium'}</Text>
         <Pressable onPress={onClose} accessibilityRole="button" hitSlop={12}>
@@ -46,16 +70,15 @@ export function UpgradeScreen({ tier, payment, onClose }: Props): React.JSX.Elem
         </View>
 
         {premium ? (
-          <Text style={styles.body}>
+          <Text style={styles.copy}>
             You’re on Premium — full speed on every gateway. Nothing to do here.
           </Text>
         ) : (
           <>
-            <Text style={styles.body}>
+            <Text style={styles.copy}>
               Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account,
               paid once with FLUX for 30 days.
             </Text>
-
             {payment ? (
               <View style={styles.priceRow}>
                 <Text style={styles.priceLabel}>Premium</Text>
@@ -68,50 +91,71 @@ export function UpgradeScreen({ tier, payment, onClose }: Props): React.JSX.Elem
         )}
       </View>
 
-      {!premium ? (
+      {!premium && payment && deepLink ? (
         <>
-          <Text style={styles.section}>How to upgrade</Text>
+          <View style={styles.qrWrap}>
+            <Qr value={deepLink} size={196} />
+            <Text style={styles.qrCap}>Scan with Zelcore / SSP Wallet</Text>
+          </View>
+
+          <Pressable
+            onPress={() => void openWallet()}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.payBtn, pressed && styles.payBtnPressed]}
+          >
+            <Text style={styles.payBtnLabel}>Open in wallet →</Text>
+          </Pressable>
+          {walletError ? <Text style={styles.walletError}>{walletError}</Text> : null}
+
+          <Field label="Amount" value={`${payment.priceFlux} FLUX`} />
+          <Field label="Pay-to address" value={payment.address} mono />
+          <Field label="Message (required)" value={payment.memo} mono />
+
+          <Text style={styles.section}>How it works</Text>
           <View style={styles.steps}>
             <Step
               n={1}
-              text={`Open ${UPGRADE_URL} in any browser — on this phone or a computer.`}
+              text="Tap “Open in wallet” (or scan the QR) — your FLUX wallet opens with the amount, address and message prefilled."
             />
             <Step
               n={2}
-              text="Open Upgrade. The gateway, exact FLUX amount and pay-to address are prefilled there (with a QR)."
+              text="Send the transfer. The message is what ties it to this device — don’t remove it."
             />
-            <Step n={3} text="Pay with FLUX from any wallet — scan the QR or copy the address." />
             <Step
-              n={4}
-              text="This device unlocks automatically within ~1 minute. Nothing to enter here."
+              n={3}
+              text="This device unlocks automatically within ~1 minute, on every gateway at once."
             />
           </View>
 
-          {payment ? (
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>
-                This device’s reference · press &amp; hold to copy
-              </Text>
-              <Text style={[styles.fieldValue, styles.mono]} selectable>
-                {payment.memo}
-              </Text>
-              <Text style={styles.fieldHint}>
-                Matches this phone to your payment on the site — no personal info.
-              </Text>
-            </View>
-          ) : null}
-
           <Text style={styles.note}>
             Payment is verified on the Flux blockchain and tied to this device’s key — we never see
-            who you are, and there’s no account to create.
+            who you are, and there’s no account to create. Tap-and-hold any field to copy it.
           </Text>
         </>
       ) : null}
+    </ScrollView>
+  );
+}
+
+function Field({
+  label,
+  value,
+  mono,
+}: {
+  readonly label: string;
+  readonly value: string;
+  readonly mono?: boolean;
+}): React.JSX.Element {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <Text style={[styles.fieldValue, mono && styles.fieldMono]} selectable>
+        {value}
+      </Text>
     </View>
   );
 }
 
-/** One numbered step in the how-to list. */
 function Step({ n, text }: { readonly n: number; readonly text: string }): React.JSX.Element {
   return (
     <View style={styles.step}>
@@ -124,7 +168,8 @@ function Step({ n, text }: { readonly n: number; readonly text: string }): React
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, paddingHorizontal: space.xl, paddingTop: space.sm },
+  root: { flex: 1, paddingHorizontal: space.xl },
+  body: { paddingTop: space.sm, paddingBottom: space.xxl },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -144,7 +189,7 @@ const styles = StyleSheet.create({
   },
   tierRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   tierLabel: { color: color.inkDim, fontSize: 13 },
-  body: { color: color.inkMuted, fontSize: 14, lineHeight: 20 },
+  copy: { color: color.inkMuted, fontSize: 14, lineHeight: 20 },
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -156,6 +201,33 @@ const styles = StyleSheet.create({
   priceLabel: { color: color.inkDim, fontSize: 13 },
   price: { color: color.amber, fontSize: 18, fontWeight: '700' },
   priceUnit: { color: color.inkFaint, fontSize: 12, fontWeight: '500' },
+  qrWrap: { alignItems: 'center', gap: 8, marginTop: space.xl },
+  qrCap: { color: color.inkFaint, fontSize: 11.5, fontFamily: font.mono },
+  payBtn: {
+    backgroundColor: color.amber,
+    borderRadius: radius.sm,
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: space.lg,
+  },
+  payBtnPressed: { opacity: 0.85 },
+  payBtnLabel: { color: '#3A2606', fontSize: 15, fontWeight: '700' },
+  walletError: { color: color.red, fontSize: 12.5, lineHeight: 17, marginTop: space.sm },
+  field: {
+    backgroundColor: color.orbCoreOn,
+    borderRadius: radius.sm,
+    padding: space.md,
+    gap: 4,
+    marginTop: space.sm,
+  },
+  fieldLabel: {
+    fontSize: 10.5,
+    color: color.inkFaint,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  fieldValue: { color: color.ink, fontSize: 14, fontWeight: '600' },
+  fieldMono: { fontFamily: font.mono, fontSize: 12.5, fontWeight: '400' },
   section: {
     color: color.inkFaint,
     fontSize: 11,
@@ -175,23 +247,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginTop: 1,
   },
-  stepNumText: { color: color.cyan, fontSize: 12, fontWeight: '700' },
+  stepNumText: { color: color.amber, fontSize: 12, fontWeight: '700' },
   stepText: { flex: 1, color: color.inkMuted, fontSize: 14, lineHeight: 20 },
-  field: {
-    backgroundColor: color.orbCoreOn,
-    borderRadius: radius.sm,
-    padding: space.md,
-    gap: 4,
-    marginTop: space.lg,
-  },
-  fieldLabel: {
-    fontSize: 10.5,
-    color: color.inkFaint,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  fieldValue: { color: color.amber, fontSize: 15, fontWeight: '600' },
-  fieldHint: { color: color.inkFaint, fontSize: 11.5, lineHeight: 16 },
-  mono: { fontFamily: font.mono, fontSize: 13 },
   note: { color: color.inkFaint, fontSize: 12, lineHeight: 17, marginTop: space.lg },
 });
