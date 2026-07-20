@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		03CACF36D68E6C404FD31256 /* Wgnest.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 739B2C180B93FF5024705C79 /* Wgnest.xcframework */; };
 		08EABFA8AF011AE3C864F73D /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		0C80B921A6F3F58F76C31292 /* libPods-CumulusVPN.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 5DCACB8F33CDC322A6C60F78 /* libPods-CumulusVPN.a */; };
 		0EB3C9EDAFF85C91336E62FA /* PacketTunnelExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 55BBA7C9647FD961C10653B4 /* PacketTunnelExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -90,6 +91,7 @@
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-CumulusVPN.a in Frameworks */,
 				DD0160FCAB9793E9B91B94C4 /* NetworkExtension.framework in Frameworks */,
+				03CACF36D68E6C404FD31256 /* Wgnest.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

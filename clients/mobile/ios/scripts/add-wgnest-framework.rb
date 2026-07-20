@@ -49,7 +49,13 @@ ext.copy_files_build_phases.dup.each do |p|
   end
 end
 
-# --- App: EMBED + SIGN, so Wgnest ships in CumulusVPN.app/Frameworks. ---
+# --- App: LINK + EMBED + SIGN (Xcode's "Embed & Sign"). The app must LINK the
+#     xcframework, not merely list it in a copy phase — linking is what resolves
+#     the correct device slice for the app target so the embed can copy it.
+#     Embed-only left Wgnest unresolved for the app and broke the archive. ---
+unless app.frameworks_build_phase.files_references.include?(ref)
+  app.frameworks_build_phase.add_file_reference(ref)
+end
 embed = app.copy_files_build_phases.find do |p|
   p.symbol_dst_subfolder_spec == :frameworks && p.name == "Embed Frameworks"
 end
