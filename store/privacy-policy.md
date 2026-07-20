@@ -66,6 +66,11 @@ store any of the following:
 We do not use third-party advertising networks, and we do not use analytics products that
 build a profile of you (such as ad-tech SDKs). The apps ship without behavioural trackers.
 
+Our **websites** (`cumulusvpn.com` and `vpn.cumulusvpn.com`) use Cloudflare Web Analytics,
+a cookieless, aggregate measurement service: it sets no cookies, stores nothing on your
+device, and cannot identify or profile individual visitors. It tells us page counts, not
+people. The apps contain no analytics of any kind.
+
 ---
 
 ## 4. What is technically involved (and why it isn't a profile of you)
