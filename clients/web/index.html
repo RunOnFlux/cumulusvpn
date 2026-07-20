@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, follow" />
     <meta
       name="description"
       content="CumulusVPN — decentralized VPN on Flux Cloud. Generate a WireGuard config in your browser and upgrade with FLUX. No account, no logs."
@@ -40,6 +41,10 @@
         }
       } catch (e) {}
     </script>
+    <!-- Cloudflare Web Analytics: cookieless, aggregate; disclosed in store/privacy-policy.md.
+         No SRI on purpose: beacon.min.js is unversioned and CF-updated, so an integrity
+         hash would break it on their next deploy — and CF already proxies this site. -->
+    <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "9e07c1b233a24fbda101b18947f1b1b3"}'></script>
   </head>
   <body>
     <div id="root"></div>
