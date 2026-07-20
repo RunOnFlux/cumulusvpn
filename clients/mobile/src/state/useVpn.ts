@@ -505,23 +505,53 @@ export function useVpn(): VpnModel & VpnActions {
   }, [state]);
 
   // ---- entitlement polling (tier unlocks ~1 min after on-chain payment) ---
+  // Entitlement is chain-derived and global: every gateway reports the same tier
+  // for a key, independent of where (or whether) it enrolled. So we poll even
+  // when disconnected — otherwise "pay, then reopen the app" keeps showing Free
+  // until you connect, because the tier only ever refreshed against the enrolled
+  // gateway. `countries` is in the deps so the first poll fires as soon as the
+  // fleet is discovered, not one interval later.
   useEffect(() => {
     if (!keypair) {
       return;
     }
     let alive = true;
     const poll = async () => {
-      const ip = gatewayIpRef.current;
-      if (!ip) {
+      const pubkey = keypair.publicKey;
+      const activeIp = gatewayIpRef.current;
+      if (activeIp) {
+        // Connected: the enrolled gateway is authoritative (up and down).
+        try {
+          const st = await fetchStatus(activeIp, pubkey);
+          if (alive) {
+            setTier(st.tier);
+          }
+        } catch {
+          // Non-fatal: keep the last known tier.
+        }
         return;
       }
-      try {
-        const st = await fetchStatus(ip, keypair.publicKey);
-        if (alive) {
-          setTier(st.tier);
-        }
-      } catch {
-        // Non-fatal: keep the last known tier.
+      // Disconnected: ask a few distinct discovered gateways. Premium from ANY
+      // of them is the truth (one node lagging the chain can't hide it); only
+      // fall back to Free when reachable nodes agree.
+      const sample = gatewaysRef.current.slice(0, 3);
+      if (sample.length === 0) {
+        return;
+      }
+      const tiers = await Promise.all(
+        sample.map((g) =>
+          fetchStatus(g.ip, pubkey)
+            .then((s) => s.tier)
+            .catch(() => null),
+        ),
+      );
+      if (!alive) {
+        return;
+      }
+      if (tiers.some((t) => t === 'premium')) {
+        setTier('premium');
+      } else if (tiers.some((t) => t === 'free')) {
+        setTier('free');
       }
     };
     const id = setInterval(poll, STATUS_POLL_MS);
@@ -530,7 +560,7 @@ export function useVpn(): VpnModel & VpnActions {
       alive = false;
       clearInterval(id);
     };
-  }, [keypair, enrollment]);
+  }, [keypair, enrollment, countries]);
 
   // ---- actions ------------------------------------------------------------
   const connect = useCallback(async (): Promise<void> => {
