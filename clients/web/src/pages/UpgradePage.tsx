@@ -31,7 +31,10 @@ export function UpgradePage({ keypair, directory, onNavigateConnect }: UpgradePa
   }
 
   const { payment_address, price_flux } = directory;
-  const deepLink = walletDeepLink(payment_address, price_flux, memo);
+  // QR: universal BIP21 `flux:` (any Flux wallet scans it; Zelcore too).
+  // Click: Zelcore's `zel:` protocol, which is what Zelcore registers with the OS.
+  const qrLink = walletDeepLink(payment_address, price_flux, memo, 'flux');
+  const payLink = walletDeepLink(payment_address, price_flux, memo, 'zel');
 
   return (
     <main className="page">
@@ -49,11 +52,11 @@ export function UpgradePage({ keypair, directory, onNavigateConnect }: UpgradePa
         <section className="card pay-card">
           <div className="amount">
             <div className="big mono">{price_flux} FLUX</div>
-            <div className="usd">≈ {PRICE_USD_APPROX} · 30 days · stacks if you prepay</div>
+            <div className="usd">≈ {PRICE_USD_APPROX} · per 30 days</div>
           </div>
 
           <div className="pay-qr">
-            <Qr value={deepLink} size={176} />
+            <Qr value={qrLink} size={176} />
             <span className="qr-cap mono">Scan with Zelcore / SSP Wallet</span>
           </div>
 
@@ -61,10 +64,16 @@ export function UpgradePage({ keypair, directory, onNavigateConnect }: UpgradePa
           <CopyField label="Message (required)" value={memo} />
 
           <div className="btn-row">
-            <a className="btn amber block" href={deepLink}>
+            <a className="btn amber block" href={payLink}>
               Open in wallet
             </a>
           </div>
+
+          <p className="pay-note">
+            <strong>Prepay ahead:</strong> pay a multiple of the amount to add that many months at
+            once — e.g. {price_flux * 3} FLUX = 3 months. Extra months stack (up to 24), so you can
+            top up any time.
+          </p>
 
           <p className="pay-note">
             Opens in Zelcore / SSP Wallet. Payment is verified on the Flux blockchain — we never see

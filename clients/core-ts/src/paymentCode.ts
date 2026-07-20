@@ -34,26 +34,38 @@ export function paymentMemo(publicKeyB64: string): string {
 }
 
 /**
- * URI schemes that Flux-ecosystem wallets register for BIP21-style payment
- * hand-offs. Ordered by how likely a scanned/tapped link is to open a wallet
- * the user actually has installed:
- *  - `zel`  — Zelcore (the reference Flux wallet).
- *  - `flux` — Flux-branded wallets / generic BIP21 handlers.
- *  - `ssp`  — SSP Wallet.
- * All three carry the identical `<address>?amount=&message=` payload, so a
- * wallet that registers any one of them receives the pre-filled payment.
+ * Wallet URI schemes we hand a prefilled payment off to, in the order we try
+ * them (first one a wallet has registered wins):
+ *  - `zel`  — Zelcore (the reference Flux wallet). Uses the **Zelcore `zel:`
+ *    protocol** (`zel:?action=pay&coin=flux&…`, see ZelProtocolSpecifications).
+ *  - `flux` — generic BIP21 (`flux:<address>?amount=&message=`).
+ *  - `ssp`  — SSP Wallet, BIP21 form (best-effort — SSP has no documented pay
+ *    URI today; kept so it works if/when SSP registers one).
  */
 export const WALLET_SCHEMES = ['zel', 'flux', 'ssp'] as const;
 export type WalletScheme = (typeof WALLET_SCHEMES)[number];
 
+/** Zelcore coin identifier for Flux (coin "zelcash", uri `["flux","zelcash","zel"]`). */
+const FLUX_COIN = 'flux';
+
 /**
- * Build a wallet deep link that pre-fills the premium payment for a given URI
- * scheme: `<scheme>:<address>?amount=<priceFlux>&message=<memo>`.
+ * Build a wallet deep link that pre-fills the premium payment.
  *
- * The memo is embedded verbatim as specified by the API contract. Defaults to
- * the `zel:` scheme (Zelcore); pass a different scheme for a fallback link.
+ * The URI shape depends on the scheme:
+ *  - `zel`  → Zelcore's protocol: `zel:?action=pay&coin=flux&address=…&amount=…&message=…`.
+ *    A `?` right after `zel:` is mandatory and every value is URI-encoded, per
+ *    `ZelProtocolSpecifications.md`. This is the form Zelcore registers with the
+ *    OS and the one its in-app scanner parses.
+ *  - `flux`/`ssp` → BIP21: `<scheme>:<address>?amount=…&message=…`.
  *
- * @param address - FLUX payment address (`t1...`).
+ * **The message is always URI-encoded.** The memo is `CVPN1:<code>` and that
+ * `:` is load-bearing: wallets (Zelcore included) that split the raw URI on `:`
+ * otherwise treat the fragment after the memo colon as the destination address
+ * and send to the wrong place. Encoding it to `%3A` — which the wallet
+ * `decodeURIComponent`s back to `:` before signing — keeps the on-chain memo
+ * exactly `CVPN1:<code>`, so no gateway/consensus change is needed.
+ *
+ * @param address - FLUX payment address (`t1…`/`t3…`).
  * @param priceFlux - Price in FLUX.
  * @param memo - The `CVPN1:<code>` memo from {@link paymentMemo}.
  * @param scheme - Wallet URI scheme (default `'zel'`).
@@ -65,7 +77,18 @@ export function walletDeepLink(
   memo: string,
   scheme: WalletScheme = 'zel',
 ): string {
-  return `${scheme}:${address}?amount=${priceFlux}&message=${memo}`;
+  const amount = String(priceFlux);
+  if (scheme === 'zel') {
+    const query = [
+      'action=pay',
+      `coin=${FLUX_COIN}`,
+      `address=${encodeURIComponent(address)}`,
+      `amount=${encodeURIComponent(amount)}`,
+      `message=${encodeURIComponent(memo)}`,
+    ].join('&');
+    return `zel:?${query}`;
+  }
+  return `${scheme}:${address}?amount=${encodeURIComponent(amount)}&message=${encodeURIComponent(memo)}`;
 }
 
 /**

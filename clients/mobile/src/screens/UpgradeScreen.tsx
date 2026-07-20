@@ -147,6 +147,15 @@ function InAppPay({ payment }: { readonly payment: PaymentIdentity }): React.JSX
         />
       </View>
 
+      <View style={styles.tip}>
+        <Text style={styles.tipText}>
+          <Text style={styles.tipLead}>Prepay ahead: </Text>
+          send a multiple of the amount to add that many months at once — e.g.{' '}
+          {payment.priceFlux * 3} FLUX = 3 months. Extra months stack (up to 24), so you can top up
+          any time.
+        </Text>
+      </View>
+
       <Text style={styles.note}>
         Payment is verified on the Flux blockchain and tied to this device’s key — we never see who
         you are, and there’s no account to create. Tap-and-hold any field to copy it.
@@ -179,6 +188,14 @@ function ManageOnWeb({ payment }: { readonly payment: PaymentIdentity }): React.
           {payment.memo}
         </Text>
         <Text style={styles.fieldHint}>Matches this phone to your payment on the site.</Text>
+      </View>
+
+      <View style={styles.tip}>
+        <Text style={styles.tipText}>
+          <Text style={styles.tipLead}>Prepay ahead: </Text>
+          on the site you can pay a multiple of the price to add several months at once — they stack
+          up to 24 months, so you can top up any time.
+        </Text>
       </View>
 
       <Text style={styles.note}>
@@ -265,6 +282,17 @@ const styles = StyleSheet.create({
   payBtnPressed: { opacity: 0.85 },
   payBtnLabel: { color: '#3A2606', fontSize: 15, fontWeight: '700' },
   walletError: { color: color.red, fontSize: 12.5, lineHeight: 17, marginTop: space.sm },
+  tip: {
+    marginTop: space.lg,
+    backgroundColor: color.orbCoreOn,
+    borderLeftColor: color.amber,
+    borderLeftWidth: 2,
+    borderRadius: radius.sm,
+    paddingVertical: space.md,
+    paddingHorizontal: space.md,
+  },
+  tipText: { color: color.inkMuted, fontSize: 13, lineHeight: 19 },
+  tipLead: { color: color.amber, fontWeight: '700' },
   field: {
     backgroundColor: color.orbCoreOn,
     borderRadius: radius.sm,

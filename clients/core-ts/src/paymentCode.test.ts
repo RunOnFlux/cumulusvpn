@@ -42,23 +42,36 @@ describe('paymentMemo', () => {
 
 describe('walletDeepLink', () => {
   const memo = paymentMemo(ZERO_PUB);
+  // The memo's ':' must be percent-encoded so wallets that split the URI on ':'
+  // don't mistake the fragment after it for the destination address.
+  const encMemo = `CVPN1%3A${ZERO_CODE}`;
 
-  it('defaults to the zel: scheme (Zelcore) with the contract payload', () => {
+  it('defaults to the Zelcore zel: protocol form with all values URI-encoded', () => {
     expect(walletDeepLink('t1abc', 20, memo)).toBe(
-      `zel:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`,
+      `zel:?action=pay&coin=flux&address=t1abc&amount=20&message=${encMemo}`,
     );
   });
 
-  it('builds the flux: URI when asked', () => {
+  it('encodes the memo colon so Zelcore does not misparse the address', () => {
+    // The raw ':' must not survive into the URI (that is the bug we are fixing).
+    expect(walletDeepLink('t1abc', 20, memo)).not.toContain(`CVPN1:${ZERO_CODE}`);
+    expect(walletDeepLink('t1abc', 20, memo)).toContain('%3A');
+  });
+
+  it('builds a BIP21 flux: URI (encoded message) when asked', () => {
     expect(walletDeepLink('t1abc', 20, memo, 'flux')).toBe(
-      `flux:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`,
+      `flux:t1abc?amount=20&message=${encMemo}`,
     );
   });
 
-  it('builds the ssp: URI when asked', () => {
-    expect(walletDeepLink('t1abc', 20, memo, 'ssp')).toBe(
-      `ssp:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`,
-    );
+  it('builds a BIP21 ssp: URI (encoded message) when asked', () => {
+    expect(walletDeepLink('t1abc', 20, memo, 'ssp')).toBe(`ssp:t1abc?amount=20&message=${encMemo}`);
+  });
+
+  it('round-trips the memo: decoding the message yields the exact on-chain memo', () => {
+    const uri = walletDeepLink('t1abc', 20, memo, 'flux');
+    const message = new URLSearchParams(uri.split('?')[1]).get('message');
+    expect(message).toBe(`CVPN1:${ZERO_CODE}`);
   });
 });
 
@@ -69,8 +82,11 @@ describe('walletDeepLinks', () => {
     const links = walletDeepLinks('t1abc', 20, memo);
     expect(links.map((l) => l.scheme)).toEqual([...WALLET_SCHEMES]);
     expect(links.map((l) => l.scheme)).toEqual(['zel', 'flux', 'ssp']);
-    for (const { scheme, uri } of links) {
-      expect(uri).toBe(`${scheme}:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`);
+    // zel: uses the protocol form; flux:/ssp: use BIP21 — all with encoded memo.
+    expect(links[0].uri.startsWith('zel:?action=pay')).toBe(true);
+    for (const { uri } of links) {
+      expect(uri).toContain('%3A');
+      expect(uri).not.toContain(`CVPN1:${ZERO_CODE}`);
     }
   });
 });
