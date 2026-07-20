@@ -13,6 +13,14 @@ brew install node@22 || true
 export PATH="$(brew --prefix node@22)/bin:$PATH"
 corepack enable
 
+# node@22 is keg-only, so it is NOT on the PATH the Xcode "Bundle React Native
+# code and images" build phase runs with. That phase sources ios/.xcode.env,
+# which resolves `command -v node` — so node must be findable at a stable path.
+# Symlink it into /usr/local/bin (already on the build-phase PATH; same trick as
+# the Go symlink below). Without this the Release archive fails to bundle JS.
+NODE22="$(brew --prefix node@22)/bin"
+ln -sf "$NODE22/node" /usr/local/bin/node || sudo ln -sf "$NODE22/node" /usr/local/bin/node || true
+
 # --- shared core: the RN bundle imports @cumulusvpn/core via its built dist ---
 yarn install --immutable
 yarn workspace @cumulusvpn/core build
