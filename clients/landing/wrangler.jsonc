@@ -1,0 +1,20 @@
+// Cloudflare Worker for cumulusvpn.com — the static marketing landing page.
+// Asset-only (no Worker script): Cloudflare serves ./public directly.
+//
+// This is a SEPARATE Worker from the main site (cumulusvpn) and the dashboard
+// (cumulusvpn-dashboard). Git-connected build settings (dashboard):
+//   Root directory:  /
+//   Build command:   (none — the page is static)
+//   Deploy command:  npx wrangler deploy --config clients/landing/wrangler.jsonc
+//   Watch paths:     clients/landing/**
+// Custom domain cumulusvpn.com is attached in the Worker's settings; www is a
+// zone-level Single Redirect rule (www.cumulusvpn.com/* → apex, 301).
+{
+  "name": "cumulusvpn-landing",
+  "compatibility_date": "2026-07-17",
+  "assets": {
+    "directory": "public",
+    // Real 404s for unknown paths: serve public/404.html with status 404.
+    "not_found_handling": "404-page"
+  }
+}
