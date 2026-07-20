@@ -316,6 +316,34 @@
     .reveal.in { opacity: 1; transform: none; }
   }
 </style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Organization",
+      "name": "CumulusVPN",
+      "url": "https://cumulusvpn.com/",
+      "logo": "https://cumulusvpn.com/icon-512.png"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "name": "CumulusVPN",
+      "url": "https://cumulusvpn.com/",
+      "applicationCategory": "SecurityApplication",
+      "operatingSystem": "Android, iOS, Windows, macOS, Linux",
+      "offers": [
+        { "@type": "Offer", "price": "0", "priceCurrency": "USD", "description": "Free forever at 100 KB/s. No account, no email." },
+        { "@type": "Offer", "price": "0.99", "priceCurrency": "USD", "description": "Full speed, per month, paid in FLUX from your own wallet." }
+      ]
+    }
+  ]
+}
+</script>
+<!-- Cloudflare Web Analytics: cookieless, aggregate; disclosed in store/privacy-policy.md.
+     No SRI on purpose: beacon.min.js is unversioned and CF-updated, so an integrity hash
+     would break it on their next deploy — and CF already proxies this site's every byte. -->
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "9e07c1b233a24fbda101b18947f1b1b3"}'></script>
 </head>
 <body>
 
