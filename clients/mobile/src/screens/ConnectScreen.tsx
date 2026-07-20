@@ -155,7 +155,7 @@ export function ConnectScreen({
         {vpn.discovering && vpn.countries.length > 0 ? (
           <View style={styles.updating}>
             <ActivityIndicator size="small" color={color.inkFaint} />
-            <Text style={styles.updatingText}>Updating servers…</Text>
+            <Text style={styles.updatingText}>Updating servers from the Flux network…</Text>
           </View>
         ) : null}
       </View>

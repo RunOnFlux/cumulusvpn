@@ -1,9 +1,13 @@
 /**
- * Country picker (mockup shot #2) — the live fleet grouped by country with a
- * latency dot, node count and city per row. Pulled from the Flux network via
- * core discovery; tap a row to select and return to Connect.
+ * Location picker — two levels:
+ *   1. a SORTED (A–Z, favourites first) list of countries, each showing how many
+ *      cities / nodes it has;
+ *   2. tap a multi-city country to drill into its cities and pick one.
+ *
+ * A single-city country selects directly (no pointless drill). Multi-hop
+ * entry/exit reuse this at the country level only (no `locations` → flat).
  */
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -27,18 +31,22 @@ const TONE_COLOR: Record<QualityTone, string> = {
 };
 
 interface Props {
+  /** Country-level rows (level 1). */
   readonly countries: readonly Country[];
+  /**
+   * City-level rows (level 2). When provided, multi-city countries drill into
+   * their cities. Absent → flat country selection (multi-hop entry/exit).
+   */
+  readonly locations?: readonly Country[];
+  /** Currently-selected id (a city id for single-hop, a country code otherwise). */
   readonly selectedCode: string | null;
-  readonly onSelect: (code: string) => void;
+  readonly onSelect: (id: string) => void;
   readonly onClose: () => void;
   /** Re-run discovery + an active latency re-test of the fleet. */
   readonly onRefresh: () => Promise<void>;
   /** True while an automatic background discovery is in flight. */
   readonly discovering?: boolean;
-  /**
-   * Choose "Automatic" (let the app pick the nearest / best node). When set, an
-   * Auto row is shown at the top and `selectedCode === null` marks it active.
-   */
+  /** Choose "Automatic" (nearest). When set, an Auto row shows; null = active. */
   readonly onSelectAuto?: () => void;
   /** Favorited country codes (surfaced first). */
   readonly favorites: readonly string[];
@@ -48,6 +56,7 @@ interface Props {
 
 export function CountryPickerScreen({
   countries,
+  locations,
   selectedCode,
   onSelect,
   onClose,
@@ -58,9 +67,15 @@ export function CountryPickerScreen({
   onToggleFavorite,
 }: Props): React.JSX.Element {
   const [query, setQuery] = useState('');
+  const [openCc, setOpenCc] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  // Spin for either a manual re-test or an automatic background refresh.
   const busy = refreshing || discovering;
+
+  const twoLevel = !!locations && locations.length > 0;
+  const citiesFor = useCallback(
+    (cc: string): Country[] => (locations ?? []).filter((l) => l.code === cc),
+    [locations],
+  );
 
   const doRefresh = async (): Promise<void> => {
     setRefreshing(true);
@@ -71,18 +86,110 @@ export function CountryPickerScreen({
     }
   };
 
+  /** A country row counts as selected if it — or one of its cities — is chosen. */
+  const countrySelected = (cc: string): boolean =>
+    selectedCode === cc || (selectedCode?.startsWith(`${cc}:`) ?? false);
+
+  const select = (id: string): void => {
+    onSelect(id);
+    onClose();
+  };
+
+  const tapCountry = (country: Country): void => {
+    if (twoLevel) {
+      const cities = citiesFor(country.code);
+      if (cities.length > 1) {
+        setOpenCc(country.code);
+        return;
+      }
+      if (cities[0]) {
+        select(cities[0].id);
+        return;
+      }
+    }
+    select(country.id);
+  };
+
+  // Level 1 list: countries filtered by the search, sorted A–Z, favourites
+  // first. Declared before the level-2 early return so hook order is stable.
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const matched = q
       ? countries.filter(
-          (c) => c.name.toLowerCase().includes(q) || c.city.toLowerCase().includes(q),
+          (c) =>
+            c.name.toLowerCase().includes(q) ||
+            c.city.toLowerCase().includes(q) ||
+            citiesFor(c.code).some((l) => l.city.toLowerCase().includes(q)),
         )
       : countries;
-    // Favorites first, otherwise keep the incoming (latency-sorted) order.
-    const fav = matched.filter((c) => favorites.includes(c.code));
-    const rest = matched.filter((c) => !favorites.includes(c.code));
+    const sorted = [...matched].sort((a, b) => a.name.localeCompare(b.name));
+    const fav = sorted.filter((c) => favorites.includes(c.code));
+    const rest = sorted.filter((c) => !favorites.includes(c.code));
     return [...fav, ...rest];
-  }, [countries, query, favorites]);
+  }, [countries, query, favorites, citiesFor]);
+
+  // ---- Level 2: cities of a country -------------------------------------
+  if (openCc && twoLevel) {
+    const country = countries.find((c) => c.code === openCc);
+    const cities = [...citiesFor(openCc)].sort((a, b) =>
+      (a.city || a.name).localeCompare(b.city || b.name),
+    );
+    return (
+      <View style={styles.root}>
+        <View style={styles.header}>
+          <Pressable
+            onPress={() => setOpenCc(null)}
+            accessibilityRole="button"
+            hitSlop={12}
+            style={styles.backBtn}
+          >
+            <Text style={styles.back}>‹</Text>
+            <Text style={styles.title}>
+              {country?.flag} {country?.name ?? openCc}
+            </Text>
+          </Pressable>
+          <Pressable onPress={onClose} accessibilityRole="button" hitSlop={12}>
+            <Text style={styles.done}>Done</Text>
+          </Pressable>
+        </View>
+        <Text style={styles.sectionLabel}>
+          {cities.length} {cities.length === 1 ? 'city' : 'cities'}
+        </Text>
+        <FlatList
+          data={cities}
+          keyExtractor={(c) => c.id}
+          keyboardShouldPersistTaps="handled"
+          renderItem={({ item }) => {
+            const q = gatewayQuality(item.latencyMs, item.best.load);
+            return (
+              <Pressable
+                style={[styles.row, item.id === selectedCode && styles.rowSelected]}
+                onPress={() => select(item.id)}
+                accessibilityRole="button"
+              >
+                <View style={styles.cityDot} />
+                <View style={styles.meta}>
+                  <Text style={styles.name}>{item.city || item.name}</Text>
+                  <Text style={styles.sub}>
+                    {item.nodeCount} {item.nodeCount === 1 ? 'node' : 'nodes'}
+                  </Text>
+                </View>
+                <View style={styles.qual}>
+                  <View style={styles.qualTop}>
+                    <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
+                    <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
+                  </View>
+                  <Text style={styles.qualSub}>
+                    {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
+                  </Text>
+                </View>
+              </Pressable>
+            );
+          }}
+        />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -143,15 +250,14 @@ export function CountryPickerScreen({
           <Text style={styles.empty}>No gateways reachable — pull to refresh.</Text>
         }
         renderItem={({ item }) => {
+          const cityCount = twoLevel ? citiesFor(item.code).length : 0;
+          const drillable = cityCount > 1;
           const q = gatewayQuality(item.latencyMs, item.best.load);
           const pinned = favorites.includes(item.code);
           return (
             <Pressable
-              style={[styles.row, item.id === selectedCode && styles.rowSelected]}
-              onPress={() => {
-                onSelect(item.id);
-                onClose();
-              }}
+              style={[styles.row, countrySelected(item.code) && styles.rowSelected]}
+              onPress={() => tapCountry(item)}
               accessibilityRole="button"
             >
               <Pressable
@@ -166,18 +272,24 @@ export function CountryPickerScreen({
               <View style={styles.meta}>
                 <Text style={styles.name}>{item.name}</Text>
                 <Text style={styles.sub}>
-                  {item.nodeCount} {item.nodeCount === 1 ? 'node' : 'nodes'} · {item.city}
+                  {drillable
+                    ? `${cityCount} cities · ${item.nodeCount} ${item.nodeCount === 1 ? 'node' : 'nodes'}`
+                    : `${item.nodeCount} ${item.nodeCount === 1 ? 'node' : 'nodes'} · ${item.city}`}
                 </Text>
               </View>
-              <View style={styles.qual}>
-                <View style={styles.qualTop}>
-                  <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
-                  <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
+              {drillable ? (
+                <Text style={styles.chevron}>›</Text>
+              ) : (
+                <View style={styles.qual}>
+                  <View style={styles.qualTop}>
+                    <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
+                    <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
+                  </View>
+                  <Text style={styles.qualSub}>
+                    {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
+                  </Text>
                 </View>
-                <Text style={styles.qualSub}>
-                  {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
-                </Text>
-              </View>
+              )}
             </Pressable>
           );
         }}
@@ -196,6 +308,15 @@ const styles = StyleSheet.create({
     marginBottom: space.md,
   },
   title: { color: color.ink, fontWeight: '700', fontSize: 17 },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  back: { color: color.cyan, fontSize: 28, fontWeight: '400', marginTop: -2 },
+  sectionLabel: {
+    color: color.inkFaint,
+    fontSize: 11,
+    textTransform: 'uppercase',
+    letterSpacing: 0.6,
+    marginBottom: space.sm,
+  },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: space.lg },
   retest: { color: color.inkMuted, fontWeight: '600', fontSize: 13 },
   done: { color: color.cyan, fontWeight: '600', fontSize: 15 },
@@ -228,9 +349,11 @@ const styles = StyleSheet.create({
   star: { fontSize: 17, color: color.inkFaint },
   starOn: { color: color.amber },
   flag: { fontSize: 24 },
+  cityDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.cyan, marginLeft: 8 },
   meta: { flex: 1 },
   name: { color: color.ink, fontSize: 15, fontWeight: '600' },
   sub: { color: color.inkDim, fontSize: 12, marginTop: 2 },
+  chevron: { color: color.inkFaint, fontSize: 22, fontWeight: '400', paddingHorizontal: 4 },
   qual: { alignItems: 'flex-end' },
   qualTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   qualDot: { width: 7, height: 7, borderRadius: 4 },

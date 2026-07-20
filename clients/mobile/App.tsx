@@ -57,7 +57,8 @@ function App(): React.JSX.Element {
             </View>
           ) : route === 'countries' ? (
             <CountryPickerScreen
-              countries={vpn.locations}
+              countries={vpn.countries}
+              locations={vpn.locations}
               selectedCode={vpn.selected?.id ?? null}
               onSelect={(id) => void vpn.selectCountry(id)}
               onSelectAuto={() => void vpn.selectCountry(null)}
