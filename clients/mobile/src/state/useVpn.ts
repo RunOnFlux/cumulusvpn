@@ -18,7 +18,6 @@ import {
   generateKeypair,
   paymentCode,
   paymentMemo,
-  pingGateway,
   selectHops,
   status as fetchStatus,
 } from '@cumulusvpn/core';
@@ -439,31 +438,49 @@ export function useVpn(): VpnModel & VpnActions {
     };
   }, [state]);
 
-  // ---- live ping to the exit gateway while connected ---------------------
+  // ---- live ping while connected -----------------------------------------
+  // Measure round-trip THROUGH the tunnel to a tiny, ubiquitous connectivity
+  // endpoint (Google's generate_204 → an empty 204). We can't ping the gateway's
+  // own control API once connected: that request hairpins at the gateway and
+  // times out, so the Ping stat always read "—". This is the user's effective
+  // latency via the VPN, which is the more useful number anyway.
   useEffect(() => {
-    const hop = activeExit ?? activeEntry;
-    if (state !== 'connected' || !hop) {
+    if (state !== 'connected') {
       setPingMs(null);
       return undefined;
     }
     let alive = true;
-    const ping = async (): Promise<void> => {
+    const PING_URL = 'https://www.gstatic.com/generate_204';
+    const sample = async (): Promise<number | null> => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4000);
+      const started = Date.now();
       try {
-        const { rttMs } = await pingGateway(hop.controlUrl, { samples: 1 });
-        if (alive) {
-          setPingMs(rttMs);
-        }
+        await fetch(PING_URL, { method: 'GET', signal: controller.signal });
+        return Date.now() - started;
       } catch {
-        // Ignore; keep the last reading.
+        return null;
+      } finally {
+        clearTimeout(timer);
       }
     };
-    const id = setInterval(() => void ping(), 5000);
-    void ping();
+    const tick = async (): Promise<void> => {
+      // Two samples, keep the lower — the second reuses the warm connection, so
+      // it excludes most of the TCP/TLS setup and reads closer to true latency.
+      const a = await sample();
+      const b = await sample();
+      const best = [a, b].filter((x): x is number => x !== null).sort((x, y) => x - y)[0] ?? null;
+      if (alive) {
+        setPingMs(best);
+      }
+    };
+    void tick();
+    const id = setInterval(() => void tick(), 5000);
     return () => {
       alive = false;
       clearInterval(id);
     };
-  }, [state, activeExit, activeEntry]);
+  }, [state]);
 
   // ---- connect watchdog: never hang on "connecting" forever --------------
   // The enroll network step is bounded by core's fetch timeout, but a config
