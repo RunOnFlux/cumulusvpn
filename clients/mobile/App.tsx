@@ -11,6 +11,7 @@ import { ActivityIndicator, BackHandler, StatusBar, StyleSheet, Text, View } fro
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { PoweredByFlux } from './src/components/PoweredByFlux';
 import { useVpn } from './src/state/useVpn';
+import { useFlags } from './src/state/useFlags';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { CountryPickerScreen } from './src/screens/CountryPickerScreen';
 import { UpgradeScreen } from './src/screens/UpgradeScreen';
@@ -21,6 +22,7 @@ type Route = 'connect' | 'countries' | 'upgrade' | 'entry' | 'exit' | 'settings'
 
 function App(): React.JSX.Element {
   const vpn = useVpn();
+  const flags = useFlags();
   const [route, setRoute] = useState<Route>('connect');
 
   // Android hardware back: from any sub-screen, return to Connect instead of
@@ -93,6 +95,7 @@ function App(): React.JSX.Element {
             <UpgradeScreen
               tier={vpn.tier}
               payment={vpn.payment}
+              inAppUpgrade={flags.inAppUpgrade}
               onClose={() => setRoute('connect')}
             />
           ) : route === 'settings' ? (

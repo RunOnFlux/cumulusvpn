@@ -1,17 +1,17 @@
 /**
- * Upgrade — in-app pay-in-FLUX flow.
+ * Upgrade — pay in FLUX. Two modes, chosen by the remote `inAppUpgrade` flag
+ * (per platform, see lib/flags.ts):
  *
- * Shows the prefilled payment (amount + pay-to address + message), a QR of the
- * `flux:` payment URI, and an "Open in wallet" button that hands that URI to an
- * installed FLUX wallet (Zelcore / SSP) via its registered scheme so it opens
- * pre-populated. Entitlement is chain-based and keyed to the device WG pubkey,
- * so the phone unlocks automatically ~1 min after the transfer confirms.
+ *  - inAppUpgrade ON  → the full in-app flow: QR of the `flux:` payment URI, an
+ *    "Open in wallet" hand-off (Zelcore / SSP open prefilled), and copyable
+ *    pay-to details. Used where a crypto-pay flow is acceptable (e.g. Android).
+ *  - inAppUpgrade OFF → the store-compliant "manage on the web" copy: no QR, no
+ *    pay-to address, no tappable purchase link — just this device's reference +
+ *    steps pointing to vpn.cumulusvpn.com. The safe default (also used whenever
+ *    the flags can't be fetched), so App Store review sees no IAP circumvention.
  *
- * STORE NOTE: this is a crypto transfer to the user's own recipient, not an
- * in-app purchase of digital goods through the store's billing — but Apple 3.1.1
- * can still view "pay crypto to unlock a feature" as IAP circumvention. If App
- * Store review pushes back, platform-gate this (full flow on Android, the older
- * "manage on web" copy on iOS). Kept as one flow per product decision.
+ * Entitlement is chain-based + device-key-scoped, so the phone unlocks itself
+ * ~1 min after the transfer confirms, regardless of where it was paid.
  */
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useState } from 'react';
@@ -25,31 +25,16 @@ import { color, font, radius, space } from '../theme/tokens';
 interface Props {
   readonly tier: Tier;
   readonly payment: PaymentIdentity | null;
+  /** Remote flag: when true, show the in-app pay flow; else "manage on web". */
+  readonly inAppUpgrade: boolean;
   readonly onClose: () => void;
 }
 
-export function UpgradeScreen({ tier, payment, onClose }: Props): React.JSX.Element {
+/** Where the prefilled pay-to-address upgrade flow lives on the web. */
+const UPGRADE_URL = 'vpn.cumulusvpn.com';
+
+export function UpgradeScreen({ tier, payment, inAppUpgrade, onClose }: Props): React.JSX.Element {
   const premium = tier === 'premium';
-  const [walletError, setWalletError] = useState<string | null>(null);
-
-  const deepLink = payment
-    ? walletDeepLink(payment.address, payment.priceFlux, payment.memo)
-    : null;
-
-  const openWallet = async (): Promise<void> => {
-    if (!deepLink) {
-      return;
-    }
-    setWalletError(null);
-    try {
-      await Linking.openURL(deepLink);
-    } catch {
-      setWalletError(
-        'No FLUX wallet found. Install Zelcore or SSP Wallet, or scan the QR / copy the details below.',
-      );
-    }
-  };
-
   return (
     <ScrollView
       style={styles.root}
@@ -68,7 +53,6 @@ export function UpgradeScreen({ tier, payment, onClose }: Props): React.JSX.Elem
           <Text style={styles.tierLabel}>Current tier</Text>
           <TierPill tier={tier} />
         </View>
-
         {premium ? (
           <Text style={styles.copy}>
             You’re on Premium — full speed on every gateway. Nothing to do here.
@@ -91,49 +75,106 @@ export function UpgradeScreen({ tier, payment, onClose }: Props): React.JSX.Elem
         )}
       </View>
 
-      {!premium && payment && deepLink ? (
-        <>
-          <View style={styles.qrWrap}>
-            <Qr value={deepLink} size={196} />
-            <Text style={styles.qrCap}>Scan with Zelcore / SSP Wallet</Text>
-          </View>
-
-          <Pressable
-            onPress={() => void openWallet()}
-            accessibilityRole="button"
-            style={({ pressed }) => [styles.payBtn, pressed && styles.payBtnPressed]}
-          >
-            <Text style={styles.payBtnLabel}>Open in wallet →</Text>
-          </Pressable>
-          {walletError ? <Text style={styles.walletError}>{walletError}</Text> : null}
-
-          <Field label="Amount" value={`${payment.priceFlux} FLUX`} />
-          <Field label="Pay-to address" value={payment.address} mono />
-          <Field label="Message (required)" value={payment.memo} mono />
-
-          <Text style={styles.section}>How it works</Text>
-          <View style={styles.steps}>
-            <Step
-              n={1}
-              text="Tap “Open in wallet” (or scan the QR) — your FLUX wallet opens with the amount, address and message prefilled."
-            />
-            <Step
-              n={2}
-              text="Send the transfer. The message is what ties it to this device — don’t remove it."
-            />
-            <Step
-              n={3}
-              text="This device unlocks automatically within ~1 minute, on every gateway at once."
-            />
-          </View>
-
-          <Text style={styles.note}>
-            Payment is verified on the Flux blockchain and tied to this device’s key — we never see
-            who you are, and there’s no account to create. Tap-and-hold any field to copy it.
-          </Text>
-        </>
-      ) : null}
+      {premium || !payment ? null : inAppUpgrade ? (
+        <InAppPay payment={payment} />
+      ) : (
+        <ManageOnWeb payment={payment} />
+      )}
     </ScrollView>
+  );
+}
+
+/** Full in-app pay flow: QR + wallet hand-off + prefilled details. */
+function InAppPay({ payment }: { readonly payment: PaymentIdentity }): React.JSX.Element {
+  const [walletError, setWalletError] = useState<string | null>(null);
+  const deepLink = walletDeepLink(payment.address, payment.priceFlux, payment.memo);
+
+  const openWallet = async (): Promise<void> => {
+    setWalletError(null);
+    try {
+      await Linking.openURL(deepLink);
+    } catch {
+      setWalletError(
+        'No FLUX wallet found. Install Zelcore or SSP Wallet, or scan the QR / copy the details below.',
+      );
+    }
+  };
+
+  return (
+    <>
+      <View style={styles.qrWrap}>
+        <Qr value={deepLink} size={196} />
+        <Text style={styles.qrCap}>Scan with Zelcore / SSP Wallet</Text>
+      </View>
+
+      <Pressable
+        onPress={() => void openWallet()}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.payBtn, pressed && styles.payBtnPressed]}
+      >
+        <Text style={styles.payBtnLabel}>Open in wallet →</Text>
+      </Pressable>
+      {walletError ? <Text style={styles.walletError}>{walletError}</Text> : null}
+
+      <Field label="Amount" value={`${payment.priceFlux} FLUX`} />
+      <Field label="Pay-to address" value={payment.address} mono />
+      <Field label="Message (required)" value={payment.memo} mono />
+
+      <Text style={styles.section}>How it works</Text>
+      <View style={styles.steps}>
+        <Step
+          n={1}
+          text="Tap “Open in wallet” (or scan the QR) — your FLUX wallet opens with the amount, address and message prefilled."
+        />
+        <Step
+          n={2}
+          text="Send the transfer. The message is what ties it to this device — don’t remove it."
+        />
+        <Step
+          n={3}
+          text="This device unlocks automatically within ~1 minute, on every gateway at once."
+        />
+      </View>
+
+      <Text style={styles.note}>
+        Payment is verified on the Flux blockchain and tied to this device’s key — we never see who
+        you are, and there’s no account to create. Tap-and-hold any field to copy it.
+      </Text>
+    </>
+  );
+}
+
+/** Store-compliant "manage on the web" copy: no QR / address / purchase link. */
+function ManageOnWeb({ payment }: { readonly payment: PaymentIdentity }): React.JSX.Element {
+  return (
+    <>
+      <Text style={styles.section}>How to upgrade</Text>
+      <View style={styles.steps}>
+        <Step n={1} text={`Open ${UPGRADE_URL} in any browser — on this phone or a computer.`} />
+        <Step
+          n={2}
+          text="Open Upgrade. The gateway, exact FLUX amount and pay-to address are prefilled there (with a QR)."
+        />
+        <Step n={3} text="Pay with FLUX from any wallet — scan the QR or copy the address." />
+        <Step
+          n={4}
+          text="This device unlocks automatically within ~1 minute. Nothing to enter here."
+        />
+      </View>
+
+      <View style={styles.field}>
+        <Text style={styles.fieldLabel}>This device’s reference · tap &amp; hold to copy</Text>
+        <Text style={[styles.fieldValue, styles.fieldMono]} selectable>
+          {payment.memo}
+        </Text>
+        <Text style={styles.fieldHint}>Matches this phone to your payment on the site.</Text>
+      </View>
+
+      <Text style={styles.note}>
+        Payment is verified on the Flux blockchain and tied to this device’s key — we never see who
+        you are, and there’s no account to create.
+      </Text>
+    </>
   );
 }
 
@@ -228,6 +269,7 @@ const styles = StyleSheet.create({
   },
   fieldValue: { color: color.ink, fontSize: 14, fontWeight: '600' },
   fieldMono: { fontFamily: font.mono, fontSize: 12.5, fontWeight: '400' },
+  fieldHint: { color: color.inkFaint, fontSize: 11.5, lineHeight: 16 },
   section: {
     color: color.inkFaint,
     fontSize: 11,
