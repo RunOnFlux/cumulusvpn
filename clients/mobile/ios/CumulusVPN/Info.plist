@@ -30,8 +30,13 @@
 	<true/>
 	<key>NSAppTransportSecurity</key>
 	<dict>
+		<!-- Gateways are IP-based Flux nodes serving their control API over plain
+		     HTTP (http://<public-ip>:51821) with no TLS/domain, so discovery,
+		     enroll and status are cleartext to public IPs. ATS blocks that unless
+		     arbitrary loads are allowed (domain exceptions don't apply to raw IPs).
+		     The actual VPN traffic is separately encrypted by WireGuard. -->
 		<key>NSAllowsArbitraryLoads</key>
-		<false/>
+		<true/>
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
