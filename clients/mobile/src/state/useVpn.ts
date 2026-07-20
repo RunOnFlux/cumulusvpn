@@ -39,6 +39,7 @@ import {
   type RouteEndpoint,
 } from '../lib/gateways';
 import { solvePowFast } from '../lib/pow';
+import { bundledDirectory } from '../lib/directory';
 import {
   loadAutoConnect,
   loadEntryCountry,
@@ -263,14 +264,18 @@ export function useVpn(): VpnModel & VpnActions {
   const multihop = isMultihop(routeStyle);
 
   const payment = useMemo<PaymentIdentity | null>(() => {
-    if (!keypair || !enrollment) {
+    if (!keypair) {
       return null;
     }
+    // Pay-to address + price come from the SIGNED DIRECTORY (bundled, always
+    // available) so Upgrade works before the user has ever connected. A live
+    // enrollment overrides them when present. (Previously this required an
+    // enrollment, so opening Upgrade before connecting showed nothing.)
     return {
       code: paymentCode(keypair.publicKey),
       memo: paymentMemo(keypair.publicKey),
-      address: enrollment.payment_address,
-      priceFlux: enrollment.price_flux,
+      address: enrollment?.payment_address ?? bundledDirectory.payment_address,
+      priceFlux: enrollment?.price_flux ?? bundledDirectory.price_flux,
     };
   }, [keypair, enrollment]);
 
