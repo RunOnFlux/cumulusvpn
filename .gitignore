@@ -59,3 +59,6 @@ clients/mobile/ios/.xcode.env.local
 *.mobileprovision
 *.cer
 *.certSigningRequest
+
+# Wrangler local dev state
+.wrangler/
