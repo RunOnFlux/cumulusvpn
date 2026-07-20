@@ -76,6 +76,8 @@ export interface VpnModel {
   readonly state: TunnelState;
   readonly status: TunnelStatus | null;
   readonly tier: Tier;
+  /** RFC3339 timestamp premium is paid through, or null when free/unknown. */
+  readonly paidUntil: string | null;
   /** True while the initial discovery/enroll bootstrap is running. */
   readonly booting: boolean;
   /** True while a fleet discovery is in flight (initial or pull-to-refresh). */
@@ -167,6 +169,8 @@ export function useVpn(): VpnModel & VpnActions {
   const [state, setState] = useState<TunnelState>('disconnected');
   const [status, setStatus] = useState<TunnelStatus | null>(null);
   const [tier, setTier] = useState<Tier>('free');
+  // RFC3339 timestamp premium is paid through (null when free / unknown).
+  const [paidUntil, setPaidUntil] = useState<string | null>(null);
   const [booting, setBooting] = useState(true);
   // True while a fleet discovery is in flight (initial + pull-to-refresh). Lets
   // the UI show a lightweight "finding servers" hint instead of pinning the
@@ -525,6 +529,7 @@ export function useVpn(): VpnModel & VpnActions {
           const st = await fetchStatus(activeIp, pubkey);
           if (alive) {
             setTier(st.tier);
+            setPaidUntil(st.tier === 'premium' ? st.paid_until : null);
           }
         } catch {
           // Non-fatal: keep the last known tier.
@@ -538,20 +543,19 @@ export function useVpn(): VpnModel & VpnActions {
       if (sample.length === 0) {
         return;
       }
-      const tiers = await Promise.all(
-        sample.map((g) =>
-          fetchStatus(g.ip, pubkey)
-            .then((s) => s.tier)
-            .catch(() => null),
-        ),
+      const results = await Promise.all(
+        sample.map((g) => fetchStatus(g.ip, pubkey).catch(() => null)),
       );
       if (!alive) {
         return;
       }
-      if (tiers.some((t) => t === 'premium')) {
+      const premiumResult = results.find((r) => r?.tier === 'premium');
+      if (premiumResult) {
         setTier('premium');
-      } else if (tiers.some((t) => t === 'free')) {
+        setPaidUntil(premiumResult.paid_until);
+      } else if (results.some((r) => r)) {
         setTier('free');
+        setPaidUntil(null);
       }
     };
     const id = setInterval(poll, STATUS_POLL_MS);
@@ -762,6 +766,7 @@ export function useVpn(): VpnModel & VpnActions {
     state,
     status,
     tier,
+    paidUntil,
     booting,
     discovering,
     error,

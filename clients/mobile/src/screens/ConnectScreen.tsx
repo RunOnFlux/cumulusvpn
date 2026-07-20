@@ -87,7 +87,14 @@ export function ConnectScreen({
       <View style={styles.top}>
         <Text style={styles.brand}>CumulusVPN</Text>
         <View style={styles.topRight}>
-          <TierPill tier={vpn.tier} />
+          <Pressable
+            onPress={onOpenUpgrade}
+            accessibilityRole="button"
+            accessibilityLabel={vpn.tier === 'premium' ? 'View your plan' : 'Upgrade to Premium'}
+            hitSlop={8}
+          >
+            <TierPill tier={vpn.tier} />
+          </Pressable>
           <Pressable onPress={onOpenSettings} accessibilityRole="button" hitSlop={10}>
             <Text style={styles.gear}>⚙</Text>
           </Pressable>

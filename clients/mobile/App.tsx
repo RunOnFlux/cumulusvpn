@@ -95,12 +95,17 @@ function App(): React.JSX.Element {
           ) : route === 'upgrade' ? (
             <UpgradeScreen
               tier={vpn.tier}
+              paidUntil={vpn.paidUntil}
               payment={vpn.payment}
               inAppUpgrade={flags.inAppUpgrade}
               onClose={() => setRoute('connect')}
             />
           ) : route === 'settings' ? (
-            <SettingsScreen vpn={vpn} onClose={() => setRoute('connect')} />
+            <SettingsScreen
+              vpn={vpn}
+              onClose={() => setRoute('connect')}
+              onOpenUpgrade={() => setRoute('upgrade')}
+            />
           ) : (
             <ConnectScreen
               vpn={vpn}

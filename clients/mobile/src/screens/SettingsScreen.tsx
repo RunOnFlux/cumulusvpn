@@ -6,7 +6,9 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
 import { PoweredByFlux } from '../components/PoweredByFlux';
+import { TierPill } from '../components/TierPill';
 import { Toggle } from '../components/Toggle';
+import { formatExpiry } from './UpgradeScreen';
 import { color, font, radius, space } from '../theme/tokens';
 
 /** App version — matches the release tag; single source is package.json. */
@@ -16,9 +18,12 @@ const SITE_URL = 'https://cumulusvpn.com';
 interface Props {
   readonly vpn: VpnModel & VpnActions;
   readonly onClose: () => void;
+  readonly onOpenUpgrade: () => void;
 }
 
-export function SettingsScreen({ vpn, onClose }: Props): React.JSX.Element {
+export function SettingsScreen({ vpn, onClose, onOpenUpgrade }: Props): React.JSX.Element {
+  const premium = vpn.tier === 'premium';
+  const expiry = formatExpiry(vpn.paidUntil);
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -29,6 +34,30 @@ export function SettingsScreen({ vpn, onClose }: Props): React.JSX.Element {
       </View>
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+        <Text style={styles.section}>Plan</Text>
+        <Pressable
+          style={styles.planRow}
+          onPress={onOpenUpgrade}
+          accessibilityRole="button"
+          accessibilityLabel={premium ? 'Manage your Premium plan' : 'Upgrade to Premium'}
+        >
+          <View style={styles.rowMeta}>
+            <View style={styles.planTop}>
+              <TierPill tier={vpn.tier} />
+            </View>
+            <Text style={styles.rowSub}>
+              {premium
+                ? expiry
+                  ? `Active until ${expiry.date} · ${expiry.daysLeft} ${
+                      expiry.daysLeft === 1 ? 'day' : 'days'
+                    } left`
+                  : 'Full speed on every gateway'
+                : 'Limited to 100 KB/s — tap to upgrade'}
+            </Text>
+          </View>
+          <Text style={styles.chev}>›</Text>
+        </Pressable>
+
         <Text style={styles.section}>Connection</Text>
         <ToggleRow
           title="Auto-connect on launch"
@@ -143,6 +172,20 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
     gap: space.md,
   },
+  planRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: color.glass,
+    borderColor: color.hairline,
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+    marginBottom: space.sm,
+    gap: space.md,
+  },
+  planTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 4 },
   rowMeta: { flex: 1 },
   rowTitle: { color: color.ink, fontSize: 15, fontWeight: '600' },
   rowSub: { color: color.inkDim, fontSize: 12, marginTop: 2 },

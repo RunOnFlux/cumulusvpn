@@ -25,6 +25,8 @@ import { color, font, radius, space } from '../theme/tokens';
 
 interface Props {
   readonly tier: Tier;
+  /** RFC3339 timestamp premium is paid through, or null when free/unknown. */
+  readonly paidUntil: string | null;
   readonly payment: PaymentIdentity | null;
   /** Remote flag: when true, show the in-app pay flow; else "manage on web". */
   readonly inAppUpgrade: boolean;
@@ -34,8 +36,34 @@ interface Props {
 /** Where the prefilled pay-to-address upgrade flow lives on the web. */
 const UPGRADE_URL = 'vpn.cumulusvpn.com';
 
-export function UpgradeScreen({ tier, payment, inAppUpgrade, onClose }: Props): React.JSX.Element {
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * Format an RFC3339 expiry into a short date + whole days remaining. Hand-rolled
+ * (no `Intl`/`toLocaleDateString`) so it's identical across Hermes/JSC.
+ */
+export function formatExpiry(iso: string | null): { date: string; daysLeft: number } | null {
+  if (!iso) {
+    return null;
+  }
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) {
+    return null;
+  }
+  const d = new Date(t);
+  const daysLeft = Math.max(0, Math.ceil((t - Date.now()) / 86_400_000));
+  return { date: `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`, daysLeft };
+}
+
+export function UpgradeScreen({
+  tier,
+  paidUntil,
+  payment,
+  inAppUpgrade,
+  onClose,
+}: Props): React.JSX.Element {
   const premium = tier === 'premium';
+  const expiry = formatExpiry(paidUntil);
   return (
     <ScrollView
       style={styles.root}
@@ -55,9 +83,23 @@ export function UpgradeScreen({ tier, payment, inAppUpgrade, onClose }: Props): 
           <TierPill tier={tier} />
         </View>
         {premium ? (
-          <Text style={styles.copy}>
-            You’re on Premium — full speed on every gateway. Nothing to do here.
-          </Text>
+          <>
+            <Text style={styles.copy}>
+              You’re on Premium — full speed on every gateway. Pay again any time to add more time;
+              it stacks on top of your current expiry.
+            </Text>
+            {expiry ? (
+              <View style={styles.priceRow}>
+                <Text style={styles.priceLabel}>Active until</Text>
+                <Text style={styles.price}>
+                  {expiry.date}{' '}
+                  <Text style={styles.priceUnit}>
+                    · {expiry.daysLeft} {expiry.daysLeft === 1 ? 'day' : 'days'} left
+                  </Text>
+                </Text>
+              </View>
+            ) : null}
+          </>
         ) : (
           <>
             <Text style={styles.copy}>
@@ -76,17 +118,23 @@ export function UpgradeScreen({ tier, payment, inAppUpgrade, onClose }: Props): 
         )}
       </View>
 
-      {premium || !payment ? null : inAppUpgrade ? (
-        <InAppPay payment={payment} />
+      {!payment ? null : inAppUpgrade ? (
+        <InAppPay payment={payment} premium={premium} />
       ) : (
-        <ManageOnWeb payment={payment} />
+        <ManageOnWeb payment={payment} premium={premium} />
       )}
     </ScrollView>
   );
 }
 
 /** Full in-app pay flow: QR + wallet hand-off + prefilled details. */
-function InAppPay({ payment }: { readonly payment: PaymentIdentity }): React.JSX.Element {
+function InAppPay({
+  payment,
+  premium,
+}: {
+  readonly payment: PaymentIdentity;
+  readonly premium: boolean;
+}): React.JSX.Element {
   const [walletError, setWalletError] = useState<string | null>(null);
   // The QR carries the BIP21 `flux:` payload — that's what a wallet's in-app
   // scanner (Zelcore / SSP) parses to a prefilled send.
@@ -113,6 +161,7 @@ function InAppPay({ payment }: { readonly payment: PaymentIdentity }): React.JSX
 
   return (
     <>
+      <Text style={styles.section}>{premium ? 'Add more time' : 'Pay with FLUX'}</Text>
       <View style={styles.qrWrap}>
         <Qr value={qrLink} size={196} />
         <Text style={styles.qrCap}>Scan with Zelcore / SSP Wallet</Text>
@@ -143,7 +192,11 @@ function InAppPay({ payment }: { readonly payment: PaymentIdentity }): React.JSX
         />
         <Step
           n={3}
-          text="This device unlocks automatically within ~1 minute, on every gateway at once."
+          text={
+            premium
+              ? 'Another 30 days is added on top of your current expiry within ~1 minute, on every gateway at once.'
+              : 'This device unlocks automatically within ~1 minute, on every gateway at once.'
+          }
         />
       </View>
 
@@ -165,10 +218,16 @@ function InAppPay({ payment }: { readonly payment: PaymentIdentity }): React.JSX
 }
 
 /** Store-compliant "manage on the web" copy: no QR / address / purchase link. */
-function ManageOnWeb({ payment }: { readonly payment: PaymentIdentity }): React.JSX.Element {
+function ManageOnWeb({
+  payment,
+  premium,
+}: {
+  readonly payment: PaymentIdentity;
+  readonly premium: boolean;
+}): React.JSX.Element {
   return (
     <>
-      <Text style={styles.section}>How to upgrade</Text>
+      <Text style={styles.section}>{premium ? 'How to add more time' : 'How to upgrade'}</Text>
       <View style={styles.steps}>
         <Step n={1} text={`Open ${UPGRADE_URL} in any browser — on this phone or a computer.`} />
         <Step
