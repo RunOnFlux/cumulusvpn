@@ -31,7 +31,7 @@ store-filing changes, Next.js/framework adoption.
 |---|---|
 | Topology | Separate Worker `cumulusvpn-landing` (dashboard pattern), **asset-only** — no `main`/worker.js until logic is actually needed |
 | Deploy | Cloudflare Git-connected Workers Build, watch paths `clients/landing/**` |
-| Analytics | CF Web Analytics beacons on landing + vpn. SPA (one site token each); apps untouched |
+| Analytics | CF Web Analytics beacons on landing + vpn. SPA using the **one existing zone site token** (`9e07c1b233a24fbda101b18947f1b1b3`, site_tag `cbb8bdb0e1ac40e3a7ddcfb8465bd04e`); segment by Host filter in the dashboard. (Recon found the site already exists with `auto_install: true` yet demonstrably injects nothing; Cloudflare no longer offers standalone subdomain sites, so one token for both is the intended model.) Apps untouched |
 | SPA indexing | `noindex,follow` meta (landing is the canonical search surface); robots.txt stays permissive so the meta is crawlable |
 | Cutover | DNS flip via Worker custom domain; GH Pages disabled only after live verification |
 
@@ -87,17 +87,27 @@ clients/landing/
 
 Git-connected Workers can't exist before their config is on `main`, so:
 
-**Phase 1 — before any code**
+**Phase 1 — before any code (COMPLETED 2026-07-21)**
 
-1. Cloudflare → Web Analytics: create sites for `cumulusvpn.com` and
-   `vpn.cumulusvpn.com`; capture both beacon tokens (they get baked into HTML).
-2. Cloudflare → zone: disable the managed **Content Signals robots.txt**
-   override (currently replacing our robots.txt entirely).
-3. Recon: how apex DNS points at GH Pages; whether the existing `www → apex`
-   301 is a zone Redirect Rule (survives) or Pages-tied (needs replacing);
-   the exact Workers Builds settings of the `cumulusvpn` worker to clone.
-4. GitHub → Settings → Pages: record the current custom-domain config for
-   rollback. No changes yet.
+1. ~~Create WA sites~~ → **Done differently:** existing zone site reused; token
+   `9e07c1b233a24fbda101b18947f1b1b3` for both landing and SPA (see Decisions).
+2. Managed **Content Signals robots.txt**: the zone-Overview dropdown
+   ("Manage your robots.txt") renders empty/unloadable in the dash. Empirical
+   finding: origin robots.txt served with HTTP 200 passes through untouched
+   (vpn.'s does); the signals file only appears where the origin 404s (GH
+   Pages apex). → Defer: verify at cutover; only fight the toggle if our
+   robots.txt actually gets swallowed.
+3. Recon findings: apex + `www` are proxied CNAMEs → `runonflux.github.io`;
+   `vpn.` is a Worker custom-domain record. The `www → apex` 301 is issued by
+   the **GitHub Pages origin**, not Cloudflare → at cutover, create a zone
+   **Single Redirect rule** (`www.cumulusvpn.com/* → https://cumulusvpn.com/$1`,
+   301) and keep the `www` DNS record proxied. `cumulusvpn` worker build
+   config captured: Git-connected to RunOnFlux/cumulusvpn (CF GitHub app
+   already installed), root `/`, prod branch `main`, watch paths `*`.
+4. GH Pages recorded for rollback: this repo, `build_type: workflow`, custom
+   domain `cumulusvpn.com`, HTTPS enforced. **Neither the browser GitHub
+   account nor local `gh` (stultusmundi, push-only) has repo admin — step 8
+   (disable Pages) needs an org admin.**
 
 **Phase 2 — after the code commit lands on `main`**
 
@@ -106,10 +116,13 @@ Git-connected Workers can't exist before their config is on `main`, so:
    clients/landing/wrangler.jsonc`, watch paths `clients/landing/**`.
    Verify on the workers.dev preview URL.
 6. Attach custom domain `cumulusvpn.com` (this is the cutover — rewrites apex
-   DNS from GH Pages to the Worker; instant, reversible). Handle `www` per
-   step 3 findings.
-7. Verify live (see Testing).
+   DNS from GH Pages to the Worker; instant, reversible). Create the `www`
+   Single Redirect rule (see Phase 1 findings) — the GH-origin 301 dies with
+   Pages.
+7. Verify live (see Testing). Include: our robots.txt actually served (see
+   Phase 1 item 2 — revisit the managed-robots.txt toggle only if swallowed).
 8. GitHub → disable Pages + remove its custom domain — only after 7 passes.
+   **Requires a repo admin** (current accounts are push-only).
 
 ## Testing / verification
 
