@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { paymentCode, paymentMemo, walletDeepLink } from './paymentCode.js';
+import {
+  paymentCode,
+  paymentMemo,
+  walletDeepLink,
+  walletDeepLinks,
+  WALLET_SCHEMES,
+} from './paymentCode.js';
 
 // Known vectors: code = base58btc(sha256(rawPub)[0:20]). Computed independently
 // and cross-checked to match the gateway's entitle.PaymentCode().
@@ -35,10 +41,36 @@ describe('paymentMemo', () => {
 });
 
 describe('walletDeepLink', () => {
-  it('builds the flux: URI exactly per contract', () => {
-    const memo = paymentMemo(ZERO_PUB);
+  const memo = paymentMemo(ZERO_PUB);
+
+  it('defaults to the zel: scheme (Zelcore) with the contract payload', () => {
     expect(walletDeepLink('t1abc', 20, memo)).toBe(
+      `zel:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`,
+    );
+  });
+
+  it('builds the flux: URI when asked', () => {
+    expect(walletDeepLink('t1abc', 20, memo, 'flux')).toBe(
       `flux:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`,
     );
+  });
+
+  it('builds the ssp: URI when asked', () => {
+    expect(walletDeepLink('t1abc', 20, memo, 'ssp')).toBe(
+      `ssp:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`,
+    );
+  });
+});
+
+describe('walletDeepLinks', () => {
+  const memo = paymentMemo(ZERO_PUB);
+
+  it('returns one URI per scheme in preference order (zel, flux, ssp)', () => {
+    const links = walletDeepLinks('t1abc', 20, memo);
+    expect(links.map((l) => l.scheme)).toEqual([...WALLET_SCHEMES]);
+    expect(links.map((l) => l.scheme)).toEqual(['zel', 'flux', 'ssp']);
+    for (const { scheme, uri } of links) {
+      expect(uri).toBe(`${scheme}:t1abc?amount=20&message=CVPN1:${ZERO_CODE}`);
+    }
   });
 });

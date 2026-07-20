@@ -2,9 +2,10 @@
  * Upgrade — pay in FLUX. Two modes, chosen by the remote `inAppUpgrade` flag
  * (per platform, see lib/flags.ts):
  *
- *  - inAppUpgrade ON  → the full in-app flow: QR of the `flux:` payment URI, an
- *    "Open in wallet" hand-off (Zelcore / SSP open prefilled), and copyable
- *    pay-to details. Used where a crypto-pay flow is acceptable (e.g. Android).
+ *  - inAppUpgrade ON  → the full in-app flow: QR of the BIP21 `flux:` payment
+ *    URI, an "Open in wallet" hand-off that tries each registered wallet scheme
+ *    (`zel:` Zelcore → `flux:` → `ssp:` SSP) until one opens prefilled, and
+ *    copyable pay-to details. Used where a crypto-pay flow is acceptable (Android).
  *  - inAppUpgrade OFF → the store-compliant "manage on the web" copy: no QR, no
  *    pay-to address, no tappable purchase link — just this device's reference +
  *    steps pointing to vpn.cumulusvpn.com. The safe default (also used whenever
@@ -15,7 +16,7 @@
  */
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useState } from 'react';
-import { walletDeepLink } from '@cumulusvpn/core';
+import { walletDeepLink, walletDeepLinks } from '@cumulusvpn/core';
 import type { Tier } from '@cumulusvpn/core';
 import type { PaymentIdentity } from '../state/useVpn';
 import { Qr } from '../components/Qr';
@@ -87,23 +88,33 @@ export function UpgradeScreen({ tier, payment, inAppUpgrade, onClose }: Props): 
 /** Full in-app pay flow: QR + wallet hand-off + prefilled details. */
 function InAppPay({ payment }: { readonly payment: PaymentIdentity }): React.JSX.Element {
   const [walletError, setWalletError] = useState<string | null>(null);
-  const deepLink = walletDeepLink(payment.address, payment.priceFlux, payment.memo);
+  // The QR carries the BIP21 `flux:` payload — that's what a wallet's in-app
+  // scanner (Zelcore / SSP) parses to a prefilled send.
+  const qrLink = walletDeepLink(payment.address, payment.priceFlux, payment.memo, 'flux');
+  // Tapping hands off via the OS. Wallets only open a scheme they registered as
+  // an intent filter — Zelcore registers `zel:`, SSP `ssp:` — so try each in
+  // preference order until one has a handler (openURL rejects when none does).
+  const links = walletDeepLinks(payment.address, payment.priceFlux, payment.memo);
 
   const openWallet = async (): Promise<void> => {
     setWalletError(null);
-    try {
-      await Linking.openURL(deepLink);
-    } catch {
-      setWalletError(
-        'No FLUX wallet found. Install Zelcore or SSP Wallet, or scan the QR / copy the details below.',
-      );
+    for (const { uri } of links) {
+      try {
+        await Linking.openURL(uri);
+        return;
+      } catch {
+        // No app registered this scheme — fall through to the next.
+      }
     }
+    setWalletError(
+      'No FLUX wallet found. Install Zelcore or SSP Wallet, or scan the QR / copy the details below.',
+    );
   };
 
   return (
     <>
       <View style={styles.qrWrap}>
-        <Qr value={deepLink} size={196} />
+        <Qr value={qrLink} size={196} />
         <Text style={styles.qrCap}>Scan with Zelcore / SSP Wallet</Text>
       </View>
 

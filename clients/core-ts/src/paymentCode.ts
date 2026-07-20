@@ -34,16 +34,51 @@ export function paymentMemo(publicKeyB64: string): string {
 }
 
 /**
- * Build a Flux wallet deep link that pre-fills the premium payment:
- * `flux:<address>?amount=<priceFlux>&message=<memo>`.
+ * URI schemes that Flux-ecosystem wallets register for BIP21-style payment
+ * hand-offs. Ordered by how likely a scanned/tapped link is to open a wallet
+ * the user actually has installed:
+ *  - `zel`  — Zelcore (the reference Flux wallet).
+ *  - `flux` — Flux-branded wallets / generic BIP21 handlers.
+ *  - `ssp`  — SSP Wallet.
+ * All three carry the identical `<address>?amount=&message=` payload, so a
+ * wallet that registers any one of them receives the pre-filled payment.
+ */
+export const WALLET_SCHEMES = ['zel', 'flux', 'ssp'] as const;
+export type WalletScheme = (typeof WALLET_SCHEMES)[number];
+
+/**
+ * Build a wallet deep link that pre-fills the premium payment for a given URI
+ * scheme: `<scheme>:<address>?amount=<priceFlux>&message=<memo>`.
  *
- * The memo is embedded verbatim as specified by the API contract.
+ * The memo is embedded verbatim as specified by the API contract. Defaults to
+ * the `zel:` scheme (Zelcore); pass a different scheme for a fallback link.
  *
  * @param address - FLUX payment address (`t1...`).
  * @param priceFlux - Price in FLUX.
  * @param memo - The `CVPN1:<code>` memo from {@link paymentMemo}.
- * @returns A `flux:` URI suitable for a QR code or wallet hand-off.
+ * @param scheme - Wallet URI scheme (default `'zel'`).
+ * @returns A `<scheme>:` URI suitable for a QR code or wallet hand-off.
  */
-export function walletDeepLink(address: string, priceFlux: number, memo: string): string {
-  return `flux:${address}?amount=${priceFlux}&message=${memo}`;
+export function walletDeepLink(
+  address: string,
+  priceFlux: number,
+  memo: string,
+  scheme: WalletScheme = 'zel',
+): string {
+  return `${scheme}:${address}?amount=${priceFlux}&message=${memo}`;
+}
+
+/**
+ * All wallet deep links for a payment, one per {@link WALLET_SCHEMES} entry, in
+ * preference order. Useful for "try each installed wallet in turn" hand-off.
+ */
+export function walletDeepLinks(
+  address: string,
+  priceFlux: number,
+  memo: string,
+): readonly { scheme: WalletScheme; uri: string }[] {
+  return WALLET_SCHEMES.map((scheme) => ({
+    scheme,
+    uri: walletDeepLink(address, priceFlux, memo, scheme),
+  }));
 }

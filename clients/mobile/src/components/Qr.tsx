@@ -15,13 +15,23 @@ interface Props {
 
 const QUIET_MODULES = 2; // white "quiet zone" border, in modules
 
+// A half-module bleed added to every dark run's width/height. Adjacent modules
+// then overlap by ~0.5px so no hairline white seam survives RN's independent
+// per-view pixel rounding (the cause of the "white stripes"). Harmless to
+// scanning — the overlap only ever grows dark into a neighbouring cell edge.
+const BLEED = 0.5;
+
 export function Qr({ value, size = 190 }: Props): React.JSX.Element {
-  const { runs, cell } = useMemo(() => {
+  const { runs, cell, dim } = useMemo(() => {
     const qr = qrcode(0, 'M'); // auto version, medium error correction
     qr.addData(value);
     qr.make();
     const count = qr.getModuleCount();
-    const cellSize = size / (count + QUIET_MODULES * 2);
+    const total = count + QUIET_MODULES * 2;
+    // Integer module size — fractional cells round inconsistently between rows
+    // and leave gaps. The grid renders at `cellSize * total` (≤ size), centred
+    // by the caller. Clamp to ≥2px so small screens still scan.
+    const cellSize = Math.max(2, Math.floor(size / total));
     const offset = QUIET_MODULES * cellSize;
     const out: { x: number; y: number; w: number }[] = [];
     for (let r = 0; r < count; r += 1) {
@@ -42,12 +52,12 @@ export function Qr({ value, size = 190 }: Props): React.JSX.Element {
         }
       }
     }
-    return { runs: out, cell: cellSize };
+    return { runs: out, cell: cellSize, dim: cellSize * total };
   }, [value, size]);
 
   return (
     <View
-      style={{ width: size, height: size, backgroundColor: '#fff', borderRadius: 12 }}
+      style={{ width: dim, height: dim, backgroundColor: '#fff', borderRadius: 12 }}
       accessibilityLabel="Payment QR code"
     >
       {runs.map((run, i) => (
@@ -57,8 +67,8 @@ export function Qr({ value, size = 190 }: Props): React.JSX.Element {
             position: 'absolute',
             left: run.x,
             top: run.y,
-            width: run.w,
-            height: cell,
+            width: run.w + BLEED,
+            height: cell + BLEED,
             backgroundColor: '#000',
           }}
         />

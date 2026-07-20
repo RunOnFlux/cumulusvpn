@@ -8,7 +8,14 @@
  */
 
 export { generateKeypair, publicKeyFromPrivate } from './keys.js';
-export { paymentCode, paymentMemo, walletDeepLink } from './paymentCode.js';
+export {
+  paymentCode,
+  paymentMemo,
+  walletDeepLink,
+  walletDeepLinks,
+  WALLET_SCHEMES,
+} from './paymentCode.js';
+export type { WalletScheme } from './paymentCode.js';
 export { hasLeadingZeroBits, powHash, solvePoW, verifyPoW } from './pow.js';
 export { verifySignedResponse } from './sign.js';
 export { discoverGateways, directoryVerify } from './discovery.js';
