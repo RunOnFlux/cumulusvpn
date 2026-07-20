@@ -187,9 +187,22 @@ final class CumulusTunnelModule: RCTEventEmitter {
         rejecter reject: @escaping RCTPromiseRejectBlock
     ) {
         // Saving a manager triggers the iOS "… would like to add VPN
-        // configurations" system prompt.
-        loadOrCreateManager { mgr, error in
-            guard let mgr else { resolve(false); return }
+        // configurations" system prompt. A manager with NO protocol
+        // configuration fails validation (NEVPNErrorConfigurationInvalid) before
+        // the prompt even shows — which surfaced to the user as
+        // "VPN permission is required to connect." Give it a minimal valid
+        // provider protocol so the save is accepted and the prompt appears; the
+        // real connect overwrites it with the full tunnel config.
+        loadOrCreateManager { [weak self] mgr, _ in
+            guard let self, let mgr else { resolve(false); return }
+            if mgr.protocolConfiguration == nil {
+                let proto = NETunnelProviderProtocol()
+                proto.providerBundleIdentifier = self.tunnelBundleId
+                proto.serverAddress = "CumulusVPN"
+                mgr.protocolConfiguration = proto
+            }
+            mgr.localizedDescription = "CumulusVPN"
+            mgr.isEnabled = true
             mgr.saveToPreferences { err in resolve(err == nil) }
         }
     }

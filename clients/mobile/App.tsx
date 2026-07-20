@@ -125,7 +125,10 @@ function App(): React.JSX.Element {
 const styles = StyleSheet.create({
   // The phone "sky" background from the mockup. POC: a single solid stop; a
   // future react-native-linear-gradient pass renders the full 3-stop gradient.
-  safe: { flex: 1, backgroundColor: color.sky1 },
+  // Keep the SafeAreaView the SAME colour as the content so the top/bottom
+  // safe-area insets (notch, home indicator) don't show a darker band — the
+  // background reads as one full-bleed surface.
+  safe: { flex: 1, backgroundColor: color.sky2 },
   screen: { flex: 1, backgroundColor: color.sky2 },
   boot: { flex: 1 },
   bootCenter: {
