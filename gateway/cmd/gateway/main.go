@@ -18,6 +18,7 @@ import (
 	"github.com/runonflux/cumulusvpn-gateway/internal/config"
 	"github.com/runonflux/cumulusvpn-gateway/internal/entitle"
 	"github.com/runonflux/cumulusvpn-gateway/internal/fluxnode"
+	"github.com/runonflux/cumulusvpn-gateway/internal/geoip"
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
 	"github.com/runonflux/cumulusvpn-gateway/internal/wg"
 )
@@ -48,14 +49,32 @@ func run() error {
 	} else {
 		info.Country = hi.Geo.Country
 		info.Region = hi.Geo.Region
-		// FluxOS hostinfo has no city, only region (US state / province). Use the
-		// region as the locality so clients can distinguish deployments within a
-		// country (e.g. US-East "New York" vs US-West "California") instead of the
-		// old bug that reported the CONTINENT as the city. A future pass can add a
-		// geoIP lookup of the public IP for true city-level precision.
+		// FluxOS hostinfo has no city field, only region (US state / province).
 		info.City = hi.Geo.Region
 		if hi.IP != "" {
 			nodePublicIP = hi.IP
+		}
+	}
+
+	// FluxOS hostinfo geo is empty on many datacenter nodes (observed fleet-wide:
+	// country/region/city all blank), which breaks per-city grouping and the
+	// dashboard's location labels. Fall back to a geoIP lookup of our OWN public
+	// IP so /v1/info reports a real country/region/city. Best-effort: on failure
+	// the locality just stays blank. Only fills fields hostinfo left empty.
+	if info.Country == "" || info.Region == "" || info.City == "" {
+		if g, err := geoip.Lookup(ctx, nodePublicIP); err != nil {
+			log.Printf("gateway: geoip lookup failed (%v); locality left blank", err)
+		} else {
+			if info.Country == "" {
+				info.Country = g.Country
+			}
+			if info.Region == "" {
+				info.Region = g.Region
+			}
+			if info.City == "" {
+				info.City = g.City
+			}
+			log.Printf("gateway: geoip → country=%q region=%q city=%q", info.Country, info.Region, info.City)
 		}
 	}
 
