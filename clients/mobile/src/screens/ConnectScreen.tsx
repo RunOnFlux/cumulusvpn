@@ -167,17 +167,22 @@ export function ConnectScreen({
         ) : null}
       </View>
 
-      {/* Fast / Multi-hop toggle — multi-hop is OFF by default (docs/11 §UX). */}
-      <ModeToggle
-        multihop={vpn.multihop}
-        disabled={connected || busy}
-        onFast={() => void vpn.setRouteStyle('single')}
-        onMultihop={() =>
-          void vpn.setRouteStyle(
-            vpn.routeStyle === 'single' ? 'multihop-same-country' : vpn.routeStyle,
-          )
-        }
-      />
+      {/* Fast / Multi-hop toggle — multi-hop is OFF by default (docs/11 §UX).
+          Hidden on iOS: multi-hop is single-hop-only there for now (the wgnest
+          core would be a second Go runtime in the tunnel extension — see
+          MULTIHOP_SUPPORTED in useVpn). */}
+      {Platform.OS !== 'ios' ? (
+        <ModeToggle
+          multihop={vpn.multihop}
+          disabled={connected || busy}
+          onFast={() => void vpn.setRouteStyle('single')}
+          onMultihop={() =>
+            void vpn.setRouteStyle(
+              vpn.routeStyle === 'single' ? 'multihop-same-country' : vpn.routeStyle,
+            )
+          }
+        />
+      ) : null}
 
       {vpn.multihop ? (
         <MultihopControls
