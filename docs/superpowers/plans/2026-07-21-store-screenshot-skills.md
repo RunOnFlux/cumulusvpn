@@ -835,8 +835,11 @@ Raws must show real UI with no dev chrome (metro banner, dev menu, inspector)
      --time 9:41 --batteryLevel 100 --batteryState charged \
      --dataNetwork wifi --wifiBars 3
    ```
-4. Capture each raw to `store/assets/screenshots/raw/ios/<key>.png`:
+4. Capture each raw to `store/assets/screenshots/raw/ios/<key>.png` — note
+   step 1 left the shell in `clients/mobile/ios`, so return to the repo root
+   first:
    ```bash
+   cd "$(git rev-parse --show-toplevel)"
    xcrun simctl io "iPhone 16 Pro Max" screenshot \
      store/assets/screenshots/raw/ios/countries.png
    ```
@@ -1132,8 +1135,11 @@ banner, dev menu).
    ```bash
    adb shell am broadcast -a com.android.systemui.demo -e command exit
    ```
-3. Capture each raw to `store/assets/screenshots/raw/android/<key>.png`:
+3. Capture each raw to `store/assets/screenshots/raw/android/<key>.png` —
+   note step 1 left the shell in `clients/mobile`, so return to the repo root
+   first:
    ```bash
+   cd "$(git rev-parse --show-toplevel)"
    adb exec-out screencap -p > store/assets/screenshots/raw/android/countries.png
    ```
 
