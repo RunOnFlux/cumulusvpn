@@ -160,13 +160,39 @@ final class CumulusTunnelModule: RCTEventEmitter {
     }
 
     // getStatus(): Promise<TunnelStatus>
+    // Live byte counters + last handshake live in the tunnel extension (wgnest).
+    // Ask it via an app message — handleAppMessage returns WgmobileGetStats as the
+    // CSV "rxBytes,txBytes,lastHandshakeSec". Only meaningful while connected;
+    // otherwise resolve zeros immediately (no extension to answer).
     @objc(getStatus:rejecter:)
     func getStatus(
         _ resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock
     ) {
-        let state = manager?.connection.status ?? .invalid
-        resolve(Self.statusPayload(from: state))
+        let conn = manager?.connection
+        let state = conn?.status ?? .invalid
+        guard state == .connected, let session = conn as? NETunnelProviderSession else {
+            resolve(Self.statusPayload(from: state))
+            return
+        }
+        do {
+            try session.sendProviderMessage(Data([0x01])) { reply in
+                var rx: Int64 = 0
+                var tx: Int64 = 0
+                var hs: Int64 = 0
+                if let reply, let csv = String(data: reply, encoding: .utf8) {
+                    let p = csv.split(separator: ",")
+                    if p.count == 3 {
+                        rx = Int64(p[0]) ?? 0
+                        tx = Int64(p[1]) ?? 0
+                        hs = Int64(p[2]) ?? 0
+                    }
+                }
+                resolve(Self.statusPayload(from: .connected, rx: rx, tx: tx, handshake: hs))
+            }
+        } catch {
+            resolve(Self.statusPayload(from: state))
+        }
     }
 
     // isPrepared(): Promise<Bool>
@@ -284,7 +310,12 @@ final class CumulusTunnelModule: RCTEventEmitter {
         }
     }
 
-    private static func statusPayload(from status: NEVPNStatus) -> [String: Any] {
+    private static func statusPayload(
+        from status: NEVPNStatus,
+        rx: Int64 = 0,
+        tx: Int64 = 0,
+        handshake: Int64 = 0
+    ) -> [String: Any] {
         let state: String
         switch status {
         case .connected: state = "connected"
@@ -294,8 +325,8 @@ final class CumulusTunnelModule: RCTEventEmitter {
         case .disconnected, .invalid: state = "disconnected"
         @unknown default: state = "disconnected"
         }
-        // POC: rx/tx/handshake counters come from the extension via
-        // handleAppMessage(getRuntimeConfiguration) — zeros until wired.
-        return ["state": state, "rxBytes": 0, "txBytes": 0, "lastHandshake": 0]
+        // rx/tx/handshake come from the extension (WgmobileGetStats) via getStatus;
+        // status-change events carry zeros (the poll fills in live counters).
+        return ["state": state, "rxBytes": rx, "txBytes": tx, "lastHandshake": handshake]
     }
 }

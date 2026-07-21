@@ -119,6 +119,43 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 	return &NestedTunnel{inner: inner, outer: outer}, nil
 }
 
+// StartSingle brings up a plain SINGLE-hop tunnel: one wireguard-go device bound
+// to `t` (the OS tun), peer = the single gateway, over a real UDP socket
+// (conn.NewDefaultBind()). This is the non-nested path — the OS tun's 0.0.0.0/0
+// traffic goes straight out one WireGuard device. It lives here, in the same
+// core as the nested path, so a client (notably the iOS Packet Tunnel extension)
+// runs ONE Go runtime for both single- and multi-hop instead of also linking
+// WireGuardKit's libwg-go (two Go runtimes in one process crash — see docs/13).
+//
+// The device carries no interface address: on a real tun the client address /
+// DNS / routes are set by the OS (NEPacketTunnelNetworkSettings on iOS), so
+// `gw.AssignedIP` is unused here. Reuses NestedTunnel (single device as `inner`,
+// `outer` nil) so Stats/Close work unchanged.
+func StartSingle(clientPrivB64 string, gw Gateway, t tun.Device, logLevel int) (*NestedTunnel, error) {
+	privHex, err := b64ToHex(clientPrivB64)
+	if err != nil {
+		return nil, fmt.Errorf("client key: %w", err)
+	}
+	pubHex, err := b64ToHex(gw.PubKeyB64)
+	if err != nil {
+		return nil, fmt.Errorf("server key: %w", err)
+	}
+	dev := device.NewDevice(t, conn.NewDefaultBind(), device.NewLogger(logLevel, "wg "))
+	cfg := fmt.Sprintf(
+		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
+		privHex, pubHex, gw.IP, wgPort,
+	)
+	if err := dev.IpcSet(cfg); err != nil {
+		dev.Close()
+		return nil, fmt.Errorf("IpcSet: %w", err)
+	}
+	if err := dev.Up(); err != nil {
+		dev.Close()
+		return nil, fmt.Errorf("up: %w", err)
+	}
+	return &NestedTunnel{inner: dev}, nil
+}
+
 // Stats reports the inner tunnel's cumulative byte counters and the last
 // handshake time (unix seconds). The INNER device carries all real traffic
 // (AllowedIPs 0.0.0.0/0), so its counters are the user-visible totals. Values

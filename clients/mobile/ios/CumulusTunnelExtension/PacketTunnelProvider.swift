@@ -1,21 +1,13 @@
 // PacketTunnelProvider.swift
 //
-// iOS Network Extension that runs the WireGuard data plane, driven by
-// WireGuardKit (the official wireguard-apple package, added via Swift Package
-// Manager — see the project's Package dependencies and the
-// PacketTunnelExtension target's "Frameworks and Libraries"). This file lives in
-// a SEPARATE app-extension target ("PacketTunnelExtension") from the RN app; the
-// extension carries the `com.apple.developer.networking.networkextension`
-// entitlement with the `packet-tunnel-provider` value.
+// iOS Network Extension that runs the CumulusVPN data plane. BOTH single-hop and
+// multi-hop run through the ONE wgnest Go core (Wgmobile* — two stacked
+// wireguard-go devices for multi-hop, a single device for single-hop). It does
+// NOT link WireGuardKit's libwg-go: two independent Go runtimes in one extension
+// process crash it (EXC_BAD_ACCESS on tunnel start — see docs/13). WireGuardKitC
+// is still linked, but it is C-only (the utun-control types) — no Go runtime.
 //
-// STORE / ENTITLEMENT NOTES (docs/05):
-//  - Apple 5.4 requires an *organization* Apple Developer account for VPN apps.
-//  - VPN must use the NEVPNManager / NetworkExtension APIs — WireGuardKit does.
-//  - wireguard-apple pulls in a Go-built `wireguard-go` xcframework; SPM builds
-//    it for the device + simulator slices on first resolve.
-//
-// The provider is fed a rendered wg-quick config through
-// `NETunnelProviderProtocol.providerConfiguration`:
+// Fed a rendered wg-quick config through NETunnelProviderProtocol.providerConfiguration:
 //   - single-hop:  { "wgConfig": <conf> }
 //   - multi-hop:   { "mode": "multihop", "outerConfig": <conf>, "innerConfig": <conf> }
 
@@ -24,18 +16,14 @@ import Network
 import NetworkExtension
 import os
 
-#if canImport(WireGuardKit)
-import WireGuardKit
-#endif
-
 // WireGuardKitC vends the patched ctl_info / sockaddr_ctl / CTLIOCGINFO used by
-// tunnelFileDescriptor (the utun-fd scan), the same as WireGuardKit's adapter.
+// tunnelFileDescriptor (the utun-fd scan). C only — brings no Go runtime.
 #if canImport(WireGuardKitC)
 import WireGuardKitC
 #endif
 
-// Wgnest.xcframework — the gomobile-built nested-tunnel core (two stacked
-// wireguard-go devices behind one tun). Built by clients/native/wgnest/build-ios.sh.
+// Wgnest.xcframework — the gomobile-built core (wireguard-go + gVisor netstack).
+// Built by clients/native/wgnest/build-ios.sh.
 #if canImport(Wgnest)
 import Wgnest
 #endif
@@ -43,19 +31,8 @@ import Wgnest
 final class PacketTunnelProvider: NEPacketTunnelProvider {
     private let log = Logger(subsystem: "com.cumulusvpn.tunnel", category: "PacketTunnel")
 
-    // Non-zero while a nested (multi-hop) tunnel is running via wgnest; the
-    // handle returned by WgmobileStart, passed to WgmobileStop on teardown.
-    private var nestHandle: Int64 = 0
-
-    #if canImport(WireGuardKit)
-    // The OUTER adapter owns the OS tun (packetFlow). For single-hop it carries
-    // all traffic; for multi-hop it is the wg-entry device (see startMultihop).
-    private lazy var adapter: WireGuardAdapter = {
-        WireGuardAdapter(with: self) { [weak self] _, message in
-            self?.log.log("wg-outer: \(message, privacy: .public)")
-        }
-    }()
-    #endif
+    // wgnest handle (single- OR multi-hop); 0 while down. Passed to WgmobileStop.
+    private var handle: Int64 = 0
 
     // Called by the OS when the user (or the app) starts the tunnel.
     override func startTunnel(
@@ -73,70 +50,91 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     // MARK: - single-hop
 
     private func startSingleHop(completionHandler: @escaping (Error?) -> Void) {
-        guard let wgQuickConfig = providerConfigValue(forKey: "wgConfig") else {
-            completionHandler(TunnelError.missingConfig)
-            return
-        }
-        #if canImport(WireGuardKit)
-        guard let config = try? TunnelConfiguration(fromWgQuickConfig: wgQuickConfig) else {
+        guard
+            let confStr = providerConfigValue(forKey: "wgConfig"),
+            let conf = WgQuick(confStr),
+            let serverIp = conf.endpointHost,
+            let assigned = conf.address
+        else {
             completionHandler(TunnelError.invalidConfig)
             return
         }
-        adapter.start(tunnelConfiguration: config) { error in
-            if let error { self.log.error("adapter.start failed: \(String(describing: error))") }
-            completionHandler(error)
+
+        // One WireGuard header of headroom (MTU 1420); assigned addr + DNS +
+        // default route. iOS excludes the provider's own UDP socket from the tun,
+        // so no excludedRoutes are needed for the single real socket.
+        let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: serverIp)
+        let ipv4 = NEIPv4Settings(addresses: [assigned], subnetMasks: ["255.255.255.255"])
+        ipv4.includedRoutes = [NEIPv4Route.default()]
+        settings.ipv4Settings = ipv4
+        settings.mtu = 1420
+        if let dns = conf.dns {
+            settings.dnsSettings = NEDNSSettings(servers: [dns])
         }
-        #else
-        log.error("WireGuardKit unavailable — tunnel not started (POC)")
-        completionHandler(TunnelError.notImplemented)
-        #endif
+
+        setTunnelNetworkSettings(settings) { [weak self] error in
+            guard let self else { return }
+            if let error {
+                self.log.error("single setTunnelNetworkSettings failed: \(String(describing: error))")
+                completionHandler(error)
+                return
+            }
+            guard let fd = self.tunnelFileDescriptor else {
+                self.log.error("single: could not locate tun fd")
+                completionHandler(TunnelError.invalidConfig)
+                return
+            }
+            #if canImport(Wgnest)
+            var h: Int64 = 0
+            var startErr: NSError?
+            let ok = WgmobileStartSingle(
+                conf.privateKey, conf.peerPublicKey, serverIp, assigned, Int(fd), &h, &startErr
+            )
+            if !ok || startErr != nil {
+                self.log.error("single WgmobileStartSingle failed: \(String(describing: startErr), privacy: .public)")
+                completionHandler(startErr ?? TunnelError.notImplemented)
+                return
+            }
+            self.handle = h
+            self.log.log("single-hop up: server=\(serverIp, privacy: .public) handle=\(h)")
+            completionHandler(nil)
+            #else
+            self.log.error("Wgnest unavailable — single-hop not started")
+            completionHandler(TunnelError.notImplemented)
+            #endif
+        }
     }
 
     // MARK: - multi-hop (nested onion, docs/11)
 
-    // Two stacked WireGuard interfaces sharing the same client key K:
-    //
-    //   OS tun (0.0.0.0/0, MTU 1340)
-    //     → INNER device (peer = EXIT)  encrypts to EXIT → UDP to <exitIp>:51820
-    //     → OUTER device (peer = ENTRY, AllowedIPs = <exitIp>/32) encrypts to ENTRY
-    //     → real UDP socket → ENTRY:51820
-    //
-    // The ENTRY operator only ever forwards a premium peer's ciphertext to
-    // another gateway's :51820 — it never sees the real destination. No gateway
-    // protocol change (docs/11).
+    // Two stacked WireGuard interfaces sharing the client key K:
+    //   OS tun (0.0.0.0/0, MTU 1340) → INNER (peer = EXIT) → UDP to <exitIp>:51820
+    //     ─ via ─→ OUTER (peer = ENTRY, AllowedIPs = <exitIp>/32) → real socket → ENTRY.
+    // The ENTRY operator only forwards ciphertext to another gateway's :51820 — it
+    // never sees the real destination. No gateway protocol change (docs/11).
     private func startMultihop(completionHandler: @escaping (Error?) -> Void) {
         guard
-            let outerConf = providerConfigValue(forKey: "outerConfig"),
-            let innerConf = providerConfigValue(forKey: "innerConfig")
-        else {
-            completionHandler(TunnelError.missingConfig)
-            return
-        }
-        #if canImport(WireGuardKit) && canImport(Wgnest)
-        guard
-            let outer = try? TunnelConfiguration(fromWgQuickConfig: outerConf),
-            let inner = try? TunnelConfiguration(fromWgQuickConfig: innerConf),
-            let entryPeer = outer.peers.first,
-            let exitPeer = inner.peers.first,
-            let entryIp = hostString(entryPeer.endpoint),
-            let exitIp = hostString(exitPeer.endpoint),
-            let entryAssigned = outer.interface.addresses.first.map({ "\($0.address)" }),
-            let exitAssigned = inner.interface.addresses.first.map({ "\($0.address)" })
+            let outerStr = providerConfigValue(forKey: "outerConfig"),
+            let innerStr = providerConfigValue(forKey: "innerConfig"),
+            let outer = WgQuick(outerStr),
+            let inner = WgQuick(innerStr),
+            let entryIp = outer.endpointHost,
+            let exitIp = inner.endpointHost,
+            let entryAssigned = outer.address,
+            let exitAssigned = inner.address
         else {
             completionHandler(TunnelError.invalidConfig)
             return
         }
-        let clientPriv = outer.interface.privateKey.base64Key
-        let entryPub = entryPeer.publicKey.base64Key
-        let exitPub = exitPeer.publicKey.base64Key
-        let exitDns = inner.interface.dns.first.map { "\($0.address)" } ?? "1.1.1.1"
+        let clientPriv = outer.privateKey
+        let entryPub = outer.peerPublicKey
+        let exitPub = inner.peerPublicKey
+        let exitDns = inner.dns ?? "1.1.1.1"
         log.log("multihop: entry=\(entryIp, privacy: .public) exit=\(exitIp, privacy: .public)")
 
-        // Build the tun the same way the OS tun carries app traffic: exit-assigned
-        // address, exit DNS, MTU 1340 (room for two stacked WireGuard headers).
-        // Route everything into the tun EXCEPT the entry IP — so the outer
-        // device's one real socket to the entry bypasses the VPN (no loop). iOS
-        // gives us excludedRoutes natively (Android had to synthesise it).
+        // Exit-assigned address, exit DNS, MTU 1340 (two stacked WG headers).
+        // Route everything into the tun EXCEPT the entry IP, so the outer device's
+        // one real socket to the entry bypasses the tun (no loop).
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: entryIp)
         let ipv4 = NEIPv4Settings(addresses: [exitAssigned], subnetMasks: ["255.255.255.255"])
         ipv4.includedRoutes = [NEIPv4Route.default()]
@@ -152,33 +150,32 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 completionHandler(error)
                 return
             }
-            // The tun now exists; find its fd (same scan WireGuardKit uses) and
-            // hand it to the wgnest core as the inner device's tun.
             guard let fd = self.tunnelFileDescriptor else {
                 self.log.error("multihop: could not locate tun fd")
                 completionHandler(TunnelError.invalidConfig)
                 return
             }
-            var handle: Int64 = 0
+            #if canImport(Wgnest)
+            var h: Int64 = 0
             var startErr: NSError?
             let ok = WgmobileStart(
                 clientPriv, entryPub, entryIp, entryAssigned,
                 exitPub, exitIp, exitAssigned,
-                Int(fd), &handle, &startErr
+                Int(fd), &h, &startErr
             )
             if !ok || startErr != nil {
-                self.log.error("multihop WgmobileStart failed: \(String(describing: startErr))")
+                self.log.error("multihop WgmobileStart failed: \(String(describing: startErr), privacy: .public)")
                 completionHandler(startErr ?? TunnelError.notImplemented)
                 return
             }
-            self.nestHandle = handle
-            self.log.log("nested tunnel up: entry=\(entryIp, privacy: .public) exit=\(exitIp, privacy: .public) handle=\(handle)")
+            self.handle = h
+            self.log.log("nested tunnel up: entry=\(entryIp, privacy: .public) exit=\(exitIp, privacy: .public) handle=\(h)")
             completionHandler(nil)
+            #else
+            self.log.error("Wgnest unavailable — multihop not started")
+            completionHandler(TunnelError.notImplemented)
+            #endif
         }
-        #else
-        log.error("WireGuardKit/Wgnest unavailable — multihop not started (POC)")
-        completionHandler(TunnelError.notImplemented)
-        #endif
     }
 
     override func stopTunnel(
@@ -186,33 +183,31 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         completionHandler: @escaping () -> Void
     ) {
         #if canImport(Wgnest)
-        if nestHandle != 0 {
-            WgmobileStop(nestHandle)
-            nestHandle = 0
-            completionHandler()
+        if handle != 0 {
+            WgmobileStop(handle)
+            handle = 0
+        }
+        #endif
+        completionHandler()
+    }
+
+    // Handle app→extension messages (a status/stats request forwarded from JS).
+    override func handleAppMessage(
+        _: Data,
+        completionHandler: ((Data?) -> Void)?
+    ) {
+        #if canImport(Wgnest)
+        if handle != 0 {
+            // "rxBytes,txBytes,lastHandshakeSec"
+            let csv = WgmobileGetStats(handle)
+            completionHandler?(csv.data(using: .utf8))
             return
         }
         #endif
-        #if canImport(WireGuardKit)
-        adapter.stop { _ in completionHandler() }
-        #else
-        completionHandler()
-        #endif
+        completionHandler?(nil)
     }
 
     // MARK: - helpers
-
-    /// The bare host string of a WireGuard endpoint (our gateways are always an
-    /// IPv4 literal, but handle the other cases for completeness).
-    private func hostString(_ endpoint: Endpoint?) -> String? {
-        guard let host = endpoint?.host else { return nil }
-        switch host {
-        case let .ipv4(addr): return "\(addr)"
-        case let .ipv6(addr): return "\(addr)"
-        case let .name(name, _): return name
-        @unknown default: return nil
-        }
-    }
 
     /// Locate the utun file descriptor backing this extension's packet flow — the
     /// canonical WireGuardKit scan: find the fd whose kernel control is the utun
@@ -242,20 +237,6 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         return nil
     }
 
-    // Handle app→extension messages (e.g. a status request forwarded from JS).
-    override func handleAppMessage(
-        _: Data,
-        completionHandler: ((Data?) -> Void)?
-    ) {
-        #if canImport(WireGuardKit)
-        adapter.getRuntimeConfiguration { settings in
-            completionHandler?(settings?.data(using: .utf8))
-        }
-        #else
-        completionHandler?(nil)
-        #endif
-    }
-
     private func providerConfigValue(forKey key: String) -> String? {
         let proto = protocolConfiguration as? NETunnelProviderProtocol
         return proto?.providerConfiguration?[key] as? String
@@ -265,5 +246,55 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         case missingConfig
         case invalidConfig
         case notImplemented
+    }
+}
+
+/// Minimal wg-quick config parser — the few fields wgnest needs, without pulling
+/// in WireGuardKit's `TunnelConfiguration` (which would link libwg-go). Handles
+/// the exact configs core renders (buildWgConfig / buildMultihopConfig).
+private struct WgQuick {
+    let privateKey: String // [Interface] PrivateKey, base64
+    let peerPublicKey: String // [Peer] PublicKey, base64
+    let address: String? // [Interface] Address, first IP, mask stripped
+    let dns: String? // [Interface] DNS, first entry
+    let endpointHost: String? // [Peer] Endpoint, port stripped
+
+    init?(_ text: String) {
+        var priv: String?
+        var pub: String?
+        var addr: String?
+        var dns: String?
+        var endpoint: String?
+        for raw in text.split(whereSeparator: { $0 == "\n" || $0 == "\r" }) {
+            let line = raw.trimmingCharacters(in: .whitespaces)
+            guard let eq = line.firstIndex(of: "=") else { continue }
+            let key = line[..<eq].trimmingCharacters(in: .whitespaces).lowercased()
+            let val = line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces)
+            switch key {
+            case "privatekey": priv = val
+            case "publickey": pub = val
+            case "address":
+                // "10.8.0.2/32" (or comma-separated) → first IP, mask stripped.
+                let first = val.split(separator: ",").first.map(String.init) ?? val
+                addr = first.split(separator: "/").first.map(String.init)
+            case "dns":
+                dns = val.split(separator: ",").first.map {
+                    String($0).trimmingCharacters(in: .whitespaces)
+                }
+            case "endpoint": endpoint = val
+            default: break
+            }
+        }
+        guard let priv, let pub else { return nil }
+        privateKey = priv
+        peerPublicKey = pub
+        address = addr
+        self.dns = dns
+        // Strip ":port" from an IPv4 endpoint (our gateways are IPv4 literals).
+        if let endpoint, let colon = endpoint.lastIndex(of: ":") {
+            endpointHost = String(endpoint[..<colon])
+        } else {
+            endpointHost = endpoint
+        }
     }
 }

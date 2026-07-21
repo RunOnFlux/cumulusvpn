@@ -13,13 +13,14 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		29ACB8647C16BEBFA6932E52 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */; };
 		3BF6692ECB65D0B4DA70D012 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 91B3F55BAF0D274712D54CE8 /* Foundation.framework */; };
+		45BB38C0F494718F2CACE568 /* Wgnest.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 48A4B83E657702F2100C614E /* Wgnest.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7F43D3B13C700C6BBF80B48A /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
-		AA01CE0000000000000000C3 /* WireGuardKit in Frameworks */ = {isa = PBXBuildFile; productRef = AA01CE0000000000000000B2 /* WireGuardKit */; };
-		AA01CE0000000000000000D4 /* TunnelConfiguration+WgQuickConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01CE0000000000000000E5 /* TunnelConfiguration+WgQuickConfig.swift */; };
-		AA01CE0000000000000000D6 /* String+ArrayConversion.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA01CE0000000000000000E7 /* String+ArrayConversion.swift */; };
+		827599D74E554CDF8C98FB88 /* Wgnest.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 48A4B83E657702F2100C614E /* Wgnest.xcframework */; };
+		AA01CE0000000000000000C3 /* WireGuardKitC in Frameworks */ = {isa = PBXBuildFile; productRef = AA01CE0000000000000000B2 /* WireGuardKitC */; };
 		DD0160FCAB9793E9B91B94C4 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */; };
+		E56718CC6519A6BDDA755CE9 /* Wgnest.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 48A4B83E657702F2100C614E /* Wgnest.xcframework */; };
 		E9976E5A87F43075035A9B6E /* CumulusTunnelModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACC8C2FEFF9349B78B1F82D /* CumulusTunnelModule.swift */; };
 		FB4CBE1334AD5A3E6263A849 /* CumulusTunnelModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 370E7D7ADE72014F94A4D2E0 /* CumulusTunnelModule.m */; };
 /* End PBXBuildFile section */
@@ -35,6 +36,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
+		68444A781B8187B3E1651939 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				45BB38C0F494718F2CACE568 /* Wgnest.xcframework in Embed Frameworks */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		EF4E5B255CECF29C823E0D6E /* Embed App Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
@@ -56,14 +68,13 @@
 		2ACC8C2FEFF9349B78B1F82D /* CumulusTunnelModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CumulusTunnelModule.swift; sourceTree = "<group>"; };
 		370E7D7ADE72014F94A4D2E0 /* CumulusTunnelModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = CumulusTunnelModule.m; sourceTree = "<group>"; };
 		3B4392A12AC88292D35C810B /* Pods-CumulusVPN.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CumulusVPN.debug.xcconfig"; path = "Target Support Files/Pods-CumulusVPN/Pods-CumulusVPN.debug.xcconfig"; sourceTree = "<group>"; };
+		48A4B83E657702F2100C614E /* Wgnest.xcframework */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = wrapper.xcframework; name = Wgnest.xcframework; path = Frameworks/Wgnest.xcframework; sourceTree = SOURCE_ROOT; };
 		55BBA7C9647FD961C10653B4 /* PacketTunnelExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PacketTunnelExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		5709B34CF0A7D63546082F79 /* Pods-CumulusVPN.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-CumulusVPN.release.xcconfig"; path = "Target Support Files/Pods-CumulusVPN/Pods-CumulusVPN.release.xcconfig"; sourceTree = "<group>"; };
 		5DCACB8F33CDC322A6C60F78 /* libPods-CumulusVPN.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-CumulusVPN.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = CumulusVPN/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = CumulusVPN/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		91B3F55BAF0D274712D54CE8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		AA01CE0000000000000000E5 /* TunnelConfiguration+WgQuickConfig.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WireGuardKitWgQuick/TunnelConfiguration+WgQuickConfig.swift"; sourceTree = "<group>"; };
-		AA01CE0000000000000000E7 /* String+ArrayConversion.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = "WireGuardKitWgQuick/String+ArrayConversion.swift"; sourceTree = "<group>"; };
 		B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/NetworkExtension.framework; sourceTree = DEVELOPER_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
@@ -76,6 +87,7 @@
 			files = (
 				0C80B921A6F3F58F76C31292 /* libPods-CumulusVPN.a in Frameworks */,
 				DD0160FCAB9793E9B91B94C4 /* NetworkExtension.framework in Frameworks */,
+				827599D74E554CDF8C98FB88 /* Wgnest.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,7 +97,8 @@
 			files = (
 				3BF6692ECB65D0B4DA70D012 /* Foundation.framework in Frameworks */,
 				29ACB8647C16BEBFA6932E52 /* NetworkExtension.framework in Frameworks */,
-				AA01CE0000000000000000C3 /* WireGuardKit in Frameworks */,
+				AA01CE0000000000000000C3 /* WireGuardKitC in Frameworks */,
+				E56718CC6519A6BDDA755CE9 /* Wgnest.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -119,6 +132,7 @@
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
 				5DCACB8F33CDC322A6C60F78 /* libPods-CumulusVPN.a */,
 				095CF7460F10387D8E35AE04 /* iOS */,
+				48A4B83E657702F2100C614E /* Wgnest.xcframework */,
 			);
 			name = Frameworks;
 			sourceTree = SOURCE_ROOT;
@@ -177,8 +191,6 @@
 			isa = PBXGroup;
 			children = (
 				F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */,
-				AA01CE0000000000000000E5 /* TunnelConfiguration+WgQuickConfig.swift */,
-				AA01CE0000000000000000E7 /* String+ArrayConversion.swift */,
 			);
 			path = CumulusTunnelExtension;
 			sourceTree = SOURCE_ROOT;
@@ -198,6 +210,7 @@
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
 				EF4E5B255CECF29C823E0D6E /* Embed App Extensions */,
+				68444A781B8187B3E1651939 /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -213,7 +226,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 59B1344C68C81F6350A392BE /* Build configuration list for PBXNativeTarget "PacketTunnelExtension" */;
 			buildPhases = (
-				42B267EB11D6CE7FD3D586FB /* Build libwg-go.a */,
 				344ECB49226EB16E2BB959C5 /* Sources */,
 				DAC40A76BB0C3A30356AEC29 /* Frameworks */,
 				99A4B4281DECAF6D69C09A70 /* Resources */,
@@ -224,7 +236,7 @@
 			);
 			name = PacketTunnelExtension;
 			packageProductDependencies = (
-				AA01CE0000000000000000B2 /* WireGuardKit */,
+				AA01CE0000000000000000B2 /* WireGuardKitC */,
 			);
 			productName = PacketTunnelExtension;
 			productReference = 55BBA7C9647FD961C10653B4 /* PacketTunnelExtension.appex */;
@@ -310,36 +322,14 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-CumulusVPN/Pods-CumulusVPN-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-CumulusVPN/Pods-CumulusVPN-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-CumulusVPN/Pods-CumulusVPN-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
-		};
-		42B267EB11D6CE7FD3D586FB /* Build libwg-go.a */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Build libwg-go.a";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# Build the wireguard-go c-archive (libwg-go.a) that WireGuardKit links.\n# Needs Go 1.22 on PATH (Go 1.26 breaks the pinned build — see docs/13);\n# Xcode Cloud's ci_post_clone.sh provisions it. Xcode passes ARCHS / SDKROOT /\n# PLATFORM_NAME / CONFIGURATION_BUILD_DIR into the Makefile's env.\nset -e\nWG_GO_DIR=\"$SRCROOT/vendor/wireguard-apple/Sources/WireGuardKitGo\"\nif [ -d \"$WG_GO_DIR\" ]; then\n  make -C \"$WG_GO_DIR\" build\nelse\n  echo \"warning: $WG_GO_DIR missing — skipping libwg-go.a build\"\nfi\n";
 		};
 		C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -371,13 +361,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-CumulusVPN/Pods-CumulusVPN-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-CumulusVPN/Pods-CumulusVPN-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -402,8 +388,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				7F43D3B13C700C6BBF80B48A /* PacketTunnelProvider.swift in Sources */,
-				AA01CE0000000000000000D4 /* TunnelConfiguration+WgQuickConfig.swift in Sources */,
-				AA01CE0000000000000000D6 /* String+ArrayConversion.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -440,6 +424,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = (
+					"$(SDKROOT)/usr/lib/swift",
 					"$(inherited)",
 					"$(CONFIGURATION_BUILD_DIR)",
 				);
@@ -547,6 +532,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = (
+					"$(SDKROOT)/usr/lib/swift",
 					"$(inherited)",
 					"$(CONFIGURATION_BUILD_DIR)",
 				);
@@ -760,10 +746,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		AA01CE0000000000000000B2 /* WireGuardKit */ = {
+		AA01CE0000000000000000B2 /* WireGuardKitC */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 8B0D978A00B377A24CC0B524 /* XCLocalSwiftPackageReference "wireguard-apple" */;
-			productName = WireGuardKit;
+			productName = WireGuardKitC;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

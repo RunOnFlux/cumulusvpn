@@ -19,12 +19,58 @@ import (
 	wgnest "github.com/runonflux/cumulusvpn-wgnest"
 )
 
+const (
+	// nestedTunMTU leaves room for TWO stacked WireGuard headers (multi-hop);
+	// singleTunMTU for ONE (single-hop). Matches the NEPacketTunnelNetworkSettings
+	// MTU set on the Swift side. Android reads the MTU from the fd, so these only
+	// apply on iOS.
+	nestedTunMTU = 1340
+	singleTunMTU = 1420
+)
+
 var (
 	mu     sync.Mutex
 	byID   = map[int64]*wgnest.NestedTunnel{}
 	nextID int64
 	tunFDs = map[int64]tun.Device{}
 )
+
+// StartSingle brings up a plain single-hop tunnel over the supplied tun fd:
+// one wireguard-go device, peer = the gateway, real UDP socket. Same one Go
+// runtime as the nested path, so the iOS extension needn't also link
+// WireGuardKit's libwg-go (two Go runtimes crash). Returns a Stop handle.
+func StartSingle(clientPriv, serverPub, serverIP, serverAssigned string, tunFd int) (int64, error) {
+	t, err := tunFromFD(tunFd, singleTunMTU)
+	if err != nil {
+		return 0, fmt.Errorf("wrap tun fd: %w", err)
+	}
+	serverAddr, err := netip.ParseAddr(serverIP)
+	if err != nil {
+		t.Close()
+		return 0, fmt.Errorf("server ip: %w", err)
+	}
+	assignedAddr, err := netip.ParseAddr(serverAssigned)
+	if err != nil {
+		t.Close()
+		return 0, fmt.Errorf("assigned ip: %w", err)
+	}
+	nt, err := wgnest.StartSingle(
+		clientPriv,
+		wgnest.Gateway{PubKeyB64: serverPub, IP: serverAddr, AssignedIP: assignedAddr},
+		t,
+		device.LogLevelError,
+	)
+	if err != nil {
+		return 0, err
+	}
+	mu.Lock()
+	nextID++
+	id := nextID
+	byID[id] = nt
+	tunFDs[id] = t
+	mu.Unlock()
+	return id, nil
+}
 
 // Start brings up a nested (multi-hop) WireGuard tunnel over the supplied
 // VpnService tun file descriptor. `clientPriv` is the client's WireGuard private
@@ -36,7 +82,7 @@ func Start(
 	exitPub, exitIP, exitAssigned string,
 	tunFd int,
 ) (int64, error) {
-	innerTun, err := tunFromFD(tunFd)
+	innerTun, err := tunFromFD(tunFd, nestedTunMTU)
 	if err != nil {
 		return 0, fmt.Errorf("wrap tun fd: %w", err)
 	}

@@ -167,22 +167,17 @@ export function ConnectScreen({
         ) : null}
       </View>
 
-      {/* Fast / Multi-hop toggle — multi-hop is OFF by default (docs/11 §UX).
-          Hidden on iOS: multi-hop is single-hop-only there for now (the wgnest
-          core would be a second Go runtime in the tunnel extension — see
-          MULTIHOP_SUPPORTED in useVpn). */}
-      {Platform.OS !== 'ios' ? (
-        <ModeToggle
-          multihop={vpn.multihop}
-          disabled={connected || busy}
-          onFast={() => void vpn.setRouteStyle('single')}
-          onMultihop={() =>
-            void vpn.setRouteStyle(
-              vpn.routeStyle === 'single' ? 'multihop-same-country' : vpn.routeStyle,
-            )
-          }
-        />
-      ) : null}
+      {/* Fast / Multi-hop toggle — multi-hop is OFF by default (docs/11 §UX). */}
+      <ModeToggle
+        multihop={vpn.multihop}
+        disabled={connected || busy}
+        onFast={() => void vpn.setRouteStyle('single')}
+        onMultihop={() =>
+          void vpn.setRouteStyle(
+            vpn.routeStyle === 'single' ? 'multihop-same-country' : vpn.routeStyle,
+          )
+        }
+      />
 
       {vpn.multihop ? (
         <MultihopControls
@@ -295,7 +290,7 @@ function ModeToggle({
 
 /**
  * Multi-hop panel: route-style chooser, entry/exit pickers, and the honest
- * tradeoff + v1 same-key caveat copy required by docs/11.
+ * speed/privacy tradeoff line.
  */
 function MultihopControls({
   vpn,
@@ -353,13 +348,6 @@ function MultihopControls({
       <Text style={styles.tradeoff}>
         Slower — expect roughly 2× ping and lower peak speed. In return, no single server sees both
         who you are and where you go.
-      </Text>
-
-      {/* v1 same-key caveat (docs/11 §Entitlement & cost). */}
-      <Text style={styles.caveat}>
-        v1: both hops use the same key. A single payment covers both, but an adversary who controls
-        both of your chosen hops could still correlate you via that shared key. Distinct-key-per-hop
-        lands in v1.5.
       </Text>
     </View>
   );
@@ -619,7 +607,6 @@ const styles = StyleSheet.create({
   hopFlag: { fontSize: 18 },
   hopName: { flex: 1, color: color.ink, fontSize: 14, fontWeight: '600' },
   tradeoff: { color: color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: space.xs },
-  caveat: { fontFamily: font.mono, color: color.inkDim, fontSize: 10.5, lineHeight: 15 },
   locBtn: {
     flexDirection: 'row',
     alignItems: 'center',

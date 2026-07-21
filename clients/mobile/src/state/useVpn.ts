@@ -22,19 +22,12 @@ import {
   status as fetchStatus,
 } from '@cumulusvpn/core';
 import type { EnrollResponse, GatewayInfo, Keypair, RouteStyle, Tier } from '@cumulusvpn/core';
-import { Platform } from 'react-native';
 import {
   CumulusTunnel,
   onTunnelStatus,
   type TunnelState,
   type TunnelStatus,
 } from '../native/CumulusTunnel';
-
-// Multi-hop runs the gomobile wgnest core, which on iOS would be a SECOND Go
-// runtime alongside WireGuardKit's libwg-go in the one Packet Tunnel extension
-// process — two Go runtimes crash it. So multi-hop is disabled on iOS until it
-// is reworked onto a single runtime; iOS is single-hop only.
-const MULTIHOP_SUPPORTED = Platform.OS !== 'ios';
 import {
   discoverFleet,
   groupByCountry,
@@ -366,7 +359,7 @@ export function useVpn(): VpnModel & VpnActions {
         }
         setKeypair(restored);
         setSelectedCode(await loadSelectedCountry());
-        setRouteStyleState(MULTIHOP_SUPPORTED ? await loadRouteStyle() : 'single');
+        setRouteStyleState(await loadRouteStyle());
         setEntryCode(await loadEntryCountry());
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
@@ -728,10 +721,8 @@ export function useVpn(): VpnModel & VpnActions {
   }, []);
 
   const setRouteStyle = useCallback(async (style: RouteStyle): Promise<void> => {
-    // iOS is single-hop only (see MULTIHOP_SUPPORTED) — never enter a multihop style.
-    const next = MULTIHOP_SUPPORTED ? style : 'single';
-    setRouteStyleState(next);
-    await saveRouteStyle(next);
+    setRouteStyleState(style);
+    await saveRouteStyle(style);
   }, []);
 
   const selectEntryCountry = useCallback(async (code: string | null): Promise<void> => {

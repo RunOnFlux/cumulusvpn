@@ -10,7 +10,12 @@ let package = Package(
         .iOS(.v12)
     ],
     products: [
-        .library(name: "WireGuardKit", targets: ["WireGuardKit"])
+        .library(name: "WireGuardKit", targets: ["WireGuardKit"]),
+        // WireGuardKitC on its own: the utun-control C types (ctl_info,
+        // sockaddr_ctl, CTLIOCGINFO) with NO Go engine. CumulusVPN links this —
+        // not WireGuardKit — so the tunnel extension can find its tun fd without
+        // pulling libwg-go (a second Go runtime alongside wgnest crashes it).
+        .library(name: "WireGuardKitC", targets: ["WireGuardKitC"])
     ],
     dependencies: [],
     targets: [
