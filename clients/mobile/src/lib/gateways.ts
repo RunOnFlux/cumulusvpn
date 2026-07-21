@@ -311,6 +311,7 @@ async function diagArrayBufferSelfTest(): Promise<void> {
     // Iterate specs until one returns an IP — many countries (AU, BR, …) aren't
     // deployed and return an empty list, so specs[0] alone tells us nothing.
     let ip: string | undefined;
+    let hitSpec: string | undefined;
     let lastStatus = 0;
     let tried = 0;
     for (const spec of specs) {
@@ -322,6 +323,7 @@ async function diagArrayBufferSelfTest(): Promise<void> {
         const found = loc.data?.[0]?.ip?.split(':')[0];
         if (found) {
           ip = found;
+          hitSpec = spec;
           steps.push(`fluxAPI ${spec}=${locRes.status} ip=${found} (after ${tried})`);
           break;
         }
@@ -334,22 +336,29 @@ async function diagArrayBufferSelfTest(): Promise<void> {
       steps.push(`no ip from ${tried} specs (last status ${lastStatus})`);
     }
     if (ip) {
-      const url = `http://${ip}:51821/v1/info`;
+      // A) cleartext, straight to the gateway IP (what discovery does today).
       try {
-        const res = await fetch(url);
-        steps.push(`gateway=${res.status}`);
-        try {
-          steps.push(`arrayBuffer=${(await res.clone().arrayBuffer()).byteLength}B`);
-        } catch (e) {
-          steps.push(`arrayBuffer=ERR ${String((e as Error)?.message ?? e)}`);
-        }
-        try {
-          steps.push(`text=${(await res.text()).length}chars`);
-        } catch (e) {
-          steps.push(`text=ERR ${String((e as Error)?.message ?? e)}`);
-        }
+        const res = await fetch(`http://${ip}:51821/v1/info`);
+        steps.push(`cleartext=${res.status}`);
       } catch (e) {
-        steps.push(`gateway=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
+        steps.push(`cleartext=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
+      }
+    }
+    if (hitSpec) {
+      // B) HTTPS via the per-country FDM domain (valid cert). If this works while
+      // cleartext fails, HTTPS is the escape hatch for iOS.
+      const httpsUrl = `https://${hitSpec}_51821.app.runonflux.io/v1/info`;
+      try {
+        const res = await fetch(httpsUrl);
+        let ab = 'n/a';
+        try {
+          ab = `${(await res.clone().arrayBuffer()).byteLength}B`;
+        } catch (e) {
+          ab = `ERR ${String((e as Error)?.message ?? e)}`;
+        }
+        steps.push(`https=${res.status} arrayBuffer=${ab}`);
+      } catch (e) {
+        steps.push(`https=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
       }
     }
   } catch (e) {
