@@ -35,9 +35,9 @@ BOTTOM_BLEED = 0.05
 MIN_CAPTION_GAP = 0.05
 
 # Brand layout tuning (fractions of canvas)
-GLYPH_TOP = 0.30
-GLYPH_WIDTH = 0.28
-GLYPH_TEXT_GAP = 0.045
+GLYPH_TOP = 0.28
+GLYPH_WIDTH = 0.42  # adaptive-icon glyph carries safe-zone padding; oversize to compensate
+GLYPH_TEXT_GAP = 0.0  # the glyph's own padding provides the visual gap
 
 
 def _sky_canvas(width: int, height: int) -> Image.Image:
