@@ -271,10 +271,75 @@ export async function measureLatency(gw: GatewayInfo): Promise<number | null> {
 }
 
 /**
+ * TEMP iOS discovery diagnostic. Logs every discovery request's network outcome
+ * (without reading the body, so it can't disturb the real read) so we can tell,
+ * from the device console, whether the failure is the fetch itself (ATS /
+ * reachability) or something after it. Tagged [CVPN-DISCOVERY]. Remove once iOS
+ * discovery is confirmed working.
+ */
+const diagFetch: typeof fetch = async (input, init) => {
+  const url =
+    typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+  try {
+    const res = await fetch(input as Parameters<typeof fetch>[0], init);
+    // eslint-disable-next-line no-console
+    console.warn(`[CVPN-DISCOVERY] ${res.status} ${url}`);
+    return res;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`[CVPN-DISCOVERY] FETCH_ERR ${url} :: ${String((e as Error)?.message ?? e)}`);
+    throw e;
+  }
+};
+
+/**
+ * TEMP: independently fetch one gateway's /v1/info and log status + how the body
+ * reads (arrayBuffer vs text) — `fetchSigned` uses res.arrayBuffer(), which is a
+ * known-fragile path on RN iOS. Runs off the first Flux-API candidate so it never
+ * touches the real discovery reads. Non-blocking; failures only log.
+ */
+async function diagArrayBufferSelfTest(): Promise<void> {
+  try {
+    const specs = bundledSpecs();
+    if (specs.length === 0) return;
+    const locRes = await fetch(`https://api.runonflux.io/apps/location/${specs[0]}`);
+    const loc = (await locRes.json()) as { data?: { ip?: string }[] };
+    const ip = loc.data?.[0]?.ip?.split(':')[0];
+    if (!ip) {
+      // eslint-disable-next-line no-console
+      console.warn('[CVPN-DISCOVERY] selftest: no candidate IP from Flux API');
+      return;
+    }
+    const url = `http://${ip}:51821/v1/info`;
+    const res = await fetch(url);
+    let ab = 'n/a';
+    let txt = 'n/a';
+    try {
+      ab = String((await res.clone().arrayBuffer()).byteLength);
+    } catch (e) {
+      ab = `ERR ${String((e as Error)?.message ?? e)}`;
+    }
+    try {
+      txt = String((await res.text()).length);
+    } catch (e) {
+      txt = `ERR ${String((e as Error)?.message ?? e)}`;
+    }
+    // eslint-disable-next-line no-console
+    console.warn(
+      `[CVPN-DISCOVERY] selftest ${url} status=${res.status} arrayBuffer=${ab} text=${txt}`,
+    );
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn(`[CVPN-DISCOVERY] selftest FAILED :: ${String((e as Error)?.message ?? e)}`);
+  }
+}
+
+/**
  * Resolve the live gateway fleet from the Flux network, using the bundled
  * signed snapshot for spec names + seed nodes. Networking is delegated to core.
  * POC: disk-cache tier of the discovery order is not implemented here.
  */
 export async function discoverFleet(): Promise<GatewayInfo[]> {
-  return discoverGateways(bundledSpecs(), { nodes: [...seedNodeIps()] });
+  void diagArrayBufferSelfTest(); // TEMP: fire-and-forget iOS diagnostic
+  return discoverGateways(bundledSpecs(), { nodes: [...seedNodeIps()], fetchImpl: diagFetch });
 }
