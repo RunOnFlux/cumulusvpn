@@ -6,7 +6,6 @@
  * count, a representative city and a latency reading for the dot colour. This
  * module does that shaping and nothing else — all networking lives in core.
  */
-import { Alert } from 'react-native';
 import { discoverGateways, pingGateway } from '@cumulusvpn/core';
 import type { GatewayInfo } from '@cumulusvpn/core';
 import { bundledSpecs, seedNodeIps } from './directory';
@@ -272,110 +271,10 @@ export async function measureLatency(gw: GatewayInfo): Promise<number | null> {
 }
 
 /**
- * TEMP iOS discovery diagnostic. Logs every discovery request's network outcome
- * (without reading the body, so it can't disturb the real read) so we can tell,
- * from the device console, whether the failure is the fetch itself (ATS /
- * reachability) or something after it. Tagged [CVPN-DISCOVERY]. Remove once iOS
- * discovery is confirmed working.
- */
-const diagFetch: typeof fetch = async (input, init) => {
-  const url =
-    typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
-  try {
-    const res = await fetch(input as Parameters<typeof fetch>[0], init);
-    // eslint-disable-next-line no-console
-    console.warn(`[CVPN-DISCOVERY] ${res.status} ${url}`);
-    return res;
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn(`[CVPN-DISCOVERY] FETCH_ERR ${url} :: ${String((e as Error)?.message ?? e)}`);
-    throw e;
-  }
-};
-
-/**
- * TEMP: step-by-step discovery self-test that surfaces the result **on screen**
- * (Alert) so no console is needed. Walks the exact path discovery uses — Flux API
- * (HTTPS) → gateway /v1/info (cleartext) → body read via arrayBuffer (what
- * fetchSigned uses, fragile on RN iOS) vs text — and reports where it breaks.
- * Runs once per launch, independent of the real discovery reads.
- */
-let diagShown = false;
-async function diagArrayBufferSelfTest(): Promise<void> {
-  if (diagShown) return;
-  diagShown = true;
-  const steps: string[] = [];
-  try {
-    const specs = bundledSpecs();
-    steps.push(`specs=${specs.length}`);
-    // Iterate specs until one returns an IP — many countries (AU, BR, …) aren't
-    // deployed and return an empty list, so specs[0] alone tells us nothing.
-    let ip: string | undefined;
-    let hitSpec: string | undefined;
-    let lastStatus = 0;
-    let tried = 0;
-    for (const spec of specs) {
-      tried += 1;
-      try {
-        const locRes = await fetch(`https://api.runonflux.io/apps/location/${spec}`);
-        lastStatus = locRes.status;
-        const loc = (await locRes.json()) as { data?: { ip?: string }[] };
-        const found = loc.data?.[0]?.ip?.split(':')[0];
-        if (found) {
-          ip = found;
-          hitSpec = spec;
-          steps.push(`fluxAPI ${spec}=${locRes.status} ip=${found} (after ${tried})`);
-          break;
-        }
-      } catch (e) {
-        steps.push(`fluxAPI ${spec}=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
-        break;
-      }
-    }
-    if (!ip) {
-      steps.push(`no ip from ${tried} specs (last status ${lastStatus})`);
-    }
-    if (ip) {
-      // A) cleartext, straight to the gateway IP (what discovery does today).
-      try {
-        const res = await fetch(`http://${ip}:51821/v1/info`);
-        steps.push(`cleartext=${res.status}`);
-      } catch (e) {
-        steps.push(`cleartext=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
-      }
-    }
-    if (hitSpec) {
-      // B) HTTPS via the per-country FDM domain (valid cert). If this works while
-      // cleartext fails, HTTPS is the escape hatch for iOS.
-      const httpsUrl = `https://${hitSpec}_51821.app.runonflux.io/v1/info`;
-      try {
-        const res = await fetch(httpsUrl);
-        let ab = 'n/a';
-        try {
-          ab = `${(await res.clone().arrayBuffer()).byteLength}B`;
-        } catch (e) {
-          ab = `ERR ${String((e as Error)?.message ?? e)}`;
-        }
-        steps.push(`https=${res.status} arrayBuffer=${ab}`);
-      } catch (e) {
-        steps.push(`https=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
-      }
-    }
-  } catch (e) {
-    steps.push(`selftest threw ${String((e as Error)?.message ?? e)}`);
-  }
-  const report = steps.join('\n');
-  // eslint-disable-next-line no-console
-  console.warn(`[CVPN-DISCOVERY]\n${report}`);
-  Alert.alert('Discovery diagnostic', report);
-}
-
-/**
  * Resolve the live gateway fleet from the Flux network, using the bundled
  * signed snapshot for spec names + seed nodes. Networking is delegated to core.
  * POC: disk-cache tier of the discovery order is not implemented here.
  */
 export async function discoverFleet(): Promise<GatewayInfo[]> {
-  void diagArrayBufferSelfTest(); // TEMP: fire-and-forget iOS diagnostic
-  return discoverGateways(bundledSpecs(), { nodes: [...seedNodeIps()], fetchImpl: diagFetch });
+  return discoverGateways(bundledSpecs(), { nodes: [...seedNodeIps()] });
 }
