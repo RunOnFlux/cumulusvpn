@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Support — CumulusVPN</title>
+<meta name="description" content="CumulusVPN support — answers to common questions about connecting, privacy, premium, and troubleshooting. No account needed; email us if you're stuck." />
+<meta name="theme-color" content="#070B11" />
+<meta property="og:title" content="Support — CumulusVPN" />
+<meta property="og:description" content="Common questions about connecting, privacy, premium and troubleshooting — plus how to reach us." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://cumulusvpn.com/support" />
+<meta property="og:site_name" content="CumulusVPN" />
+<link rel="canonical" href="https://cumulusvpn.com/support" />
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="stylesheet" href="/doc.css" />
+<!-- Apply saved theme before first paint to avoid a flash. -->
+<script>(function(){var r=document.documentElement;try{var s=localStorage.getItem('cumulusvpn-theme');if(s==='light'||s==='dark')r.setAttribute('data-theme',s);}catch(e){}})();</script>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="/">
+    <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" fill="currentColor" opacity=".18"/>
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+      <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+    </svg>
+    CumulusVPN
+  </a>
+  <nav>
+    <a href="/#how">How it works</a><a href="/#pricing">Pricing</a>
+    <a href="/#apps">Get the app</a><a href="/privacy">Privacy</a>
+  </nav>
+  <div class="right">
+    <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux — opens runonflux.com">
+      <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
+      <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
+    </a>
+    <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">◐</button>
+  </div>
+</div></header>
+
+<main class="doc wrap">
+  <div class="support-intro">
+    <span class="eyebrow">Support</span>
+    <h1>How can we help?</h1>
+    <p>No account needed — most answers are right here. There's no login and no password, so there's
+      nothing to recover. Still stuck? <a href="mailto:info@cumulusvpn.com" style="color:var(--cyan);text-decoration:none">Email us</a>.</p>
+  </div>
+
+  <!-- ============ GETTING STARTED ============ -->
+  <section class="faq-group">
+    <h2 class="eyebrow">Getting started</h2>
+    <div class="faq">
+      <details>
+        <summary>What is CumulusVPN?</summary>
+        <div class="answer"><p>A decentralized WireGuard VPN that runs on the Flux cloud. One tap routes
+          your traffic through datacenter nodes worldwide. No account, no logs.</p></div>
+      </details>
+      <details>
+        <summary>Do I need an account?</summary>
+        <div class="answer"><p>No. On first launch the app generates a WireGuard key on your device —
+          that key is your only identity. No email, password, or phone number, ever.</p></div>
+      </details>
+      <details>
+        <summary>How do I connect?</summary>
+        <div class="answer"><p>Open the app, pick a country, and tap connect. On the first connection your
+          phone shows a standard operating-system VPN-permission prompt — approve it once.</p></div>
+      </details>
+      <details>
+        <summary>Is the free tier really free?</summary>
+        <div class="answer"><p>Yes, forever. It's capped at 100&nbsp;KB/s (fine for browsing and chat), with
+          no card and no trial.</p></div>
+      </details>
+      <details>
+        <summary>Which countries can I use?</summary>
+        <div class="answer"><p>Every gateway in the fleet — 30+ countries at launch — and the list updates
+          live from the network.</p></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PRIVACY & SECURITY ============ -->
+  <section class="faq-group">
+    <h2 class="eyebrow">Privacy &amp; security</h2>
+    <div class="faq">
+      <details>
+        <summary>Do you keep logs?</summary>
+        <div class="answer"><p>No activity logs. Gateways hold minimal routing state in RAM only, erased on
+          disconnect or restart. Your browsing, DNS queries, and traffic are never recorded. See the
+          <a href="/privacy">privacy policy</a> for the full detail.</p></div>
+      </details>
+      <details>
+        <summary>What is my "key"?</summary>
+        <div class="answer"><p>A WireGuard keypair generated on your device. The private key never leaves
+          your phone; only the public key is shared, to route your tunnel. It's a pseudonym, not tied to
+          your identity.</p></div>
+      </details>
+      <details>
+        <summary>What can a gateway operator see?</summary>
+        <div class="answer"><p>Like any VPN exit, real-time encrypted flow metadata — but no log we create,
+          and never your traffic contents. Turn on multi-hop so no single server sees both who you are and
+          where you're going.</p></div>
+      </details>
+      <details>
+        <summary>What is multi-hop?</summary>
+        <div class="answer"><p>It routes your traffic through two gateways, so no single server sees both
+          your IP and your destination. It's slower — the app tells you how much — and it's off by
+          default.</p></div>
+      </details>
+      <details>
+        <summary>Is this like Tor?</summary>
+        <div class="answer"><p>No. CumulusVPN protects you from local-network snooping, ISP logging, and
+          geo-restrictions, but it is not anonymity software like Tor. We say so plainly.</p></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ PREMIUM & PAYMENT ============ -->
+  <section class="faq-group">
+    <h2 class="eyebrow">Premium &amp; payment</h2>
+    <div class="faq">
+      <details>
+        <summary>How do I upgrade to premium?</summary>
+        <div class="answer"><p>Premium (full speed) is purchased on the web at
+          <a href="https://vpn.cumulusvpn.com">vpn.cumulusvpn.com</a> with FLUX from your own wallet. The
+          mobile app has no purchase screen — your device unlocks on its own about a minute after payment
+          confirms.</p></div>
+      </details>
+      <details>
+        <summary>What is FLUX and how do I get it?</summary>
+        <div class="answer"><p>FLUX is the cryptocurrency of the Flux network. Buy it on an exchange and hold
+          it in a wallet such as Zelcore or SSP, then pay from there.</p></div>
+      </details>
+      <details>
+        <summary>How does my device unlock?</summary>
+        <div class="answer"><p>Your entitlement is computed from the public blockchain and keyed to your
+          public key, so every gateway flips your key to full speed within about a minute — on all servers
+          at once, for 30&nbsp;days.</p></div>
+      </details>
+      <details>
+        <summary>Can I prepay several months?</summary>
+        <div class="answer"><p>Yes. Send a multiple of the monthly amount and the extra months stack (up to
+          24).</p></div>
+      </details>
+      <details>
+        <summary>Do you take credit cards?</summary>
+        <div class="answer"><p>No. Payment is FLUX from your own wallet, on the web — no card, no billing
+          account, nothing stored about you.</p></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ TROUBLESHOOTING ============ -->
+  <section class="faq-group">
+    <h2 class="eyebrow">Troubleshooting</h2>
+    <div class="faq">
+      <details>
+        <summary>The app shows "no gateways" or no countries.</summary>
+        <div class="answer"><p>Your device probably has no working internet, or a captive portal
+          (hotel/airport Wi-Fi) is blocking the gateway probe. Reconnect and reopen the app — discovery
+          retries automatically.</p></div>
+      </details>
+      <details>
+        <summary>It won't connect.</summary>
+        <div class="answer"><p>Approve the operating-system VPN-permission prompt on the first connect. If
+          another VPN is already active, disconnect it first, then try again — or pick a different
+          country.</p></div>
+      </details>
+      <details>
+        <summary>Speeds are slow.</summary>
+        <div class="answer"><p>The free tier is capped at 100&nbsp;KB/s server-side. Upgrade to premium for
+          full speed.</p></div>
+      </details>
+      <details>
+        <summary>What is the VPN permission prompt?</summary>
+        <div class="answer"><p>Android and iOS require your explicit consent before any app can create a VPN
+          tunnel. It's the operating system asking, once — approve it to connect.</p></div>
+      </details>
+      <details>
+        <summary>How do I fully remove myself?</summary>
+        <div class="answer"><p>Disconnect, then regenerate or delete your key in the app's settings. That
+          severs the pseudonymous link; gateway state is RAM-only and already clears when you
+          disconnect.</p></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ CONTACT CHANNELS ============ -->
+  <div class="channels-head">
+    <h2 class="eyebrow">Still need a hand?</h2>
+  </div>
+  <div class="channels">
+
+    <a class="channel" href="mailto:info@cumulusvpn.com">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h3>Email</h3>
+      <p>Support, plus privacy and data requests. We answer from a real inbox.</p>
+      <span class="val">info@cumulusvpn.com</span>
+    </a>
+
+    <a class="channel" href="https://github.com/RunOnFlux/cumulusvpn" target="_blank" rel="noreferrer">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 19c-4 1.2-4-2-6-2.5m12 5v-3.4c0-1 .3-1.6-.6-2.2 2.8-.3 5.6-1.4 5.6-6a4.6 4.6 0 0 0-1.3-3.2 4.3 4.3 0 0 0-.1-3.2s-1-.3-3.4 1.3a11.5 11.5 0 0 0-6 0C6.3 3 5.3 3.3 5.3 3.3a4.3 4.3 0 0 0-.1 3.2A4.6 4.6 0 0 0 3.9 9.7c0 4.6 2.8 5.7 5.6 6-.9.6-.9 1.2-.9 2.2V21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h3>GitHub</h3>
+      <p>Report a bug or request a feature — the app and gateway are open source.</p>
+      <span class="val">RunOnFlux/cumulusvpn</span>
+    </a>
+
+    <!-- TODO: set the Discord/Telegram invite URL, then change the tag to a real link
+         (swap <div class="channel disabled"> for <a class="channel" href="…" target="_blank" rel="noreferrer">). -->
+    <div class="channel disabled">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 15c2 1.5 4 2.5 7 2.5S16 16.5 18 15M8 7.5C9 7 10.4 6.7 12 6.7s3 .3 4 .8M6 18c-1-3-1.5-6-1-9.5C6.5 7 8 6.2 9 6l.7 1.4M18 18c1-3 1.5-6 1-9.5C17.5 7 16 6.2 15 6l-.7 1.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <h3>Community <span class="tag-soon">Soon</span></h3>
+      <p>Discord / Telegram community for tips and announcements.</p>
+    </div>
+
+    <!-- TODO: set the X / social URL, then change the tag to a real link
+         (swap <div class="channel disabled"> for <a class="channel" href="…" target="_blank" rel="noreferrer">). -->
+    <div class="channel disabled">
+      <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 4l7.5 9.5L4.5 20h2l6-6.6L17.5 20H20l-7.7-9.7L19.5 4h-2l-5.6 6.2L7 4H4Z" fill="currentColor"/></svg>
+      <h3>Social <span class="tag-soon">Soon</span></h3>
+      <p>Follow along on X for release notes and status.</p>
+    </div>
+
+  </div>
+</main>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div class="col">
+      <h4>Product</h4>
+      <a href="/#how">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/#apps">Get the app</a>
+      <a href="https://vpn.cumulusvpn.com">Web app</a>
+    </div>
+    <div class="col">
+      <h4>Learn</h4>
+      <a href="/#trust">Privacy</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/support">Support</a>
+      <a href="https://runonflux.io">Flux network</a>
+    </div>
+    <div class="col">
+      <h4>Network</h4>
+      <a href="https://runonflux.com">Powered by Flux</a>
+      <a href="https://cloud.runonflux.com">Flux dashboard</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <div>
+      <div class="brand" style="font-size:15px;margin-bottom:8px;color:var(--ink-2)">
+        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="width:20px;height:20px">
+          <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+          <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+        </svg>
+        CumulusVPN
+      </div>
+      <p class="disclaimer">
+        Decentralized VPN on Flux Cloud · cumulusvpn.com. CumulusVPN is an independent project built on
+        Flux infrastructure; not affiliated with the makers of WireGuard. WireGuard is a registered
+        trademark of Jason A. Donenfeld.
+      </p>
+    </div>
+    <div class="mono" style="align-self:flex-end;white-space:nowrap">© 2026 CumulusVPN</div>
+  </div>
+</div></footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var KEY = 'cumulusvpn-theme';
+    function current() {
+      var attr = root.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var btn = document.getElementById('themeToggle');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var next = current() === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+    }
+  })();
+</script>
+</body>
+</html>

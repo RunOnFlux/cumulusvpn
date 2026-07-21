@@ -128,7 +128,7 @@ apply 17+ automatically to VPN/unrestricted-access utilities; do not contest it.
 ## 5. Export Compliance (encryption) — ITSAppUsesNonExemptEncryption
 
 The app uses standard, published cryptography (WireGuard: Curve25519, ChaCha20-Poly1305,
-BLAKE2s; TLS for discovery). This qualifies for the standard exemption for apps that merely use,
+BLAKE2s; ed25519 signatures on the gateway control API). This qualifies for the standard exemption for apps that merely use,
 rather than implement proprietary, encryption and that are not designed for the encryption
 market itself.
 
@@ -148,7 +148,7 @@ If App Store Connect still prompts, answer:
   proprietary; not designed to run in the encryption market).
 - "Do you use encryption that is not exempt?" → **No** → no CCATS/ERN needed.
 
-Keep a note on file that this determination is for standard WireGuard/TLS crypto only; revisit
+Keep a note on file that this determination is for standard WireGuard/ed25519 crypto only; revisit
 if we ever add proprietary or non-standard cryptography.
 
 ---

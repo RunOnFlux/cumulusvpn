@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="en" data-theme="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Privacy Policy — CumulusVPN</title>
+<meta name="description" content="CumulusVPN privacy policy — no account, no logs, no email. Exactly what we do and do not collect, in plain language." />
+<meta name="theme-color" content="#070B11" />
+<meta property="og:title" content="Privacy Policy — CumulusVPN" />
+<meta property="og:description" content="No account, no logs, no email. What CumulusVPN does and does not collect, in plain language." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://cumulusvpn.com/privacy" />
+<meta property="og:site_name" content="CumulusVPN" />
+<link rel="canonical" href="https://cumulusvpn.com/privacy" />
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="stylesheet" href="/doc.css" />
+<!-- Apply saved theme before first paint to avoid a flash. -->
+<script>(function(){var r=document.documentElement;try{var s=localStorage.getItem('cumulusvpn-theme');if(s==='light'||s==='dark')r.setAttribute('data-theme',s);}catch(e){}})();</script>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="/">
+    <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" fill="currentColor" opacity=".18"/>
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+      <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+    </svg>
+    CumulusVPN
+  </a>
+  <nav>
+    <a href="/#how">How it works</a><a href="/#pricing">Pricing</a>
+    <a href="/#apps">Get the app</a><a href="/support">Support</a>
+  </nav>
+  <div class="right">
+    <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux — opens runonflux.com">
+      <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
+      <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
+    </a>
+    <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">◐</button>
+  </div>
+</div></header>
+
+<main class="doc wrap">
+  <div class="doc-head">
+    <span class="eyebrow">Privacy by architecture</span>
+    <h1>Privacy Policy</h1>
+    <p class="doc-meta">Last updated: 16 July 2026 · Effective: 16 July 2026</p>
+  </div>
+
+  <div class="doc-body">
+    <p class="lead">CumulusVPN is a decentralized VPN service. This policy explains, in plain
+      language, exactly what we do and do not collect. It is short because the service is built to
+      collect almost nothing. If a claim here is ever wrong, that is a bug we will fix — the
+      architecture is described publicly at <a href="https://cumulusvpn.com">cumulusvpn.com</a>
+      and in our source code.</p>
+    <p>Contact for privacy questions and data requests: <strong>info@cumulusvpn.com</strong><br />
+      Abuse reports: <strong>info@cumulusvpn.com</strong></p>
+
+    <hr class="hr" />
+
+    <h2>1. Summary (the whole policy in one screen)</h2>
+    <ul>
+      <li><strong>No account. No email. No password. No phone number.</strong> You never give us your identity.</li>
+      <li><strong>No activity logs.</strong> We do not record the websites you visit, your DNS queries, your
+        traffic contents, your bandwidth history, or connection timestamps to any persistent store.</li>
+      <li><strong>Your identity is a cryptographic key</strong>, generated on your own device. We never see your
+        private key. We only ever see a public key, which is a random-looking string with no link to you.</li>
+      <li><strong>Gateways keep peer state in RAM only.</strong> When a server restarts, that state is gone.
+        There is no traffic database to seize, subpoena, or leak.</li>
+      <li><strong>Payments are optional and made in FLUX cryptocurrency on a public blockchain.</strong> We do
+        not operate the blockchain, do not take card details, and never learn your name from a payment.</li>
+      <li><strong>No trackers, no advertising SDKs, no analytics that identify you.</strong> The apps contain no
+        third-party advertising or behavioural-tracking code.</li>
+      <li><strong>We are not a data business.</strong> We have no user data to sell, and we do not sell data.</li>
+    </ul>
+
+    <h2>2. Who we are</h2>
+    <p>CumulusVPN ("we", "us") is a VPN service operated by the CumulusVPN team, built on the Flux
+      decentralized cloud network (<a href="https://runonflux.io">runonflux.io</a>). VPN exit servers
+      ("gateways") run as containerized apps on Flux datacenter nodes operated by independent,
+      KYC-verified datacenter operators. We publish the service; the underlying compute is decentralized.</p>
+    <p>For the purposes of the EU/UK General Data Protection Regulation (GDPR), to the very limited extent
+      any of the information below is "personal data", the CumulusVPN operating entity is the data
+      controller. The lawful basis we rely on is our legitimate interest (Article 6(1)(f)) in providing a
+      functioning, abuse-resistant VPN, and — for payments — performance of the service you request
+      (Article 6(1)(b)). Because the service is designed to be anonymous, in most cases we hold no data
+      that can be linked to you at all.</p>
+
+    <h2>3. What we do NOT collect</h2>
+    <p>We want to be explicit, because most VPNs bury this. CumulusVPN does <strong>not</strong> collect,
+      log, or store any of the following:</p>
+    <ul>
+      <li>Your name, email address, phone number, or any account credentials — there are no accounts.</li>
+      <li>Your originating IP address in any persistent log.</li>
+      <li>The websites, domains, or services you connect to.</li>
+      <li>Your DNS queries (DNS is resolved for you through the tunnel and not recorded).</li>
+      <li>The contents, timing, or size of your traffic, in any persistent database.</li>
+      <li>A bandwidth history, session history, or connection-timestamp history tied to you.</li>
+      <li>Device advertising identifiers (IDFA / GAID) — we do not request or use them.</li>
+      <li>Location data from your device (GPS, precise or coarse). The country you connect <em>through</em>
+        is your choice of server, not a reading of your device location.</li>
+      <li>Contacts, photos, files, microphone, camera, or any device sensor.</li>
+    </ul>
+    <p>We do not use third-party advertising networks, and we do not use analytics products that build a
+      profile of you (such as ad-tech SDKs). The apps ship without behavioural trackers.</p>
+    <p>Our <strong>websites</strong> (<code>cumulusvpn.com</code> and <code>vpn.cumulusvpn.com</code>) use
+      Cloudflare Web Analytics, a cookieless, aggregate measurement service: it sets no cookies, stores
+      nothing on your device, and cannot identify or profile individual visitors. It tells us page counts,
+      not people. The apps contain no analytics of any kind.</p>
+
+    <h2>4. What is technically involved (and why it isn't a profile of you)</h2>
+    <p>A VPN cannot function without some data passing through it in real time. Here is all of it, and why
+      none of it becomes a record about you.</p>
+    <h3>4.1 Your public key (pseudonymous identifier)</h3>
+    <p>Your device generates a WireGuard key pair locally on first launch. The <strong>private key never
+      leaves your device</strong> — not even to us. Only the <strong>public key</strong> is sent to a
+      gateway so it can route your encrypted tunnel. A public key is a 32-byte random-looking value. It is
+      not tied to your name, email, or hardware, and you can regenerate it at any time. It is a pseudonym,
+      not an identity.</p>
+    <h3>4.2 In-memory peer state on the gateway</h3>
+    <p>While you are connected, the gateway holds — <strong>in volatile memory (RAM) only</strong> — the
+      minimum needed to route packets: your public key, the temporary internal tunnel IP assigned to it
+      (e.g. 10.8.x.y), and a byte counter used to enforce your speed tier. This state is <strong>never
+      written to disk</strong>, is not shipped to any central server, and is <strong>erased when the
+      gateway process restarts</strong> or you disconnect. There is no historical log built from it.</p>
+    <h3>4.3 Your real IP address, transiently</h3>
+    <p>To carry your traffic, the gateway necessarily sees the IP address your connection arrives from, in
+      the moment, at the network layer — this is how any internet server works. CumulusVPN does
+      <strong>not</strong> log this address to any persistent store, and does not associate it with your
+      browsing. When your session ends, it is not retained.</p>
+    <h3>4.4 DNS</h3>
+    <p>DNS look-ups are resolved on your behalf through the encrypted tunnel so your local network and ISP
+      cannot see them. We do not keep DNS query logs.</p>
+    <h3>4.5 How your app reaches the gateways</h3>
+    <p>Your app discovers gateways and reads their status by calling each gateway's control API directly.
+      Those responses are <strong>signed with the gateway's ed25519 key and verified by the app</strong>,
+      so tampering is detected even though the control channel itself is a plain connection — the integrity
+      guarantee comes from the signature, not from a certificate. Your actual internet traffic is separate
+      and is <strong>end-to-end encrypted by WireGuard</strong> between your device and the gateway.</p>
+    <h3>4.6 What gateway operators can and cannot see</h3>
+    <p>Gateways are run on Flux datacenter nodes. Like any VPN exit, an operator observing their own server
+      can see encrypted flow metadata in real time (that a peer is sending traffic), but not a persistent
+      log we create, and not the tunnel contents. For users who do not want any single server to see both
+      their IP and their destination, CumulusVPN offers an <strong>optional multi-hop mode</strong>: your
+      traffic is routed through two gateways so that no single server sees both who you are and where you
+      are going. Multi-hop is off by default and is described honestly in the app.</p>
+
+    <h2>5. Payments (only if you upgrade to premium)</h2>
+    <p>CumulusVPN has a free tier that requires <strong>no payment and no identifying information</strong>.</p>
+    <p>If you choose to upgrade to premium (higher speed), you pay in <strong>FLUX cryptocurrency</strong>
+      on the Flux public blockchain. Important points:</p>
+    <ul>
+      <li><strong>Payment happens on the web or desktop, not inside the mobile apps.</strong> The mobile apps
+        do not contain a purchase screen; they only display your current tier.</li>
+      <li>You send FLUX from <strong>your own wallet</strong> to our published payment address, including a
+        short memo derived from your public key so the network can credit the right key. We do
+        <strong>not</strong> collect card numbers, billing addresses, or names.</li>
+      <li><strong>Blockchain transactions are public by nature.</strong> Anyone, including us, can see on the
+        public ledger that a payment of a certain amount was made to our address with a given memo. That
+        ledger is operated by the Flux blockchain, not by us. We do not link that transaction to your
+        real-world identity, and the memo is derived one-way from your public key — it does not reveal your
+        key or your traffic. Please understand that publishing a transaction to a public blockchain is
+        inherently public; treat your wallet's privacy accordingly.</li>
+      <li>Entitlement (whether a key is premium and until when) is computed deterministically from the public
+        blockchain and keyed only to the public key. We store no separate customer billing record with your
+        name in it, because we do not have your name.</li>
+    </ul>
+    <p>If you later use an in-app fiat payment option offered through Apple's App Store or Google Play
+      (should we add one), that transaction is processed by Apple or Google under their own privacy
+      policies; we receive only the confirmation needed to grant premium, not your payment card data.</p>
+
+    <h2>6. Support and voluntary contact</h2>
+    <p>If you email us (for support or an abuse report), we receive whatever you put in that email — for
+      example your email address and the text of your message. We use it only to answer you and keep it no
+      longer than needed to resolve the matter. You are not required to identify yourself to use the
+      service; contacting support is voluntary.</p>
+    <p>Optional, opt-in crash reports: if — and only if — you explicitly enable crash reporting, a crash
+      report containing technical diagnostic information (such as the app version, device model, OS version,
+      and a stack trace) may be sent to help us fix bugs. This is <strong>off by default</strong>, contains
+      no browsing activity, and can be turned off at any time.</p>
+
+    <h2>7. Cookies and the website</h2>
+    <p>The CumulusVPN website (cumulusvpn.com) is a static site used for downloads, documentation, the
+      payment page, and hosting our signed server directory. It does not use advertising cookies or
+      third-party behavioural trackers. Any cookies used are strictly functional (for example remembering
+      light/dark theme).</p>
+
+    <h2>8. Data sharing and disclosure</h2>
+    <p>We do not sell, rent, or trade personal data — we have essentially none to sell.</p>
+    <p>Because we keep no activity logs and no user identities, <strong>we have nothing to hand over</strong>
+      in response to a data request about a user's browsing. If we receive a legally valid law-enforcement
+      or court request, we can only provide the information we actually hold, which does not include user
+      identities, browsing history, DNS queries, or traffic contents, because those records do not exist.
+      Where lawful and appropriate, we intend to publish a transparency report describing requests received.</p>
+    <p>We do not transfer user profiles to advertisers, data brokers, or analytics vendors, because we do not
+      build user profiles.</p>
+
+    <h2>9. International transfers</h2>
+    <p>CumulusVPN is a global network of gateways. When you connect, your traffic egresses from the country
+      of the server <strong>you choose</strong>. Because we do not collect personal data into a central
+      database, there is no cross-border transfer of a personal-data store to safeguard. The choice of exit
+      country is yours and is made fresh each session.</p>
+
+    <h2>10. Your rights (GDPR / UK GDPR / CCPA and similar)</h2>
+    <p>Depending on where you live, you may have rights to access, correct, delete, or port your personal
+      data, to object to or restrict processing, and (in California) to know what is collected and to not be
+      discriminated against for exercising these rights. Because the service is anonymous:</p>
+    <ul>
+      <li><strong>Access / portability:</strong> We generally hold no personal data linked to you to provide.
+        If you emailed support, you can ask for a copy of that correspondence.</li>
+      <li><strong>Deletion:</strong> There is nothing tied to your identity for us to delete from gateways;
+        peer state is already ephemeral RAM-only and clears on disconnect/restart. You can delete your key on
+        your device at any time, which fully severs the pseudonymous link.</li>
+      <li><strong>Do-not-sell / do-not-share:</strong> We do not sell or share personal data, so there is
+        nothing to opt out of.</li>
+    </ul>
+    <p>To exercise any right, email <strong>info@cumulusvpn.com</strong>. We may be unable to identify you in
+      our (nonexistent) records precisely because the service is anonymous — that is the design, not an
+      evasion. You also have the right to lodge a complaint with your local data protection authority.</p>
+
+    <h2>11. Children</h2>
+    <p>CumulusVPN is not directed to children under 13 (or the minimum age of digital consent in your
+      country). We do not knowingly collect personal data from children. Because we collect no identifying
+      data from anyone, we cannot determine a user's age; the service is intended for general audiences and
+      is not marketed to children.</p>
+
+    <h2>12. Security</h2>
+    <p>Traffic is encrypted end-to-end between your device and the gateway using the WireGuard® protocol
+      (modern, audited cryptography). Your private key never leaves your device. Server-side peer state is
+      kept in memory only. The app reaches each gateway's control API over a direct connection whose
+      responses are ed25519-signed and verified by the app, so the authenticity of the server directory and
+      gateway responses is protected by digital signatures rather than by a transport certificate.</p>
+
+    <h2>13. Changes to this policy</h2>
+    <p>If we change this policy, we will update the "Last updated" date above and post the new version at
+      <a href="https://cumulusvpn.com/privacy">cumulusvpn.com/privacy</a>. Material changes will be
+      highlighted. Because we keep no mailing list, the website is the authoritative source for the current
+      policy.</p>
+
+    <div class="contact">
+      <h2 style="margin-top:0">14. Contact</h2>
+      <p>Privacy and data requests: <strong>info@cumulusvpn.com</strong></p>
+      <p>Abuse / network complaints: <strong>info@cumulusvpn.com</strong></p>
+      <p>Website: <a href="https://cumulusvpn.com">cumulusvpn.com</a></p>
+    </div>
+
+    <p class="doc-meta">WireGuard is a registered trademark of Jason A. Donenfeld. CumulusVPN is an
+      independent project and is not endorsed by or affiliated with the WireGuard project.</p>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div class="col">
+      <h4>Product</h4>
+      <a href="/#how">How it works</a>
+      <a href="/#pricing">Pricing</a>
+      <a href="/#apps">Get the app</a>
+      <a href="https://vpn.cumulusvpn.com">Web app</a>
+    </div>
+    <div class="col">
+      <h4>Learn</h4>
+      <a href="/#trust">Privacy</a>
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/support">Support</a>
+      <a href="https://runonflux.io">Flux network</a>
+    </div>
+    <div class="col">
+      <h4>Network</h4>
+      <a href="https://runonflux.com">Powered by Flux</a>
+      <a href="https://cloud.runonflux.com">Flux dashboard</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <div>
+      <div class="brand" style="font-size:15px;margin-bottom:8px;color:var(--ink-2)">
+        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="width:20px;height:20px">
+          <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+          <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+        </svg>
+        CumulusVPN
+      </div>
+      <p class="disclaimer">
+        Decentralized VPN on Flux Cloud · cumulusvpn.com. CumulusVPN is an independent project built on
+        Flux infrastructure; not affiliated with the makers of WireGuard. WireGuard is a registered
+        trademark of Jason A. Donenfeld.
+      </p>
+    </div>
+    <div class="mono" style="align-self:flex-end;white-space:nowrap">© 2026 CumulusVPN</div>
+  </div>
+</div></footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var KEY = 'cumulusvpn-theme';
+    function current() {
+      var attr = root.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var btn = document.getElementById('themeToggle');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var next = current() === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+    }
+  })();
+</script>
+</body>
+</html>

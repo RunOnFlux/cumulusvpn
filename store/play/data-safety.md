@@ -12,7 +12,7 @@ or shared."
 | Question | Answer |
 |---|---|
 | Does your app collect or share any of the required user data types? | **No** |
-| Is all of the user data collected by your app encrypted in transit? | **Yes** (traffic is WireGuard-encrypted; discovery/API use TLS) — declare "encrypted in transit" even though we collect nothing, since Google asks about the transport. |
+| Is all of the user data collected by your app encrypted in transit? | **Yes** — all actual user traffic rides the WireGuard-encrypted tunnel. (The gateway control/discovery API is plain HTTP, but every response is ed25519-signed and verified by the app, and it carries only public gateway metadata plus your public routing key — no private or sensitive data, and no TLS.) Declare "encrypted in transit" since the question concerns collected user data, whose carrier is the encrypted tunnel. |
 | Do you provide a way for users to request that their data be deleted? | **Yes** — users can delete their key on-device (fully severs the pseudonymous link); there is no server-side personal-data store to delete. Provide the deletion/contact info: info@cumulusvpn.com and https://cumulusvpn.com/privacy. |
 
 Because the answer to "collect or share" is **No**, Google will show **"No data collected"** and
@@ -48,7 +48,7 @@ Declare **not collected / not shared** for every category. Reference list:
 
 | Question | Answer |
 |---|---|
-| Is data encrypted in transit? | **Yes** — WireGuard for the tunnel; TLS for discovery and API calls. |
+| Is data encrypted in transit? | **Yes** — WireGuard encrypts the tunnel (all user traffic). The gateway control/discovery API is plain HTTP but ed25519-signed and verified by the app (integrity, not TLS); it carries only public gateway data + your public routing key. |
 | Do you provide a way to request data deletion? | **Yes** — on-device key deletion + info@cumulusvpn.com. There is no persistent personal-data store; server peer state is RAM-only. |
 | Has your app been independently validated against a security standard? | Optional. Answer **No** unless/until we complete a MASA (App Defense Alliance Mobile App Security Assessment). Recommended before or shortly after launch for a VPN app to strengthen trust. |
 | Committed to Play Families policy? | **No** (not a Families/child-directed app). |
