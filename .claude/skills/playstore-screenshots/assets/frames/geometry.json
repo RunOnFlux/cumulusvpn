@@ -1,0 +1,17 @@
+{
+  "frame_file": "pixel-portrait.png",
+  "device": "Generic Pixel-style (self-rendered)",
+  "source_url": "self-rendered",
+  "source_page": "self-rendered with Pillow",
+  "license_note": "self-rendered generic Pixel-style bezel; no third-party rights",
+  "image_width": 1172,
+  "image_height": 2432,
+  "screen_left": 46,
+  "screen_top": 46,
+  "screen_right": 1126,
+  "screen_bottom": 2386,
+  "screen_width": 1080,
+  "screen_height": 2340,
+  "screen_aspect": 0.46154,
+  "has_transparent_screen": true
+}

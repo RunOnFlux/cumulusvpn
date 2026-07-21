@@ -1,0 +1,20 @@
+locale: en
+curated: true
+# Kicker (label) = ALL CAPS, 1-2 words. Headline = one benefit claim, 3-6
+# words, `\n` is a hard line break. Honesty rule: nothing a frame doesn't show.
+screens:
+  connect:
+    label: "CONNECT"
+    headline: "One tap.\nEncrypted."
+  countries:
+    label: "COUNTRIES"
+    headline: "Pick a country.\nSee the latency."
+  tier:
+    label: "FREE TIER"
+    headline: "Free to use.\nHonest limits."
+  multihop:
+    label: "MULTI-HOP"
+    headline: "Two hops when\none isn't enough."
+  brand:
+    label: "NO ACCOUNT"
+    headline: "No logs.\nPowered by Flux."

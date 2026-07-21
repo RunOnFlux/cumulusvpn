@@ -1,0 +1,24 @@
+# 5-frame storyboard from store/assets-checklist.md §3.
+# Frames 1-4 are real captures (hero layout); frame 5 is the no-device brand
+# closer and needs no raw file.
+screens:
+  - key: connect
+    raw_filename: connect.png
+    layout: hero
+    order: 1
+  - key: countries
+    raw_filename: countries.png
+    layout: hero
+    order: 2
+  - key: tier
+    raw_filename: tier.png
+    layout: hero
+    order: 3
+  - key: multihop
+    raw_filename: multihop.png
+    layout: hero
+    order: 4
+  - key: brand
+    raw_filename: brand.png
+    layout: brand
+    order: 5

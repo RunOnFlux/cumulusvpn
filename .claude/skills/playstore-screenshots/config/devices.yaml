@@ -1,0 +1,10 @@
+# Google Play phone screenshots: each side 320–3840px, longer side ≤ 2× the
+# shorter. 1080×2160 is exactly 2:1 — the max ratio Play allows (a full-bleed
+# 20:9 1080×2400 would be 2.22:1 and rejected). Single master device.
+# Apple sizes live in the separate appstore-screenshots skill.
+stores:
+  google:
+    - name: phone
+      width: 1080
+      height: 2160
+      master: true
