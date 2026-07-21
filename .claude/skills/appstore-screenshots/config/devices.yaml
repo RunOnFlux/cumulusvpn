@@ -1,0 +1,19 @@
+# All three iPhone slots App Store Connect can present are covered:
+#   6.9" (1320×2868, master)  — the required base size
+#   6.7" (1290×2796)          — accepted by the 6.9" slot
+#   6.5" (1242×2688)          — ASC exposes a SEPARATE 6.5" slot that the 6.9"
+#                               export does NOT fill
+# All three share ~19.5:9; the master downscales via LANCZOS with <0.4% aspect
+# delta. Play Store devices live in the separate playstore-screenshots skill.
+stores:
+  apple:
+    - name: iphone-6.9
+      width: 1320
+      height: 2868
+      master: true
+    - name: iphone-6.7
+      width: 1290
+      height: 2796
+    - name: iphone-6.5
+      width: 1242
+      height: 2688

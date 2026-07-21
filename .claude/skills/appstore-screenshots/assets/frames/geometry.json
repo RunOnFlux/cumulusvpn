@@ -1,0 +1,27 @@
+{
+  "source_url": "https://devimages-cdn.apple.com/design/resources/download/Bezel-iPhone-16.dmg",
+  "source_page": "https://developer.apple.com/design/resources/ (Product Bezels section)",
+  "frame_file": "iphone-portrait.png",
+  "license_note": "Apple 'App Store Marketing Artwork License Agreement' (included in the DMG). Apple-provided product bezels are sanctioned for use in marketing materials to display your app on the Apple devices it supports; must use latest-generation device frames and follow Apple's marketing guidelines. Rejection-safe / official asset.",
+  "device": "iPhone 16 Pro Max - Black Titanium - Portrait",
+  "image_width": 1470,
+  "image_height": 3000,
+  "screen_left": 75,
+  "screen_top": 66,
+  "screen_right": 1395,
+  "screen_bottom": 2934,
+  "screen_width": 1320,
+  "screen_height": 2868,
+  "screen_aspect": 0.46025,
+  "screen_corner_radius_px_approx": 212,
+  "has_transparent_screen": true,
+  "dynamic_island_opaque_overlay": {
+    "note": "Dynamic Island is rendered as an opaque black pill within the frame (floats over the placed screenshot).",
+    "left": 548,
+    "top": 109,
+    "right": 922,
+    "bottom": 217,
+    "width": 374,
+    "height": 108
+  }
+}
