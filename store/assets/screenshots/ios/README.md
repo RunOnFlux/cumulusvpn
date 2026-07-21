@@ -1,17 +1,16 @@
 # iOS store screenshots — PREVIEW PROVENANCE
 
-**These frames are composed from `design/mockups.html` captures, not from the
-running app.** They exist so the listing composition/copy can be reviewed and
-iterated. **Do NOT upload them to App Store Connect** — Apple review (2.3.3 /
-2.3.10) requires screenshots that accurately depict the shipping app, and the
-mockup differs in detail (e.g. the connect frame shows a PREMIUM pill).
+**These frames seat real app captures — taken on a Pixel 6 Pro (Android
+release build, 2026-07-21, raws in `../raw/android/`) — inside the official
+iPhone bezel.** The UI is the same React Native code on both platforms, so
+they preview the iOS listing faithfully. **Do NOT upload them to App Store
+Connect:** Apple review (2.3.3 / 2.3.10) requires captures of the app running
+on iOS (the status bar shows Android glyphs on close inspection).
 
-Frame `04-multihop` is absent: the multi-hop selector exists only in the real
-app, not in the mockups.
-
-To produce the real set, follow `.claude/skills/appstore-screenshots/SKILL.md`
-(Release simulator build; physical iPhone for the connected-state frame), then
-regenerate with `python3 compositor.py --locale en` and replace these files.
+To produce the uploadable set, follow
+`.claude/skills/appstore-screenshots/SKILL.md` (Release simulator build;
+physical iPhone for the connected-state frame), drop raws in `../raw/ios/`,
+regenerate with `python3 compositor.py --locale en`, and replace these files.
 
 Slots: `iphone-6.9/` (1320×2868, master slot), `iphone-6.7/` (1290×2796),
 `iphone-6.5/` (1242×2688 — ASC's separate 6.5" slot).
