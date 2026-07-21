@@ -18,7 +18,8 @@
     "format": "prettier --write \"*.{json,md}\" \".github/**/*.{yml,yaml,md}\"",
     "format:check": "prettier --check \"*.{json,md}\" \".github/**/*.{yml,yaml,md}\"",
     "format:check:workspaces": "yarn workspaces foreach -Apt run format:check",
-    "check": "yarn format:check && yarn format:check:workspaces && yarn lint && yarn typecheck && yarn test"
+    "check": "yarn format:check && yarn format:check:workspaces && yarn lint && yarn typecheck && yarn test",
+    "deploy:landing": "npx wrangler deploy --config clients/landing/wrangler.jsonc"
   },
   "devDependencies": {
     "prettier": "3.9.5"
