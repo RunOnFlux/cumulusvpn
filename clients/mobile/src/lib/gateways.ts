@@ -6,6 +6,7 @@
  * count, a representative city and a latency reading for the dot colour. This
  * module does that shaping and nothing else — all networking lives in core.
  */
+import { Alert } from 'react-native';
 import { discoverGateways, pingGateway } from '@cumulusvpn/core';
 import type { GatewayInfo } from '@cumulusvpn/core';
 import { bundledSpecs, seedNodeIps } from './directory';
@@ -293,45 +294,56 @@ const diagFetch: typeof fetch = async (input, init) => {
 };
 
 /**
- * TEMP: independently fetch one gateway's /v1/info and log status + how the body
- * reads (arrayBuffer vs text) — `fetchSigned` uses res.arrayBuffer(), which is a
- * known-fragile path on RN iOS. Runs off the first Flux-API candidate so it never
- * touches the real discovery reads. Non-blocking; failures only log.
+ * TEMP: step-by-step discovery self-test that surfaces the result **on screen**
+ * (Alert) so no console is needed. Walks the exact path discovery uses — Flux API
+ * (HTTPS) → gateway /v1/info (cleartext) → body read via arrayBuffer (what
+ * fetchSigned uses, fragile on RN iOS) vs text — and reports where it breaks.
+ * Runs once per launch, independent of the real discovery reads.
  */
+let diagShown = false;
 async function diagArrayBufferSelfTest(): Promise<void> {
+  if (diagShown) return;
+  diagShown = true;
+  const steps: string[] = [];
   try {
     const specs = bundledSpecs();
-    if (specs.length === 0) return;
-    const locRes = await fetch(`https://api.runonflux.io/apps/location/${specs[0]}`);
-    const loc = (await locRes.json()) as { data?: { ip?: string }[] };
-    const ip = loc.data?.[0]?.ip?.split(':')[0];
-    if (!ip) {
-      // eslint-disable-next-line no-console
-      console.warn('[CVPN-DISCOVERY] selftest: no candidate IP from Flux API');
-      return;
-    }
-    const url = `http://${ip}:51821/v1/info`;
-    const res = await fetch(url);
-    let ab = 'n/a';
-    let txt = 'n/a';
+    steps.push(`specs=${specs.length}`);
+    const apiUrl = `https://api.runonflux.io/apps/location/${specs[0]}`;
+    let ip: string | undefined;
     try {
-      ab = String((await res.clone().arrayBuffer()).byteLength);
+      const locRes = await fetch(apiUrl);
+      const loc = (await locRes.json()) as { data?: { ip?: string }[] };
+      ip = loc.data?.[0]?.ip?.split(':')[0];
+      steps.push(`fluxAPI=${locRes.status} ip=${ip ?? 'none'}`);
     } catch (e) {
-      ab = `ERR ${String((e as Error)?.message ?? e)}`;
+      steps.push(`fluxAPI=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
     }
-    try {
-      txt = String((await res.text()).length);
-    } catch (e) {
-      txt = `ERR ${String((e as Error)?.message ?? e)}`;
+    if (ip) {
+      const url = `http://${ip}:51821/v1/info`;
+      try {
+        const res = await fetch(url);
+        steps.push(`gateway=${res.status}`);
+        try {
+          steps.push(`arrayBuffer=${(await res.clone().arrayBuffer()).byteLength}B`);
+        } catch (e) {
+          steps.push(`arrayBuffer=ERR ${String((e as Error)?.message ?? e)}`);
+        }
+        try {
+          steps.push(`text=${(await res.text()).length}chars`);
+        } catch (e) {
+          steps.push(`text=ERR ${String((e as Error)?.message ?? e)}`);
+        }
+      } catch (e) {
+        steps.push(`gateway=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
+      }
     }
-    // eslint-disable-next-line no-console
-    console.warn(
-      `[CVPN-DISCOVERY] selftest ${url} status=${res.status} arrayBuffer=${ab} text=${txt}`,
-    );
   } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn(`[CVPN-DISCOVERY] selftest FAILED :: ${String((e as Error)?.message ?? e)}`);
+    steps.push(`selftest threw ${String((e as Error)?.message ?? e)}`);
   }
+  const report = steps.join('\n');
+  // eslint-disable-next-line no-console
+  console.warn(`[CVPN-DISCOVERY]\n${report}`);
+  Alert.alert('Discovery diagnostic', report);
 }
 
 /**
