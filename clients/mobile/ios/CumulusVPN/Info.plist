@@ -34,10 +34,11 @@
 		     HTTP (http://<public-ip>:51821) with no TLS/domain, so discovery,
 		     enroll and status are cleartext to public IPs. ATS blocks that unless
 		     arbitrary loads are allowed (domain exceptions don't apply to raw IPs).
-		     The actual VPN traffic is separately encrypted by WireGuard. -->
+		     The actual VPN traffic is separately encrypted by WireGuard.
+		     IMPORTANT: NSAllowsLocalNetworking must NOT be present here — on iOS
+		     10+ its presence makes iOS IGNORE NSAllowsArbitraryLoads (treating it
+		     as NO), which silently re-enables ATS and blocks the cleartext probes. -->
 		<key>NSAllowsArbitraryLoads</key>
-		<true/>
-		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
 	<key>RCTNewArchEnabled</key>
