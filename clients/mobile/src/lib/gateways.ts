@@ -308,15 +308,30 @@ async function diagArrayBufferSelfTest(): Promise<void> {
   try {
     const specs = bundledSpecs();
     steps.push(`specs=${specs.length}`);
-    const apiUrl = `https://api.runonflux.io/apps/location/${specs[0]}`;
+    // Iterate specs until one returns an IP — many countries (AU, BR, …) aren't
+    // deployed and return an empty list, so specs[0] alone tells us nothing.
     let ip: string | undefined;
-    try {
-      const locRes = await fetch(apiUrl);
-      const loc = (await locRes.json()) as { data?: { ip?: string }[] };
-      ip = loc.data?.[0]?.ip?.split(':')[0];
-      steps.push(`fluxAPI=${locRes.status} ip=${ip ?? 'none'}`);
-    } catch (e) {
-      steps.push(`fluxAPI=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
+    let lastStatus = 0;
+    let tried = 0;
+    for (const spec of specs) {
+      tried += 1;
+      try {
+        const locRes = await fetch(`https://api.runonflux.io/apps/location/${spec}`);
+        lastStatus = locRes.status;
+        const loc = (await locRes.json()) as { data?: { ip?: string }[] };
+        const found = loc.data?.[0]?.ip?.split(':')[0];
+        if (found) {
+          ip = found;
+          steps.push(`fluxAPI ${spec}=${locRes.status} ip=${found} (after ${tried})`);
+          break;
+        }
+      } catch (e) {
+        steps.push(`fluxAPI ${spec}=FETCH_ERR ${String((e as Error)?.message ?? e)}`);
+        break;
+      }
+    }
+    if (!ip) {
+      steps.push(`no ip from ${tried} specs (last status ${lastStatus})`);
     }
     if (ip) {
       const url = `http://${ip}:51821/v1/info`;
