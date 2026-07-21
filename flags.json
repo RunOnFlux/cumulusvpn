@@ -2,6 +2,6 @@
   "_comment": "Remote per-platform feature flags for the CumulusVPN mobile app. Fetched from raw.githubusercontent.com at launch. If the app can't fetch this, every flag defaults to OFF (safe / store-compliant). Edit + push to flip a feature without an app update.",
   "inAppUpgrade": {
     "android": true,
-    "ios": false
+    "ios": true
   }
 }
