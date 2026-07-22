@@ -33,7 +33,7 @@ export const tr: Catalog = {
   connect_eyebrow: 'Beta hattı · WireGuard yapılandırması',
   connect_title: 'Tek anahtar, <glow>her gateway.</glow>',
   connect_lede:
-    'WireGuard anahtar çiftin burada, tarayıcında oluşturulur — özel anahtar bu sekmeden asla çıkmaz. Bir ülke seç, en yakın Flux gateway’ine kaydol ve içe aktarmaya hazır bir<mono> .conf</mono> ile QR dışa aktar. 100 KB/s hızında sonsuza dek ücretsiz; tam hız için <upgrade>FLUX ile yükselt</upgrade>.',
+    'WireGuard anahtar çiftin burada, tarayıcında oluşturulur — özel anahtar bu sekmeden asla çıkmaz. Bir ülke seç, en yakın Flux gateway’ine kaydol ve içe aktarmaya hazır bir<mono> .conf</mono> ile QR dışa aktar. 100 KB/s hızında sonsuza dek ücretsiz; tam hız için <upgrade>FLUX ile yükselt</upgrade>.',
   connect_verify_warn:
     'Dizin imzası doğrulanamadı — uç noktalar yalnızca bilgi amaçlı gösteriliyor.',
   connect_notice_no_live_gateway:
@@ -67,7 +67,7 @@ export const tr: Catalog = {
   upgrade_eyebrow: 'Yükseltme · FLUX ile öde',
   upgrade_title: 'Tam hıza yükselt',
   upgrade_lede:
-    'Aşağıdaki mesajın tam olarak aynısıyla FLUX gönder. Her gateway chain’i tarar ve anahtarını ~1 dakika içinde açar — tüm sunucularda aynı anda, 30 gün boyunca. Hesap yok, kart yok, hiçbir zaman sahip olmadığını teslim edebilecek bir şirket yok.',
+    'Aşağıdaki mesajın tam olarak aynısıyla FLUX gönder. Her gateway chain’i tarar ve anahtarını ~1 dakika içinde açar — tüm sunucularda aynı anda, 30 gün boyunca. Hesap yok, kart yok, hiçbir zaman sahip olmadığını teslim edebilecek bir şirket yok.',
   upgrade_usd_line: '≈ {usd} · 30 günde bir',
   upgrade_qr_caption: "Zelcore / SSP Wallet ile tara",
   upgrade_field_address: 'Ödeme adresi',
@@ -102,5 +102,5 @@ export const tr: Catalog = {
   multihop_download_entry: 'wg-entry.conf indir',
   multihop_download_exit: 'wg-exit.conf indir',
   multihop_note:
-    '<strong>Bunu nasıl yönlendireceğin (dürüst not).</strong> Standart WireGuard uygulamasıyla gerçek iç içe geçirme zahmetlidir — aynı anda yalnızca bir tünel çalıştırır — bu yüzden multi-hop aslında <strong>uygulamalarımıza özgü bir özelliktir</strong> (masaüstü/mobil iki tüneli senin için zincirler). Manuel kurulum için önce <mono>wg-entry.conf</mono>’u ayağa kaldırmalı, ardından yalnızca çıkışın adresini <mono>{exitIp}/32</mono> bu giriş tüneli üzerinden yönlendirmeli ve geri kalanını <mono>wg-exit.conf</mono> üzerinden göndermelisin (iki WireGuard başlığının sığması için iç MTU {mtu}). Çıkış uç noktası: <mono>{endpoint}</mono>.<br/><strong>v1 uyarısı:</strong> her iki hop da aynı K anahtarını kullanır; bu, herhangi bir <em>tek</em> operatörü etkisiz kılar ama her iki hop’unu da kontrol eden bir saldırganın onları bu paylaşılan anahtar üzerinden ilişkilendirebileceği anlamına gelir. Hop başına ayrı anahtarlar v1.5’te geliyor.',
+    '<strong>Bunu nasıl yönlendireceğin (dürüst not).</strong> Standart WireGuard uygulamasıyla gerçek iç içe geçirme zahmetlidir — aynı anda yalnızca bir tünel çalıştırır — bu yüzden multi-hop aslında <strong>uygulamalarımıza özgü bir özelliktir</strong> (masaüstü/mobil iki tüneli senin için zincirler). Manuel kurulum için önce <mono>wg-entry.conf</mono>’u ayağa kaldırmalı, ardından yalnızca çıkışın adresini <mono>{exitIp}/32</mono> bu giriş tüneli üzerinden yönlendirmeli ve geri kalanını <mono>wg-exit.conf</mono> üzerinden göndermelisin (iki WireGuard başlığının sığması için iç MTU {mtu}). Çıkış uç noktası: <mono>{endpoint}</mono>.<br/><strong>v1 uyarısı:</strong> her iki hop da aynı K anahtarını kullanır; bu, herhangi bir <em>tek</em> operatörü etkisiz kılar ama <em>her iki</em> hop’unu da kontrol eden bir saldırganın onları bu paylaşılan anahtar üzerinden ilişkilendirebileceği anlamına gelir. Hop başına ayrı anahtarlar v1.5’te geliyor.',
 };

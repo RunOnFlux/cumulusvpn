@@ -33,7 +33,7 @@ export const nl: Catalog = {
   connect_eyebrow: 'Bèta-traject · WireGuard-configuratie',
   connect_title: 'Eén sleutel, <glow>elke gateway.</glow>',
   connect_lede:
-    'Je WireGuard-sleutelpaar wordt hier gegenereerd, in je browser — de private key verlaat dit tabblad nooit. Kies een land, schrijf je in bij de dichtstbijzijnde Flux-gateway en exporteer een importklare<mono> .conf</mono> met QR-code. Voor altijd gratis op 100 KB/s; <upgrade>upgrade met FLUX</upgrade> voor volle snelheid.',
+    'Je WireGuard-sleutelpaar wordt hier gegenereerd, in je browser — de privésleutel verlaat dit tabblad nooit. Kies een land, schrijf je in bij de dichtstbijzijnde Flux-gateway en exporteer een importklare<mono> .conf</mono> met QR-code. Voor altijd gratis op 100 KB/s; <upgrade>upgrade met FLUX</upgrade> voor volle snelheid.',
   connect_verify_warn:
     'Directoryhandtekening kon niet worden geverifieerd — endpoints worden alleen ter informatie getoond.',
   connect_notice_no_live_gateway:
@@ -60,14 +60,14 @@ export const nl: Catalog = {
   connect_regenerate: 'Sleutel opnieuw genereren',
   connect_identity_note:
     'Eén sleutelpaar per apparaat schrijft zich in bij veel gateways; premium volgt de sleutel overal via de chain. De betaalcode hieronder koppelt een FLUX-betaling aan deze sleutel.',
-  connect_field_public_key: 'WireGuard public key',
+  connect_field_public_key: 'WireGuard publieke sleutel',
   connect_field_payment_code: 'Betaalcode (memo)',
 
   upgrade_loading: 'Betaalgegevens worden geladen…',
   upgrade_eyebrow: 'Upgrade · betaal in FLUX',
   upgrade_title: 'Upgraden naar volle snelheid',
   upgrade_lede:
-    'Stuur FLUX met precies het bericht hieronder. Elke gateway scant de chain en ontgrendelt je sleutel binnen ~1 minuut — op alle servers tegelijk, voor 30 dagen. Geen account, geen kaart, geen bedrijf dat kan afgeven wat het nooit had.',
+    'Stuur FLUX met precies het bericht hieronder. Elke gateway scant de chain en ontgrendelt je sleutel binnen ~1 minuut — op alle servers tegelijk, voor 30 dagen. Geen account, geen kaart, geen bedrijf dat kan afgeven wat het nooit had.',
   upgrade_usd_line: '≈ {usd} · per 30 dagen',
   upgrade_qr_caption: 'Scan met Zelcore / SSP Wallet',
   upgrade_field_address: 'Betaaladres',

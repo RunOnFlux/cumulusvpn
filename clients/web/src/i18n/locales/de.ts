@@ -33,7 +33,7 @@ export const de: Catalog = {
   connect_eyebrow: 'Beta-Schiene · WireGuard-Konfiguration',
   connect_title: 'Ein Schlüssel, <glow>jedes Gateway.</glow>',
   connect_lede:
-    'Dein WireGuard-Schlüsselpaar wird hier, in deinem Browser, erzeugt — der private Schlüssel verlässt diesen Tab nie. Wähle ein Land, melde dich beim nächstgelegenen Flux-Gateway an und exportiere eine importfertige<mono> .conf</mono>-Datei samt QR-Code. Für immer kostenlos mit 100 KB/s; <upgrade>mit FLUX upgraden</upgrade> für volle Geschwindigkeit.',
+    'Dein WireGuard-Schlüsselpaar wird hier, in deinem Browser, erzeugt — der private Schlüssel verlässt diesen Tab nie. Wähle ein Land, melde dich beim nächstgelegenen Flux-Gateway an und exportiere eine importfertige<mono> .conf</mono>-Datei samt QR-Code. Für immer kostenlos mit 100 KB/s; <upgrade>mit FLUX upgraden</upgrade> für volle Geschwindigkeit.',
   connect_verify_warn:
     'Verzeichnissignatur konnte nicht verifiziert werden — Endpunkte werden nur zur Information angezeigt.',
   connect_notice_no_live_gateway:
@@ -67,7 +67,7 @@ export const de: Catalog = {
   upgrade_eyebrow: 'Upgrade · Zahlung in FLUX',
   upgrade_title: 'Auf volle Geschwindigkeit upgraden',
   upgrade_lede:
-    'Sende FLUX mit exakt der Nachricht unten. Jedes Gateway scannt die Chain und schaltet deinen Schlüssel innerhalb von ~1 Minute frei — auf allen Servern gleichzeitig, für 30 Tage. Kein Konto, keine Karte, keine Firma, die herausgeben könnte, was sie nie besessen hat.',
+    'Sende FLUX mit exakt der Nachricht unten. Jedes Gateway scannt die Chain und schaltet deinen Schlüssel innerhalb von ~1 Minute frei — auf allen Servern gleichzeitig, für 30 Tage. Kein Konto, keine Karte, keine Firma, die herausgeben könnte, was sie nie besessen hat.',
   upgrade_usd_line: '≈ {usd} · pro 30 Tage',
   upgrade_qr_caption: 'Mit Zelcore / SSP Wallet scannen',
   upgrade_field_address: 'Zahlungsadresse',
