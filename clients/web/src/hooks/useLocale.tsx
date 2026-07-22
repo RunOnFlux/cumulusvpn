@@ -24,7 +24,9 @@ function initialLocaleFor(): Locale {
   } catch {
     // Ignore storage failures (private mode).
   }
-  return detectLocale(navigator.languages ?? [navigator.language]);
+  return detectLocale(
+    (navigator.languages ?? [navigator.language]).filter((l): l is string => typeof l === 'string'),
+  );
 }
 
 /**

@@ -1,8 +1,8 @@
 import type { Route } from '../hooks/useRoute';
 import type { ThemeMode } from '../hooks/useTheme';
 import { useI18n } from '../hooks/useLocale';
-import { LOCALE_NAMES, SUPPORTED_LOCALES } from '../i18n';
-import type { Locale, MessageKey } from '../i18n';
+import { isLocale, LOCALE_NAMES, SUPPORTED_LOCALES } from '../i18n';
+import type { MessageKey } from '../i18n';
 import { PoweredByFlux } from './PoweredByFlux';
 
 interface HeaderProps {
@@ -82,7 +82,9 @@ export function Header({ route, onNavigate, themeMode, onToggleTheme }: HeaderPr
           <select
             className="lang-select"
             value={locale}
-            onChange={(e) => setLocale(e.target.value as Locale)}
+            onChange={(e) => {
+              if (isLocale(e.target.value)) setLocale(e.target.value);
+            }}
             aria-label={t('header_language_label')}
           >
             {SUPPORTED_LOCALES.map((l) => (

@@ -83,3 +83,38 @@ describe('no untranslated stubs', () => {
     });
   }
 });
+
+/** Multiset of tag names (e.g. <b>, <em>) referenced across a message's text. */
+function tagCounts(msg: Message): Record<string, number> {
+  const text = typeof msg === 'string' ? msg : Object.values(msg).join(' ');
+  const counts: Record<string, number> = {};
+  for (const m of text.matchAll(/<(\w+)[\s/>]/g)) {
+    counts[m[1]!] = (counts[m[1]!] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/** Set of {placeholder} names referenced across a message's text. */
+function paramNames(msg: Message): Set<string> {
+  const text = typeof msg === 'string' ? msg : Object.values(msg).join(' ');
+  const names = new Set<string>();
+  for (const m of text.matchAll(/\{(\w+)\}/g)) {
+    names.add(m[1]!);
+  }
+  return names;
+}
+
+describe('structural parity with en', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    if (locale === 'en') continue;
+    it(`${locale}: tags and params match en per key`, () => {
+      const catalog = ALL_CATALOGS[locale];
+      for (const key of Object.keys(en) as (keyof typeof en)[]) {
+        expect(tagCounts(catalog[key]), `${locale}.${key} tag mismatch`).toEqual(tagCounts(en[key]));
+        expect([...paramNames(catalog[key])].sort(), `${locale}.${key} param mismatch`).toEqual(
+          [...paramNames(en[key])].sort(),
+        );
+      }
+    });
+  }
+});

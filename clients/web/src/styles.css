@@ -1142,6 +1142,18 @@ footer .wrap {
   direction: ltr;
   unicode-bidi: isolate;
 }
+/* …but these carry translated prose that merely uses mono typography —
+   let them flow RTL; plaintext keeps embedded LTR fragments (MTU 1420,
+   live/bundled) legible. */
+[dir='rtl'] footer .mono,
+[dir='rtl'] .qr-cap.mono,
+[dir='rtl'] .mh-style.mono,
+[dir='rtl'] .mh-conf-tag.mono,
+[dir='rtl'] .src-pill,
+[dir='rtl'] .mh-route.mono {
+  direction: rtl;
+  unicode-bidi: plaintext;
+}
 /* Decorative arrows point "forward"; mirror them when the flow mirrors. */
 [dir='rtl'] .mh-arrow,
 [dir='rtl'] .mh-route-arrow {
