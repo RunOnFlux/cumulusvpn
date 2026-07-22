@@ -1,5 +1,5 @@
 {
-  "_comment": "Remote per-platform feature flags for the CumulusVPN mobile app. Fetched from raw.githubusercontent.com at launch. If the app can't fetch this, every flag defaults to OFF (safe / store-compliant). Edit + push to flip a feature without an app update.",
+  "_comment": "DEFAULT SEED / documentation only. Live per-platform flags are now managed in the internal dashboard (Cloudflare KV, edited at https://dashboard.cumulusvpn.com/admin) and served at https://dashboard.cumulusvpn.com/api/flags, which the app fetches at launch. Seed KV once from this file (values below, without _comment). If the app can't fetch flags, every flag defaults to OFF (safe / store-compliant).",
   "inAppUpgrade": {
     "android": true,
     "ios": true

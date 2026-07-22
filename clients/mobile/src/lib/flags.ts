@@ -1,15 +1,17 @@
 /**
  * Remote per-platform feature flags.
  *
- * Fetched at launch from a simple JSON file in the public repo, so a feature can
- * be flipped on/off per platform WITHOUT an app update (e.g. keep the in-app
- * crypto-pay upgrade off on iOS for App Store review, on for Android). If the
- * fetch fails for ANY reason, every flag defaults to OFF — the safe, store-
- * compliant state (upgrade falls back to "manage on the web").
+ * Fetched at launch from the internal dashboard's KV-backed endpoint, so a
+ * feature can be flipped on/off per platform from the dashboard
+ * (dashboard.cumulusvpn.com/admin) WITHOUT an app update — e.g. keep the in-app
+ * crypto-pay upgrade off on iOS for App Store review. If the fetch fails for ANY
+ * reason, every flag defaults to OFF — the safe, store-compliant state (upgrade
+ * falls back to "manage on the web"). The endpoint returns the same JSON shape
+ * as the repo's flags.json (the documented default / KV seed).
  */
 import { Platform } from 'react-native';
 
-const FLAGS_URL = 'https://raw.githubusercontent.com/RunOnFlux/cumulusvpn/main/flags.json';
+const FLAGS_URL = 'https://dashboard.cumulusvpn.com/api/flags';
 
 export interface Flags {
   /**

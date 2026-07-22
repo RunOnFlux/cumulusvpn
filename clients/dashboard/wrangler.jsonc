@@ -19,5 +19,18 @@
     // Worker runs first so /api/fleet reaches it before asset routing.
     "run_worker_first": true,
     "not_found_handling": "single-page-application"
-  }
+  },
+  // Feature-flag store (KV), read/written by worker.js and edited at /admin.
+  // One-time setup (needs CF/wrangler access):
+  //   wrangler kv namespace create FLAGS_KV        # paste the returned id below
+  //   wrangler secret put ADMIN_TOKEN --config clients/dashboard/wrangler.jsonc
+  //   wrangler deploy --config clients/dashboard/wrangler.jsonc
+  //   wrangler kv key put --binding=FLAGS_KV flags "$(cat ../../flags.json)"  # seed
+  "kv_namespaces": [
+    { "binding": "FLAGS_KV", "id": "7ac10be1d3724e69b7d58bd3939ba5d6" }
+  ],
+  // Custom domain — provisioned on deploy (Cloudflare manages the DNS record + cert).
+  "routes": [
+    { "pattern": "dashboard.cumulusvpn.com", "custom_domain": true }
+  ]
 }

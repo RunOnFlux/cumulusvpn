@@ -110,9 +110,104 @@ async function fleet() {
   };
 }
 
+// ---- Feature flags (KV-backed, edited via /admin) ---------------------------
+// The mobile app fetches GET /api/flags at launch (same JSON shape as the repo's
+// flags.json). Writes go through POST /api/flags, gated by the ADMIN_TOKEN secret.
+const FLAGS_KEY = 'flags';
+// Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
+const DEFAULT_FLAGS = { inAppUpgrade: { android: false, ios: false } };
+
+function jsonResponse(obj, extraHeaders = {}, status = 200) {
+  return new Response(JSON.stringify(obj), {
+    status,
+    headers: { 'content-type': 'application/json; charset=utf-8', ...extraHeaders },
+  });
+}
+
+/** Bearer token from the Authorization header, or null. */
+function bearerToken(request) {
+  const m = /^Bearer\s+(.+)$/i.exec(request.headers.get('authorization') || '');
+  return m ? m[1].trim() : null;
+}
+
+/** Constant-time compare of provided vs secret via fixed-length SHA-256 digests. */
+async function tokenMatches(provided, secret) {
+  if (!provided || !secret) return false;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', enc.encode(provided)),
+    crypto.subtle.digest('SHA-256', enc.encode(secret)),
+  ]);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i++) diff |= x[i] ^ y[i];
+  return diff === 0;
+}
+
+/** Coerce arbitrary input to the strict flags shape, or null if invalid. */
+function validateFlags(body) {
+  if (!body || typeof body !== 'object') return null;
+  const u = body.inAppUpgrade;
+  if (!u || typeof u !== 'object') return null;
+  if (typeof u.android !== 'boolean' || typeof u.ios !== 'boolean') return null;
+  return { inAppUpgrade: { android: u.android, ios: u.ios } };
+}
+
+/** Current flags from KV (validated), or the fail-safe default. */
+async function readFlags(env) {
+  try {
+    const raw = await env.FLAGS_KV.get(FLAGS_KEY);
+    if (!raw) return { ...DEFAULT_FLAGS, updatedAt: null };
+    const parsed = JSON.parse(raw);
+    const valid = validateFlags(parsed);
+    if (!valid) return { ...DEFAULT_FLAGS, updatedAt: null };
+    return { ...valid, updatedAt: parsed.updatedAt ?? null };
+  } catch {
+    return { ...DEFAULT_FLAGS, updatedAt: null };
+  }
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
+
+    // ---- feature flags: public read, token-gated write ----
+    if (url.pathname === '/api/flags' && request.method === 'GET') {
+      const flags = await readFlags(env);
+      return jsonResponse(flags, {
+        'cache-control': 'public, max-age=60',
+        'access-control-allow-origin': '*',
+      });
+    }
+
+    if (url.pathname === '/api/admin/verify' && request.method === 'POST') {
+      const ok = await tokenMatches(bearerToken(request), env.ADMIN_TOKEN);
+      return jsonResponse({ ok }, {}, ok ? 200 : 401);
+    }
+
+    if (url.pathname === '/api/flags' && request.method === 'POST') {
+      if (!(await tokenMatches(bearerToken(request), env.ADMIN_TOKEN))) {
+        return jsonResponse({ error: 'unauthorized' }, {}, 401);
+      }
+      let body;
+      try {
+        body = await request.json();
+      } catch {
+        return jsonResponse({ error: 'invalid JSON' }, {}, 400);
+      }
+      const valid = validateFlags(body);
+      if (!valid) {
+        return jsonResponse(
+          { error: 'expected { inAppUpgrade: { android: boolean, ios: boolean } }' },
+          {},
+          400,
+        );
+      }
+      const record = { ...valid, updatedAt: new Date().toISOString() };
+      await env.FLAGS_KV.put(FLAGS_KEY, JSON.stringify(record));
+      return jsonResponse(record, { 'access-control-allow-origin': '*' });
+    }
 
     if (url.pathname === '/api/fleet') {
       const cache = caches.default;
