@@ -90,6 +90,18 @@ jobs:
           ./gradlew assembleRelease -PcvpnVersionName="$ver" -PcvpnVersionCode="$code"
           ./gradlew bundleRelease -PcvpnVersionName="$ver" -PcvpnVersionCode="$code"
 
+      # Play REJECTS uploads whose 64-bit .so are not 16 KB-aligned (targetSdk >= 35,
+      # enforced since 2025-11-01). gomobile emits 4 KB by default, so
+      # build-android.sh passes -Wl,-z,max-page-size=16384. This gates the REAL .aab
+      # so a regression fails here instead of at the Play Console — the runner's Go
+      # and NDK versions differ from any dev machine, so the artifact must be checked
+      # where it is actually produced.
+      - name: Verify 16 KB page alignment (Play upload gate)
+        working-directory: ${{ github.workspace }}
+        run: |
+          bash clients/native/wgnest/check-16k.sh \
+            clients/mobile/android/app/build/outputs/bundle/release/app-release.aab
+
       # Rename to clear, versioned filenames so every download is self-describing
       # (CumulusVPN-1.0.0.apk / CumulusVPN-1.0.0.aab) instead of "app-release.*".
       - name: Stage named artifacts

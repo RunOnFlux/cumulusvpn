@@ -42,10 +42,15 @@ fi
 out="$here/../../mobile/android/app/libs/wgmobile.aar"
 mkdir -p "$(dirname "$out")"
 echo "building $out …"
+# -extldflags -Wl,-z,max-page-size=16384: Play REQUIRES 16 KB page alignment for
+# every 64-bit .so in apps targeting Android 15+ (enforced at upload since
+# 2025-11-01). Without this the Go linker emits 4 KB-aligned LOAD segments and
+# the AAB is rejected. Verify with clients/native/wgnest/check-16k.sh.
 gomobile bind \
   -target=android/arm64,android/arm,android/amd64,android/386 \
   -androidapi 24 \
   -javapkg com.cumulusvpn.wgnest \
+  -ldflags="-extldflags=-Wl,-z,max-page-size=16384" \
   -o "$out" \
   ./wgmobile
 
