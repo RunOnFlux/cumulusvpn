@@ -19,6 +19,26 @@ const FLUX_API = 'https://api.runonflux.io';
 const CONTROL_PORT = 51821;
 const PROBE_TIMEOUT_MS = 6000;
 
+/** Public IPv4 literal only — hardens the probe against a poisoned Flux-API
+ *  response steering us at private/reserved hosts. Rejects zero-padded (octal)
+ *  octets. */
+function isPublicIPv4(host) {
+  const parts = String(host).split('.');
+  if (parts.length !== 4) return false;
+  for (const p of parts) {
+    if (!/^\d{1,3}$/.test(p) || (p.length > 1 && p[0] === '0')) return false;
+  }
+  const o = parts.map(Number);
+  if (o.some((n) => n > 255)) return false;
+  const [a, b] = o;
+  if (a === 0 || a === 10 || a === 127 || a >= 224) return false;
+  if (a === 169 && b === 254) return false;
+  if (a === 172 && b >= 16 && b <= 31) return false;
+  if (a === 192 && b === 168) return false;
+  if (a === 100 && b >= 64 && b <= 127) return false;
+  return true;
+}
+
 /** Live instance IPs for a spec, from the Flux app-location index. */
 async function locations(spec) {
   try {
@@ -35,6 +55,7 @@ async function locations(spec) {
 /** Probe one gateway's /v1/info; never throws. */
 async function probe(ip, cc, spec) {
   const inst = { ip, cc, spec, up: false };
+  if (!isPublicIPv4(ip)) return inst; // don't let a poisoned index point us inward
   try {
     const r = await fetch(`http://${ip}:${CONTROL_PORT}/v1/info`, {
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),

@@ -21,8 +21,15 @@ CVPN1:<payment-code>
 e.g. CVPN1:3QJmnh8vzBqoQpuTGDsUCkbFyxVQ
 ```
 - `CVPN1` = protocol tag + version. Anything else in OP_RETURN is ignored by scanners.
-- Client apps and the web onboarding page compute and display this string + a QR code
-  (`flux:t1PayAddress?amount=20&message=CVPN1:…` URI for Zelcore/SSP deep-linking).
+- Client apps and the web onboarding page compute and display this string + a QR code.
+  The wallet URI **must percent-encode the memo** — Zelcore's `zel:` parser (and the
+  BIP21 `flux:` parser) split the raw URI on `:`, so an unencoded `CVPN1:<code>` colon
+  makes them treat the fragment after it as the destination address. Two forms (see
+  `@cumulusvpn/core` `walletDeepLink`): tap/deep-link uses Zelcore's protocol
+  `zel:?action=pay&coin=flux&address=…&amount=20&message=CVPN1%3A<code>`; the QR uses
+  BIP21 `flux:t1PayAddress?amount=20&message=CVPN1%3A<code>`. The wallet
+  `decodeURIComponent`s the memo back to `CVPN1:<code>` before signing, so the on-chain
+  OP_RETURN is exactly `CVPN1:<code>`.
 
 ### Payment rule (evaluated identically by every gateway)
 A tx grants entitlement iff:

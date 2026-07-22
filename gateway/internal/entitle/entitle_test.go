@@ -161,3 +161,30 @@ func TestEngineBackfillAndTier(t *testing.T) {
 		t.Error("unpaid key should be free")
 	}
 }
+
+// TestExactMultipleOverpayFloatEpsilon: a float sum equal to 3× the price that
+// lands a hair below the integer (as real vout-value sums do) must still grant 3
+// months, not truncate to 2. Regression for the missing epsilon in applyTxs.
+func TestExactMultipleOverpayFloatEpsilon(t *testing.T) {
+	const addr = "t1PayAddress"
+	const price = 20.0
+	pk := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	code := PaymentCode(pk)
+	now := time.Now()
+	src := &mockSource{height: 100, txs: []Tx{
+		// 3×20 that the float representation renders as just-below-60.
+		{TxID: "x", Height: 10, Time: now, AmountTo: 59.999999999999993, Memos: []string{"CVPN1:" + code}},
+	}}
+	e := New(src, addr, price)
+	if err := e.Backfill(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	premium, until := e.Tier(pk)
+	if !premium {
+		t.Fatal("expected premium")
+	}
+	// 3 months ≈ 90 days; 2 months would be ~60. Assert clearly in the 3-month band.
+	if d := time.Until(until); d < 85*24*time.Hour {
+		t.Errorf("exact 3× overpay granted only %v (want ~90 days = 3 months)", d)
+	}
+}

@@ -53,6 +53,9 @@ export interface InfoResponse {
   readonly capacity: number;
   readonly version: string;
   readonly min_client_version: string;
+  /** Short git commit the gateway image was built from (ldflags). Optional —
+   *  older gateway images may omit it. */
+  readonly build_commit?: string;
   /** Gateway WireGuard public key, base64. */
   readonly server_pubkey: string;
   /** Gateway Ed25519 signing public key, base64. */

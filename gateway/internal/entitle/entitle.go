@@ -164,8 +164,11 @@ func (e *Engine) applyTxs(txs []Tx) {
 			continue
 		}
 		// Overpayment grants whole multiples of the period
-		// (docs/04-payments.md: "pay 3x -> 90 days").
-		months := int(tx.AmountTo / e.priceFlux)
+		// (docs/04-payments.md: "pay 3x -> 90 days"). AmountTo is a float64 sum of
+		// vout values, so an exact multiple (e.g. 3×20) can land a hair below the
+		// integer — add the same epsilon ValidPayment uses so 59.999… still yields
+		// 3 months, not 2.
+		months := int((tx.AmountTo + 1e-9) / e.priceFlux)
 		if months < 1 {
 			months = 1
 		}

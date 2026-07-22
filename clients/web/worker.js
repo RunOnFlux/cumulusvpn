@@ -18,17 +18,28 @@
 
 const ALLOWED_PORTS = new Set(['51821', '16127']);
 
-/** True only for a routable public IPv4 literal (blocks private / loopback / link-local). */
+/** True only for a routable public IPv4 literal (blocks private / loopback /
+ *  link-local / CGNAT / reserved). Rejects leading-zero octets, which
+ *  `fetch`/WHATWG-URL would otherwise parse as OCTAL (e.g. "012" → 10), letting
+ *  a padded form slip a private address past a decimal check. */
 function isPublicIPv4(host) {
-  const m = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
-  if (!m) return false;
-  const o = [m[1], m[2], m[3], m[4]].map(Number);
+  const parts = host.split('.');
+  if (parts.length !== 4) return false;
+  for (const p of parts) {
+    if (!/^\d{1,3}$/.test(p)) return false;
+    if (p.length > 1 && p[0] === '0') return false; // no octal / zero-padded octets
+  }
+  const o = parts.map(Number);
   if (o.some((n) => n > 255)) return false;
   const [a, b] = o;
   if (a === 0 || a === 10 || a === 127) return false; // this-network / private / loopback
   if (a === 169 && b === 254) return false; // link-local
   if (a === 172 && b >= 16 && b <= 31) return false; // private
   if (a === 192 && b === 168) return false; // private
+  if (a === 100 && b >= 64 && b <= 127) return false; // CGNAT (100.64/10)
+  if (a === 192 && b === 0 && o[2] === 0) return false; // 192.0.0/24 (IETF)
+  if (a === 198 && (b === 18 || b === 19)) return false; // benchmarking (198.18/15)
+  if (a >= 224) return false; // multicast (224/4) + reserved (240/4) + 255.255.255.255
   return true;
 }
 

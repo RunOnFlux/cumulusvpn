@@ -57,5 +57,8 @@ export function countryMeta(code: string): CountryMeta {
   return COUNTRY_META[code] ?? { code, name: code, flag: '🏳️' };
 }
 
-/** Public upgrade/payment page — desktop may embed or open it freely (no store). */
-export const UPGRADE_URL = 'https://cumulusvpn.com/upgrade';
+/** Public upgrade/payment page — desktop may open it freely (no store rules).
+ *  The web app (vpn.cumulusvpn.com) serves the prefilled upgrade flow at the
+ *  `#/upgrade` hash route; cumulusvpn.com is the asset-only landing (no /upgrade,
+ *  it 404s). */
+export const UPGRADE_URL = 'https://vpn.cumulusvpn.com/#/upgrade';
