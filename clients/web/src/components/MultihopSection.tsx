@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ApiError, buildMultihopConfig, enroll, selectHops } from '@cumulusvpn/core';
 import type { Keypair, MultihopConfig, RouteStyle } from '@cumulusvpn/core';
 import type { DiscoveryState } from '../hooks/useDiscovery';
+import { useI18n } from '../hooks/useLocale';
 import { downloadText } from '../lib/download';
 import { proxiedFetch } from '../lib/gatewayFetch';
 
@@ -16,6 +17,12 @@ interface MultihopResult {
   readonly exitLabel: string;
   readonly exitIp: string;
 }
+
+type MultihopError =
+  | { kind: 'no-exit' }
+  | { kind: 'rejected'; slug: string; message: string }
+  | { kind: 'no-gateways' }
+  | { kind: 'failed'; message: string | null };
 
 /**
  * Country code + display name pairs available as hop picks. Multi-hop is a
@@ -45,11 +52,12 @@ function hopChoices(discovery: DiscoveryState): { cc: string; name: string; flag
  * covers both hops — and OFF by default. Amber accents (premium token).
  */
 export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
+  const { t, rich } = useI18n();
   const choices = useMemo(() => hopChoices(discovery), [discovery]);
   const [entryCc, setEntryCc] = useState<string>('');
   const [exitCc, setExitCc] = useState<string>('');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<MultihopError | null>(null);
   const [result, setResult] = useState<MultihopResult | null>(null);
 
   // Effective picks: explicit choice, else derive sensible defaults (first
@@ -83,7 +91,7 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
       });
       const exitGw = hops.exit;
       if (!exitGw) {
-        setError('Multi-hop needs a distinct exit gateway; none was resolved.');
+        setError({ kind: 'no-exit' });
         return;
       }
 
@@ -115,19 +123,15 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
       });
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(`Gateway rejected enrollment (${err.slug}): ${err.message}`);
+        setError({ kind: 'rejected', slug: err.slug, message: err.message });
       } else if (
         discovery.gateways.length === 0 &&
         err instanceof Error &&
         err.message.startsWith('selectHops:')
       ) {
-        setError(
-          'No live gateways reachable from the browser, so no route could be resolved. ' +
-            'Multi-hop nesting is really an our-apps feature — the desktop and mobile ' +
-            'clients (same core) probe gateways directly and run the two tunnels for you.',
-        );
+        setError({ kind: 'no-gateways' });
       } else {
-        setError(err instanceof Error ? err.message : 'Multi-hop generation failed.');
+        setError({ kind: 'failed', message: err instanceof Error ? err.message : null });
       }
     } finally {
       setBusy(false);
@@ -139,8 +143,8 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
       <details>
         <summary>
           <span className="mh-sum">
-            <span className="mh-title">Advanced: multi-hop (two configs)</span>
-            <span className="tier-pill premium">PREMIUM · OPT-IN</span>
+            <span className="mh-title">{t('multihop_summary_title')}</span>
+            <span className="tier-pill premium">{t('multihop_tier_pill')}</span>
           </span>
           <span className="mh-caret" aria-hidden="true">
             ▾
@@ -149,18 +153,15 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
 
         <div className="mh-body">
           <p className="muted-text">
-            Route through two gateways so{' '}
-            <strong>no single server sees both who you are and where you go</strong>. It is slower
-            and adds latency — expect roughly <strong>2× ping</strong> versus single-hop, and lower
-            peak throughput from the double encryption. Multi-hop is premium, but one{' '}
-            <span className="mono">$0.99</span> payment covers both hops (the same key K is premium
-            at entry and exit automatically). Off by default — the single-hop flow above stays
-            primary.
+            {rich('multihop_lede', {
+              strong: (label) => <strong>{label}</strong>,
+              mono: (label) => <span className="mono">{label}</span>,
+            })}
           </p>
 
           <div className="mh-pick">
             <label className="mh-field">
-              <span className="mh-k">Entry country (sees your IP)</span>
+              <span className="mh-k">{t('multihop_entry_label')}</span>
               <select
                 className="mh-select"
                 value={entry}
@@ -168,7 +169,7 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                   setEntryCc(e.target.value);
                   reset();
                 }}
-                aria-label="Entry country"
+                aria-label={t('multihop_entry_aria')}
               >
                 {choices.map((c) => (
                   <option key={c.cc} value={c.cc}>
@@ -183,7 +184,7 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
             </span>
 
             <label className="mh-field">
-              <span className="mh-k">Exit country (sees your destination)</span>
+              <span className="mh-k">{t('multihop_exit_label')}</span>
               <select
                 className="mh-select"
                 value={exit}
@@ -191,7 +192,7 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                   setExitCc(e.target.value);
                   reset();
                 }}
-                aria-label="Exit country"
+                aria-label={t('multihop_exit_aria')}
               >
                 {choices.map((c) => (
                   <option key={c.cc} value={c.cc}>
@@ -203,10 +204,7 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
           </div>
 
           <div className="mh-style mono">
-            Route style:{' '}
-            {style === 'multihop-same-country'
-              ? 'balanced — same country (one jurisdiction)'
-              : 'max privacy — cross-jurisdiction (two operators, two countries)'}
+            {style === 'multihop-same-country' ? t('multihop_style_same') : t('multihop_style_cross')}
           </div>
 
           <button
@@ -215,10 +213,20 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
             disabled={busy || !entry || !exit}
             onClick={() => void onGenerate()}
           >
-            {busy ? 'Enrolling both hops…' : 'Generate two configs'}
+            {busy ? t('multihop_enrolling') : t('multihop_generate')}
           </button>
 
-          {error ? <div className="banner error">{error}</div> : null}
+          {error ? (
+            <div className="banner error">
+              {error.kind === 'no-exit'
+                ? t('multihop_error_no_exit')
+                : error.kind === 'rejected'
+                  ? t('error_gateway_rejected', { slug: error.slug, message: error.message })
+                  : error.kind === 'no-gateways'
+                    ? t('multihop_error_no_gateways')
+                    : (error.message ?? t('multihop_error_failed'))}
+            </div>
+          ) : null}
 
           {result ? (
             <div className="config-out">
@@ -227,14 +235,14 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                 <span className="mh-route-arrow">→</span>
                 <span>{result.exitLabel}</span>
                 <span className="mh-route-arrow">→</span>
-                <span>internet</span>
+                <span>{t('multihop_internet')}</span>
               </div>
 
               <div className="mh-confs">
                 <div className="mh-conf">
                   <div className="mh-conf-head">
                     <span className="mh-conf-name mono">wg-entry.conf</span>
-                    <span className="mh-conf-tag mono">outer · MTU 1420</span>
+                    <span className="mh-conf-tag mono">{t('multihop_conf_outer_tag')}</span>
                   </div>
                   <pre className="conf mono">{result.config.outer}</pre>
                   <button
@@ -242,14 +250,16 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                     className="btn ghost sm"
                     onClick={() => downloadText('wg-entry.conf', result.config.outer, 'text/plain')}
                   >
-                    Download wg-entry.conf
+                    {t('multihop_download_entry')}
                   </button>
                 </div>
 
                 <div className="mh-conf">
                   <div className="mh-conf-head">
                     <span className="mh-conf-name mono">wg-exit.conf</span>
-                    <span className="mh-conf-tag mono">inner · MTU {result.config.innerMtu}</span>
+                    <span className="mh-conf-tag mono">
+                      {t('multihop_conf_inner_tag', { mtu: result.config.innerMtu })}
+                    </span>
                   </div>
                   <pre className="conf mono">{result.config.inner}</pre>
                   <button
@@ -257,25 +267,26 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                     className="btn ghost sm"
                     onClick={() => downloadText('wg-exit.conf', result.config.inner, 'text/plain')}
                   >
-                    Download wg-exit.conf
+                    {t('multihop_download_exit')}
                   </button>
                 </div>
               </div>
 
               <div className="banner info mh-note">
-                <strong>How to route these (honest note).</strong> True nesting with the stock
-                WireGuard app is awkward — it runs one tunnel at a time — so multi-hop is really an{' '}
-                <strong>our-apps feature</strong> (desktop/mobile chain the two tunnels for you).
-                For a manual setup you must bring up <span className="mono">wg-entry.conf</span>{' '}
-                first, then route only the exit&rsquo;s address{' '}
-                <span className="mono">{result.exitIp}/32</span> via that entry tunnel and send the
-                rest through <span className="mono">wg-exit.conf</span> (inner MTU{' '}
-                {result.config.innerMtu}, so two WireGuard headers fit). Exit endpoint:{' '}
-                <span className="mono">{result.config.exitEndpoint}</span>.
-                <br />
-                <strong>v1 caveat:</strong> both hops use the same key K, which defeats any{' '}
-                <em>single</em> operator but means an adversary controlling <em>both</em> your hops
-                could correlate via that shared key. Distinct keys per hop land in v1.5.
+                {rich(
+                  'multihop_note',
+                  {
+                    strong: (label) => <strong>{label}</strong>,
+                    em: (label) => <em>{label}</em>,
+                    mono: (label) => <span className="mono">{label}</span>,
+                    br: () => <br />,
+                  },
+                  {
+                    exitIp: result.exitIp,
+                    mtu: result.config.innerMtu,
+                    endpoint: result.config.exitEndpoint,
+                  },
+                )}
               </div>
             </div>
           ) : null}
