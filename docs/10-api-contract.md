@@ -89,6 +89,7 @@ Response `data`:
   "country": "DE", "region": "HE", "city": "Frankfurt",
   "load": 0.12, "capacity": 1988,
   "version": "0.1.0-poc", "min_client_version": "0.1.0",
+  "build_commit": "<short git sha, optional>",
   "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>"
 }
 ```
@@ -118,7 +119,13 @@ Endpoint = <endpoint>
 AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 ```
-Wallet deep link for payment: `flux:<payment_address>?amount=<price_flux>&message=<memo>`.
+Wallet deep link for payment — the memo MUST be percent-encoded (wallets split the
+raw URI on `:`, so an unencoded `CVPN1:<code>` colon misparses the address). Two forms
+(see `@cumulusvpn/core` `walletDeepLink`): tap/deep-link uses Zelcore's protocol
+`zel:?action=pay&coin=flux&address=<payment_address>&amount=<price_flux>&message=CVPN1%3A<code>`;
+the scannable QR uses BIP21 `flux:<payment_address>?amount=<price_flux>&message=CVPN1%3A<code>`.
+The wallet `decodeURIComponent`s the memo before signing, so the on-chain OP_RETURN is
+exactly `CVPN1:<code>`.
 
 ## directory.json (served from cumulusvpn.com, bundled in clients)
 
