@@ -13,6 +13,7 @@
  */
 import type { GatewayInfo, Keypair, RouteStyle } from '@cumulusvpn/core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { RouteEndpoint } from '../lib/gateways';
 
 /** Namespace every key so we never collide with other AsyncStorage users. */
 const K = {
@@ -25,7 +26,37 @@ const K = {
   entryCountry: 'cvpn:entryCountry',
   exitCountry: 'cvpn:exitCountry',
   fleet: 'cvpn:fleet',
+  activeRoute: 'cvpn:activeRoute',
 } as const;
+
+/** The route of the live tunnel, persisted so a force-quit + relaunch can still
+ *  show where it's connected (exit is null for single-hop). */
+export interface PersistedRoute {
+  readonly entry: RouteEndpoint;
+  readonly exit: RouteEndpoint | null;
+}
+
+/** Persist the active route on connect (or clear it, null, on disconnect). */
+export async function saveActiveRoute(route: PersistedRoute | null): Promise<void> {
+  if (route) {
+    await AsyncStorage.setItem(K.activeRoute, JSON.stringify(route));
+  } else {
+    await AsyncStorage.removeItem(K.activeRoute);
+  }
+}
+
+/** The route of the last tunnel we brought up, for relaunch reconciliation. */
+export async function loadActiveRoute(): Promise<PersistedRoute | null> {
+  const raw = await AsyncStorage.getItem(K.activeRoute);
+  if (!raw) {
+    return null;
+  }
+  try {
+    return JSON.parse(raw) as PersistedRoute;
+  } catch {
+    return null;
+  }
+}
 
 /** The route styles a user may persist (mirrors core `RouteStyle`). */
 const ROUTE_STYLES: readonly RouteStyle[] = [

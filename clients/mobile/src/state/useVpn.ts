@@ -41,6 +41,7 @@ import {
 import { solvePowFast } from '../lib/pow';
 import { bundledDirectory } from '../lib/directory';
 import {
+  loadActiveRoute,
   loadAutoConnect,
   loadEntryCountry,
   loadExitCountry,
@@ -50,6 +51,7 @@ import {
   loadKillSwitch,
   loadRouteStyle,
   loadSelectedCountry,
+  saveActiveRoute,
   saveAutoConnect,
   saveEntryCountry,
   saveExitCountry,
@@ -410,6 +412,39 @@ export function useVpn(): VpnModel & VpnActions {
     return () => sub.remove();
   }, []);
 
+  // ---- adopt a tunnel that outlived a previous app session ----------------
+  // After a force-quit while connected, the NE extension keeps running but the
+  // JS state machine boots at 'disconnected' and NO status event fires (nothing
+  // changed). Ask the native side once on launch; if a tunnel is already up,
+  // adopt 'connected' so the UI is honest and Disconnect works — otherwise the
+  // app looks idle over a live tunnel and connecting "on top" gets into a bad
+  // state. Only ever promotes idle→connected; never fights the connect flow.
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      try {
+        const s = await CumulusTunnel.getStatus();
+        if (alive && s.state === 'connected') {
+          setStatus(s);
+          setState((prev) => (prev === 'disconnected' ? 'connected' : prev));
+          setConnectedSince((prev) => prev ?? Date.now());
+          // Restore which gateway(s) the live tunnel runs through so the
+          // connected screen shows the route/city/IP, not a blank card.
+          const route = await loadActiveRoute();
+          if (alive && route) {
+            setActiveEntry((prev) => prev ?? route.entry);
+            setActiveExit((prev) => prev ?? route.exit);
+          }
+        }
+      } catch {
+        // No tunnel / not reachable — stay disconnected.
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // ---- live counters + speed: poll while connected -----------------------
   // The event stream only fires on state changes, so the byte/handshake
   // counters never move without an explicit poll. Sample every 1.5s and derive
@@ -611,8 +646,13 @@ export function useVpn(): VpnModel & VpnActions {
           setEnrollment,
           killSwitch,
         });
-        setActiveEntry(routeEndpoint(hops.entry));
-        setActiveExit(routeEndpoint(hops.exit));
+        const entryEp = routeEndpoint(hops.entry);
+        const exitEp = routeEndpoint(hops.exit);
+        setActiveEntry(entryEp);
+        setActiveExit(exitEp);
+        // Persist the live route so a force-quit + relaunch can restore where
+        // we're connected (see the launch-reconciliation effect).
+        void saveActiveRoute({ entry: entryEp, exit: exitEp });
         return;
       }
 
@@ -633,7 +673,8 @@ export function useVpn(): VpnModel & VpnActions {
           powSolver: solvePowFast,
         });
         setEnrollment(resp);
-        setActiveEntry(routeEndpoint(gw));
+        const entryEp = routeEndpoint(gw);
+        setActiveEntry(entryEp);
         setActiveExit(null);
 
         const wgConfig = buildWgConfig({
@@ -644,6 +685,9 @@ export function useVpn(): VpnModel & VpnActions {
           endpoint: resp.endpoint,
         });
         await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
+        // Persist the live route so a force-quit + relaunch can restore where
+        // we're connected (see the launch-reconciliation effect).
+        void saveActiveRoute({ entry: entryEp, exit: null });
       } catch (e) {
         // This node failed — avoid it so the reconnect/retry hops elsewhere.
         avoidGateway(gw.ip);
@@ -673,6 +717,7 @@ export function useVpn(): VpnModel & VpnActions {
     setState('disconnecting');
     setActiveEntry(null);
     setActiveExit(null);
+    void saveActiveRoute(null);
     // A deliberate disconnect is a clean slate — forget failed-node history and
     // the enrolled-gateway IP, so entitlement polling resumes sampling the whole
     // fleet (not a node we're no longer on) instead of latching one address.
