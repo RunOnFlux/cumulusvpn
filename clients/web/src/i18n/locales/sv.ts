@@ -67,7 +67,7 @@ export const sv: Catalog = {
   upgrade_eyebrow: 'Uppgradera · betala i FLUX',
   upgrade_title: 'Uppgradera till full hastighet',
   upgrade_lede:
-    'Skicka FLUX med exakt meddelandet nedan. Varje gateway skannar kedjan och låser upp din nyckel inom ~1 minut — på alla servrar samtidigt, i 30 dagar. Inget konto, inget kort, inget företag som kan lämna ut det de aldrig hade.',
+    'Skicka FLUX med det exakta meddelandet nedan. Varje gateway skannar kedjan och låser upp din nyckel inom ~1 minut — på alla servrar samtidigt, i 30 dagar. Inget konto, inget kort, inget företag som kan lämna ut det det aldrig hade.',
   upgrade_usd_line: '≈ {usd} · per 30 dagar',
   upgrade_qr_caption: 'Skanna med Zelcore / SSP Wallet',
   upgrade_field_address: 'Betala till adress',

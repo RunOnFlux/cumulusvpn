@@ -82,7 +82,7 @@ export const fi: Catalog = {
   multihop_summary_title: 'Lisäasetukset: multi-hop (kaksi asetustiedostoa)',
   multihop_tier_pill: 'PREMIUM · VALINNAINEN',
   multihop_lede:
-    'Reititä kahden yhdyskäytävän kautta, jotta <strong>yksikään palvelin ei näe sekä sitä, kuka olet, että sitä, minne olet menossa</strong>. Se on hitaampaa ja lisää viivettä — odota noin <strong>2-kertaista pingiä</strong> yhteen hyppyyn verrattuna, sekä matalampaa huippunopeutta kaksinkertaisen salauksen vuoksi. Multi-hop on premium-ominaisuus, mutta yksi <mono>$0.99</mono>-maksu kattaa molemmat hypyt (sama avain K on automaattisesti premium sekä sisään- että uloskäynnissä). Pois päältä oletuksena — yllä oleva yhden hypyn kulku pysyy ensisijaisena.',
+    'Reititä kahden yhdyskäytävän kautta, jotta <strong>yksikään palvelin ei näe sekä sitä, kuka olet, että sitä, minne olet menossa</strong>. Se on hitaampaa ja lisää viivettä — odota karkeasti <strong>2× pingiä</strong> yhden hypyn reittiin verrattuna, sekä matalampaa huippunopeutta kaksinkertaisen salauksen vuoksi. Multi-hop on premium-ominaisuus, mutta yksi <mono>$0.99</mono>-maksu kattaa molemmat hypyt (sama avain K on automaattisesti premium sekä sisään- että uloskäynnissä). Pois päältä oletuksena — yllä oleva yhden hypyn kulku pysyy ensisijaisena.',
   multihop_entry_label: 'Sisääntulomaa (näkee IP-osoitteesi)',
   multihop_entry_aria: 'Sisääntulomaa',
   multihop_exit_label: 'Uloskäyntimaa (näkee kohteesi)',
