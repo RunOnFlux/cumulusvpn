@@ -71,3 +71,15 @@ describe('catalog sweep', () => {
     });
   }
 });
+
+describe('no untranslated stubs', () => {
+  for (const locale of SUPPORTED_LOCALES) {
+    if (locale === 'en') continue;
+    it(`${locale}: differs from English on sentinel keys`, () => {
+      const catalog = ALL_CATALOGS[locale];
+      expect(catalog.connect_lede).not.toBe(en.connect_lede);
+      expect(catalog.upgrade_lede).not.toBe(en.upgrade_lede);
+      expect(catalog.multihop_note).not.toBe(en.multihop_note);
+    });
+  }
+});

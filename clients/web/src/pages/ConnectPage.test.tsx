@@ -49,4 +49,13 @@ describe('<ConnectPage />', () => {
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'upgrade with FLUX' })).toBeInTheDocument();
   });
+
+  it('renders Spanish after the es catalog loads', async () => {
+    renderPage('es');
+    // The catalog chunk loads async; findBy* waits for the swap.
+    expect(await screen.findByRole('button', { name: /\.conf/ })).toBeInTheDocument();
+    const { es } = await import('../i18n/locales/es');
+    expect(await screen.findByText(es.connect_choose_location as string)).toBeInTheDocument();
+    expect(screen.queryByText('Choose a location')).not.toBeInTheDocument();
+  });
 });
