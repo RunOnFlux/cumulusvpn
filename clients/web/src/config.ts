@@ -24,3 +24,6 @@ export const KEYPAIR_STORAGE_KEY = 'cvpn.keypair.v1';
 
 // localStorage key for the theme override ('light' | 'dark'); absent = system.
 export const THEME_STORAGE_KEY = 'cvpn.theme';
+
+// localStorage key for the chosen UI locale; absent = detect from the browser.
+export const LOCALE_STORAGE_KEY = 'cvpn.locale';
