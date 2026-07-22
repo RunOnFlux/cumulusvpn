@@ -24,16 +24,21 @@ interface ConfigResult {
   readonly cc: string;
 }
 
+type ConnectError =
+  | { kind: 'no-gateway'; country: string }
+  | { kind: 'rejected'; slug: string; message: string }
+  | { kind: 'failed'; message: string | null };
+
 export function ConnectPage({
   keypair,
   discovery,
   onRegenerate,
   onNavigateUpgrade,
 }: ConnectPageProps) {
-  const { t } = useI18n();
+  const { t, rich } = useI18n();
   const [picked, setPicked] = useState<CountryOption | null>(null);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ConnectError | null>(null);
   const [result, setResult] = useState<ConfigResult | null>(null);
 
   // The effective selection: the user's explicit pick, else the best (first)
@@ -60,9 +65,7 @@ export function ConnectPage({
     }
     const gw = selected.bestGateway;
     if (!gw) {
-      setError(
-        `No live gateway reachable in ${selected.name} from the browser. Enrollment posts to a gateway’s control API (http :51821), which https pages can’t reach — this works from the desktop and mobile clients that share this core.`,
-      );
+      setError({ kind: 'no-gateway', country: selected.name });
       return;
     }
     setBusy(true);
@@ -83,9 +86,9 @@ export function ConnectPage({
       setResult({ enroll: data, config, cc: selected.cc });
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(`Gateway rejected enrollment (${err.slug}): ${err.message}`);
+        setError({ kind: 'rejected', slug: err.slug, message: err.message });
       } else {
-        setError(err instanceof Error ? err.message : 'Enrollment failed.');
+        setError({ kind: 'failed', message: err instanceof Error ? err.message : null });
       }
     } finally {
       setBusy(false);
@@ -102,32 +105,28 @@ export function ConnectPage({
     <main className="page">
       <div className="wrap">
         <div className="page-head">
-          <span className="eyebrow">Beta rail · WireGuard config</span>
-          <h1>
-            One key, <span className="glow">every gateway.</span>
-          </h1>
+          <span className="eyebrow">{t('connect_eyebrow')}</span>
+          <h1>{rich('connect_title', { glow: (label) => <span className="glow">{label}</span> })}</h1>
           <p className="lede">
-            Your WireGuard keypair is generated here, in your browser — the private key never leaves
-            this tab. Pick a country, enroll at the nearest Flux gateway, and export a
-            ready-to-import
-            <span className="mono"> .conf</span> and QR. Free forever at 100&nbsp;KB/s;{' '}
-            <a
-              href="#/upgrade"
-              onClick={(e) => {
-                e.preventDefault();
-                onNavigateUpgrade();
-              }}
-            >
-              upgrade with FLUX
-            </a>{' '}
-            for full speed.
+            {rich('connect_lede', {
+              mono: (label) => <span className="mono">{label}</span>,
+              upgrade: (label) => (
+                <a
+                  href="#/upgrade"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onNavigateUpgrade();
+                  }}
+                >
+                  {label}
+                </a>
+              ),
+            })}
           </p>
         </div>
 
         {discovery.verified ? null : (
-          <div className="banner warn">
-            Directory signature could not be verified — endpoints are shown for information only.
-          </div>
+          <div className="banner warn">{t('connect_verify_warn')}</div>
         )}
         {discovery.notice === 'no-live-gateway' ? (
           <div className="banner info">{t('connect_notice_no_live_gateway')}</div>
@@ -136,11 +135,11 @@ export function ConnectPage({
         <div className="grid">
           <section className="card">
             <div className="card-head">
-              <h2>Choose a location</h2>
-              <span className="tier-pill free">FREE · 100 KB/s</span>
+              <h2>{t('connect_choose_location')}</h2>
+              <span className="tier-pill free">{t('connect_tier_free')}</span>
             </div>
             {discovery.loading ? (
-              <div className="loading">Resolving the signed directory & discovering gateways…</div>
+              <div className="loading">{t('connect_loading_directory')}</div>
             ) : (
               <CountryPicker
                 options={discovery.options}
@@ -152,9 +151,11 @@ export function ConnectPage({
 
           <section className="card">
             <div className="card-head">
-              <h2>Your config</h2>
+              <h2>{t('connect_your_config')}</h2>
               {discovery.source ? (
-                <span className="src-pill mono">{discovery.source} directory</span>
+                <span className="src-pill mono">
+                  {t('connect_source_directory', { source: discovery.source })}
+                </span>
               ) : null}
             </div>
 
@@ -165,13 +166,13 @@ export function ConnectPage({
                   <div className="t">{selected.name}</div>
                   <div className="s">
                     {selected.status === 'live'
-                      ? `${selected.city} · ${selected.nodeCount} live node${selected.nodeCount === 1 ? '' : 's'}`
-                      : `${selected.city || 'directory'} · seed`}
+                      ? `${selected.city} · ${t('connect_live_nodes', { n: selected.nodeCount })}`
+                      : `${selected.city || t('common_directory')} · ${t('common_seed')}`}
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="loc-btn muted">Select a country to continue</div>
+              <div className="loc-btn muted">{t('connect_select_country')}</div>
             )}
 
             <button
@@ -180,10 +181,18 @@ export function ConnectPage({
               disabled={busy || !selected}
               onClick={() => void onGenerate()}
             >
-              {busy ? 'Enrolling…' : 'Generate .conf'}
+              {busy ? t('connect_enrolling') : t('connect_generate')}
             </button>
 
-            {error ? <div className="banner error">{error}</div> : null}
+            {error ? (
+              <div className="banner error">
+                {error.kind === 'no-gateway'
+                  ? t('connect_no_gateway_in_country', { country: error.country })
+                  : error.kind === 'rejected'
+                    ? t('error_gateway_rejected', { slug: error.slug, message: error.message })
+                    : (error.message ?? t('connect_error_enroll_failed'))}
+              </div>
+            ) : null}
 
             {result ? (
               <div className="config-out">
@@ -201,29 +210,29 @@ export function ConnectPage({
                   </div>
                   <div className="conf-qr">
                     <Qr value={result.config} size={168} />
-                    <span className="qr-cap mono">Scan into the WireGuard app</span>
+                    <span className="qr-cap mono">{t('connect_qr_caption')}</span>
                   </div>
                 </div>
                 <div className="stat-row">
                   <div className="stat">
-                    <div className="k">Assigned IP</div>
+                    <div className="k">{t('connect_stat_assigned_ip')}</div>
                     <div className="v mono">{result.enroll.assigned_ip}</div>
                   </div>
                   <div className="stat">
-                    <div className="k">Endpoint</div>
+                    <div className="k">{t('connect_stat_endpoint')}</div>
                     <div className="v mono">{result.enroll.endpoint}</div>
                   </div>
                   <div className="stat">
-                    <div className="k">DNS</div>
+                    <div className="k">{t('connect_stat_dns')}</div>
                     <div className="v mono">{result.enroll.dns}</div>
                   </div>
                 </div>
                 <div className="btn-row">
                   <button type="button" className="btn primary" onClick={onDownload}>
-                    Download .conf
+                    {t('connect_download_conf')}
                   </button>
                   <button type="button" className="btn amber" onClick={onNavigateUpgrade}>
-                    Upgrade to full speed →
+                    {t('connect_upgrade_cta')}
                   </button>
                 </div>
               </div>
@@ -235,17 +244,14 @@ export function ConnectPage({
 
         <section className="card ident">
           <div className="card-head">
-            <h2>This device’s identity</h2>
+            <h2>{t('connect_identity_title')}</h2>
             <button type="button" className="btn ghost sm" onClick={onRegenerate}>
-              Regenerate key
+              {t('connect_regenerate')}
             </button>
           </div>
-          <p className="muted-text">
-            One keypair per device enrolls at many gateways; premium follows the key on all of them
-            via the chain. The payment code below is what ties a FLUX payment to this key.
-          </p>
-          <CopyField label="WireGuard public key" value={keypair.publicKey} />
-          {memo ? <CopyField label="Payment code (memo)" value={memo} /> : null}
+          <p className="muted-text">{t('connect_identity_note')}</p>
+          <CopyField label={t('connect_field_public_key')} value={keypair.publicKey} />
+          {memo ? <CopyField label={t('connect_field_payment_code')} value={memo} /> : null}
         </section>
       </div>
     </main>

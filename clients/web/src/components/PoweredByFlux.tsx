@@ -1,3 +1,5 @@
+import { useI18n } from '../hooks/useLocale';
+
 /**
  * "Powered by Flux" — the official Flux lockup (logo + wordmark), linking to
  * runonflux.com. Two art variants are shipped and swapped by theme in CSS
@@ -5,18 +7,19 @@
  * dark. Matches the mobile app's attribution for consistent branding.
  */
 export function PoweredByFlux({ height = 18 }: { height?: number }) {
+  const { t } = useI18n();
   return (
     <a
       className="pbf"
       href="https://runonflux.com"
       target="_blank"
       rel="noreferrer"
-      aria-label="Powered by Flux — opens runonflux.com"
+      aria-label={t('common_powered_by_flux_link')}
     >
       <img
         className="pbf-on-light"
         src="/powered_by_dark.svg"
-        alt="Powered by Flux"
+        alt={t('common_powered_by_flux_alt')}
         height={height}
       />
       <img

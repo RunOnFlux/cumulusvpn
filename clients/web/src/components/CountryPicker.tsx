@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useI18n } from '../hooks/useLocale';
 import type { CountryOption, Health } from '../lib/gateways';
 import { healthOf } from '../lib/gateways';
 
@@ -15,26 +16,29 @@ const DOT_CLASS: Record<Health, string> = {
   unknown: 'u',
 };
 
-function metric(option: CountryOption): string {
-  const health = healthOf(option);
-  if (health === 'unknown' || !option.bestGateway) {
-    return 'seed';
-  }
-  // POC: load stands in for round-trip latency (not measurable in-browser).
-  return `${Math.round(option.bestGateway.load * 100)}%`;
-}
-
-function subline(option: CountryOption): string {
-  if (option.status === 'live') {
-    const noun = option.nodeCount === 1 ? 'node' : 'nodes';
-    return `${option.nodeCount} ${noun}${option.city ? ` · ${option.city}` : ''}`;
-  }
-  return option.city ? `${option.city} · directory` : 'directory';
-}
-
 /** Searchable country list with latency dots and node counts (mockup `.clist`). */
 export function CountryPicker({ options, selectedId, onSelect }: CountryPickerProps) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
+
+  function metric(option: CountryOption): string {
+    const health = healthOf(option);
+    if (health === 'unknown' || !option.bestGateway) {
+      return t('common_seed');
+    }
+    // POC: load stands in for round-trip latency (not measurable in-browser).
+    return `${Math.round(option.bestGateway.load * 100)}%`;
+  }
+
+  function subline(option: CountryOption): string {
+    if (option.status === 'live') {
+      const nodes = t('countries_nodes', { n: option.nodeCount });
+      return option.city ? `${nodes} · ${option.city}` : nodes;
+    }
+    return option.city
+      ? `${option.city} · ${t('common_directory')}`
+      : t('common_directory');
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -54,12 +58,12 @@ export function CountryPicker({ options, selectedId, onSelect }: CountryPickerPr
       <input
         className="searchbar"
         type="search"
-        placeholder={`🔎  Search ${options.length} countries…`}
+        placeholder={t('countries_search_placeholder', { n: options.length })}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        aria-label="Search countries"
+        aria-label={t('countries_search_label')}
       />
-      <div className="clist" role="listbox" aria-label="Countries">
+      <div className="clist" role="listbox" aria-label={t('countries_list_label')}>
         {filtered.map((option) => {
           const selected = option.id === selectedId;
           return (
@@ -82,7 +86,9 @@ export function CountryPicker({ options, selectedId, onSelect }: CountryPickerPr
             </button>
           );
         })}
-        {filtered.length === 0 ? <div className="empty">No countries match “{query}”.</div> : null}
+        {filtered.length === 0 ? (
+          <div className="empty">{t('countries_no_match', { query })}</div>
+        ) : null}
       </div>
     </div>
   );

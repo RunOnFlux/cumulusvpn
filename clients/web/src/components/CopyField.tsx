@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useI18n } from '../hooks/useLocale';
 import { copyText } from '../lib/download';
 
 interface CopyFieldProps {
@@ -8,6 +9,7 @@ interface CopyFieldProps {
 
 /** A labelled, monospaced value with an inline copy affordance (mockup `.field`). */
 export function CopyField({ label, value }: CopyFieldProps) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   const onCopy = async (): Promise<void> => {
@@ -24,7 +26,7 @@ export function CopyField({ label, value }: CopyFieldProps) {
       <div className="val">
         <span>{value}</span>
         <button type="button" className="cp" onClick={onCopy}>
-          {copied ? 'Copied' : 'Copy'}
+          {copied ? t('common_copied') : t('common_copy')}
         </button>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { paymentMemo, walletDeepLink } from '@cumulusvpn/core';
 import type { Directory, Keypair } from '@cumulusvpn/core';
 import { PRICE_USD_APPROX } from '../config';
+import { useI18n } from '../hooks/useLocale';
 import { CopyField } from '../components/CopyField';
 import { Qr } from '../components/Qr';
 
@@ -12,6 +13,7 @@ interface UpgradePageProps {
 }
 
 export function UpgradePage({ keypair, directory, onNavigateConnect }: UpgradePageProps) {
+  const { t, rich } = useI18n();
   const memo = useMemo(() => {
     try {
       return paymentMemo(keypair.publicKey);
@@ -24,7 +26,7 @@ export function UpgradePage({ keypair, directory, onNavigateConnect }: UpgradePa
     return (
       <main className="page">
         <div className="wrap">
-          <div className="loading">Loading payment details…</div>
+          <div className="loading">{t('upgrade_loading')}</div>
         </div>
       </main>
     );
@@ -40,46 +42,40 @@ export function UpgradePage({ keypair, directory, onNavigateConnect }: UpgradePa
     <main className="page">
       <div className="wrap narrow">
         <div className="page-head center">
-          <span className="eyebrow">Upgrade · pay in FLUX</span>
-          <h1>Upgrade to full speed</h1>
-          <p className="lede">
-            Send FLUX with the exact message below. Every gateway scans the chain and unlocks your
-            key within ~1&nbsp;minute — on all servers at once, for 30 days. No account, no card, no
-            company that can hand over what it never had.
-          </p>
+          <span className="eyebrow">{t('upgrade_eyebrow')}</span>
+          <h1>{t('upgrade_title')}</h1>
+          <p className="lede">{t('upgrade_lede')}</p>
         </div>
 
         <section className="card pay-card">
           <div className="amount">
             <div className="big mono">{price_flux} FLUX</div>
-            <div className="usd">≈ {PRICE_USD_APPROX} · per 30 days</div>
+            <div className="usd">{t('upgrade_usd_line', { usd: PRICE_USD_APPROX })}</div>
           </div>
 
           <div className="pay-qr">
             <Qr value={qrLink} size={176} />
-            <span className="qr-cap mono">Scan with Zelcore / SSP Wallet</span>
+            <span className="qr-cap mono">{t('upgrade_qr_caption')}</span>
           </div>
 
-          <CopyField label="Pay to address" value={payment_address} />
-          <CopyField label="Message (required)" value={memo} />
+          <CopyField label={t('upgrade_field_address')} value={payment_address} />
+          <CopyField label={t('upgrade_field_message')} value={memo} />
 
           <div className="btn-row">
             <a className="btn amber block" href={payLink}>
-              Open in wallet
+              {t('upgrade_open_wallet')}
             </a>
           </div>
 
           <p className="pay-note">
-            <strong>Prepay ahead:</strong> pay a multiple of the amount to add that many months at
-            once — e.g. {price_flux * 3} FLUX = 3 months. Extra months stack (up to 24), so you can
-            top up any time.
+            {rich(
+              'upgrade_prepay_note',
+              { strong: (label) => <strong>{label}</strong> },
+              { amount: price_flux * 3 },
+            )}
           </p>
 
-          <p className="pay-note">
-            Opens in Zelcore / SSP Wallet. Payment is verified on the Flux blockchain — we never see
-            who you are. The message ties the payment to your key; sending without it means funds
-            arrive but nothing unlocks.
-          </p>
+          <p className="pay-note">{t('upgrade_privacy_note')}</p>
         </section>
 
         <p className="back-link">
@@ -90,7 +86,7 @@ export function UpgradePage({ keypair, directory, onNavigateConnect }: UpgradePa
               onNavigateConnect();
             }}
           >
-            ← Back to Connect
+            {t('upgrade_back')}
           </a>
         </p>
       </div>
