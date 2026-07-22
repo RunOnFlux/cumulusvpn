@@ -18,6 +18,10 @@ import React
 final class CumulusTunnelModule: RCTEventEmitter {
     private let tunnelBundleId = "com.cumulusvpn.app.PacketTunnel"
     private var manager: NETunnelProviderManager?
+    // Token for the single NEVPNStatusDidChange observer — removed before it is
+    // re-added, so repeated connects don't accumulate duplicate observers (which
+    // would fire N duplicate status events and retain the connection).
+    private var statusObserver: NSObjectProtocol?
 
     override static func requiresMainQueueSetup() -> Bool { false }
 
@@ -131,19 +135,32 @@ final class CumulusTunnelModule: RCTEventEmitter {
         _ resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock
     ) {
-        guard let mgr = manager else { resolve(nil); return }
-        // If the kill switch (on-demand) is on, iOS re-dials the tunnel the moment
-        // we stop it — so disable on-demand and save before tearing down.
-        if mgr.isOnDemandEnabled {
+        // ensureManager (not `manager`) so a tunnel started before an app relaunch
+        // can still be torn down — otherwise stop silently no-ops and, with the
+        // kill switch armed, the user has no in-app way to disconnect.
+        ensureManager { mgr in
+            guard let mgr else {
+                resolve(nil)
+                return
+            }
+            guard mgr.isOnDemandEnabled else {
+                mgr.connection.stopVPNTunnel()
+                resolve(nil)
+                return
+            }
+            // Kill switch on: disable on-demand + SAVE before tearing down, else
+            // iOS re-dials the moment we stop. If the save fails, on-demand is
+            // still armed — surface it rather than pretend we disconnected.
             mgr.isOnDemandEnabled = false
             mgr.onDemandRules = []
-            mgr.saveToPreferences { _ in
+            mgr.saveToPreferences { err in
+                if let err {
+                    reject("E_STOP", "Could not disable always-on: \(err.localizedDescription)", err)
+                    return
+                }
                 mgr.connection.stopVPNTunnel()
                 resolve(nil)
             }
-        } else {
-            mgr.connection.stopVPNTunnel()
-            resolve(nil)
         }
     }
 
@@ -169,29 +186,34 @@ final class CumulusTunnelModule: RCTEventEmitter {
         _ resolve: @escaping RCTPromiseResolveBlock,
         rejecter reject: @escaping RCTPromiseRejectBlock
     ) {
-        let conn = manager?.connection
-        let state = conn?.status ?? .invalid
-        guard state == .connected, let session = conn as? NETunnelProviderSession else {
-            resolve(Self.statusPayload(from: state))
-            return
-        }
-        do {
-            try session.sendProviderMessage(Data([0x01])) { reply in
-                var rx: Int64 = 0
-                var tx: Int64 = 0
-                var hs: Int64 = 0
-                if let reply, let csv = String(data: reply, encoding: .utf8) {
-                    let p = csv.split(separator: ",")
-                    if p.count == 3 {
-                        rx = Int64(p[0]) ?? 0
-                        tx = Int64(p[1]) ?? 0
-                        hs = Int64(p[2]) ?? 0
-                    }
-                }
-                resolve(Self.statusPayload(from: .connected, rx: rx, tx: tx, handshake: hs))
+        // ensureManager so a tunnel that came up before this app launch is
+        // reported as connected (and its status events start flowing), instead of
+        // showing "disconnected" over a live tunnel.
+        ensureManager { mgr in
+            let conn = mgr?.connection
+            let state = conn?.status ?? .invalid
+            guard state == .connected, let session = conn as? NETunnelProviderSession else {
+                resolve(Self.statusPayload(from: state))
+                return
             }
-        } catch {
-            resolve(Self.statusPayload(from: state))
+            do {
+                try session.sendProviderMessage(Data([0x01])) { reply in
+                    var rx: Int64 = 0
+                    var tx: Int64 = 0
+                    var hs: Int64 = 0
+                    if let reply, let csv = String(data: reply, encoding: .utf8) {
+                        let p = csv.split(separator: ",")
+                        if p.count == 3 {
+                            rx = Int64(p[0]) ?? 0
+                            tx = Int64(p[1]) ?? 0
+                            hs = Int64(p[2]) ?? 0
+                        }
+                    }
+                    resolve(Self.statusPayload(from: .connected, rx: rx, tx: tx, handshake: hs))
+                }
+            } catch {
+                resolve(Self.statusPayload(from: state))
+            }
         }
     }
 
@@ -297,8 +319,34 @@ final class CumulusTunnelModule: RCTEventEmitter {
         }
     }
 
+    /// The cached tunnel manager, loading it from saved preferences if we don't
+    /// have one yet — e.g. after the app is killed and relaunched while the tunnel
+    /// is still up. Attaches the status observer to a manager we didn't start this
+    /// launch so events flow and stop works. `nil` = no VPN configuration exists.
+    /// Unlike loadOrCreateManager, this never fabricates an empty manager.
+    private func ensureManager(_ completion: @escaping (NETunnelProviderManager?) -> Void) {
+        if let mgr = manager {
+            completion(mgr)
+            return
+        }
+        NETunnelProviderManager.loadAllFromPreferences { [weak self] managers, _ in
+            guard let self else {
+                completion(nil)
+                return
+            }
+            self.manager = managers?.first
+            if let conn = self.manager?.connection {
+                self.observe(conn)
+            }
+            completion(self.manager)
+        }
+    }
+
     private func observe(_ connection: NEVPNConnection) {
-        NotificationCenter.default.addObserver(
+        if let existing = statusObserver {
+            NotificationCenter.default.removeObserver(existing)
+        }
+        statusObserver = NotificationCenter.default.addObserver(
             forName: .NEVPNStatusDidChange,
             object: connection,
             queue: .main
