@@ -325,6 +325,21 @@ header.top {
   color: var(--ink);
   border-color: var(--cyan);
 }
+.lang-select {
+  font: inherit;
+  font-size: 12px;
+  height: 30px;
+  padding: 0 8px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.lang-select:hover {
+  color: var(--ink);
+  border-color: var(--cyan);
+}
 
 /* ---- page scaffolding ---- */
 .page {

@@ -1,5 +1,8 @@
 import type { Route } from '../hooks/useRoute';
 import type { ThemeMode } from '../hooks/useTheme';
+import { useI18n } from '../hooks/useLocale';
+import { LOCALE_NAMES, SUPPORTED_LOCALES } from '../i18n';
+import type { Locale, MessageKey } from '../i18n';
 import { PoweredByFlux } from './PoweredByFlux';
 
 interface HeaderProps {
@@ -15,8 +18,16 @@ const THEME_ICON: Record<ThemeMode, string> = {
   dark: '☾',
 };
 
-/** Sticky top bar: brand mark, page nav, Flux badge, theme toggle. */
+const THEME_MODE_KEY: Record<ThemeMode, MessageKey> = {
+  system: 'header_theme_system',
+  light: 'header_theme_light',
+  dark: 'header_theme_dark',
+};
+
+/** Sticky top bar: brand mark, page nav, language picker, Flux badge, theme toggle. */
 export function Header({ route, onNavigate, themeMode, onToggleTheme }: HeaderProps) {
+  const { t, locale, setLocale } = useI18n();
+  const themeTitle = t('header_theme_label', { mode: t(THEME_MODE_KEY[themeMode]) });
   return (
     <header className="top">
       <div className="wrap">
@@ -53,7 +64,7 @@ export function Header({ route, onNavigate, themeMode, onToggleTheme }: HeaderPr
               onNavigate('connect');
             }}
           >
-            Connect
+            {t('header_nav_connect')}
           </a>
           <a
             href="#/upgrade"
@@ -63,17 +74,29 @@ export function Header({ route, onNavigate, themeMode, onToggleTheme }: HeaderPr
               onNavigate('upgrade');
             }}
           >
-            Upgrade
+            {t('header_nav_upgrade')}
           </a>
         </nav>
 
         <div className="top-right">
+          <select
+            className="lang-select"
+            value={locale}
+            onChange={(e) => setLocale(e.target.value as Locale)}
+            aria-label={t('header_language_label')}
+          >
+            {SUPPORTED_LOCALES.map((l) => (
+              <option key={l} value={l}>
+                {LOCALE_NAMES[l]}
+              </option>
+            ))}
+          </select>
           <button
             type="button"
             className="theme-toggle"
             onClick={onToggleTheme}
-            aria-label={`Theme: ${themeMode}`}
-            title={`Theme: ${themeMode}`}
+            aria-label={themeTitle}
+            title={themeTitle}
           >
             {THEME_ICON[themeMode]}
           </button>
