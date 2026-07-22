@@ -11,8 +11,8 @@
 
 ## 0. Blockers first (fix these or the app does not ship)
 
-1. ⚠️ **iPhone screenshots DONE (real iOS captures); iPad set still missing** (updated
-   2026-07-22). The placeholder problem is **resolved**: all three iPhone slots —
+1. ✅ **All iOS screenshots DONE (real captures — iPhone + iPad)** (updated 2026-07-22). The
+   placeholder problem is **resolved**: all three iPhone slots —
    **6.9" 1320×2868**, 6.7" 1290×2796, 6.5" 1242×2688 (`store/assets/screenshots/ios/`) — are
    now genuine iOS captures from a **Release build on the iOS 18.6 Simulator (iPhone 16 Pro
    Max)**, framed in the official Apple bezel, with the canonical 9:41 marketing status bar.
@@ -21,9 +21,11 @@
      Simulator. Uploadable and truthful as-is (the "One tap. Encrypted." headline reads
      correctly against the tap-to-connect orb), but a **connected** hero frame captured on a
      physical iPhone would be materially stronger marketing.
-   - The app is **universal** (`TARGETED_DEVICE_FAMILY "1,2"`), so a **13" iPad (2064×2752)**
-     set is still required and does not exist. → Capture one, *or* drop iPad support
-     (`TARGETED_DEVICE_FAMILY "1"`) to remove the requirement entirely.
+   - **13" iPad set — DONE** (2026-07-22). Four real captures at **2064×2752** from a Release
+     build on the iPad Pro 13-inch (M4) Simulator (`store/assets/screenshots/ios/ipad-13/`,
+     raws in `raw/ios-ipad/`). **Unframed** — the compositor has no iPad bezel, and Apple
+     accepts unframed screenshots at exact display resolution. Same disconnected-hero caveat as
+     iPhone. This satisfies the universal-app iPad requirement.
 2. ✅ **Privacy Policy & Support pages LIVE** (blocker cleared, verified 2026-07-21).
    <https://cumulusvpn.com/privacy> serves the full policy (last updated 16 Jul 2026);
    <https://cumulusvpn.com/support> serves the FAQ + contact channels. Both are hard requirements
@@ -147,7 +149,8 @@
   6.7"), 6.7" 1290×2796 and 6.5" 1242×2688 are all **real iOS captures**, correctly framed and
   verified at exact dimensions (see §0.1 for the disconnected-hero caveat). (Repo's
   `assets-checklist.md` still says "6.7" required" — outdated; 6.9" is the base.)
-- [ ] ⚠️ **13" iPad (2064×2752) set still missing** — required while the app is universal.
+- [x] ✅ **13" iPad (2064×2752) set** — 4 real captures in `ios/ipad-13/`, unframed at exact
+  resolution (Apple-accepted). Satisfies the universal-app requirement (see §0.1).
 - [ ] ⬜ App preview video (optional, 15–30s).
 
 ## 7. Pre-submission verification
