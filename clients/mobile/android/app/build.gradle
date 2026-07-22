@@ -82,8 +82,11 @@ android {
         applicationId "com.cumulusvpn.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0.0"
+        // Overridable from CI (-PcvpnVersionCode / -PcvpnVersionName) so each Play
+        // upload gets a strictly-increasing versionCode; defaults keep local dev
+        // builds working. See .github/workflows/android-release.yml.
+        versionCode((project.findProperty("cvpnVersionCode") ?: "1").toString().toInteger())
+        versionName((project.findProperty("cvpnVersionName") ?: "1.0.0").toString())
     }
     signingConfigs {
         debug {

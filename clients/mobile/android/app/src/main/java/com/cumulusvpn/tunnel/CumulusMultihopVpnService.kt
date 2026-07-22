@@ -1,9 +1,15 @@
 package com.cumulusvpn.tunnel
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.net.VpnService
+import android.os.Build
 import android.os.ParcelFileDescriptor
 import android.util.Log
+import androidx.core.app.NotificationCompat
+import androidx.core.app.ServiceCompat
 import com.cumulusvpn.wgnest.wgmobile.Wgmobile
 import java.net.InetAddress
 
@@ -31,22 +37,44 @@ class CumulusMultihopVpnService : VpnService() {
     @Volatile
     private var handle: Long = 0
 
+    // Set by ACTION_STOP; checked right after Wgmobile.start so a stop that lands
+    // while connect() is still running on the worker thread doesn't leave an
+    // orphaned tunnel (teardown() would see handle==0 and no-op, then start
+    // completes with the service already stopped).
+    @Volatile
+    private var stopRequested = false
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                stopRequested = true
                 teardown()
                 stopSelf()
                 return START_NOT_STICKY
             }
             else -> {
                 val startIntent = intent ?: return START_NOT_STICKY
+                stopRequested = false
+                // Run as a foreground service so the OS won't kill the process (and
+                // silently drop the tunnel) under memory pressure / doze. Must be
+                // called promptly after start; the notification also makes the
+                // active VPN visible, as platform policy expects.
+                startForegroundNotification()
                 // Bring the nested tunnel up OFF the main thread: it wraps the tun
                 // fd and starts two wireguard-go devices via JNI, which must not
                 // block the main looper (ANR / process freeze).
                 Thread {
                     try {
                         connect(startIntent)
-                        CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_CONNECTED)
+                        if (stopRequested) {
+                            // A stop raced in during connect — tear the just-started
+                            // tunnel down cleanly instead of leaving it orphaned.
+                            teardown()
+                            CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_DISCONNECTED)
+                            stopSelf()
+                        } else {
+                            CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_CONNECTED)
+                        }
                     } catch (t: Throwable) {
                         Log.e(TAG, "multihop connect failed", t)
                         teardown()
@@ -80,6 +108,16 @@ class CumulusMultihopVpnService : VpnService() {
         // outer device's real socket to the entry bypasses the VPN (no loop).
         for ((net, prefix) in routesExcluding(entryIp)) {
             builder.addRoute(net, prefix)
+        }
+        // Capture ALL IPv6 into the tun as well. The tun has no IPv6 address, so
+        // v6 packets have nowhere to go and are dropped — but critically they do
+        // NOT bypass the VPN over the underlying network (the classic IPv6 leak
+        // for a privacy VPN). Single-hop gets this for free from wireguard-android
+        // applying the config's `::/0`; the nested builder must add it explicitly.
+        try {
+            builder.addRoute("::", 0)
+        } catch (t: Throwable) {
+            Log.w(TAG, "could not add IPv6 blackhole route", t)
         }
 
         val pfd = builder.establish()
@@ -117,6 +155,33 @@ class CumulusMultihopVpnService : VpnService() {
         } catch (_: Throwable) {
         }
         tun = null
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+    }
+
+    /** Promote to a foreground service with an ongoing "VPN active" notification. */
+    private fun startForegroundNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val ch = NotificationChannel(
+                NOTIF_CHANNEL,
+                "VPN status",
+                NotificationManager.IMPORTANCE_LOW,
+            )
+            getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
+        }
+        val notif = NotificationCompat.Builder(this, NOTIF_CHANNEL)
+            .setContentTitle("CumulusVPN")
+            .setContentText("Multi-hop tunnel active")
+            .setSmallIcon(applicationInfo.icon)
+            .setOngoing(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .build()
+        val type =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE
+            } else {
+                0
+            }
+        ServiceCompat.startForeground(this, NOTIF_ID, notif, type)
     }
 
     override fun onDestroy() {
@@ -135,6 +200,8 @@ class CumulusMultihopVpnService : VpnService() {
 
     companion object {
         private const val TAG = "CumulusMultihop"
+        private const val NOTIF_CHANNEL = "cumulusvpn.vpn"
+        private const val NOTIF_ID = 1001
 
         const val ACTION_START = "com.cumulusvpn.multihop.START"
         const val ACTION_STOP = "com.cumulusvpn.multihop.STOP"

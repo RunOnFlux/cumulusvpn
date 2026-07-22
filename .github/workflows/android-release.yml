@@ -78,10 +78,17 @@ jobs:
           SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
         run: |
+          # versionName from the tag (mobile-v1.2.3 → 1.2.3); versionCode from the
+          # monotonic run number so every Play upload has a strictly-increasing code
+          # even when the same tag is re-cut. Manual runs default the name to 0.0.0.
+          ver="${GITHUB_REF_NAME#mobile-v}"
+          [ "$ver" = "${GITHUB_REF_NAME}" ] && ver="0.0.0"
+          code="${{ github.run_number }}"
+          echo "versionName=$ver versionCode=$code"
           ./gradlew clean
           ./gradlew generateCodegenArtifactsFromSchema --rerun-tasks
-          ./gradlew assembleRelease
-          ./gradlew bundleRelease
+          ./gradlew assembleRelease -PcvpnVersionName="$ver" -PcvpnVersionCode="$code"
+          ./gradlew bundleRelease -PcvpnVersionName="$ver" -PcvpnVersionCode="$code"
 
       # Rename to clear, versioned filenames so every download is self-describing
       # (CumulusVPN-1.0.0.apk / CumulusVPN-1.0.0.aab) instead of "app-release.*".

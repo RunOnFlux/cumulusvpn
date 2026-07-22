@@ -2,9 +2,13 @@
 # Build the wgnest multi-hop core into an Android AAR (wgmobile.aar) and drop it
 # where the mobile app's gradle build consumes it (clients/mobile/android/app/libs).
 #
-# The AAR bundles libgojni.so for arm64-v8a + x86_64 and the generated
-# com.cumulusvpn.wgnest.wgmobile.Wgmobile Java binding. It is a build artifact
-# (gitignored); run this before building the Android app, in CI and locally.
+# The AAR bundles libgojni.so for all four ABIs the RN app ships (arm64-v8a,
+# armeabi-v7a, x86_64, x86 — see clients/mobile/android/gradle.properties
+# reactNativeArchitectures) plus the generated com.cumulusvpn.wgnest.wgmobile.Wgmobile
+# Java binding. Missing an ABI here means a device with the RN .so but no wgnest
+# .so throws UnsatisfiedLinkError on the first multi-hop start (or, via AAB
+# splits, never receives the lib). It is a gitignored build artifact; run this
+# before building the Android app, in CI and locally.
 #
 # Requirements: Go >= 1.23, an Android NDK, ANDROID_HOME (or ANDROID_NDK_HOME).
 set -euo pipefail
@@ -39,7 +43,7 @@ out="$here/../../mobile/android/app/libs/wgmobile.aar"
 mkdir -p "$(dirname "$out")"
 echo "building $out …"
 gomobile bind \
-  -target=android/arm64,android/amd64 \
+  -target=android/arm64,android/arm,android/amd64,android/386 \
   -androidapi 24 \
   -javapkg com.cumulusvpn.wgnest \
   -o "$out" \
