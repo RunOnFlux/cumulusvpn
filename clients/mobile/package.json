@@ -1,6 +1,6 @@
 {
   "name": "@cumulusvpn/mobile",
-  "version": "0.1.0",
+  "version": "1.0.2",
   "private": true,
   "description": "CumulusVPN mobile client — React Native (iOS + Android). Connect-only store-compliant build; shares @cumulusvpn/core for discovery, enrollment, status and payment-code logic.",
   "license": "MIT",

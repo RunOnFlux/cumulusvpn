@@ -11,8 +11,10 @@ import { Toggle } from '../components/Toggle';
 import { formatExpiry } from './UpgradeScreen';
 import { color, font, radius, space } from '../theme/tokens';
 
-/** App version — matches the release tag; single source is package.json. */
-const APP_VERSION = '0.1.0';
+/** App version — Babel inlines this from package.json at build time (see
+ *  babel.config.js), so the About row never drifts from the shipped release
+ *  (bump package.json on release) without bundling the dependency manifest. */
+const APP_VERSION = __APP_VERSION__;
 const SITE_URL = 'https://cumulusvpn.com';
 // Both stores require the privacy policy to be reachable from INSIDE the app,
 // not only from the store listing. Support is Apple's required support URL.
