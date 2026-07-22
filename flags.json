@@ -1,7 +1,7 @@
 {
-  "_comment": "DEFAULT SEED / documentation only. Live per-platform flags are now managed in the internal dashboard (Cloudflare KV, edited at https://dashboard.cumulusvpn.com/admin) and served at https://dashboard.cumulusvpn.com/api/flags, which the app fetches at launch. Seed KV once from this file (values below, without _comment). If the app can't fetch flags, every flag defaults to OFF (safe / store-compliant).",
+  "_comment": "DEFAULT SEED / documentation only. Live per-platform flags are managed in the internal dashboard (Cloudflare KV, edited at https://dashboard.cumulusvpn.com/admin) and served at https://dashboard.cumulusvpn.com/api/flags, which the app fetches at launch. Both platforms are OFF: the in-app FLUX crypto purchase UI is a store-policy violation (Apple 3.1.1 / Google Play Payments), so store builds MUST keep this OFF — the app then shows the store-compliant 'manage on the web' copy. Enable only for direct-APK / off-store builds, and never for a build under or past store review (a post-review behavior change is itself a violation). If the app can't fetch flags it fails closed to OFF anyway. Seed KV from this file (values below, without _comment).",
   "inAppUpgrade": {
-    "android": true,
-    "ios": true
+    "android": false,
+    "ios": false
   }
 }
