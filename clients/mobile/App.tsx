@@ -16,14 +16,38 @@ import { ConnectScreen } from './src/screens/ConnectScreen';
 import { CountryPickerScreen } from './src/screens/CountryPickerScreen';
 import { UpgradeScreen } from './src/screens/UpgradeScreen';
 import { SettingsScreen } from './src/screens/SettingsScreen';
+import { DisclosureScreen } from './src/screens/DisclosureScreen';
+import { loadDisclosureAck, saveDisclosureAck } from './src/state/storage';
 import { color } from './src/theme/tokens';
 
-type Route = 'connect' | 'countries' | 'upgrade' | 'entry' | 'exit' | 'settings';
+type Route = 'connect' | 'countries' | 'upgrade' | 'entry' | 'exit' | 'settings' | 'privacy';
 
 function App(): React.JSX.Element {
   const vpn = useVpn();
   const flags = useFlags();
   const [route, setRoute] = useState<Route>('connect');
+  // App Store 5.4: the data disclosure must be seen BEFORE the service is used,
+  // so it gates the whole UI on first launch. `null` = still reading the ack
+  // from storage; we hold on the boot view rather than flash the gate at a user
+  // who already accepted.
+  const [disclosed, setDisclosed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    void loadDisclosureAck().then((ack) => {
+      if (alive) {
+        setDisclosed(ack);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const acceptDisclosure = (): void => {
+    setDisclosed(true);
+    void saveDisclosureAck();
+  };
 
   // Android hardware back: from any sub-screen, return to Connect instead of
   // closing the app; on Connect, fall through to the default (exit).
@@ -45,7 +69,15 @@ function App(): React.JSX.Element {
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
         <View style={styles.screen}>
-          {vpn.booting && vpn.countries.length === 0 ? (
+          {disclosed === null ? (
+            <View style={styles.boot}>
+              <View style={styles.bootCenter}>
+                <ActivityIndicator color={color.cyan} />
+              </View>
+            </View>
+          ) : !disclosed ? (
+            <DisclosureScreen onAccept={acceptDisclosure} />
+          ) : vpn.booting && vpn.countries.length === 0 ? (
             <View style={styles.boot}>
               <View style={styles.bootCenter}>
                 <ActivityIndicator color={color.cyan} />
@@ -100,11 +132,14 @@ function App(): React.JSX.Element {
               inAppUpgrade={flags.inAppUpgrade}
               onClose={() => setRoute('connect')}
             />
+          ) : route === 'privacy' ? (
+            <DisclosureScreen onClose={() => setRoute('settings')} />
           ) : route === 'settings' ? (
             <SettingsScreen
               vpn={vpn}
               onClose={() => setRoute('connect')}
               onOpenUpgrade={() => setRoute('upgrade')}
+              onOpenPrivacy={() => setRoute('privacy')}
             />
           ) : (
             <ConnectScreen

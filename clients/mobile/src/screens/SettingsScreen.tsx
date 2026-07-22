@@ -14,14 +14,25 @@ import { color, font, radius, space } from '../theme/tokens';
 /** App version — matches the release tag; single source is package.json. */
 const APP_VERSION = '0.1.0';
 const SITE_URL = 'https://cumulusvpn.com';
+// Both stores require the privacy policy to be reachable from INSIDE the app,
+// not only from the store listing. Support is Apple's required support URL.
+const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+const SUPPORT_URL = 'https://cumulusvpn.com/support';
 
 interface Props {
   readonly vpn: VpnModel & VpnActions;
   readonly onClose: () => void;
   readonly onOpenUpgrade: () => void;
+  /** Re-open the 5.4 data disclosure (also shown as a first-run gate). */
+  readonly onOpenPrivacy: () => void;
 }
 
-export function SettingsScreen({ vpn, onClose, onOpenUpgrade }: Props): React.JSX.Element {
+export function SettingsScreen({
+  vpn,
+  onClose,
+  onOpenUpgrade,
+  onOpenPrivacy,
+}: Props): React.JSX.Element {
   const premium = vpn.tier === 'premium';
   const expiry = formatExpiry(vpn.paidUntil);
   return (
@@ -71,6 +82,33 @@ export function SettingsScreen({ vpn, onClose, onOpenUpgrade }: Props): React.JS
           value={vpn.killSwitch}
           onValueChange={(v) => void vpn.setKillSwitch(v)}
         />
+
+        <Text style={styles.section}>Privacy &amp; support</Text>
+        <Pressable
+          style={styles.linkRow}
+          onPress={onOpenPrivacy}
+          accessibilityRole="button"
+          accessibilityLabel="What data CumulusVPN collects and how it is used"
+        >
+          <Text style={styles.linkText}>What data we collect</Text>
+          <Text style={styles.chev}>›</Text>
+        </Pressable>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => void Linking.openURL(PRIVACY_URL)}
+          accessibilityRole="link"
+        >
+          <Text style={styles.linkText}>Privacy Policy</Text>
+          <Text style={styles.chev}>›</Text>
+        </Pressable>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => void Linking.openURL(SUPPORT_URL)}
+          accessibilityRole="link"
+        >
+          <Text style={styles.linkText}>Support</Text>
+          <Text style={styles.chev}>›</Text>
+        </Pressable>
 
         <Text style={styles.section}>About</Text>
         <InfoRow label="Version" value={`CumulusVPN ${APP_VERSION}`} />

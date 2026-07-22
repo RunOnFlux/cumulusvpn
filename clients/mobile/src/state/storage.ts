@@ -27,6 +27,7 @@ const K = {
   exitCountry: 'cvpn:exitCountry',
   fleet: 'cvpn:fleet',
   activeRoute: 'cvpn:activeRoute',
+  disclosure: 'cvpn:disclosureAck',
 } as const;
 
 /** The route of the live tunnel, persisted so a force-quit + relaunch can still
@@ -57,6 +58,16 @@ export async function loadActiveRoute(): Promise<PersistedRoute | null> {
     return null;
   }
 }
+
+/**
+ * Version of the pre-connection data disclosure the user last acknowledged.
+ *
+ * App Store Guideline 5.4 requires VPN apps to declare what data is collected
+ * and how it is used on a screen shown BEFORE the service is used — a linked
+ * policy is explicitly not sufficient. Bump this whenever the substance of that
+ * declaration changes so the screen is shown again.
+ */
+export const DISCLOSURE_VERSION = '1';
 
 /** The route styles a user may persist (mirrors core `RouteStyle`). */
 const ROUTE_STYLES: readonly RouteStyle[] = [
@@ -123,6 +134,16 @@ export async function loadAutoConnect(): Promise<boolean> {
 /** Persist the auto-connect-on-launch preference. */
 export async function saveAutoConnect(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(K.autoConnect, enabled ? '1' : '0');
+}
+
+/** True once the user has acknowledged the CURRENT disclosure version. */
+export async function loadDisclosureAck(): Promise<boolean> {
+  return (await AsyncStorage.getItem(K.disclosure)) === DISCLOSURE_VERSION;
+}
+
+/** Record that the user acknowledged the current disclosure version. */
+export async function saveDisclosureAck(): Promise<void> {
+  await AsyncStorage.setItem(K.disclosure, DISCLOSURE_VERSION);
 }
 
 /** Load the set of favorited (pinned) country codes. */
