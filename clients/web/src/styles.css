@@ -721,7 +721,7 @@ header.top {
   border: 1px solid transparent;
   background: var(--surface-2);
   cursor: pointer;
-  text-align: left;
+  text-align: start;
   font: inherit;
   color: var(--ink);
   width: 100%;
@@ -741,12 +741,15 @@ header.top {
 .crow.sel::before {
   content: "";
   position: absolute;
-  left: 0;
+  inset-inline-start: 0;
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
   height: 22px;
-  border-radius: 0 3px 3px 0;
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  border-start-end-radius: 3px;
+  border-end-end-radius: 3px;
   background: var(--grad);
 }
 .crow .flag {
@@ -1126,4 +1129,21 @@ footer .wrap {
       transform: none;
     }
   }
+}
+
+/* ---- RTL (ar, fa) ---- */
+/* Technical values are always LTR: configs, keys, addresses, endpoints,
+   filenames. Isolate them so they embed cleanly in RTL sentences. */
+[dir='rtl'] .mono,
+[dir='rtl'] .conf,
+[dir='rtl'] .val,
+[dir='rtl'] .fname,
+[dir='rtl'] .src-pill {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+/* Decorative arrows point "forward"; mirror them when the flow mirrors. */
+[dir='rtl'] .mh-arrow,
+[dir='rtl'] .mh-route-arrow {
+  transform: scaleX(-1);
 }
