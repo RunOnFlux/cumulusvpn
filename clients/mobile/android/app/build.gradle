@@ -86,7 +86,7 @@ android {
         // upload gets a strictly-increasing versionCode; defaults keep local dev
         // builds working. See .github/workflows/android-release.yml.
         versionCode((project.findProperty("cvpnVersionCode") ?: "1").toString().toInteger())
-        versionName((project.findProperty("cvpnVersionName") ?: "1.0.0").toString())
+        versionName((project.findProperty("cvpnVersionName") ?: "1.0.2").toString())
     }
     signingConfigs {
         debug {
