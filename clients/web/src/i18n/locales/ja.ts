@@ -59,7 +59,7 @@ export const ja: Catalog = {
   connect_identity_title: 'このデバイスの識別情報',
   connect_regenerate: '鍵を再生成',
   connect_identity_note:
-    'デバイスごとの鍵ペアは複数のゲートウェイに登録できます。プレミアムは chain を通じて、その鍵が使われるすべてのゲートウェイに適用されます。下記の支払いコードが、FLUX の支払いをこの鍵に結びつけます。',
+    'デバイスごとの鍵ペアは複数のゲートウェイに登録できます。プレミアムはチェーンを通じて、その鍵が使われるすべてのゲートウェイに適用されます。下記の支払いコードが、FLUX の支払いをこの鍵に結びつけます。',
   connect_field_public_key: 'WireGuard 公開鍵',
   connect_field_payment_code: '支払いコード（メモ）',
 
@@ -67,7 +67,7 @@ export const ja: Catalog = {
   upgrade_eyebrow: 'アップグレード · FLUX で支払う',
   upgrade_title: 'フルスピードにアップグレード',
   upgrade_lede:
-    '下記のメッセージをそのまま添えて FLUX を送金してください。各ゲートウェイが chain をスキャンし、~1 分ほどで鍵のロックを解除します — すべてのサーバーで同時に、30 日間有効です。アカウントもカードも不要で、持ってもいないものを引き渡せる会社もありません。',
+    '下記のメッセージをそのまま添えて FLUX を送金してください。各ゲートウェイがチェーンをスキャンし、~1 分ほどで鍵のロックを解除します — すべてのサーバーで同時に、30 日間有効です。アカウントもカードも不要で、持ってもいないものを引き渡せる会社もありません。',
   upgrade_usd_line: '≈ {usd} · 30 日ごと',
   upgrade_qr_caption: 'Zelcore / SSP Wallet で読み取り',
   upgrade_field_address: '送金先アドレス',

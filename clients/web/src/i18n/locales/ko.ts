@@ -58,7 +58,7 @@ export const ko: Catalog = {
   connect_identity_title: '이 기기의 신원',
   connect_regenerate: '키 재생성',
   connect_identity_note:
-    '기기당 하나의 키 쌍으로 여러 게이트웨이에 등록할 수 있으며, 프리미엄은 chain을 통해 그 키가 쓰이는 모든 게이트웨이에 함께 적용됩니다. 아래 결제 코드가 FLUX 결제를 이 키와 연결해 줍니다.',
+    '기기당 하나의 키 쌍으로 여러 게이트웨이에 등록할 수 있으며, 프리미엄은 체인을 통해 그 키가 쓰이는 모든 게이트웨이에 함께 적용됩니다. 아래 결제 코드가 FLUX 결제를 이 키와 연결해 줍니다.',
   connect_field_public_key: 'WireGuard 공개 키',
   connect_field_payment_code: '결제 코드 (메모)',
 
@@ -66,7 +66,7 @@ export const ko: Catalog = {
   upgrade_eyebrow: '업그레이드 · FLUX로 결제',
   upgrade_title: '전체 속도로 업그레이드',
   upgrade_lede:
-    '아래의 정확한 메시지와 함께 FLUX를 보내세요. 각 게이트웨이가 chain을 스캔해 ~1 분 안에 키를 잠금 해제하며 — 모든 서버에서 동시에, 30일 동안 적용됩니다. 계정도, 카드도, 가진 적 없는 것을 내줄 수 있는 회사도 필요 없습니다.',
+    '아래의 정확한 메시지와 함께 FLUX를 보내세요. 각 게이트웨이가 체인을 스캔해 ~1 분 안에 키를 잠금 해제하며 — 모든 서버에서 동시에, 30일 동안 적용됩니다. 계정도, 카드도, 가진 적 없는 것을 내줄 수 있는 회사도 필요 없습니다.',
   upgrade_usd_line: '≈ {usd} · 30일마다',
   upgrade_qr_caption: 'Zelcore / SSP Wallet으로 스캔',
   upgrade_field_address: '결제 주소',
