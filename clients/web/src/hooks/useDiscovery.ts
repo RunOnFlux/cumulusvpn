@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { discoverGateways } from '@cumulusvpn/core';
 import type { Directory, GatewayInfo } from '@cumulusvpn/core';
 import { resolveDirectory } from '../lib/directory';
@@ -6,6 +6,10 @@ import type { DirectorySource } from '../lib/directory';
 import { buildCountryOptions } from '../lib/gateways';
 import type { CountryOption } from '../lib/gateways';
 import { proxiedFetch } from '../lib/gatewayFetch';
+import type { Locale } from '../i18n';
+
+/** Stable notice codes; the UI maps them to catalog messages. */
+export type DiscoveryNotice = 'no-live-gateway';
 
 export interface DiscoveryState {
   readonly loading: boolean;
@@ -15,30 +19,39 @@ export interface DiscoveryState {
   readonly options: CountryOption[];
   readonly gateways: GatewayInfo[];
   /** Non-null when no live gateway could be probed (browser sandbox / cold net). */
-  readonly notice: string | null;
+  readonly notice: DiscoveryNotice | null;
 }
 
-const INITIAL: DiscoveryState = {
+interface RawDiscovery {
+  readonly loading: boolean;
+  readonly directory: Directory | null;
+  readonly source: DirectorySource | null;
+  readonly verified: boolean;
+  readonly gateways: GatewayInfo[];
+  readonly notice: DiscoveryNotice | null;
+}
+
+const INITIAL: RawDiscovery = {
   loading: true,
   directory: null,
   source: null,
   verified: false,
-  options: [],
   gateways: [],
   notice: null,
 };
 
 /**
  * Resolve the signed directory, then discover live gateways from the Flux
- * network and fold them into a country list. Runs once on mount.
+ * network. The network work runs once on mount; the country options re-derive
+ * whenever the UI locale changes (names and sort order are locale-aware).
  *
  * POC: browsers block probing plain-http gateways from an https page (mixed
  * content) and most Flux endpoints send no CORS headers, so live discovery
  * usually returns nothing here — the list then reflects the directory's spec
  * countries as `seed` rows. The desktop/mobile clients (same core) probe freely.
  */
-export function useDiscovery(): DiscoveryState {
-  const [state, setState] = useState<DiscoveryState>(INITIAL);
+export function useDiscovery(locale: Locale): DiscoveryState {
+  const [raw, setRaw] = useState<RawDiscovery>(INITIAL);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,18 +72,13 @@ export function useDiscovery(): DiscoveryState {
         return;
       }
 
-      const options = buildCountryOptions(directory.specs, gateways);
-      setState({
+      setRaw({
         loading: false,
         directory,
         source,
         verified,
-        options,
         gateways,
-        notice:
-          gateways.length === 0
-            ? 'No live gateway reachable from the browser. Showing the signed directory’s countries — configs enroll against a live gateway when one is reachable.'
-            : null,
+        notice: gateways.length === 0 ? 'no-live-gateway' : null,
       });
     })();
 
@@ -79,5 +87,10 @@ export function useDiscovery(): DiscoveryState {
     };
   }, []);
 
-  return state;
+  const options = useMemo(
+    () => (raw.directory ? buildCountryOptions(raw.directory.specs, raw.gateways, locale) : []),
+    [raw.directory, raw.gateways, locale],
+  );
+
+  return { ...raw, options };
 }

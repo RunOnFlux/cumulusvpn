@@ -3,6 +3,7 @@ import { ApiError, buildWgConfig, enroll, paymentMemo } from '@cumulusvpn/core';
 import type { EnrollResponse, Keypair } from '@cumulusvpn/core';
 import type { CountryOption } from '../lib/gateways';
 import type { DiscoveryState } from '../hooks/useDiscovery';
+import { useI18n } from '../hooks/useLocale';
 import { downloadText } from '../lib/download';
 import { proxiedFetch } from '../lib/gatewayFetch';
 import { CountryPicker } from '../components/CountryPicker';
@@ -29,6 +30,7 @@ export function ConnectPage({
   onRegenerate,
   onNavigateUpgrade,
 }: ConnectPageProps) {
+  const { t } = useI18n();
   const [picked, setPicked] = useState<CountryOption | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -127,7 +129,9 @@ export function ConnectPage({
             Directory signature could not be verified — endpoints are shown for information only.
           </div>
         )}
-        {discovery.notice ? <div className="banner info">{discovery.notice}</div> : null}
+        {discovery.notice === 'no-live-gateway' ? (
+          <div className="banner info">{t('connect_notice_no_live_gateway')}</div>
+        ) : null}
 
         <div className="grid">
           <section className="card">

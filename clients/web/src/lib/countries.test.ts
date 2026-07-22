@@ -27,14 +27,20 @@ describe('flagOf', () => {
 
 describe('nameOf', () => {
   it('resolves an English country name', () => {
-    expect(nameOf('DE')).toBe('Germany');
-    expect(nameOf('jp')).toBe('Japan');
+    expect(nameOf('DE', 'en')).toBe('Germany');
+    expect(nameOf('jp', 'en')).toBe('Japan');
   });
 
   it('falls back to the upper-cased code when the input is malformed', () => {
     // A non-well-formed region subtag makes Intl.DisplayNames throw; nameOf
     // catches that and returns the code itself.
-    expect(nameOf('z1')).toBe('Z1');
+    expect(nameOf('z1', 'en')).toBe('Z1');
+  });
+
+  it('localizes names via Intl.DisplayNames', () => {
+    expect(nameOf('DE', 'de')).toBe('Deutschland');
+    expect(nameOf('DE', 'fr')).toBe('Allemagne');
+    expect(nameOf('DE', 'ja')).toBe('ドイツ');
   });
 });
 

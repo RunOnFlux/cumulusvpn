@@ -20,15 +20,15 @@ function gateway(country: string, load: number, city = 'Somewhere'): GatewayInfo
 
 describe('healthOf', () => {
   it('is unknown when no live gateway was discovered', () => {
-    const [seed] = buildCountryOptions(['cumulusvpnfr'], []);
+    const [seed] = buildCountryOptions(['cumulusvpnfr'], [], 'en');
     expect(seed).toBeDefined();
     expect(healthOf(seed!)).toBe('unknown');
   });
 
   it('maps load bands to good / fair / busy', () => {
-    const good = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.1)])[0]!;
-    const fair = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.5)])[0]!;
-    const busy = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.9)])[0]!;
+    const good = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.1)], 'en')[0]!;
+    const fair = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.5)], 'en')[0]!;
+    const busy = buildCountryOptions(['cumulusvpnde'], [gateway('DE', 0.9)], 'en')[0]!;
     expect(healthOf(good)).toBe('good');
     expect(healthOf(fair)).toBe('fair');
     expect(healthOf(busy)).toBe('busy');
@@ -37,7 +37,7 @@ describe('healthOf', () => {
 
 describe('buildCountryOptions', () => {
   it('produces one enriched row per spec', () => {
-    const options = buildCountryOptions(['cumulusvpnde', 'cumulusvpnnl'], []);
+    const options = buildCountryOptions(['cumulusvpnde', 'cumulusvpnnl'], [], 'en');
     expect(options).toHaveLength(2);
     const de = options.find((o) => o.cc === 'DE')!;
     expect(de.name).toBe('Germany');
@@ -52,6 +52,7 @@ describe('buildCountryOptions', () => {
     const options = buildCountryOptions(
       ['cumulusvpnde'],
       [gateway('DE', 0.8, 'Frankfurt'), gateway('DE', 0.2, 'Frankfurt')],
+      'en',
     );
     expect(options).toHaveLength(1);
     const de = options[0]!;
@@ -67,6 +68,7 @@ describe('buildCountryOptions', () => {
     const options = buildCountryOptions(
       ['cumulusvpnde'],
       [gateway('DE', 0.8, 'Berlin'), gateway('DE', 0.2, 'Frankfurt')],
+      'en',
     );
     // Two distinct cities → two rows, each with its own least-loaded best.
     expect(options).toHaveLength(2);
@@ -83,6 +85,7 @@ describe('buildCountryOptions', () => {
     const options = buildCountryOptions(
       ['cumulusvpnde', 'cumulusvpnau', 'cumulusvpnnl'],
       [gateway('NL', 0.3)],
+      'en',
     );
     expect(options.map((o) => o.cc)).toEqual(['NL', 'AU', 'DE']);
   });

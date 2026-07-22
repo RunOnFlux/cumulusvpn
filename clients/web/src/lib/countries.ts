@@ -4,6 +4,8 @@
  * and flags are derived from the ISO code, so only the primary city is a table.
  */
 
+import type { Locale } from '../i18n';
+
 // Spec names are `cumulusvpn<cc>` where `<cc>` is a lowercase ISO-3166-1 alpha-2.
 export function specToCountryCode(spec: string): string {
   return spec.replace(/^cumulusvpn/, '').toUpperCase();
@@ -21,12 +23,21 @@ export function flagOf(cc: string): string {
   return String.fromCodePoint(a, b);
 }
 
-const regionNames = new Intl.DisplayNames(['en'], { type: 'region' });
+const regionNamesCache = new Map<Locale, Intl.DisplayNames>();
 
-/** English country name for a code, e.g. `DE` → `Germany`; falls back to the code. */
-export function nameOf(cc: string): string {
+function regionNamesFor(locale: Locale): Intl.DisplayNames {
+  let names = regionNamesCache.get(locale);
+  if (!names) {
+    names = new Intl.DisplayNames([locale], { type: 'region' });
+    regionNamesCache.set(locale, names);
+  }
+  return names;
+}
+
+/** Localized country name for a code, e.g. (`DE`,`fr`) → `Allemagne`; falls back to the code. */
+export function nameOf(cc: string, locale: Locale): string {
   try {
-    return regionNames.of(cc.toUpperCase()) ?? cc.toUpperCase();
+    return regionNamesFor(locale).of(cc.toUpperCase()) ?? cc.toUpperCase();
   } catch {
     return cc.toUpperCase();
   }

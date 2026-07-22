@@ -6,13 +6,15 @@ import { ConnectPage } from './pages/ConnectPage';
 import { UpgradePage } from './pages/UpgradePage';
 import { useRoute } from './hooks/useRoute';
 import { useTheme } from './hooks/useTheme';
+import { useI18n } from './hooks/useLocale';
 import { useDiscovery } from './hooks/useDiscovery';
 import { loadOrCreateKeypair, regenerateKeypair } from './lib/keypair';
 
 export function App() {
   const [themeMode, toggleTheme] = useTheme();
   const [route, navigate] = useRoute();
-  const discovery = useDiscovery();
+  const { locale } = useI18n();
+  const discovery = useDiscovery(locale);
   const [keypair, setKeypair] = useState<Keypair>(() => loadOrCreateKeypair());
 
   const onRegenerate = (): void => setKeypair(regenerateKeypair());

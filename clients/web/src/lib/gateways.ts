@@ -1,5 +1,6 @@
 import type { GatewayInfo } from '@cumulusvpn/core';
 import { cityOf, flagOf, nameOf, specToCountryCode } from './countries';
+import type { Locale } from '../i18n';
 
 /** A pickable location row: directory-derived, enriched with live discovery. */
 export interface CountryOption {
@@ -51,6 +52,7 @@ export function healthOf(option: CountryOption): Health {
 export function buildCountryOptions(
   specs: readonly string[],
   gateways: readonly GatewayInfo[],
+  locale: Locale,
 ): CountryOption[] {
   const byCountry = new Map<string, GatewayInfo[]>();
   for (const gw of gateways) {
@@ -71,7 +73,7 @@ export function buildCountryOptions(
         id: cc,
         cc,
         spec,
-        name: nameOf(cc),
+        name: nameOf(cc, locale),
         flag: flagOf(cc),
         city: cityOf(cc),
         nodeCount: 0,
@@ -105,7 +107,7 @@ export function buildCountryOptions(
         id: city ? `${cc}:${city}` : cc,
         cc,
         spec,
-        name: nameOf(cc),
+        name: nameOf(cc, locale),
         flag: flagOf(cc),
         city,
         nodeCount: bucket.length,
@@ -120,9 +122,9 @@ export function buildCountryOptions(
       return a.status === 'live' ? -1 : 1;
     }
     if (a.name !== b.name) {
-      return a.name.localeCompare(b.name);
+      return a.name.localeCompare(b.name, locale);
     }
-    return a.city.localeCompare(b.city);
+    return a.city.localeCompare(b.city, locale);
   });
 
   return options;
