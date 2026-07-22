@@ -41,13 +41,21 @@ export function resolveFlags(json: unknown, os: string): Flags {
 
 /** Fetch the remote flags; on any failure/timeout, return DEFAULT_FLAGS (all off). */
 export async function fetchFlags(signal?: AbortSignal): Promise<Flags> {
+  // Bound the request so a hung connection can't leave us on defaults forever.
+  const timer = new AbortController();
+  const id = setTimeout(() => timer.abort(), 8_000);
+  if (signal) {
+    signal.addEventListener('abort', () => timer.abort(), { once: true });
+  }
   try {
-    const r = await fetch(FLAGS_URL, signal ? { signal } : {});
+    const r = await fetch(FLAGS_URL, { signal: timer.signal });
     if (!r.ok) {
       return DEFAULT_FLAGS;
     }
     return resolveFlags(await r.json(), Platform.OS);
   } catch {
     return DEFAULT_FLAGS;
+  } finally {
+    clearTimeout(id);
   }
 }

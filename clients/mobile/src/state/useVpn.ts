@@ -184,6 +184,10 @@ export function useVpn(): VpnModel & VpnActions {
   const [killSwitch, setKillSwitchState] = useState(false);
   const [autoConnect, setAutoConnectState] = useState(false);
   const [favorites, setFavorites] = useState<readonly string[]>([]);
+  // Mirror of `favorites` for toggleFavorite to read the current value without a
+  // stale closure or a side-effecting setState updater (which could persist a
+  // stale array on rapid taps).
+  const favoritesRef = useRef<readonly string[]>([]);
   const autoConnectedRef = useRef(false);
   // Unix-ms when the current session connected, for the session timer.
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
@@ -364,7 +368,8 @@ export function useVpn(): VpnModel & VpnActions {
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
         setAutoConnectState(await loadAutoConnect());
-        setFavorites(await loadFavorites());
+        favoritesRef.current = await loadFavorites();
+        setFavorites(favoritesRef.current);
         // Paint the cached fleet first (instant, dismisses the splash), then
         // refresh live in the background. On a cold first launch there's no
         // cache, so this is a no-op and the splash waits for live discovery.
@@ -508,13 +513,29 @@ export function useVpn(): VpnModel & VpnActions {
     return () => clearTimeout(id);
   }, [state]);
 
+  // ---- disconnect watchdog: never hang on "disconnecting" forever ---------
+  // stopTunnel() can resolve without a following native status event (e.g. iOS
+  // after an app relaunch, when no NEVPNStatus observer is attached). Without
+  // this, `state` sticks on 'disconnecting' → the orb and button stay disabled.
+  useEffect(() => {
+    if (state !== 'disconnecting') {
+      return;
+    }
+    const id = setTimeout(() => setState('disconnected'), 8_000);
+    return () => clearTimeout(id);
+  }, [state]);
+
   // ---- entitlement polling (tier unlocks ~1 min after on-chain payment) ---
-  // Entitlement is chain-derived and global: every gateway reports the same tier
-  // for a key, independent of where (or whether) it enrolled. So we poll even
-  // when disconnected — otherwise "pay, then reopen the app" keeps showing Free
-  // until you connect, because the tier only ever refreshed against the enrolled
-  // gateway. `countries` is in the deps so the first poll fires as soon as the
-  // fleet is discovered, not one interval later.
+  // Entitlement is chain-derived and GLOBAL: every gateway reports the same tier
+  // for a key, independent of where (or whether) it enrolled. We sample a few
+  // DISCOVERED gateways — never the one we're tunnelled through, since a request
+  // to it hairpins and times out (same reason the live-ping targets gstatic, not
+  // the gateway). This works connected (routed through the tunnel to another
+  // node) and disconnected (direct), so "pay, then reopen the app" reflects
+  // before any connect, and a mid-session expiry/upgrade is still picked up.
+  // Premium from ANY node is the truth (one node lagging the chain can't hide
+  // it); fall back to Free only when reachable nodes agree. `countries` is in the
+  // deps so the first poll fires as soon as the fleet is discovered.
   useEffect(() => {
     if (!keypair) {
       return;
@@ -523,23 +544,7 @@ export function useVpn(): VpnModel & VpnActions {
     const poll = async () => {
       const pubkey = keypair.publicKey;
       const activeIp = gatewayIpRef.current;
-      if (activeIp) {
-        // Connected: the enrolled gateway is authoritative (up and down).
-        try {
-          const st = await fetchStatus(activeIp, pubkey);
-          if (alive) {
-            setTier(st.tier);
-            setPaidUntil(st.tier === 'premium' ? st.paid_until : null);
-          }
-        } catch {
-          // Non-fatal: keep the last known tier.
-        }
-        return;
-      }
-      // Disconnected: ask a few distinct discovered gateways. Premium from ANY
-      // of them is the truth (one node lagging the chain can't hide it); only
-      // fall back to Free when reachable nodes agree.
-      const sample = gatewaysRef.current.slice(0, 3);
+      const sample = gatewaysRef.current.filter((g) => g.ip !== activeIp).slice(0, 3);
       if (sample.length === 0) {
         return;
       }
@@ -668,8 +673,11 @@ export function useVpn(): VpnModel & VpnActions {
     setState('disconnecting');
     setActiveEntry(null);
     setActiveExit(null);
-    // A deliberate disconnect is a clean slate — forget failed-node history.
+    // A deliberate disconnect is a clean slate — forget failed-node history and
+    // the enrolled-gateway IP, so entitlement polling resumes sampling the whole
+    // fleet (not a node we're no longer on) instead of latching one address.
     avoidRef.current.clear();
+    gatewayIpRef.current = null;
     try {
       await CumulusTunnel.stopTunnel();
     } catch (e) {
@@ -746,11 +754,10 @@ export function useVpn(): VpnModel & VpnActions {
   }, []);
 
   const toggleFavorite = useCallback(async (code: string): Promise<void> => {
-    let next: string[] = [];
-    setFavorites((prev) => {
-      next = prev.includes(code) ? prev.filter((c) => c !== code) : [...prev, code];
-      return next;
-    });
+    const cur = favoritesRef.current;
+    const next = cur.includes(code) ? cur.filter((c) => c !== code) : [...cur, code];
+    favoritesRef.current = next;
+    setFavorites(next);
     await saveFavorites(next);
   }, []);
 
