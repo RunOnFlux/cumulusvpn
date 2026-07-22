@@ -31,15 +31,16 @@
    <https://cumulusvpn.com/support> serves the FAQ + contact channels. Both are hard requirements
    Apple validates (5.4 + general). → Just paste the two URLs into App Store Connect (Privacy
    Policy URL + Support URL) at submission.
-3. ❓ **Organization enrollment.** 5.4 (and 3.1.5(i) for crypto) require the developer be
-   enrolled as an **Organization**, not Individual. `DEVELOPMENT_TEAM = URVD95GYQ7` is set —
-   confirm it is an Org account (D-U-N-S). Individual accounts **cannot** ship a VPN.
+3. ✅ **Organization enrollment — confirmed** (2026-07-22). The team is an existing Apple
+   Developer **Organization** account with other shipped apps, satisfying 5.4 (and 3.1.5(i) for
+   crypto), which bar Individual accounts from VPN apps. `DEVELOPMENT_TEAM = URVD95GYQ7`.
 
 ---
 
 ## 1. Account & legal
 
-- [ ] ❓ Enrolled as **Organization** (D-U-N-S) — required by 5.4 + 3.1.5(i).
+- [x] ✅ Enrolled as **Organization** — confirmed (existing Org account with other apps),
+  required by 5.4 + 3.1.5(i).
 - [ ] ⬜ **Territory availability** excludes markets requiring a VPN license you don't hold
   (China, Russia, UAE, Oman, Iran, N. Korea, Turkmenistan, Belarus…). Repo already lists
   these in `store/app-store/app-review.md §6` — apply them in App Store Connect → Availability.

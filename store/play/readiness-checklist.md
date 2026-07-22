@@ -65,20 +65,29 @@
   **meets/exceeds** Play's requirement (≥ 35 now, 36 by Aug 31 2026). Already at 36. 👍
 - [x] ✅ Permissions: INTERNET, BIND_VPN_SERVICE, FOREGROUND_SERVICE,
   FOREGROUND_SERVICE_SPECIAL_USE, POST_NOTIFICATIONS. `allowBackup=false`.
-- [ ] ⚠️ **FGS type: `specialUse` vs `systemExempted`.** `GoBackend$VpnService` declares
-  `foregroundServiceType="specialUse"` (+ subtype property). Android docs list
-  **`systemExempted`** as the type for configured VPN apps, and Play reviews `specialUse` in
-  Console. Either can pass, but be ready to justify `specialUse` or switch to `systemExempted`
-  (+ `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` permission). → decide before the Console FGS
-  declaration.
-- [ ] ⚠️ **Multi-hop runs as a plain, non-foreground VpnService with no notification.**
-  Verified: `CumulusMultihopVpnService` never calls `startForeground` (so **no** Android-14
-  FGS-type crash — good). But a multi-hop tunnel then has **no persistent VPN notification and
-  is killable under memory pressure** (`START_NOT_STICKY`). This misses the VpnService
-  best-practice the repo's own `vpnservice-declaration.md` lists ("runs a foreground service
-  with an ongoing notification while connected") — single-hop (GoBackend) posts one; multi-hop
-  does not. → Make multi-hop a foreground service (same FGS type + notification) for
-  reliability and policy parity.
+- [x] ✅ **FGS type decided: keep `specialUse`** (both services). Recommendation, 2026-07-22.
+  Both `GoBackend$VpnService` and `CumulusMultihopVpnService` declare
+  `foregroundServiceType="specialUse"` + a `PROPERTY_SPECIAL_USE_FGS_SUBTYPE`. `systemExempted`
+  exists and CumulusVPN *technically* qualifies (its criteria include "a VPN app configured via
+  Settings > Network & Internet > VPN"), **but keep `specialUse`** because: (a) CumulusVPN is a
+  **user-initiated** consumer VPN, which is exactly the case `specialUse`'s "justify + demo
+  video" review flow is for — and we already produced that video; (b) `systemExempted` is
+  aimed at always-on / device-configured / system VPNs and invites a "do you actually qualify?"
+  argument; (c) both services already declare `specialUse`, so one uniform Console
+  justification covers them. **Console justification text** to paste: *"CumulusVPN maintains the
+  user-initiated WireGuard VPN tunnel (single- and multi-hop) while the app is backgrounded, so
+  the encrypted connection persists and traffic stays protected; an ongoing notification shows
+  the VPN is active."* If a reviewer ever pushes back toward `systemExempted`, switching is a
+  one-line manifest change (type + `FOREGROUND_SERVICE_SYSTEM_EXEMPTED` permission) — start with
+  `specialUse`.
+- [x] ✅ **Multi-hop IS a foreground service** (corrected 2026-07-22 — the earlier note here was
+  wrong). `CumulusMultihopVpnService` calls `startForegroundNotification()` on start, posts an
+  ongoing "Multi-hop tunnel active" notification on the `cumulusvpn.vpn` channel with
+  `FOREGROUND_SERVICE_TYPE_SPECIAL_USE`, and `stopForeground`s on teardown — parity with
+  single-hop (GoBackend). Landed in commit `eb0ab54` ("fix(android): IPv6 leak, foreground
+  service, …"), which also added the IPv6 blackhole route. It returns `START_NOT_STICKY` **by
+  design** (a VPN must not silently resurrect without its tunnel params / fresh consent); being
+  foreground already protects it from routine memory-pressure kills.
 - [x] ✅ `network_security_config` cleartext (needed — control API is HTTP to node IPs, ed25519
   signature-verified). Allowed by Play.
 - [x] ✅ **`bundleRelease` produces a valid `.aab`** — built and verified locally 2026-07-22:
