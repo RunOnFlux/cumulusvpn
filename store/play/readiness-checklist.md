@@ -45,8 +45,13 @@
 
 - [x] ✅ VpnService declaration text ready (`store/play/vpnservice-declaration.md`); core
   functionality = VPN; no traffic monetization.
-- [ ] ⬜ **Demo video ≤ 90s** showing the app open + VPN connecting — **required** by the
-  VpnService declaration form. Not yet produced.
+- [x] ✅ **Demo video produced** (2026-07-22) — `store/assets/video/play-vpnservice-demo.mp4`,
+  **59.7 s** (under the ~90 s guidance), 1080×2400 H.264, faststart. Recorded end-to-end from
+  the **release** APK on the API 36 emulator: home-screen launch → 5.4 disclosure → gateway
+  discovery → **system VpnService consent dialog** → connected with a real `tun0` (live NL exit,
+  status-bar key icon, ticking stats) → server list → back. Satisfies both the VpnService and
+  Foreground-service-types declaration forms. → **Upload to YouTube as Unlisted and paste the
+  URL** into both declarations (the forms take a link, not a file).
 - [ ] ⚠️ **"VPN not core functionality" is the top dVPN rejection.** A crypto-pay UI +
   "decentralized/Flux" framing risks Google reading this as a crypto app with a VPN feature.
   Mitigate: VPN-first listing (already good), **no wallet/exchange functionality** in-app
@@ -107,8 +112,10 @@
 
 ## 5. Play Console — App content
 
-- [ ] ⬜ **VpnService declaration** submitted + ≤ 90s demo video.
-- [ ] ⬜ **Foreground service types** declaration + video (feature description + defer-impact).
+- [ ] ⬜ **VpnService declaration** submitted (text ready; demo video ✅ done — see §1, upload
+  to YouTube Unlisted and paste the URL).
+- [ ] ⬜ **Foreground service types** declaration (feature description + defer-impact; reuse the
+  same demo video URL). ⚠️ tied to the specialUse-vs-systemExempted decision in §2.
 - [x] ✅ **Data safety** answers ready (`store/play/data-safety.md`) — but ⚠️ **fix the
   transit-encryption claim**: it says "TLS for discovery/API," yet the control plane is
   **cleartext HTTP** (ed25519-signed, per `network_security_config.xml`). Say

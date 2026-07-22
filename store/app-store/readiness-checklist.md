@@ -79,10 +79,14 @@
 
 - [x] ✅ `PrivacyInfo.xcprivacy` present: 3 Required-Reason APIs (FileTimestamp C617.1,
   UserDefaults CA92.1, SystemBootTime 35F9.1), `NSPrivacyTracking = false`, no collected data.
-- [ ] ❓ **Audit third-party SDK privacy manifests.** Since Feb 12 2025, listed SDKs must ship
-  their own signed manifest or upload is auto-blocked (ITMS-91053). Audit every RN native pod
-  (RN 0.86 core, plus any crypto/QR/reanimated modules). → `grep -r PrivacyInfo.xcprivacy
-  ios/Pods` after `pod install`.
+- [x] ✅ **Third-party SDK privacy manifests audited** (2026-07-22, after `pod install`).
+  Installed pods are RN 0.86 core + exactly three ecosystem modules (AsyncStorage,
+  react-native-get-random-values, react-native-safe-area-context) — **none is on Apple's
+  "commonly used SDKs" list**, so the ITMS-91053 signed-manifest requirement doesn't bite.
+  RN's prebuilt core ships its manifest via `ReactNativeDependencies` (only pod with a
+  `PrivacyInfo.xcprivacy`), and the app-level manifest already declares the Required-Reason
+  APIs (FileTimestamp, UserDefaults, SystemBootTime). Final confirmation is the first
+  TestFlight upload — processing emails will flag anything missed.
 - [x] ✅ **In-app pre-connection data-disclosure screen (5.4) — implemented** (2026-07-22).
   5.4 requires "a clear declaration of what user data will be collected and how it will be used
   **on an app screen prior to any user action**" — a linked policy is **not** sufficient.
