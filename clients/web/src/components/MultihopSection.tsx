@@ -204,7 +204,9 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
           </div>
 
           <div className="mh-style mono">
-            {style === 'multihop-same-country' ? t('multihop_style_same') : t('multihop_style_cross')}
+            {style === 'multihop-same-country'
+              ? t('multihop_style_same')
+              : t('multihop_style_cross')}
           </div>
 
           <button

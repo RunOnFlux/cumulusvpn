@@ -59,8 +59,8 @@ export function DisclosureScreen({ onAccept, onClose }: Props): React.JSX.Elemen
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Text style={styles.lede}>
-          CumulusVPN is a decentralized VPN. Here is exactly what is collected and how it is
-          used — in full, before you use the service.
+          CumulusVPN is a decentralized VPN. Here is exactly what is collected and how it is used —
+          in full, before you use the service.
         </Text>
 
         <Group

@@ -92,7 +92,8 @@ export const de: Catalog = {
     'Routenstil: maximale Privatsphäre — länderübergreifend (zwei Betreiber, zwei Länder)',
   multihop_enrolling: 'Beide Hops werden angemeldet…',
   multihop_generate: 'Zwei Konfigurationen erzeugen',
-  multihop_error_no_exit: 'Multi-Hop braucht ein eigenständiges Ausgangs-Gateway; keines wurde ermittelt.',
+  multihop_error_no_exit:
+    'Multi-Hop braucht ein eigenständiges Ausgangs-Gateway; keines wurde ermittelt.',
   multihop_error_no_gateways:
     'Kein aktives Gateway vom Browser aus erreichbar, daher konnte keine Route ermittelt werden. Multi-Hop-Verschachtelung ist eigentlich ein Feature unserer Apps — die Desktop- und Mobile-Clients (gleicher Kern) prüfen Gateways direkt und betreiben die beiden Tunnel für dich.',
   multihop_error_failed: 'Multi-Hop-Erzeugung fehlgeschlagen.',

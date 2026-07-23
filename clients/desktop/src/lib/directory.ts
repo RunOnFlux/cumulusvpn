@@ -36,25 +36,40 @@ export interface CountryMeta {
   readonly flag: string;
 }
 
-const COUNTRY_META: Record<string, CountryMeta> = {
-  DE: { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-  US: { code: 'US', name: 'United States', flag: '🇺🇸' },
-  NL: { code: 'NL', name: 'Netherlands', flag: '🇳🇱' },
-  SG: { code: 'SG', name: 'Singapore', flag: '🇸🇬' },
-  UK: { code: 'UK', name: 'United Kingdom', flag: '🇬🇧' },
-  GB: { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  FR: { code: 'FR', name: 'France', flag: '🇫🇷' },
-  CA: { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-  JP: { code: 'JP', name: 'Japan', flag: '🇯🇵' },
-  AU: { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  BR: { code: 'BR', name: 'Brazil', flag: '🇧🇷' },
-  CZ: { code: 'CZ', name: 'Czechia', flag: '🇨🇿' },
-  PL: { code: 'PL', name: 'Poland', flag: '🇵🇱' },
-};
+/** Legacy alias the fleet has used for Great Britain. */
+const CODE_ALIASES: Record<string, string> = { UK: 'GB' };
 
-/** Resolve display metadata for an ISO country code, with a safe fallback. */
+const REGION_NAMES =
+  typeof Intl !== 'undefined' && 'DisplayNames' in Intl
+    ? new Intl.DisplayNames(['en'], { type: 'region' })
+    : null;
+
+/** Regional-indicator flag emoji derived from the ISO code — covers every
+ *  country the fleet can ever grow into, so this file can't fall behind it. */
+function flagEmoji(code: string): string {
+  if (!/^[A-Za-z]{2}$/.test(code)) return '🏳️';
+  const A = 0x1f1e6;
+  const u = code.toUpperCase();
+  return String.fromCodePoint(A + u.charCodeAt(0) - 65, A + u.charCodeAt(1) - 65);
+}
+
+/** Resolve display metadata for an ISO country code, with a safe fallback.
+ *  Name and flag are derived (Intl.DisplayNames + regional indicators), same
+ *  approach as the web client — no hardcoded per-country table to go stale. */
 export function countryMeta(code: string): CountryMeta {
-  return COUNTRY_META[code] ?? { code, name: code, flag: '🏳️' };
+  const iso = CODE_ALIASES[code.toUpperCase()] ?? code.toUpperCase();
+  let name: string | undefined;
+  try {
+    name = REGION_NAMES?.of(iso);
+  } catch {
+    // malformed code — fall through to the neutral fallback
+  }
+  // CLDR names unassigned codes "Unknown Region" (ZZ et al.) — keep the old
+  // contract for those: raw code + neutral flag, never a garbled glyph pair.
+  if (!name || name === iso || /unknown/i.test(name)) {
+    return { code, name: code, flag: '🏳️' };
+  }
+  return { code, name, flag: flagEmoji(iso) };
 }
 
 /** Public upgrade/payment page — desktop may open it freely (no store rules).

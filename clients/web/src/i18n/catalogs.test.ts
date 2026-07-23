@@ -29,8 +29,32 @@ import { ja } from './locales/ja';
 import { ko } from './locales/ko';
 
 export const ALL_CATALOGS: Record<Locale, Catalog> = {
-  en, es, pt, fr, de, it: itC, nl, pl, el, uk, ru, tr, sv, da, nb, fi,
-  ar, fa, sw, hi, id, th, vi, zh, ja, ko,
+  en,
+  es,
+  pt,
+  fr,
+  de,
+  it: itC,
+  nl,
+  pl,
+  el,
+  uk,
+  ru,
+  tr,
+  sv,
+  da,
+  nb,
+  fi,
+  ar,
+  fa,
+  sw,
+  hi,
+  id,
+  th,
+  vi,
+  zh,
+  ja,
+  ko,
 };
 
 /** Dummy params for every {placeholder} a message mentions (n gets a number). */
@@ -44,16 +68,19 @@ function dummyParams(msg: Message): Params {
 }
 
 // Every tag resolves to its label, so residual <...> markers mean a typo.
-const permissiveHandlers = new Proxy(
-  {},
-  { get: () => (label: string) => label },
-) as Record<string, (label: string) => string>;
+const permissiveHandlers = new Proxy({}, { get: () => (label: string) => label }) as Record<
+  string,
+  (label: string) => string
+>;
 
 describe('catalog sweep', () => {
   for (const locale of SUPPORTED_LOCALES) {
     const catalog = ALL_CATALOGS[locale];
     it(`${locale}: every message resolves cleanly`, () => {
-      const allowed = new Set([...new Intl.PluralRules(locale).resolvedOptions().pluralCategories, 'other']);
+      const allowed = new Set([
+        ...new Intl.PluralRules(locale).resolvedOptions().pluralCategories,
+        'other',
+      ]);
       for (const key of Object.keys(en) as (keyof typeof en)[]) {
         const msg = catalog[key];
         if (typeof msg !== 'string') {
@@ -110,7 +137,9 @@ describe('structural parity with en', () => {
     it(`${locale}: tags and params match en per key`, () => {
       const catalog = ALL_CATALOGS[locale];
       for (const key of Object.keys(en) as (keyof typeof en)[]) {
-        expect(tagCounts(catalog[key]), `${locale}.${key} tag mismatch`).toEqual(tagCounts(en[key]));
+        expect(tagCounts(catalog[key]), `${locale}.${key} tag mismatch`).toEqual(
+          tagCounts(en[key]),
+        );
         expect([...paramNames(catalog[key])].sort(), `${locale}.${key} param mismatch`).toEqual(
           [...paramNames(en[key])].sort(),
         );

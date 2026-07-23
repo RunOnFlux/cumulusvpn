@@ -39,16 +39,31 @@ countries:
   - { cc: au, geolocation: acOC_AU, instances: 3, stage: beta }
   - { cc: br, geolocation: acSA_BR, instances: 3, stage: beta }
   # --- GA additions (extend toward ~30) ---
-  - { cc: es, geolocation: acEU_ES, stage: ga }
-  - { cc: it, geolocation: acEU_IT, stage: ga }
+  # Live-coverage notes below are from stats.runonflux.io fluxinfo geolocation, 2026-07-23
+  # (static = static-IP nodes; the fleet default staticip:true only fills on those).
+  # Countries with ZERO static nodes get staticip:false — the documented relaxation from
+  # docs/08; their WG endpoints may re-IP, the signed directory tracks the move.
+  - { cc: es, geolocation: acEU_ES, stage: ga } # 40 static
+  - { cc: it, geolocation: acEU_IT, stage: ga } # only 3 static — expect under-fill
   - { cc: se, geolocation: acEU_SE, stage: ga }
   - { cc: ch, geolocation: acEU_CH, stage: ga }
   - { cc: at, geolocation: acEU_AT, stage: ga }
-  - { cc: fi, geolocation: acEU_FI, stage: ga }
-  - { cc: mx, geolocation: acNA_MX, stage: ga }
+  - { cc: fi, geolocation: acEU_FI, stage: ga } # 812 static — deep pool
+  - { cc: mx, geolocation: acNA_MX, stage: ga, staticip: false } # 3 nodes, 0 static
   - { cc: kr, geolocation: acAS_KR, stage: ga }
+  # in: ZERO Flux nodes live + CERT-In 2022 five-year logging mandate conflicts with
+  # no-logs. BLOCKED — do not register until both resolve (or ship a virtual location).
   - { cc: in, geolocation: acAS_IN, stage: ga }
-  - { cc: za, geolocation: acAF_ZA, stage: ga }
+  - { cc: za, geolocation: acAF_ZA, stage: ga, staticip: false } # 22 nodes, 0 static
+  # --- Scale additions (2026-07) --- LEGAL REVIEW REQUIRED before registering ru/hk/ae:
+  # ru: Roskomnadzor VPN registry/blocking regime + DPI throttling of WireGuard.
+  # hk: post-NSL data-seizure exposure (major VPNs pulled physical HK servers).
+  # ae: TDRA licensing regime; unlicensed VPN operation is legally exposed.
+  - { cc: ru, geolocation: acEU_RU, stage: scale } # 75 static DC nodes
+  - { cc: my, geolocation: acAS_MY, stage: scale, staticip: false } # 10 nodes, 0 static
+  - { cc: hk, geolocation: acAS_HK, stage: scale, staticip: false } # 9 nodes, 0 static
+  - { cc: ae, geolocation: acAS_AE, stage: scale, staticip: false } # 34 nodes, 0 static
+
 
 # CRITICAL PRE-FLIGHT (generate.mjs enforces): enterprise/datacenter nodes are FEWER than the
 # general fleet. Before registering, query the eligible enterprise-node count per country via

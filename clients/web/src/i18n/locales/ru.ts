@@ -43,7 +43,12 @@ export const ru: Catalog = {
   connect_loading_directory: 'Загрузка подписанного каталога и поиск шлюзов…',
   connect_your_config: 'Твоя конфигурация',
   connect_source_directory: 'Каталог {source}',
-  connect_live_nodes: { one: '{n} активный узел', few: '{n} активных узла', many: '{n} активных узлов', other: '{n} активного узла' },
+  connect_live_nodes: {
+    one: '{n} активный узел',
+    few: '{n} активных узла',
+    many: '{n} активных узлов',
+    other: '{n} активного узла',
+  },
   connect_select_country: 'Выбери страну, чтобы продолжить',
   connect_enrolling: 'Регистрация…',
   connect_generate: 'Сгенерировать .conf',

@@ -33,7 +33,7 @@ export const it: Catalog = {
   connect_eyebrow: 'Canale beta · configurazione WireGuard',
   connect_title: 'Una chiave, <glow>ogni gateway.</glow>',
   connect_lede:
-    'La tua coppia di chiavi WireGuard viene generata qui, nel tuo browser — la chiave privata non lascia mai questa scheda. Scegli un paese, iscriviti al gateway Flux più vicino ed esporta un<mono> .conf</mono> pronto da importare con il suo QR. Gratis per sempre a 100 KB/s; <upgrade>fai l\'upgrade con FLUX</upgrade> per la piena velocità.',
+    "La tua coppia di chiavi WireGuard viene generata qui, nel tuo browser — la chiave privata non lascia mai questa scheda. Scegli un paese, iscriviti al gateway Flux più vicino ed esporta un<mono> .conf</mono> pronto da importare con il suo QR. Gratis per sempre a 100 KB/s; <upgrade>fai l'upgrade con FLUX</upgrade> per la piena velocità.",
   connect_verify_warn:
     'Impossibile verificare la firma della directory — gli endpoint sono mostrati solo a titolo informativo.',
   connect_notice_no_live_gateway:
@@ -48,14 +48,14 @@ export const it: Catalog = {
   connect_enrolling: 'Iscrizione in corso…',
   connect_generate: 'Genera .conf',
   connect_no_gateway_in_country:
-    'Nessun gateway attivo raggiungibile in {country} dal browser. L\'iscrizione viene inviata all\'API di controllo di un gateway (http :51821), non raggiungibile dalle pagine https — funziona dai client desktop e mobile, che condividono questo stesso core.',
+    "Nessun gateway attivo raggiungibile in {country} dal browser. L'iscrizione viene inviata all'API di controllo di un gateway (http :51821), non raggiungibile dalle pagine https — funziona dai client desktop e mobile, che condividono questo stesso core.",
   connect_error_enroll_failed: 'Iscrizione non riuscita.',
   connect_qr_caption: "Scansiona con l'app WireGuard",
   connect_stat_assigned_ip: 'IP assegnato',
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Scarica .conf',
-  connect_upgrade_cta: 'Fai l\'upgrade alla piena velocità →',
+  connect_upgrade_cta: "Fai l'upgrade alla piena velocità →",
   connect_identity_title: 'Identità di questo dispositivo',
   connect_regenerate: 'Rigenera chiave',
   connect_identity_note:
@@ -67,14 +67,14 @@ export const it: Catalog = {
   upgrade_eyebrow: 'Upgrade · paga in FLUX',
   upgrade_title: 'Upgrade alla piena velocità',
   upgrade_lede:
-    "Invia FLUX con esattamente il messaggio qui sotto. Ogni gateway scansiona la chain e sblocca la tua chiave entro ~1 minuto — su tutti i server contemporaneamente, per 30 giorni. Senza account, senza carta, senza alcuna azienda che possa consegnare ciò che non ha mai avuto.",
+    'Invia FLUX con esattamente il messaggio qui sotto. Ogni gateway scansiona la chain e sblocca la tua chiave entro ~1 minuto — su tutti i server contemporaneamente, per 30 giorni. Senza account, senza carta, senza alcuna azienda che possa consegnare ciò che non ha mai avuto.',
   upgrade_usd_line: '≈ {usd} · ogni 30 giorni',
   upgrade_qr_caption: 'Scansiona con Zelcore / SSP Wallet',
   upgrade_field_address: 'Indirizzo di pagamento',
   upgrade_field_message: 'Messaggio (obbligatorio)',
   upgrade_open_wallet: 'Apri nel wallet',
   upgrade_prepay_note:
-    '<strong>Paga in anticipo:</strong> paga un multiplo dell\'importo per aggiungere altrettanti mesi in una volta — es. {amount} FLUX = 3 mesi. I mesi extra si accumulano (fino a 24), così puoi ricaricare quando vuoi.',
+    "<strong>Paga in anticipo:</strong> paga un multiplo dell'importo per aggiungere altrettanti mesi in una volta — es. {amount} FLUX = 3 mesi. I mesi extra si accumulano (fino a 24), così puoi ricaricare quando vuoi.",
   upgrade_privacy_note:
     'Si apre in Zelcore / SSP Wallet. Il pagamento è verificato sulla blockchain di Flux — non vediamo mai chi sei. Il messaggio collega il pagamento alla tua chiave; inviarlo senza significa che i fondi arrivano ma nulla si sblocca.',
   upgrade_back: '← Torna a Connetti',
@@ -92,7 +92,8 @@ export const it: Catalog = {
     'Stile del percorso: massima privacy — tra giurisdizioni (due operatori, due paesi)',
   multihop_enrolling: 'Iscrizione di entrambi gli hop…',
   multihop_generate: 'Genera due configurazioni',
-  multihop_error_no_exit: "Il multi-hop richiede un gateway di uscita distinto; nessuno è stato risolto.",
+  multihop_error_no_exit:
+    'Il multi-hop richiede un gateway di uscita distinto; nessuno è stato risolto.',
   multihop_error_no_gateways:
     "Nessun gateway attivo raggiungibile dal browser, quindi non è stato possibile risolvere alcun percorso. L'annidamento multi-hop è in realtà una funzione delle nostre app — i client desktop e mobile (stesso core) verificano i gateway direttamente e gestiscono i due tunnel al posto tuo.",
   multihop_error_failed: 'Generazione multi-hop non riuscita.',

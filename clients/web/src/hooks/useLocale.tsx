@@ -2,7 +2,13 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import type { ReactNode } from 'react';
 import { LOCALE_STORAGE_KEY } from '../config';
 import {
-  detectLocale, en, formatMessage, formatRich, isLocale, loadCatalog, RTL_LOCALES,
+  detectLocale,
+  en,
+  formatMessage,
+  formatRich,
+  isLocale,
+  loadCatalog,
+  RTL_LOCALES,
 } from '../i18n';
 import type { Catalog, Locale, MessageKey, Params, RichHandlers } from '../i18n';
 

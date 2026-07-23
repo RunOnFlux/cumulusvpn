@@ -35,9 +35,7 @@ export function CountryPicker({ options, selectedId, onSelect }: CountryPickerPr
       const nodes = t('countries_nodes', { n: option.nodeCount });
       return option.city ? `${nodes} · ${option.city}` : nodes;
     }
-    return option.city
-      ? `${option.city} · ${t('common_directory')}`
-      : t('common_directory');
+    return option.city ? `${option.city} · ${t('common_directory')}` : t('common_directory');
   }
 
   const filtered = useMemo(() => {

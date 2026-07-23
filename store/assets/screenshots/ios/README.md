@@ -21,24 +21,27 @@ Build provenance:
 Slots: `iphone-6.9/` (1320×2868, master), `iphone-6.7/` (1290×2796),
 `iphone-6.5/` (1242×2688). All verified at those exact dimensions.
 
-## Known gap — the hero frame is the DISCONNECTED state
+**Re-captures (2026-07-23):**
+- `02-countries.png` re-taken after the fleet expansion, from a Release build
+  on the **iPhone 16 / iOS 18.5 Simulator** (raw 1179×2556 — the compositor
+  rescales any ~19.5:9 raw into the bezel). Shows the live picker with
+  **"Search 20 countries…"** (Finland 15 nodes · Helsinki, Italy, Malaysia,
+  etc. — all real discovery + latency data against the live fleet, with the
+  26-spec signed directory bundled). Retake whenever the country count grows
+  meaningfully: build Release, install on a booted sim, accept the disclosure,
+  tap the Automatic row, wait for latency dots, clear any app-switch breadcrumb
+  (home → relaunch), then `simctl io booted screenshot`.
 
-`01-connect.png` shows "Not connected" / "TAP TO CONNECT", **not** an active
-session. Packet-tunnel extensions do not run on the iOS Simulator, so a
-connected-state capture is impossible there.
+## Hero frame — RESOLVED (was: disconnected-state gap)
 
-The set is **truthful and uploadable as-is** — the headline "One tap.
-Encrypted." reads correctly against the tap-to-connect orb. But a connected
-hero frame (live city, elapsed time, throughput) is substantially stronger
-marketing. To upgrade it:
-
-1. Run the Release build on a **physical iPhone** and connect to a gateway.
-2. Capture via Xcode → Devices and Simulators (or `xcrun devicectl`). Any
-   modern ~19.5:9 iPhone works — the compositor rescales into the bezel, so the
-   raw need not be 1320×2868.
-3. Replace `../raw/ios/connect.png`, regenerate with
-   `cd .claude/skills/appstore-screenshots && python3 compositor.py --locale en`,
-   and copy the output back over these files.
+`01-connect.png` is now a **real connected session** captured on a physical
+iPhone (Netherlands exit, elapsed time, live throughput — raw 1170×2532).
+Packet-tunnel extensions still do not run on the iOS Simulator, so any future
+connected-state re-capture must again use a physical device: run the Release
+build, connect, capture via Xcode → Devices and Simulators (or
+`xcrun devicectl`), replace `../raw/ios/connect.png`, regenerate with
+`cd .claude/skills/appstore-screenshots && python3 compositor.py --locale en`,
+and copy the output back over these files.
 
 ## iPad — still missing
 

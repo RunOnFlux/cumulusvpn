@@ -19,7 +19,7 @@ import { parse as parseYaml } from 'yaml'; // yarn add yaml
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const STAGES = { beta: 0, ga: 1, scale: 2 };
-const NODE_API = process.env.FLUX_API || 'https://api.runonflux.io';
+const STATS_API = process.env.FLUX_STATS_API || 'https://stats.runonflux.io';
 
 const args = process.argv.slice(2);
 const stage = args[stageIdx() + 1] ?? 'beta';
@@ -172,10 +172,19 @@ for (const c of wanted) {
 
   let note = '';
   if (eligibleByCountry) {
-    const avail = eligibleByCountry.get(c.cc.toUpperCase()) ?? 0;
+    const cov = eligibleByCountry.get(c.cc.toUpperCase()) ?? {
+      total: 0,
+      static: 0,
+      staticDatacenter: 0,
+    };
+    // What the spec can actually land on: static nodes when staticip is demanded, any
+    // node otherwise (open variant); the datacenter variant additionally needs dataCenter.
+    const avail =
+      variant === 'datacenter' ? cov.staticDatacenter : staticip ? cov.static : cov.total;
+    const detail = `${cov.total} nodes, ${cov.static} static`;
     if (avail < instances)
-      note = `  ⚠️  only ${avail} eligible datacenter nodes < ${instances} instances — will under-fill`;
-    else note = `  (${avail} eligible nodes)`;
+      note = `  ⚠️  only ${avail} eligible (${detail}) < ${instances} instances — will under-fill`;
+    else note = `  (${avail} eligible; ${detail})`;
   }
   console.log(`✓ ${name}  ${c.geolocation}  instances=${instances}${note}`);
 }
@@ -187,22 +196,27 @@ console.log(
     : 'Next: encrypt.mjs (wrap plaintext → enterprise blob) → register.sh (sign + broadcast + pay).',
 );
 
-// Rough eligibility: count deterministic nodes whose geo country matches. NOTE: this counts the
-// whole fleet, not just enterprise/datacenter/staticip nodes — treat as an UPPER bound. A precise
-// count needs the enterprise-node whitelist + staticip + tier data. POC: refine before GA.
+// Eligibility per country from the Flux stats API, which carries per-node geolocation plus
+// static-IP and datacenter flags (the daemon node list has NO geo fields at all). Still an
+// upper bound for the datacenter variant — a precise count would also need the enterprise
+// whitelist — but exact enough for the staticip gate the open variant cares about.
 async function fetchEligibleNodeCounts() {
   // Network is best-effort: --check is an advisory pre-flight, never a hard gate. Any failure
   // (offline, rate-limited, shape drift) degrades to "no coverage data" instead of aborting.
   try {
-    const res = await fetch(`${NODE_API}/daemon/viewdeterministicfluxnodelist`);
+    const res = await fetch(`${STATS_API}/fluxinfo?projection=geolocation`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const body = await res.json();
     const list = body?.data ?? [];
     const counts = new Map();
     for (const n of list) {
-      // geolocation strings look like "EU_DE_HES"; take the country segment.
-      const cc = (n.geolocation || n.geo || '').split('_')[1];
-      if (cc) counts.set(cc, (counts.get(cc) ?? 0) + 1);
+      const g = n?.geolocation;
+      if (!g?.countryCode) continue;
+      const c = counts.get(g.countryCode) ?? { total: 0, static: 0, staticDatacenter: 0 };
+      c.total += 1;
+      if (g.static) c.static += 1;
+      if (g.static && g.dataCenter) c.staticDatacenter += 1;
+      counts.set(g.countryCode, c);
     }
     return counts;
   } catch (err) {

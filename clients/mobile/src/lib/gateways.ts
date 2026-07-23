@@ -68,6 +68,11 @@ const COUNTRY_NAMES: Readonly<Record<string, string>> = {
   KR: 'South Korea',
   IN: 'India',
   ZA: 'South Africa',
+  // Scale additions
+  RU: 'Russia',
+  MY: 'Malaysia',
+  HK: 'Hong Kong',
+  AE: 'United Arab Emirates',
 };
 
 /**
@@ -98,6 +103,10 @@ const COUNTRY_CITIES: Readonly<Record<string, string>> = {
   KR: 'Seoul',
   IN: 'Mumbai',
   ZA: 'Johannesburg',
+  RU: 'Moscow',
+  MY: 'Kuala Lumpur',
+  HK: 'Hong Kong',
+  AE: 'Dubai',
 };
 
 /** Best locality label for a gateway: its reported city/region, else a fallback. */

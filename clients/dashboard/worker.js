@@ -1,19 +1,53 @@
 /**
  * Cloudflare Worker for dashboard.cumulusvpn.com — the public fleet monitor.
+ * Auto-deployed via the Worker's Git (Workers Builds) connection on push.
  *
  * Serves the static page (ASSETS binding) and exposes `/api/fleet`, which
  * aggregates every gateway's /v1/info SERVER-SIDE (no mixed-content block) and
  * returns one cached JSON snapshot the page renders. The gateways are plain
  * http; the Worker can reach them, the browser can't.
  *
+ * IMPORTANT — why raw TCP, not fetch(): the gateway control API listens on port
+ * 51821, and a Worker's fetch() can ONLY reach Cloudflare's supported ports
+ * (HTTP 80/8080/8880/2052/2082/2086/2095, HTTPS 443/...). A fetch to :51821
+ * fails for EVERY gateway, so the page painted the whole fleet "down" while the
+ * fleet was perfectly healthy. The `cloudflare:sockets` connect() API is NOT
+ * subject to that allowlist, so we speak minimal HTTP/1.1 over a raw socket.
+ *
  * The snapshot is edge-cached ~30s so a busy dashboard doesn't hammer the fleet.
  */
+
+import { connect } from 'cloudflare:sockets';
 
 // Planned fleet (keep in sync with deploy/countries.yaml). Undeployed specs just
 // return zero instances — which is itself useful (shows roadmap vs live).
 const COUNTRY_CODES = [
-  'us', 'ca', 'de', 'nl', 'fr', 'gb', 'cz', 'pl', 'sg', 'jp', 'au', 'br',
-  'es', 'it', 'se', 'ch', 'at', 'fi', 'mx', 'kr', 'in', 'za',
+  'us',
+  'ca',
+  'de',
+  'nl',
+  'fr',
+  'gb',
+  'cz',
+  'pl',
+  'sg',
+  'jp',
+  'au',
+  'br',
+  'es',
+  'it',
+  'se',
+  'ch',
+  'at',
+  'fi',
+  'mx',
+  'kr',
+  'in',
+  'za',
+  'ru',
+  'my',
+  'hk',
+  'ae',
 ];
 const FLUX_API = 'https://api.runonflux.io';
 const CONTROL_PORT = 51821;
@@ -52,25 +86,100 @@ async function locations(spec) {
   }
 }
 
+/** Index of the CRLF-CRLF that ends the HTTP header block, or -1. */
+function headerEnd(buf) {
+  for (let i = 0; i + 3 < buf.length; i++) {
+    if (buf[i] === 13 && buf[i + 1] === 10 && buf[i + 2] === 13 && buf[i + 3] === 10) {
+      return i;
+    }
+  }
+  return -1;
+}
+
+/**
+ * Minimal HTTP/1.1 GET over a raw TCP socket (plain http, no TLS). Returns the
+ * response body as text for a 200, else throws. Used instead of fetch() because
+ * fetch can't reach the gateway's non-standard control port (see file header).
+ * The gateway replies with Content-Length + `Connection: close`, so we read to
+ * EOF and slice the body — no chunked path needed for our own server.
+ */
+async function httpGet(host, port, path, timeoutMs) {
+  const socket = connect(
+    { hostname: host, port },
+    { secureTransport: 'off', allowHalfOpen: false },
+  );
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    try {
+      socket.close();
+    } catch {
+      /* already closing */
+    }
+  }, timeoutMs);
+  try {
+    const writer = socket.writable.getWriter();
+    await writer.write(
+      new TextEncoder().encode(
+        `GET ${path} HTTP/1.1\r\nHost: ${host}\r\nAccept: application/json\r\nConnection: close\r\n\r\n`,
+      ),
+    );
+    writer.releaseLock();
+
+    const reader = socket.readable.getReader();
+    const chunks = [];
+    let total = 0;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (value) {
+        chunks.push(value);
+        total += value.length;
+        if (total > 65536) break; // /v1/info is ~350 bytes; cap a misbehaving peer
+      }
+    }
+
+    const buf = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) {
+      buf.set(c, off);
+      off += c.length;
+    }
+    const sep = headerEnd(buf);
+    if (sep < 0) throw new Error('no header terminator');
+    const head = new TextDecoder().decode(buf.subarray(0, sep));
+    if (!/^HTTP\/1\.\d\s+200\b/.test(head)) throw new Error('non-200 status');
+    let body = buf.subarray(sep + 4);
+    const cl = /^content-length:\s*(\d+)/im.exec(head);
+    if (cl) body = body.subarray(0, Number(cl[1]));
+    return new TextDecoder().decode(body);
+  } catch (e) {
+    throw timedOut ? new Error('probe timeout') : e;
+  } finally {
+    clearTimeout(timer);
+    try {
+      await socket.close();
+    } catch {
+      /* already closed */
+    }
+  }
+}
+
 /** Probe one gateway's /v1/info; never throws. */
 async function probe(ip, cc, spec) {
   const inst = { ip, cc, spec, up: false };
   if (!isPublicIPv4(ip)) return inst; // don't let a poisoned index point us inward
   try {
-    const r = await fetch(`http://${ip}:${CONTROL_PORT}/v1/info`, {
-      signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-    });
-    if (r.ok) {
-      const j = await r.json();
-      const d = j && j.data ? j.data : j;
-      inst.up = true;
-      inst.version = d.version ?? null;
-      inst.buildCommit = d.build_commit ?? null;
-      inst.load = typeof d.load === 'number' ? d.load : null;
-      inst.capacity = typeof d.capacity === 'number' ? d.capacity : null;
-      inst.region = d.region || '';
-      inst.city = d.city || '';
-    }
+    const text = await httpGet(ip, CONTROL_PORT, '/v1/info', PROBE_TIMEOUT_MS);
+    const j = JSON.parse(text);
+    const d = j && j.data ? j.data : j;
+    inst.up = true;
+    inst.version = d.version ?? null;
+    inst.buildCommit = d.build_commit ?? null;
+    inst.load = typeof d.load === 'number' ? d.load : null;
+    inst.capacity = typeof d.capacity === 'number' ? d.capacity : null;
+    inst.region = d.region || '';
+    inst.city = d.city || '';
   } catch {
     // unreachable → stays up:false
   }

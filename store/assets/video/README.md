@@ -43,3 +43,49 @@ Rebuild the release APK (`clients/mobile/android` → `./gradlew assembleRelease
 install on a booted emulator, then drive with `adb shell screenrecord` while
 walking the flow above. Re-run faststart:
 `ffmpeg -i in.mp4 -c copy -movflags +faststart play-vpnservice-demo.mp4`.
+
+---
+
+# iOS promo video
+
+`ios-promo.mp4` — 40 s marketing/social promo for CumulusVPN iOS (1080×1920,
+30 fps, H.264 + AAC, faststart). NOT an App Store Connect "app preview" (those
+need exact device sizes, e.g. 886×1920); this is for socials, the site, and
+press.
+
+## What it shows
+
+Motion-graphics tour built from the **real iOS captures** in
+`../screenshots/raw/ios/` (same provenance as the store screenshots), seated
+in the official Apple iPhone 16 Pro Max bezel on the brand sky gradient:
+
+1. Brand intro — glyph, wordmark, "THE DECENTRALIZED VPN".
+2. CONNECT — real connected session (Netherlands, physical-device capture).
+3. COUNTRIES — country picker with live latency.
+4. MULTI-HOP — route-style selector with tradeoff copy.
+5. FREE TIER — settings with the honest "100 KB/s" limit row.
+6. Outro — "NO ACCOUNT / No logs. Powered by Flux." + cumulusvpn.com.
+
+Copy mirrors `.claude/skills/appstore-screenshots/config/locales/en.yaml`
+(the store-approved claims — honesty rule holds).
+
+## Music
+
+Fully synthesized in `ios-promo-src/music.py` (numpy/scipy: maj9 pads, pluck
+arp, sub bass, soft four-on-the-floor that drops out for the outro). No
+samples, no third-party audio — **zero licensing constraints**.
+
+## Regenerating
+
+```bash
+cd "$(mktemp -d)"
+uv venv venv && uv pip install -p ./venv/bin/python pillow numpy scipy pyyaml
+REPO=<repo-root>
+./venv/bin/python "$REPO/store/assets/video/ios-promo-src/music.py"
+./venv/bin/python "$REPO/store/assets/video/ios-promo-src/render.py"
+ffmpeg -i video-silent.mp4 -i music.wav -c:v copy -c:a aac -b:a 192k \
+  -shortest -movflags +faststart "$REPO/store/assets/video/ios-promo.mp4"
+```
+
+Requires ffmpeg and macOS (kicker font is system Menlo). Timeline, copy, and
+scene order live at the top of `ios-promo-src/render.py`.

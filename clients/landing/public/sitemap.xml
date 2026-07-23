@@ -2340,4 +2340,7 @@
     <xhtml:link rel="alternate" hreflang="ko" href="https://cumulusvpn.com/ko/privacy" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
   </url>
+  <url>
+    <loc>https://cumulusvpn.com/network</loc>
+  </url>
 </urlset>

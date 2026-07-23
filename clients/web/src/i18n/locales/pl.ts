@@ -43,7 +43,12 @@ export const pl: Catalog = {
   connect_loading_directory: 'Wczytywanie podpisanego katalogu i wykrywanie bramek…',
   connect_your_config: 'Twoja konfiguracja',
   connect_source_directory: 'Katalog {source}',
-  connect_live_nodes: { one: '{n} aktywny węzeł', few: '{n} aktywne węzły', many: '{n} aktywnych węzłów', other: '{n} aktywnego węzła' },
+  connect_live_nodes: {
+    one: '{n} aktywny węzeł',
+    few: '{n} aktywne węzły',
+    many: '{n} aktywnych węzłów',
+    other: '{n} aktywnego węzła',
+  },
   connect_select_country: 'Wybierz kraj, aby kontynuować',
   connect_enrolling: 'Rejestracja…',
   connect_generate: 'Wygeneruj .conf',
