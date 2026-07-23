@@ -111,10 +111,74 @@ function write() {
   console.log(`landing i18n: wrote ${out.size} pages for ${active.length} locale(s)`);
 }
 
-const args = process.argv.slice(2);
-if (args.includes('--check')) {
-  console.error('landing i18n: --check arrives in a later task');
-  process.exit(1);
-} else {
-  write();
+const TAG_RE = /<([a-zA-Z][a-zA-Z0-9]*)/g;
+const LINK_TOKEN_RE = /%(HOME|SUPPORT|PRIVACY)%/g;
+
+function tagMultiset(s) {
+  return (s.match(TAG_RE) ?? []).map((t) => t.slice(1).toLowerCase()).sort().join(',');
 }
+function linkTokens(s) {
+  return [...new Set(s.match(LINK_TOKEN_RE) ?? [])].sort().join(',');
+}
+
+function check(allowMissing) {
+  const errors = [];
+  const { out, active, catalogs } = buildAll();
+
+  // 1. Catalog presence (strict unless --allow-missing).
+  const missing = LOCALES.filter((l) => !catalogs.has(l.code)).map((l) => l.code);
+  if (missing.length && !allowMissing) errors.push(`missing catalogs: ${missing.join(' ')}`);
+
+  // 2. Drift: committed output must equal a fresh build.
+  for (const [rel, content] of out) {
+    const file = join(PUB, rel);
+    if (!existsSync(file)) errors.push(`drift: ${rel} missing on disk (run: node build.mjs)`);
+    else if (readFileSync(file, 'utf8') !== content) errors.push(`drift: ${rel} differs from build output`);
+  }
+  // Stale locale dirs for locales without catalogs.
+  for (const l of LOCALES) {
+    if (!catalogs.has(l.code) && existsSync(join(PUB, l.code))) errors.push(`stale: public/${l.code}/ has no catalog`);
+  }
+
+  // 3. Placeholder/token leaks in rendered output.
+  for (const [rel, content] of out) {
+    const leak = content.match(/\{\{[a-z0-9_.]+\}\}|%[A-Z_]{2,}%/);
+    if (leak) errors.push(`leak: ${rel} contains ${leak[0]}`);
+  }
+
+  // 4. Key parity + structural parity vs en.
+  const en = catalogs.get('en');
+  if (!en) errors.push('en.json missing — nothing to compare against');
+  else {
+    for (const [code, cat] of catalogs) {
+      if (code === 'en') continue;
+      for (const key of en.keys()) if (!cat.has(key)) errors.push(`${code}: missing key ${key}`);
+      for (const key of cat.keys()) if (!en.has(key)) errors.push(`${code}: extra key ${key}`);
+      for (const [key, val] of cat) {
+        if (!en.has(key)) continue;
+        if (tagMultiset(val) !== tagMultiset(en.get(key)))
+          errors.push(`${code}: ${key} tag structure differs from en (${tagMultiset(val) || '∅'} vs ${tagMultiset(en.get(key)) || '∅'})`);
+        if (linkTokens(val) !== linkTokens(en.get(key)))
+          errors.push(`${code}: ${key} link tokens differ from en`);
+      }
+    }
+  }
+
+  // 5. JSON-LD must stay parseable on every generated homepage.
+  for (const [rel, content] of out) {
+    if (!rel.endsWith('index.html')) continue;
+    const m = content.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+    if (!m) { errors.push(`jsonld: ${rel} block missing`); continue; }
+    try { JSON.parse(m[1]); } catch { errors.push(`jsonld: ${rel} is not valid JSON`); }
+  }
+
+  if (errors.length) {
+    for (const e of errors) console.error(`CHECK FAIL: ${e}`);
+    process.exit(1);
+  }
+  console.log(`landing i18n: check passed (${out.size} pages, ${active.length} locale(s))`);
+}
+
+const args = process.argv.slice(2);
+if (args.includes('--check')) check(args.includes('--allow-missing'));
+else write();
