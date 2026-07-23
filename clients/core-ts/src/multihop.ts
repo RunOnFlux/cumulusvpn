@@ -51,6 +51,20 @@ export interface SelectHopsOptions {
   readonly entryCountry?: string;
   /** Restrict the exit to this country. */
   readonly exitCountry?: string;
+  /**
+   * Require the entry and exit to sit on different subnets (IPv4 /24, IPv6 /48)
+   * — a co-location guard so a route can't be built from two gateways in the
+   * same rack. OFF by default; the UI exposes it as an opt-in toggle because a
+   * small fleet may not offer a distinct-subnet pair, in which case
+   * {@link selectHops} throws rather than silently returning a co-located route.
+   *
+   * This is the *subnet* leg of node diversity, and the only one enforceable
+   * from the client today: operator- and ASN-level separation need node
+   * metadata the gateway does not yet expose in `/v1/info`. Distinct subnets is
+   * a strong proxy — two different /24s are not the same rack — but it does not,
+   * on its own, prove two different operators.
+   */
+  readonly requireDistinctSubnet?: boolean;
 }
 
 /** The ordered hops chosen by {@link selectHops}. `exit` is absent for `'single'`. */
@@ -90,6 +104,21 @@ function stripEndpointPort(endpoint: string): string {
 }
 
 /**
+ * Group key identifying a gateway's subnet for the distinct-subnet diversity
+ * rule: IPv4 collapses to its /24 (first three octets), IPv6 to its /48 (first
+ * three hextets, best-effort without full normalization). A malformed address
+ * falls back to itself, so it only ever collides with an identical string —
+ * never wrongly treating two distinct gateways as co-located.
+ */
+function subnetGroup(ip: string): string {
+  if (ip.includes(':')) {
+    return ip.split(':').slice(0, 3).join(':').toLowerCase();
+  }
+  const octets = ip.split('.');
+  return octets.length === 4 ? octets.slice(0, 3).join('.') : ip;
+}
+
+/**
  * Deterministic ordering: least-loaded first, then country as a stable
  * tie-break, then IP so equal-load same-country gateways still order stably.
  */
@@ -117,12 +146,19 @@ function byLoadThenCountry(a: GatewayInfo, b: GatewayInfo): number {
  * `'multihop-cross-jurisdiction'` requires `entry.country !== exit.country`.
  * `'single'` returns just the entry (no exit).
  *
+ * With `opts.requireDistinctSubnet`, entry and exit must also fall in different
+ * subnets. To honor that without spuriously failing, the least-loaded entry is
+ * no longer fixed: entry candidates are tried in load order until one yields a
+ * valid exit. Without the flag, behavior is unchanged — the least-loaded entry
+ * is used and the call throws if it has no valid exit.
+ *
  * @param gateways - Discovered, verified gateways to choose from.
  * @param style - The desired {@link RouteStyle}.
- * @param opts - Optional explicit entry/exit country picks.
+ * @param opts - Optional explicit entry/exit country picks and diversity rule.
  * @returns The chosen `entry` and, for multi-hop styles, `exit`.
  * @throws {Error} If no gateway satisfies the constraints (empty fleet, no
- *   distinct exit, or no exit in the required jurisdiction).
+ *   distinct exit, no exit in the required jurisdiction, or — with
+ *   `requireDistinctSubnet` — no entry/exit pair on distinct subnets).
  */
 export function selectHops(
   gateways: readonly GatewayInfo[],
@@ -147,30 +183,42 @@ export function selectHops(
     return { entry };
   }
 
-  const exitPool = sorted.filter((g) => {
-    if (g.ip === entry.ip) {
-      return false; // enforce entry !== exit
-    }
-    if (opts.exitCountry && g.country !== opts.exitCountry) {
-      return false;
-    }
-    if (style === 'multihop-same-country') {
-      return g.country === entry.country;
-    }
-    // multihop-cross-jurisdiction
-    return g.country !== entry.country;
-  });
+  // The least-loaded valid exit for a given entry, or undefined if none.
+  const exitFor = (from: GatewayInfo): GatewayInfo | undefined =>
+    sorted.find((g) => {
+      if (g.ip === from.ip) {
+        return false; // enforce entry !== exit
+      }
+      if (opts.exitCountry && g.country !== opts.exitCountry) {
+        return false;
+      }
+      if (opts.requireDistinctSubnet && subnetGroup(g.ip) === subnetGroup(from.ip)) {
+        return false; // co-location guard: entry and exit must differ by subnet
+      }
+      if (style === 'multihop-same-country') {
+        return g.country === from.country;
+      }
+      // multihop-cross-jurisdiction
+      return g.country !== from.country;
+    });
 
-  const exit = exitPool[0];
-  if (!exit) {
-    const reason =
-      style === 'multihop-cross-jurisdiction'
-        ? `no distinct exit in a different country from entry "${entry.country}"`
-        : `no distinct exit in country "${entry.country}"`;
-    throw new Error(`selectHops: ${reason}`);
+  // Default: fixed least-loaded entry (behavior unchanged). With the distinct-
+  // subnet rule, walk entry candidates in load order so a satisfiable pair
+  // isn't missed just because the least-loaded node's subnet has no partner.
+  const entryCandidates = opts.requireDistinctSubnet ? entryPool : [entry];
+  for (const candidate of entryCandidates) {
+    const exit = exitFor(candidate);
+    if (exit) {
+      return { entry: candidate, exit };
+    }
   }
 
-  return { entry, exit };
+  const jurisdiction =
+    style === 'multihop-cross-jurisdiction'
+      ? `in a different country from entry "${entry.country}"`
+      : `in country "${entry.country}"`;
+  const subnetNote = opts.requireDistinctSubnet ? ' on a distinct subnet' : '';
+  throw new Error(`selectHops: no distinct exit ${jurisdiction}${subnetNote}`);
 }
 
 /**

@@ -49,6 +49,7 @@ import {
   loadFleet,
   loadKeypair,
   loadKillSwitch,
+  loadNodeDiversity,
   loadRouteStyle,
   loadSelectedCountry,
   saveActiveRoute,
@@ -59,6 +60,7 @@ import {
   saveFleet,
   saveKeypair,
   saveKillSwitch,
+  saveNodeDiversity,
   saveRouteStyle,
   saveSelectedCountry,
 } from './storage';
@@ -100,6 +102,13 @@ export interface VpnModel {
   readonly exit: Country | null;
   /** Kill switch: block all non-tunnel traffic while connected (persisted). */
   readonly killSwitch: boolean;
+  /**
+   * Multi-hop node diversity: require the entry and exit gateways to sit on
+   * different subnets, so a route can't be built from two co-located nodes.
+   * Off by default; a small fleet may make a diverse route impossible, in which
+   * case a multi-hop connect fails with a clear message (persisted).
+   */
+  readonly nodeDiversity: boolean;
   /** Auto-connect on app launch once discovery completes (persisted). */
   readonly autoConnect: boolean;
   /** Unix-ms when the active session connected, or null when not connected. */
@@ -150,6 +159,8 @@ export interface VpnActions {
   selectExitCountry(code: string | null): Promise<void>;
   /** Toggle the kill switch (persisted). Applies on the next connect. */
   setKillSwitch(enabled: boolean): Promise<void>;
+  /** Toggle multi-hop node diversity (persisted). Applies on the next connect. */
+  setNodeDiversity(enabled: boolean): Promise<void>;
   /** Toggle auto-connect on launch (persisted). */
   setAutoConnect(enabled: boolean): Promise<void>;
   /** Pin/unpin a country as a favorite (persisted). */
@@ -184,6 +195,7 @@ export function useVpn(): VpnModel & VpnActions {
   const [entryCode, setEntryCode] = useState<string | null>(null);
   const [exitCode, setExitCode] = useState<string | null>(null);
   const [killSwitch, setKillSwitchState] = useState(false);
+  const [nodeDiversity, setNodeDiversityState] = useState(false);
   const [autoConnect, setAutoConnectState] = useState(false);
   const [favorites, setFavorites] = useState<readonly string[]>([]);
   // Mirror of `favorites` for toggleFavorite to read the current value without a
@@ -369,6 +381,7 @@ export function useVpn(): VpnModel & VpnActions {
         setEntryCode(await loadEntryCountry());
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
+        setNodeDiversityState(await loadNodeDiversity());
         setAutoConnectState(await loadAutoConnect());
         favoritesRef.current = await loadFavorites();
         setFavorites(favoritesRef.current);
@@ -645,6 +658,7 @@ export function useVpn(): VpnModel & VpnActions {
           gatewayIpRef,
           setEnrollment,
           killSwitch,
+          requireDistinctSubnet: nodeDiversity,
         });
         const entryEp = routeEndpoint(hops.entry);
         const exitEp = routeEndpoint(hops.exit);
@@ -706,6 +720,7 @@ export function useVpn(): VpnModel & VpnActions {
     entryCode,
     exitCode,
     killSwitch,
+    nodeDiversity,
     pickGateway,
     avoidGateway,
     availableGateways,
@@ -793,6 +808,11 @@ export function useVpn(): VpnModel & VpnActions {
     await saveKillSwitch(enabled);
   }, []);
 
+  const setNodeDiversity = useCallback(async (enabled: boolean): Promise<void> => {
+    setNodeDiversityState(enabled);
+    await saveNodeDiversity(enabled);
+  }, []);
+
   const setAutoConnect = useCallback(async (enabled: boolean): Promise<void> => {
     setAutoConnectState(enabled);
     await saveAutoConnect(enabled);
@@ -828,6 +848,7 @@ export function useVpn(): VpnModel & VpnActions {
     entry,
     exit,
     killSwitch,
+    nodeDiversity,
     autoConnect,
     connectedSince,
     activeEntry,
@@ -843,6 +864,7 @@ export function useVpn(): VpnModel & VpnActions {
     selectEntryCountry,
     selectExitCountry,
     setKillSwitch,
+    setNodeDiversity,
     setAutoConnect,
     toggleFavorite,
     openVpnSettings,
@@ -865,6 +887,7 @@ async function connectMultihop(args: {
   gatewayIpRef: { current: string | null };
   setEnrollment: (r: EnrollResponse) => void;
   killSwitch: boolean;
+  requireDistinctSubnet: boolean;
 }): Promise<{ entry: GatewayInfo; exit: GatewayInfo }> {
   const {
     keypair,
@@ -875,14 +898,28 @@ async function connectMultihop(args: {
     gatewayIpRef,
     setEnrollment,
     killSwitch,
+    requireDistinctSubnet,
   } = args;
 
   // core enforces entry !== exit and the per-style jurisdiction rule; a null
   // country means "auto-pick" (nearest healthy entry / well-connected exit).
-  const hops = selectHops(gateways, routeStyle, {
-    ...(entryCountry ? { entryCountry } : {}),
-    ...(exitCountry ? { exitCountry } : {}),
-  });
+  // With node diversity on, entry and exit must also differ by subnet — which a
+  // small fleet may not allow, so translate that failure into a clear message.
+  let hops;
+  try {
+    hops = selectHops(gateways, routeStyle, {
+      ...(entryCountry ? { entryCountry } : {}),
+      ...(exitCountry ? { exitCountry } : {}),
+      ...(requireDistinctSubnet ? { requireDistinctSubnet: true } : {}),
+    });
+  } catch (e) {
+    if (requireDistinctSubnet) {
+      throw new Error(
+        'No distinct-network route available. Turn off Node diversity, or pick different entry/exit countries.',
+      );
+    }
+    throw e;
+  }
   if (!hops.exit) {
     throw new Error('Multi-hop needs a distinct exit gateway');
   }

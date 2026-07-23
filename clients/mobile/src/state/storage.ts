@@ -21,6 +21,7 @@ const K = {
   country: 'cvpn:country',
   routeStyle: 'cvpn:routeStyle',
   killSwitch: 'cvpn:killSwitch',
+  nodeDiversity: 'cvpn:nodeDiversity',
   autoConnect: 'cvpn:autoConnect',
   favorites: 'cvpn:favorites',
   entryCountry: 'cvpn:entryCountry',
@@ -124,6 +125,16 @@ export async function loadKillSwitch(): Promise<boolean> {
 /** Persist the kill-switch preference. */
 export async function saveKillSwitch(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(K.killSwitch, enabled ? '1' : '0');
+}
+
+/** Load the multi-hop node-diversity preference (default off). */
+export async function loadNodeDiversity(): Promise<boolean> {
+  return (await AsyncStorage.getItem(K.nodeDiversity)) === '1';
+}
+
+/** Persist the multi-hop node-diversity preference. */
+export async function saveNodeDiversity(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(K.nodeDiversity, enabled ? '1' : '0');
 }
 
 /** Load the auto-connect-on-launch preference (default off). */

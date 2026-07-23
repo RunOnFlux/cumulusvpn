@@ -140,4 +140,64 @@ describe('selectHops', () => {
     const { entry } = selectHops([a, b], 'single');
     expect(entry.country).toBe('CA');
   });
+
+  describe('requireDistinctSubnet', () => {
+    it('off (default) allows an exit on the same /24', () => {
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const b = gateway({ ip: '1.0.0.2', country: 'US', load: 0.5 });
+      const { entry, exit } = selectHops([a, b], 'multihop-same-country');
+      expect(entry.ip).toBe('1.0.0.1');
+      expect(exit?.ip).toBe('1.0.0.2'); // same /24 accepted when the flag is off
+    });
+
+    it('picks an exit on a different /24 when required', () => {
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const sameSubnet = gateway({ ip: '1.0.0.2', country: 'US', load: 0.2 });
+      const diffSubnet = gateway({ ip: '2.0.0.9', country: 'US', load: 0.9 });
+      const { entry, exit } = selectHops([a, sameSubnet, diffSubnet], 'multihop-same-country', {
+        requireDistinctSubnet: true,
+      });
+      expect(entry.ip).toBe('1.0.0.1');
+      // sameSubnet is excluded despite lower load; only diffSubnet qualifies.
+      expect(exit?.ip).toBe('2.0.0.9');
+    });
+
+    it('throws when every same-country exit shares the entry subnet', () => {
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const b = gateway({ ip: '1.0.0.2', country: 'US', load: 0.5 });
+      expect(() =>
+        selectHops([a, b], 'multihop-same-country', { requireDistinctSubnet: true }),
+      ).toThrow(/distinct subnet/);
+    });
+
+    it('falls back to a later entry candidate to find a distinct-subnet pair', () => {
+      // The two least-loaded nodes (a, b) are both US and share one /24, so the
+      // US country has no distinct-subnet same-country pair. DE does (c, d on
+      // different /24s) — same-country selection must skip past the US entries
+      // to build the DE→DE pair rather than throwing.
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const b = gateway({ ip: '1.0.0.2', country: 'US', load: 0.2 });
+      const c = gateway({ ip: '3.0.0.1', country: 'DE', load: 0.3 });
+      const d = gateway({ ip: '4.0.0.1', country: 'DE', load: 0.4 });
+      const { entry, exit } = selectHops([a, b, c, d], 'multihop-same-country', {
+        requireDistinctSubnet: true,
+      });
+      expect(entry.ip).toBe('3.0.0.1');
+      expect(exit?.ip).toBe('4.0.0.1');
+    });
+
+    it('still enforces cross-country exits with the flag on', () => {
+      const { entry, exit } = selectHops([us1, us2, de1], 'multihop-cross-jurisdiction', {
+        requireDistinctSubnet: true,
+      });
+      expect(entry.country).toBe('US');
+      expect(exit?.country).toBe('DE');
+      expect(subnet(exit?.ip)).not.toBe(subnet(entry.ip));
+    });
+  });
 });
+
+/** First three octets of an IPv4 address, for asserting distinct /24s. */
+function subnet(ip: string | undefined): string {
+  return (ip ?? '').split('.').slice(0, 3).join('.');
+}
