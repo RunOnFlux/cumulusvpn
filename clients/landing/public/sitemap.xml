@@ -3,16 +3,136 @@
   <url>
     <loc>https://cumulusvpn.com/</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/es/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/pt/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/fr/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/it/</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/" />
   </url>
   <url>
     <loc>https://cumulusvpn.com/support</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/support" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/support" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/support" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/support" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/support" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/support" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/es/support</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/support" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/support" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/support" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/support" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/support" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/support" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/pt/support</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/support" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/support" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/support" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/support" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/support" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/support" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/fr/support</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/support" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/support" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/support" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/support" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/support" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/support" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/it/support</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/support" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/support" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/support" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/support" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/support" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/support" />
   </url>
   <url>
     <loc>https://cumulusvpn.com/privacy</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/privacy" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/privacy" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/privacy" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/privacy" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/privacy" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/es/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/privacy" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/privacy" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/privacy" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/privacy" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/privacy" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/pt/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/privacy" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/privacy" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/privacy" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/privacy" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/privacy" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/fr/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/privacy" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/privacy" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/privacy" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/privacy" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/privacy" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
+  </url>
+  <url>
+    <loc>https://cumulusvpn.com/it/privacy</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/privacy" />
+    <xhtml:link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/privacy" />
+    <xhtml:link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/privacy" />
+    <xhtml:link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/privacy" />
+    <xhtml:link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/privacy" />
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
   </url>
 </urlset>
