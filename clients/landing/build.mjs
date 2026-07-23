@@ -132,6 +132,7 @@ function sitemapXml(active) {
       urls.push(`  <url>\n    <loc>${pageUrl(l.code, page.slug)}</loc>\n${links}\n  </url>`);
     }
   }
+  urls.push(`  <url>\n    <loc>${ORIGIN}/network</loc>\n  </url>`);
   return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`;
 }
 
@@ -219,6 +220,7 @@ function check(allowMissing) {
   }
   // 7. Sitemap: <loc> set == generated page URL set; drift vs disk.
   const expectedLocs = new Set(PAGES.flatMap((p) => active.map((l) => pageUrl(l.code, p.slug))));
+  expectedLocs.add(`${ORIGIN}/network`);
   const sm = sitemapXml(active);
   const locs = new Set([...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]));
   if (locs.size !== expectedLocs.size || [...locs].some((u) => !expectedLocs.has(u))) errors.push('sitemap: loc set mismatch');
