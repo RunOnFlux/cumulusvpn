@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="nb" data-theme="">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+<title>Personvernerklæring — CumulusVPN</title>
+<meta name="description" content="CumulusVPNs personvernerklæring — ingen konto, ingen logger, ingen e-post. Nøyaktig hva vi samler inn og ikke samler inn, på klarspråk." />
+<meta name="theme-color" content="#070B11" />
+<meta property="og:title" content="Personvernerklæring — CumulusVPN" />
+<meta property="og:description" content="Ingen konto, ingen logger, ingen e-post. Hva CumulusVPN samler inn og ikke samler inn, på klarspråk." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://cumulusvpn.com/nb/privacy" />
+<meta property="og:site_name" content="CumulusVPN" />
+<meta property="og:locale" content="nb_NO" />
+<link rel="canonical" href="https://cumulusvpn.com/nb/privacy" />
+<link rel="alternate" hreflang="en" href="https://cumulusvpn.com/privacy" />
+<link rel="alternate" hreflang="es" href="https://cumulusvpn.com/es/privacy" />
+<link rel="alternate" hreflang="pt" href="https://cumulusvpn.com/pt/privacy" />
+<link rel="alternate" hreflang="fr" href="https://cumulusvpn.com/fr/privacy" />
+<link rel="alternate" hreflang="de" href="https://cumulusvpn.com/de/privacy" />
+<link rel="alternate" hreflang="it" href="https://cumulusvpn.com/it/privacy" />
+<link rel="alternate" hreflang="nl" href="https://cumulusvpn.com/nl/privacy" />
+<link rel="alternate" hreflang="pl" href="https://cumulusvpn.com/pl/privacy" />
+<link rel="alternate" hreflang="el" href="https://cumulusvpn.com/el/privacy" />
+<link rel="alternate" hreflang="sv" href="https://cumulusvpn.com/sv/privacy" />
+<link rel="alternate" hreflang="da" href="https://cumulusvpn.com/da/privacy" />
+<link rel="alternate" hreflang="nb" href="https://cumulusvpn.com/nb/privacy" />
+<link rel="alternate" hreflang="fi" href="https://cumulusvpn.com/fi/privacy" />
+<link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+<link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+<link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+<link rel="stylesheet" href="/doc.css" />
+<!-- Apply saved theme before first paint to avoid a flash. -->
+<script>(function(){var r=document.documentElement;try{var s=localStorage.getItem('cumulusvpn-theme');if(s==='light'||s==='dark')r.setAttribute('data-theme',s);}catch(e){}})();</script>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <a class="brand" href="/nb/">
+    <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" fill="currentColor" opacity=".18"/>
+      <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+      <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+    </svg>
+    CumulusVPN
+  </a>
+  <nav>
+    <a href="/nb/#how">Slik fungerer det</a><a href="/nb/#pricing">Priser</a>
+    <a href="/nb/#apps">Få appen</a><a href="/nb/support">Support</a>
+  </nav>
+  <div class="right">
+    <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux — åpner runonflux.com">
+      <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
+      <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
+    </a>
+    <select class="lang-select" id="langSelect" aria-label="Språk"><option value="en">English</option><option value="es">Español</option><option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="nl">Nederlands</option><option value="pl">Polski</option><option value="el">Ελληνικά</option><option value="sv">Svenska</option><option value="da">Dansk</option><option value="nb" selected>Norsk</option><option value="fi">Suomi</option></select>
+    <button class="theme-btn" id="themeToggle" type="button" aria-label="Bytt mellom lyst og mørkt tema" title="Bytt tema">◐</button>
+  </div>
+</div></header>
+
+<main class="doc wrap">
+  <div class="doc-head">
+    <span class="eyebrow">Personvern gjennom arkitektur</span>
+    <h1>Personvernerklæring</h1>
+    <p class="doc-meta">Sist oppdatert: 16. juli 2026 · Gjeldende fra: 16. juli 2026</p>
+
+  <p class="doc-meta">Denne oversettelsen er kun til bekvemmelighet; den engelske versjonen på cumulusvpn.com/privacy er gjeldende.</p>
+  </div>
+
+  <div class="doc-body">
+    <p class="lead">CumulusVPN er en desentralisert VPN-tjeneste. Denne erklæringen forklarer, på klarspråk,
+      nøyaktig hva vi samler inn og hva vi ikke samler inn. Den er kort fordi tjenesten er bygget for å
+      samle inn nesten ingenting. Skulle en påstand her noen gang være feil, er det en feil vi retter — arkitekturen
+      er beskrevet offentlig på <a href="https://cumulusvpn.com">cumulusvpn.com</a> og i kildekoden vår.</p>
+    <p>Kontakt for personvernspørsmål og dataforespørsler: <strong>info@cumulusvpn.com</strong><br />
+      Meldinger om misbruk: <strong>info@cumulusvpn.com</strong></p>
+
+    <hr class="hr" />
+
+    <h2>1. Sammendrag (hele erklæringen på én skjerm)</h2>
+    <ul>
+      <li><strong>Ingen konto. Ingen e-post. Ingen passord. Ingen telefonnummer.</strong> Du gir oss aldri identiteten din.</li>
+      <li><strong>Ingen aktivitetslogger.</strong> Vi registrerer ikke nettstedene du besøker, DNS-oppslagene dine,
+        innholdet i trafikken din, båndbreddehistorikken din eller tilkoblingstidspunkter i noe varig lager.</li>
+      <li><strong>Identiteten din er en kryptografisk nøkkel</strong>, generert på din egen enhet. Vi ser aldri den
+        private nøkkelen din. Vi ser bare noensinne en offentlig nøkkel, som er en tilfeldig utseende streng uten noen kobling til deg.</li>
+      <li><strong>Gatewayer holder peer-tilstand kun i RAM.</strong> Når en server startes på nytt, er den tilstanden borte.
+        Det finnes ingen trafikkdatabase å beslaglegge, innkalle som bevis, eller lekke.</li>
+      <li><strong>Betalinger er valgfrie og gjøres i kryptovalutaen FLUX på en offentlig blokkjede.</strong> Vi
+        driver ikke blokkjeden, tar ikke imot kortopplysninger, og finner aldri ut navnet ditt fra en betaling.</li>
+      <li><strong>Ingen sporing, ingen reklame-SDK-er, ingen analyseverktøy som identifiserer deg.</strong> Appene inneholder ingen
+        tredjeparts reklame- eller atferdssporingskode.</li>
+      <li><strong>Vi er ikke en dataforretning.</strong> Vi har ingen brukerdata å selge, og vi selger ikke data.</li>
+    </ul>
+
+    <h2>2. Hvem vi er</h2>
+    <p>CumulusVPN («vi», «oss») er en VPN-tjeneste driftet av CumulusVPN-teamet, bygget på Flux'
+      desentraliserte skynettverk (<a href="https://runonflux.io">runonflux.io</a>). VPN-utgangsservere
+      («gatewayer») kjører som containeriserte apper på Flux-datasenternoder driftet av uavhengige,
+      KYC-verifiserte datasenteroperatører. Vi publiserer tjenesten; den underliggende datakraften er desentralisert.</p>
+    <p>I henhold til personvernforordningen (GDPR) i EU og UK GDPR i Storbritannia, og bare i den svært
+      begrensede grad noe av informasjonen under er «personopplysninger», er CumulusVPNs driftsselskap
+      behandlingsansvarlig. Det rettslige grunnlaget vi støtter oss på, er vår berettigede interesse (artikkel 6(1)(f))
+      i å tilby en fungerende VPN som er motstandsdyktig mot misbruk, og — for betalinger — oppfyllelse av tjenesten du ber om
+      (artikkel 6(1)(b)). Fordi tjenesten er utformet for å være anonym, sitter vi i de fleste tilfeller ikke på noen data
+      som kan knyttes til deg i det hele tatt.</p>
+
+    <h2>3. Hva vi IKKE samler inn</h2>
+    <p>Vi vil være tydelige, fordi de fleste VPN-er gjemmer bort dette. CumulusVPN <strong>samler ikke inn</strong>,
+      logger eller lagrer noe av følgende:</p>
+    <ul>
+      <li>Navnet ditt, e-postadressen din, telefonnummeret ditt, eller noen som helst kontoopplysninger — det finnes ingen kontoer.</li>
+      <li>IP-adressen du kobler til fra, i noen varig logg.</li>
+      <li>Nettstedene, domenene eller tjenestene du kobler til.</li>
+      <li>DNS-oppslagene dine (DNS løses for deg gjennom tunnelen og registreres ikke).</li>
+      <li>Innholdet, tidspunktet eller størrelsen på trafikken din, i noen varig database.</li>
+      <li>En båndbreddehistorikk, økthistorikk eller historikk over tilkoblingstidspunkter knyttet til deg.</li>
+      <li>Reklame-ID-er fra enheten (IDFA / GAID) — vi verken ber om eller bruker disse.</li>
+      <li>Posisjonsdata fra enheten din (GPS, presis eller omtrentlig). Landet du kobler til <em>gjennom</em>
+        er ditt eget valg av server, ikke en avlesning av posisjonen til enheten din.</li>
+      <li>Kontakter, bilder, filer, mikrofon, kamera eller noen sensor på enheten.</li>
+    </ul>
+    <p>Vi bruker ikke tredjeparts reklamenettverk, og vi bruker ikke analyseverktøy som bygger en
+      profil av deg (som ad-tech-SDK-er). Appene leveres uten atferdssporing.</p>
+    <p><strong>Nettstedene</strong> våre (<code>cumulusvpn.com</code> og <code>vpn.cumulusvpn.com</code>) bruker
+      Cloudflare Web Analytics, en informasjonskapselfri, aggregert målingstjeneste: den setter ingen informasjonskapsler, lagrer
+      ingenting på enheten din, og kan ikke identifisere eller profilere enkeltbesøkende. Den forteller oss sidevisninger,
+      ikke personer. Appene inneholder ingen analyseverktøy av noe slag.</p>
+
+    <h2>4. Hva som teknisk sett er involvert (og hvorfor det ikke blir en profil av deg)</h2>
+    <p>En VPN kan ikke fungere uten at noe data passerer gjennom den i sanntid. Her er alt sammen, og hvorfor
+      ingenting av det blir en registrering om deg.</p>
+    <h3>4.1 Den offentlige nøkkelen din (pseudonym identifikator)</h3>
+    <p>Enheten din genererer et WireGuard-nøkkelpar lokalt ved første oppstart. Den <strong>private nøkkelen forlater
+      aldri enheten din</strong> — ikke engang til oss. Bare den <strong>offentlige nøkkelen</strong> sendes til en
+      gateway, slik at den kan rute den krypterte tunnelen din. En offentlig nøkkel er en 32-byte, tilfeldig utseende verdi. Den er
+      ikke knyttet til navnet ditt, e-posten din eller maskinvaren din, og du kan generere den på nytt når som helst. Den er et pseudonym,
+      ikke en identitet.</p>
+    <h3>4.2 Peer-tilstand i minnet på gatewayen</h3>
+    <p>Mens du er tilkoblet, holder gatewayen — <strong>kun i flyktig minne (RAM)</strong> — det
+      minimum som trengs for å rute pakker: den offentlige nøkkelen din, den midlertidige interne tunnel-IP-en tildelt den
+      (f.eks. 10.8.x.y), og en byte-teller som brukes til å håndheve hastighetsnivået ditt. Denne tilstanden blir <strong>aldri
+      skrevet til disk</strong>, sendes ikke til noen sentral server, og <strong>slettes når
+      gateway-prosessen starter på nytt</strong> eller du kobler fra. Det bygges ingen historisk logg av den.</p>
+    <h3>4.3 Den reelle IP-adressen din, forbigående</h3>
+    <p>For å transportere trafikken din må gatewayen nødvendigvis se IP-adressen tilkoblingen din kommer fra, i
+      selve øyeblikket, på nettverkslaget — slik fungerer enhver internettserver. CumulusVPN
+      <strong>logger ikke</strong> denne adressen til noe varig lager, og knytter den ikke til
+      nettlesingen din. Når økten din avsluttes, blir den ikke beholdt.</p>
+    <h3>4.4 DNS</h3>
+    <p>DNS-oppslag løses på dine vegne gjennom den krypterte tunnelen, slik at det lokale nettverket ditt og internettleverandøren din
+      ikke kan se dem. Vi fører ingen logger over DNS-oppslag.</p>
+    <h3>4.5 Hvordan appen din når gatewayene</h3>
+    <p>Appen din oppdager gatewayer og leser statusen deres ved å kalle hver gateways styrings-API direkte.
+      Disse svarene er <strong>signert med gatewayens ed25519-nøkkel og verifisert av appen</strong>,
+      slik at manipulering oppdages selv om selve styringskanalen er en vanlig, ukryptert forbindelse — integritetsgarantien
+      kommer fra signaturen, ikke fra et sertifikat. Den faktiske internetttrafikken din er separat
+      og er <strong>ende-til-ende-kryptert av WireGuard</strong> mellom enheten din og gatewayen.</p>
+    <h3>4.6 Hva gateway-operatører kan og ikke kan se</h3>
+    <p>Gatewayer kjører på Flux-datasenternoder. Som ved enhver VPN-utgang kan en operatør som observerer sin egen server
+      se krypterte strømmemetadata i sanntid (at en peer sender trafikk), men ikke en varig
+      logg vi lager, og ikke innholdet i tunnelen. For brukere som ikke vil at én enkelt server skal se både
+      IP-en og målet deres, tilbyr CumulusVPN en <strong>valgfri multi-hop-modus</strong>: trafikken din
+      rutes gjennom to gatewayer, slik at ingen enkelt server ser både hvem du er og hvor du
+      skal. Multi-hop er av som standard og er beskrevet ærlig i appen.</p>
+
+    <h2>5. Betalinger (kun hvis du oppgraderer til premium)</h2>
+    <p>CumulusVPN har et gratisnivå som verken krever <strong>betaling eller identifiserende informasjon</strong>.</p>
+    <p>Hvis du velger å oppgradere til premium (høyere hastighet), betaler du i kryptovalutaen
+      <strong>FLUX</strong> på Flux' offentlige blokkjede. Viktige punkter:</p>
+    <ul>
+      <li><strong>Betaling skjer på web eller desktop, ikke inne i mobilappene.</strong> Mobilappene
+        inneholder ingen kjøpsskjerm; de viser bare gjeldende nivå.</li>
+      <li>Du sender FLUX fra <strong>din egen lommebok</strong> til vår publiserte betalingsadresse, sammen med et
+        kort notat avledet fra den offentlige nøkkelen din, slik at nettverket kan kreditere riktig nøkkel. Vi
+        <strong>samler ikke inn</strong> kortnumre, fakturaadresser eller navn.</li>
+      <li><strong>Blokkjedetransaksjoner er offentlige av natur.</strong> Alle, oss inkludert, kan se i den
+        offentlige hovedboken at en betaling av et gitt beløp ble gjort til adressen vår med et gitt notat. Denne
+        hovedboken driftes av Flux-blokkjeden, ikke av oss. Vi knytter ikke den transaksjonen til din
+        virkelige identitet, og notatet er avledet enveis fra den offentlige nøkkelen din — det avslører verken
+        nøkkelen eller trafikken din. Vær oppmerksom på at det å publisere en transaksjon til en offentlig blokkjede
+        i sin natur er offentlig; behandle personvernet til lommeboken din deretter.</li>
+      <li>Rettigheten (om en nøkkel er premium, og til når) beregnes deterministisk ut fra den offentlige
+        blokkjeden og knyttes kun til den offentlige nøkkelen. Vi lagrer ingen egen kundefaktureringspost med
+        navnet ditt i, fordi vi ikke har navnet ditt.</li>
+    </ul>
+    <p>Hvis du senere bruker en fiat-betalingsmulighet i appen, tilbudt via Apples App Store eller Google Play
+      (skulle vi legge til én), behandles den transaksjonen av Apple eller Google under deres egne personvernerklæringer;
+      vi mottar kun bekreftelsen som trengs for å gi premium, ikke betalingskortdataene dine.</p>
+
+    <h2>6. Support og frivillig kontakt</h2>
+    <p>Hvis du sender oss en e-post (for support eller en misbruksmelding), mottar vi det du skriver i den e-posten — for
+      eksempel e-postadressen din og teksten i meldingen din. Vi bruker den kun til å svare deg, og beholder den ikke
+      lenger enn nødvendig for å løse saken. Du er ikke pålagt å identifisere deg for å bruke
+      tjenesten; det er frivillig å kontakte support.</p>
+    <p>Valgfrie krasjrapporter du selv slår på: hvis — og bare hvis — du uttrykkelig aktiverer krasjrapportering, kan en
+      krasjrapport med tekniske diagnoseopplysninger (som appversjon, enhetsmodell, OS-versjon
+      og et stack trace) sendes for å hjelpe oss med å rette feil. Dette er <strong>av som standard</strong>, inneholder
+      ingen nettlesingsaktivitet, og kan slås av når som helst.</p>
+
+    <h2>7. Informasjonskapsler og nettstedet</h2>
+    <p>CumulusVPN-nettstedet (cumulusvpn.com) er et statisk nettsted som brukes til nedlastinger, dokumentasjon,
+      betalingssiden, og hosting av vårt signerte serverkatalog. Det bruker ikke reklameinformasjonskapsler eller
+      tredjeparts atferdssporing. Eventuelle informasjonskapsler som brukes er utelukkende funksjonelle (for eksempel for å huske
+      lyst/mørkt tema).</p>
+
+    <h2>8. Datadeling og utlevering</h2>
+    <p>Vi selger, leier ikke ut, eller handler med personopplysninger — vi har i praksis ingen å selge.</p>
+    <p>Fordi vi ikke fører aktivitetslogger og ingen brukeridentiteter, <strong>har vi ingenting å utlevere</strong>
+      som svar på en dataforespørsel om en brukers nettlesing. Mottar vi en rettsgyldig forespørsel fra politi
+      eller domstol, kan vi bare gi den informasjonen vi faktisk sitter på, som ikke omfatter brukeridentiteter,
+      nettleserhistorikk, DNS-oppslag eller trafikkinnhold, fordi disse registreringene ikke finnes.
+      Der det er lovlig og hensiktsmessig, har vi til hensikt å publisere en åpenhetsrapport som beskriver mottatte forespørsler.</p>
+    <p>Vi overfører ikke brukerprofiler til annonsører, datameglere eller analyseleverandører, fordi vi ikke
+      bygger brukerprofiler.</p>
+
+    <h2>9. Internasjonale overføringer</h2>
+    <p>CumulusVPN er et globalt nettverk av gatewayer. Når du kobler til, går trafikken din ut fra landet til
+      serveren <strong>du velger</strong>. Fordi vi ikke samler personopplysninger i en sentral
+      database, finnes det ingen grenseoverskridende overføring av et personopplysningslager å beskytte. Valget av
+      utgangsland er ditt eget og gjøres på nytt for hver økt.</p>
+
+    <h2>10. Dine rettigheter (GDPR / UK GDPR / CCPA og lignende)</h2>
+    <p>Avhengig av hvor du bor, kan du ha rett til å få innsyn i, rette, slette eller overføre personopplysningene
+      dine, til å motsette deg eller begrense behandlingen, og (i California) til å få vite hva som samles inn og til ikke å bli
+      diskriminert for å utøve disse rettighetene. Fordi tjenesten er anonym:</p>
+    <ul>
+      <li><strong>Innsyn / dataportabilitet:</strong> Vi sitter som regel ikke på personopplysninger knyttet til deg som vi kan gi ut.
+        Har du sendt en e-post til support, kan du be om en kopi av den korrespondansen.</li>
+      <li><strong>Sletting:</strong> Det finnes ingenting knyttet til identiteten din som vi kan slette fra gatewayer;
+        peer-tilstanden er allerede flyktig og finnes kun i RAM, og tømmes ved frakobling/omstart. Du kan slette nøkkelen din på
+        enheten din når som helst, noe som fullstendig kutter den pseudonyme koblingen.</li>
+      <li><strong>Ikke selge / ikke dele:</strong> Vi selger eller deler ikke personopplysninger, så det er
+        ingenting å reservere seg mot.</li>
+    </ul>
+    <p>For å utøve noen av disse rettighetene, send en e-post til <strong>info@cumulusvpn.com</strong>. Vi kan være ute av stand til å identifisere deg i
+      våre (ikke-eksisterende) registre, nettopp fordi tjenesten er anonym — det er en del av designet, ikke en
+      unnvikelse. Du har også rett til å klage til ditt lokale datatilsyn.</p>
+
+    <h2>11. Barn</h2>
+    <p>CumulusVPN retter seg ikke mot barn under 13 år (eller minstealderen for digitalt samtykke i ditt
+      land). Vi samler ikke bevisst inn personopplysninger fra barn. Fordi vi ikke samler identifiserende
+      data fra noen, kan vi ikke fastslå en brukers alder; tjenesten er ment for et allment publikum og
+      markedsføres ikke mot barn.</p>
+
+    <h2>12. Sikkerhet</h2>
+    <p>Trafikken er ende-til-ende-kryptert mellom enheten din og gatewayen ved hjelp av WireGuard®-protokollen
+      (moderne, revidert kryptografi). Den private nøkkelen din forlater aldri enheten din. Peer-tilstanden på serversiden
+      holdes kun i minnet. Appen når hver gateways styrings-API over en direkte forbindelse hvis
+      svar er ed25519-signert og verifisert av appen, slik at ektheten til serverkatalogen og
+      gatewaysvarene beskyttes av digitale signaturer i stedet for av et transportsertifikat.</p>
+
+    <h2>13. Endringer i denne erklæringen</h2>
+    <p>Hvis vi endrer denne erklæringen, oppdaterer vi datoen «Sist oppdatert» over og publiserer den nye versjonen på
+      <a href="https://cumulusvpn.com/privacy">cumulusvpn.com/privacy</a>. Vesentlige endringer blir
+      fremhevet. Fordi vi ikke fører noen e-postliste, er nettstedet den autoritative kilden for den gjeldende
+      erklæringen.</p>
+
+    <div class="contact">
+      <h2 style="margin-top:0">14. Kontakt</h2>
+      <p>Personvern og dataforespørsler: <strong>info@cumulusvpn.com</strong></p>
+      <p>Misbruk / nettverksklager: <strong>info@cumulusvpn.com</strong></p>
+      <p>Nettsted: <a href="https://cumulusvpn.com">cumulusvpn.com</a></p>
+    </div>
+
+    <p class="doc-meta">WireGuard er et registrert varemerke tilhørende Jason A. Donenfeld. CumulusVPN er et
+      uavhengig prosjekt og er verken godkjent av eller tilknyttet WireGuard-prosjektet.</p>
+  </div>
+</main>
+
+<footer><div class="wrap">
+  <div class="cols">
+    <div class="col">
+      <h4>Produkt</h4>
+      <a href="/nb/#how">Slik fungerer det</a>
+      <a href="/nb/#pricing">Priser</a>
+      <a href="/nb/#apps">Få appen</a>
+      <a href="https://vpn.cumulusvpn.com">Nettapp</a>
+    </div>
+    <div class="col">
+      <h4>Ressurser</h4>
+      <a href="/nb/#trust">Personvern</a>
+      <a href="/nb/privacy">Personvernerklæring</a>
+      <a href="/nb/support">Support</a>
+      <a href="https://runonflux.io">Flux-nettverket</a>
+    </div>
+    <div class="col">
+      <h4>Nettverk</h4>
+      <a href="https://runonflux.com">Powered by Flux</a>
+      <a href="https://cloud.runonflux.com">Flux-dashboard</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <div>
+      <div class="brand" style="font-size:15px;margin-bottom:8px;color:var(--ink-2)">
+        <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true" style="width:20px;height:20px">
+          <path d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z" stroke="var(--cyan)" stroke-width="1.7"/>
+          <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)"/>
+        </svg>
+        CumulusVPN
+      </div>
+      <p class="disclaimer">
+        Desentralisert VPN på Flux Cloud · cumulusvpn.com. CumulusVPN er et uavhengig prosjekt bygget på
+        Flux-infrastruktur; ikke tilknyttet skaperne av WireGuard. WireGuard er et registrert
+        varemerke tilhørende Jason A. Donenfeld.
+      </p>
+    </div>
+    <div class="mono" style="align-self:flex-end;white-space:nowrap">© 2026 CumulusVPN</div>
+  </div>
+</div></footer>
+
+<script>
+  (function () {
+    var root = document.documentElement;
+    var KEY = 'cumulusvpn-theme';
+    function current() {
+      var attr = root.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var btn = document.getElementById('themeToggle');
+    if (btn) {
+      btn.addEventListener('click', function () {
+        var next = current() === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', next);
+        try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+    }
+
+    var sel = document.getElementById('langSelect');
+    if (sel) {
+      sel.addEventListener('change', function () {
+        var code = sel.value;
+        try { localStorage.setItem('cumulusvpn-locale', code); } catch (e) {}
+        location.href = (code === 'en' ? '/' : '/' + code + '/') + 'privacy';
+      });
+    }
+  })();
+</script>
+</body>
+</html>
