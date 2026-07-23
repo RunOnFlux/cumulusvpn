@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+%REDIRECT_SCRIPT%
 <title>{{meta.support_title}}</title>
 <meta name="description" content="{{meta.support_desc}}" />
 <meta name="theme-color" content="#070B11" />
@@ -42,6 +43,7 @@
       <img class="pbf-on-light" src="/powered_by_dark.svg" alt="{{shared.pbf_alt}}" height="16" />
       <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
     </a>
+    <select class="lang-select" id="langSelect" aria-label="{{shared.lang_label}}">%LOCALE_OPTIONS%</select>
     <button class="theme-btn" id="themeToggle" type="button" aria-label="{{shared.theme_aria}}" title="{{shared.theme_title}}">◐</button>
   </div>
 </div></header>
@@ -252,6 +254,15 @@
         var next = current() === 'dark' ? 'light' : 'dark';
         root.setAttribute('data-theme', next);
         try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+    }
+
+    var sel = document.getElementById('langSelect');
+    if (sel) {
+      sel.addEventListener('change', function () {
+        var code = sel.value;
+        try { localStorage.setItem('cumulusvpn-locale', code); } catch (e) {}
+        location.href = (code === 'en' ? '/' : '/' + code + '/') + '%PAGE%';
       });
     }
   })();

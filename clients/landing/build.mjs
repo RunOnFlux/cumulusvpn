@@ -86,6 +86,18 @@ export function render(templateText, locale, page, catalog, activeLocales) {
       ...activeLocales.map((l) => `<link rel="alternate" hreflang="${l.code}" href="${pageUrl(l.code, page.slug)}" />`),
       `<link rel="alternate" hreflang="x-default" href="${pageUrl('en', page.slug)}" />`,
     ].join('\n'),
+    '%PAGE%': page.slug,
+    '%LOCALE_OPTIONS%': activeLocales
+      .map((l) => `<option value="${l.code}"${l.code === locale.code ? ' selected' : ''}>${l.endonym}</option>`)
+      .join(''),
+    '%REDIRECT_SCRIPT%':
+      locale.code === 'en'
+        ? `<script>(function(){try{var v=${JSON.stringify(activeLocales.map((l) => l.code))},s=localStorage.getItem('cumulusvpn-locale');if(s&&s!=='en'&&v.indexOf(s)>-1)location.replace('/'+s+'/${page.slug}');}catch(e){}})();</script>`
+        : '',
+    '%TRANSLATION_NOTE%':
+      page.slug === 'privacy' && locale.code !== 'en'
+        ? `\n  <p class="doc-meta">${catalog.get('privacy.translation_note')}</p>`
+        : '',
   };
   html = html.replace(/%[A-Z_]{2,}%/g, (m) => {
     if (m in tokens) return tokens[m];

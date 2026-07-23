@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var v=["en"],s=localStorage.getItem('cumulusvpn-locale');if(s&&s!=='en'&&v.indexOf(s)>-1)location.replace('/'+s+'/');}catch(e){}})();</script>
 <title>CumulusVPN — Decentralized VPN on Flux Cloud</title>
 <meta name="description" content="One-tap private VPN on the Flux network. No accounts, no logs, no email. Free forever at 100 KB/s — full speed for $0.99/month, paid in FLUX from your own wallet." />
 <meta name="theme-color" content="#070B11" />
@@ -318,6 +319,16 @@
       transition: opacity .6s var(--ease), transform .6s var(--ease); }
     .reveal.in { opacity: 1; transform: none; }
   }
+
+  /* ---- language switcher + RTL ---- */
+  .lang-select { background: transparent; border: 1px solid var(--line); color: var(--ink-2);
+    border-radius: 20px; height: 34px; padding: 0 10px; font: inherit; font-size: 13px;
+    cursor: pointer; max-width: 132px; }
+  .lang-select:hover { color: var(--ink); border-color: var(--ink-3); }
+  [dir="rtl"] .code, [dir="rtl"] .ip, [dir="rtl"] .stbar, [dir="rtl"] .stat .v,
+  [dir="rtl"] .badge-flux { direction: ltr; unicode-bidi: isolate; }
+  [dir="rtl"] .kpi .n, [dir="rtl"] .tier .price { unicode-bidi: plaintext; }
+  [dir="rtl"] .hero-glow { right: auto; left: -180px; }
 </style>
 <script type="application/ld+json">
 {
@@ -369,6 +380,7 @@
       <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
       <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
     </a>
+    <select class="lang-select" id="langSelect" aria-label="Language"><option value="en" selected>English</option></select>
     <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">◐</button>
   </div>
 </div></header>
@@ -669,6 +681,15 @@
         var next = current() === 'dark' ? 'light' : 'dark';
         root.setAttribute('data-theme', next);
         try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+    }
+
+    var sel = document.getElementById('langSelect');
+    if (sel) {
+      sel.addEventListener('change', function () {
+        var code = sel.value;
+        try { localStorage.setItem('cumulusvpn-locale', code); } catch (e) {}
+        location.href = (code === 'en' ? '/' : '/' + code + '/') + '';
       });
     }
   })();

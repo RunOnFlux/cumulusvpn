@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
+<script>(function(){try{var v=["en"],s=localStorage.getItem('cumulusvpn-locale');if(s&&s!=='en'&&v.indexOf(s)>-1)location.replace('/'+s+'/support');}catch(e){}})();</script>
 <title>Support — CumulusVPN</title>
 <meta name="description" content="CumulusVPN support — answers to common questions about connecting, privacy, premium, and troubleshooting. No account needed; email us if you're stuck." />
 <meta name="theme-color" content="#070B11" />
@@ -43,6 +44,7 @@
       <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
       <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
     </a>
+    <select class="lang-select" id="langSelect" aria-label="Language"><option value="en" selected>English</option></select>
     <button class="theme-btn" id="themeToggle" type="button" aria-label="Toggle light / dark theme" title="Toggle theme">◐</button>
   </div>
 </div></header>
@@ -288,6 +290,15 @@
         var next = current() === 'dark' ? 'light' : 'dark';
         root.setAttribute('data-theme', next);
         try { localStorage.setItem(KEY, next); } catch (e) {}
+      });
+    }
+
+    var sel = document.getElementById('langSelect');
+    if (sel) {
+      sel.addEventListener('change', function () {
+        var code = sel.value;
+        try { localStorage.setItem('cumulusvpn-locale', code); } catch (e) {}
+        location.href = (code === 'en' ? '/' : '/' + code + '/') + 'support';
       });
     }
   })();
