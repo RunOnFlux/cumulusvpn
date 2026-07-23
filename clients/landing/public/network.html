@@ -1,0 +1,827 @@
+<!doctype html>
+<html lang="en" data-theme="">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CumulusVPN — Live network</title>
+    <meta
+      name="description"
+      content="Live map of the CumulusVPN gateway fleet: which countries are online right now, in which cities, with how much free capacity. Straight from the decentralized Flux network, refreshed every 30 seconds."
+    />
+    <meta name="theme-color" content="#070B11" />
+    <meta property="og:title" content="CumulusVPN — Live network" />
+    <meta
+      property="og:description"
+      content="See the decentralized VPN fleet operating in real time: countries, cities, and free capacity, refreshed every 30 seconds."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cumulusvpn.com/network" />
+    <meta property="og:site_name" content="CumulusVPN" />
+    <meta property="og:image" content="https://cumulusvpn.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CumulusVPN — Live network" />
+    <meta
+      name="twitter:description"
+      content="The decentralized VPN fleet, live: countries, cities, free capacity. Refreshed every 30 seconds."
+    />
+    <meta name="twitter:image" content="https://cumulusvpn.com/og-image.png" />
+    <link rel="canonical" href="https://cumulusvpn.com/network" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <style>
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/inter-400.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('/fonts/inter-500.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url('/fonts/inter-600.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('/fonts/inter-700.woff2') format('woff2');
+      }
+      :root {
+        --bg: #f5f8fb;
+        --bg-2: #eaf0f6;
+        --surface: #ffffff;
+        --surface-2: #f0f4f8;
+        --ink: #0c1420;
+        --ink-2: #46586b;
+        --ink-3: #7b8d9e;
+        --line: #dce5ee;
+        --cyan: #0fb9ae;
+        --cyan-glow: #34e4da;
+        --amber: #c77f17;
+        --amber-2: #f5b23d;
+        --green: #1f9d6b;
+        --slate: #8496a8;
+        --radius: 18px;
+        --maxw: 1160px;
+        --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+        --sans:
+          'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+          sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #070b11;
+          --bg-2: #0c121b;
+          --surface: #10171f;
+          --surface-2: #161f2a;
+          --ink: #eaf1f8;
+          --ink-2: #a6b6c6;
+          --ink-3: #6c7e90;
+          --line: #1e2a37;
+          --cyan: #34e4da;
+          --cyan-glow: #34e4da;
+          --amber: #f5b23d;
+          --amber-2: #f5b23d;
+          --green: #34d399;
+          --slate: #64748b;
+        }
+      }
+      :root[data-theme='light'] {
+        --bg: #f5f8fb;
+        --bg-2: #eaf0f6;
+        --surface: #ffffff;
+        --surface-2: #f0f4f8;
+        --ink: #0c1420;
+        --ink-2: #46586b;
+        --ink-3: #7b8d9e;
+        --line: #dce5ee;
+        --cyan: #0fb9ae;
+        --cyan-glow: #34e4da;
+        --amber: #c77f17;
+        --amber-2: #f5b23d;
+        --green: #1f9d6b;
+      }
+      :root[data-theme='dark'] {
+        --bg: #070b11;
+        --bg-2: #0c121b;
+        --surface: #10171f;
+        --surface-2: #161f2a;
+        --ink: #eaf1f8;
+        --ink-2: #a6b6c6;
+        --ink-3: #6c7e90;
+        --line: #1e2a37;
+        --cyan: #34e4da;
+        --cyan-glow: #34e4da;
+        --amber: #f5b23d;
+        --amber-2: #f5b23d;
+        --green: #34d399;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-synthesis: none;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      h1,
+      h2,
+      h3 {
+        text-wrap: balance;
+        margin: 0;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        font-weight: 600;
+      }
+      a {
+        color: inherit;
+      }
+
+      header.top {
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(10px);
+      }
+      .top .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 62px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-size: 18px;
+        text-decoration: none;
+      }
+      .mark {
+        width: 26px;
+        height: 26px;
+      }
+      .top nav {
+        display: flex;
+        gap: 22px;
+        font-size: 14px;
+        color: var(--ink-2);
+        align-items: center;
+      }
+      .top nav a {
+        text-decoration: none;
+      }
+      .top nav a:hover {
+        color: var(--ink);
+      }
+      .top .right {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .pbf {
+        display: inline-flex;
+        align-items: center;
+        line-height: 0;
+        opacity: 0.92;
+      }
+      .pbf:hover {
+        opacity: 1;
+      }
+      .pbf img {
+        width: auto;
+        display: none;
+      }
+      .pbf .pbf-on-light {
+        display: inline;
+      }
+      @media (prefers-color-scheme: dark) {
+        .pbf .pbf-on-light {
+          display: none;
+        }
+        .pbf .pbf-on-dark {
+          display: inline;
+        }
+      }
+      :root[data-theme='light'] .pbf .pbf-on-light {
+        display: inline;
+      }
+      :root[data-theme='light'] .pbf .pbf-on-dark {
+        display: none;
+      }
+      :root[data-theme='dark'] .pbf .pbf-on-light {
+        display: none;
+      }
+      :root[data-theme='dark'] .pbf .pbf-on-dark {
+        display: inline;
+      }
+      .theme-btn {
+        background: transparent;
+        border: 1px solid var(--line);
+        color: var(--ink-2);
+        border-radius: 20px;
+        width: 34px;
+        height: 34px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        line-height: 1;
+      }
+      .theme-btn:hover {
+        color: var(--ink);
+        border-color: var(--ink-3);
+      }
+
+      /* ---- page hero ---- */
+      .net-hero {
+        position: relative;
+        overflow: hidden;
+        border-bottom: 1px solid var(--line);
+      }
+      .net-hero .wrap {
+        padding: 58px 24px 46px;
+        position: relative;
+      }
+      .net-hero h1 {
+        font-size: clamp(32px, 4.6vw, 52px);
+        line-height: 1.02;
+        letter-spacing: -0.03em;
+        font-weight: 800;
+        margin-top: 10px;
+      }
+      .net-hero h1 .glow {
+        color: var(--cyan);
+      }
+      .net-hero p.lede {
+        font-size: 17px;
+        color: var(--ink-2);
+        max-width: 62ch;
+        margin: 16px 0 0;
+      }
+      .hero-glow {
+        position: absolute;
+        width: 620px;
+        height: 620px;
+        right: -180px;
+        top: -260px;
+        border-radius: 50%;
+        background: radial-gradient(
+          circle,
+          color-mix(in srgb, var(--cyan) 22%, transparent),
+          transparent 62%
+        );
+        filter: blur(20px);
+        pointer-events: none;
+      }
+      .live-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 6px 12px;
+        margin-top: 22px;
+      }
+      .live-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--green);
+        position: relative;
+      }
+      .live-dot::after {
+        content: '';
+        position: absolute;
+        inset: -4px;
+        border-radius: 50%;
+        border: 1.5px solid var(--green);
+        opacity: 0.5;
+        animation: pulse 2s ease-out infinite;
+      }
+      @keyframes pulse {
+        0% {
+          transform: scale(0.6);
+          opacity: 0.7;
+        }
+        100% {
+          transform: scale(1.4);
+          opacity: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .live-dot::after {
+          animation: none;
+        }
+      }
+
+      /* ---- KPI band ---- */
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 14px;
+        margin: 34px 0 0;
+      }
+      .kpi {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+      }
+      .kpi .n {
+        font-family: var(--mono);
+        font-size: 28px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      .kpi .l {
+        font-size: 12.5px;
+        color: var(--ink-3);
+        margin-top: 3px;
+      }
+      @media (max-width: 880px) {
+        .kpis {
+          grid-template-columns: repeat(2, 1fr);
+        }
+      }
+
+      /* ---- countries ---- */
+      section.countries-sec {
+        padding: 46px 0 24px;
+      }
+      .sec-title {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+        font-weight: 600;
+        margin: 0 0 16px;
+      }
+      .countries {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 14px;
+      }
+      .country {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 18px 20px;
+      }
+      .country-head {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .flag {
+        font-size: 22px;
+        line-height: 1;
+      }
+      .cname {
+        font-weight: 600;
+        font-size: 16px;
+        letter-spacing: -0.01em;
+      }
+      .cstat {
+        margin-left: auto;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        color: var(--ink-2);
+        white-space: nowrap;
+      }
+      .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--green);
+        flex: none;
+      }
+      .dot.warn {
+        background: var(--amber-2);
+      }
+      .cities {
+        margin-top: 10px;
+        font-size: 13.5px;
+        color: var(--ink-3);
+        min-height: 1.4em;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cmeta {
+        margin-top: 12px;
+        display: flex;
+        gap: 16px;
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-3);
+      }
+      .cmeta b {
+        color: var(--ink-2);
+        font-weight: 600;
+      }
+
+      .planned {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+        margin-top: 14px;
+      }
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px dashed var(--line);
+        border-radius: 20px;
+        padding: 7px 13px;
+        font-size: 13.5px;
+        color: var(--ink-3);
+      }
+      .chip .flag {
+        font-size: 16px;
+      }
+
+      .state {
+        border: 1px dashed var(--line);
+        border-radius: var(--radius);
+        color: var(--ink-3);
+        padding: 34px 20px;
+        text-align: center;
+        font-size: 14.5px;
+      }
+
+      .fineprint {
+        padding: 8px 0 40px;
+        color: var(--ink-3);
+        font-size: 13px;
+        max-width: 74ch;
+        line-height: 1.6;
+      }
+      .fineprint a {
+        color: var(--ink-2);
+      }
+
+      footer {
+        padding: 34px 0 52px;
+        color: var(--ink-3);
+        font-size: 13px;
+        border-top: 1px solid var(--line);
+      }
+      footer .foot-bottom {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+    </style>
+    <script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "9e07c1b233a24fbda101b18947f1b1b3"}'
+    ></script>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path
+              d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z"
+              fill="currentColor"
+              opacity=".18"
+            />
+            <path
+              d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z"
+              stroke="var(--cyan)"
+              stroke-width="1.7"
+            />
+            <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)" />
+          </svg>
+          CumulusVPN
+        </a>
+        <nav>
+          <a href="/#how">How it works</a><a href="/#pricing">Pricing</a>
+          <a href="/#apps">Get the app</a><a href="/network" style="color: var(--ink)">Network</a>
+        </nav>
+        <div class="right">
+          <a
+            class="pbf"
+            href="https://runonflux.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Powered by Flux — opens runonflux.com"
+          >
+            <img
+              class="pbf-on-light"
+              src="/powered_by_dark.svg"
+              alt="Powered by Flux"
+              height="16"
+            />
+            <img
+              class="pbf-on-dark"
+              src="/powered_by_light.svg"
+              alt=""
+              height="16"
+              aria-hidden="true"
+            />
+          </a>
+          <button
+            class="theme-btn"
+            id="themeToggle"
+            type="button"
+            aria-label="Toggle light / dark theme"
+            title="Toggle theme"
+          >
+            ◐
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <section class="net-hero">
+      <div class="hero-glow"></div>
+      <div class="wrap">
+        <span class="eyebrow">Transparency, live</span>
+        <h1>The network, <span class="glow">as it runs.</span></h1>
+        <p class="lede">
+          Every CumulusVPN gateway announces itself on the decentralized Flux network — so instead
+          of asking you to trust a status page, we draw this one directly from the fleet. What you
+          see below is what the app sees.
+        </p>
+        <div class="live-pill">
+          <span class="live-dot" aria-hidden="true"></span
+          ><span id="updated">Connecting to the fleet…</span>
+        </div>
+        <div class="kpis" id="kpis" hidden></div>
+      </div>
+    </section>
+
+    <section class="countries-sec">
+      <div class="wrap">
+        <div id="content"><div class="state">Loading live fleet data…</div></div>
+        <p class="fineprint">
+          Figures refresh every 30 seconds from the gateways' own health endpoints via
+          <span class="mono">dashboard.cumulusvpn.com/api/fleet</span> — the same public API anyone
+          can query. Gateways run on independent, KYC'd datacenter nodes of the
+          <a href="https://runonflux.io" target="_blank" rel="noreferrer">Flux network</a>;
+          countries appear and scale as node operators join. Newly deployed regions can take a few
+          minutes to come online.
+        </p>
+      </div>
+    </section>
+
+    <footer>
+      <div class="wrap">
+        <div class="foot-bottom">
+          <div>
+            © 2026 CumulusVPN · <a href="/">cumulusvpn.com</a> ·
+            <a href="/privacy">Privacy Policy</a> · <a href="/support">Support</a>
+          </div>
+          <div class="mono">Powered by Flux</div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var KEY = 'cumulusvpn-theme';
+        try {
+          var saved = localStorage.getItem(KEY);
+          if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+        } catch (e) {}
+        function current() {
+          var attr = root.getAttribute('data-theme');
+          if (attr === 'light' || attr === 'dark') return attr;
+          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+        var btn = document.getElementById('themeToggle');
+        if (btn) {
+          btn.addEventListener('click', function () {
+            var next = current() === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            try {
+              localStorage.setItem(KEY, next);
+            } catch (e) {}
+          });
+        }
+      })();
+
+      (function () {
+        var API = 'https://dashboard.cumulusvpn.com/api/fleet';
+        var names;
+        try {
+          names = new Intl.DisplayNames(['en'], { type: 'region' });
+        } catch (e) {
+          names = null;
+        }
+        function nameOf(cc) {
+          try {
+            return (names && names.of(cc)) || cc;
+          } catch (e) {
+            return cc;
+          }
+        }
+        function flagOf(cc) {
+          if (!/^[A-Za-z]{2}$/.test(cc)) return '🏳️';
+          var A = 0x1f1e6;
+          var u = cc.toUpperCase();
+          return String.fromCodePoint(A + u.charCodeAt(0) - 65, A + u.charCodeAt(1) - 65);
+        }
+        function esc(s) {
+          return String(s).replace(/[&<>"']/g, function (c) {
+            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+          });
+        }
+        function kpi(n, l) {
+          return (
+            '<div class="kpi"><div class="n">' +
+            n +
+            '</div><div class="l">' +
+            esc(l) +
+            '</div></div>'
+          );
+        }
+
+        function render(data) {
+          var instances = data.instances || [];
+          var byCc = {};
+          instances.forEach(function (i) {
+            (byCc[i.cc] = byCc[i.cc] || []).push(i);
+          });
+          var ccs = Object.keys(byCc);
+          var up = instances.filter(function (i) {
+            return i.up;
+          });
+          var liveCcs = ccs.filter(function (cc) {
+            return byCc[cc].some(function (i) {
+              return i.up;
+            });
+          });
+          var cities = {};
+          up.forEach(function (i) {
+            if (i.city) cities[i.cc + ':' + i.city] = true;
+          });
+          var freeSlots = up.reduce(function (a, i) {
+            return a + (i.capacity || 0);
+          }, 0);
+
+          document.getElementById('updated').textContent =
+            'Live · updated ' + new Date(data.generatedAt || Date.now()).toLocaleTimeString();
+
+          var k = document.getElementById('kpis');
+          k.hidden = false;
+          k.innerHTML =
+            kpi(String(liveCcs.length), 'Countries online') +
+            kpi(String(up.length), 'Gateways online') +
+            kpi(String(Object.keys(cities).length), 'Cities') +
+            kpi(freeSlots.toLocaleString('en-US'), 'Free connection slots');
+
+          var html = '';
+          var live = liveCcs.slice().sort(function (a, b) {
+            return nameOf(a).localeCompare(nameOf(b));
+          });
+          if (live.length) {
+            html += '<div class="sec-title">Online now</div><div class="countries">';
+            live.forEach(function (cc) {
+              var list = byCc[cc];
+              var onl = list.filter(function (i) {
+                return i.up;
+              });
+              var cityList = [];
+              onl.forEach(function (i) {
+                if (i.city && cityList.indexOf(i.city) === -1) cityList.push(i.city);
+              });
+              var cap = onl.reduce(function (a, i) {
+                return a + (i.capacity || 0);
+              }, 0);
+              html +=
+                '<div class="country"><div class="country-head">' +
+                '<span class="flag">' +
+                flagOf(cc) +
+                '</span>' +
+                '<span class="cname">' +
+                esc(nameOf(cc)) +
+                '</span>' +
+                '<span class="cstat"><span class="dot' +
+                (onl.length === list.length ? '' : ' warn') +
+                '"></span>' +
+                onl.length +
+                ' gateway' +
+                (onl.length === 1 ? '' : 's') +
+                '</span></div>' +
+                '<div class="cities">' +
+                esc(cityList.slice(0, 4).join(' · ') || '—') +
+                '</div>' +
+                '<div class="cmeta"><span><b>' +
+                cap.toLocaleString('en-US') +
+                '</b> free slots</span></div>' +
+                '</div>';
+            });
+            html += '</div>';
+          } else {
+            html +=
+              '<div class="state">The fleet is between heartbeats — refresh in a moment.</div>';
+          }
+
+          // Coming online: declared or deployed but not answering probes yet.
+          var comingSet = {};
+          (data.planned || []).forEach(function (cc) {
+            comingSet[cc.toUpperCase()] = true;
+          });
+          ccs.forEach(function (cc) {
+            comingSet[cc.toUpperCase()] = true;
+          });
+          var coming = Object.keys(comingSet).filter(function (cc) {
+            return live.indexOf(cc) === -1;
+          });
+          if (coming.length) {
+            coming.sort(function (a, b) {
+              return nameOf(a).localeCompare(nameOf(b));
+            });
+            html +=
+              '<div class="sec-title" style="margin-top:34px">Coming online</div><div class="planned">' +
+              coming
+                .map(function (cc) {
+                  return (
+                    '<span class="chip"><span class="flag">' +
+                    flagOf(cc) +
+                    '</span>' +
+                    esc(nameOf(cc)) +
+                    '</span>'
+                  );
+                })
+                .join('') +
+              '</div>';
+          }
+
+          document.getElementById('content').innerHTML = html;
+        }
+
+        function load() {
+          fetch(API)
+            .then(function (r) {
+              if (!r.ok) throw new Error('HTTP ' + r.status);
+              return r.json();
+            })
+            .then(render)
+            .catch(function () {
+              document.getElementById('updated').textContent = 'Reconnecting…';
+            });
+        }
+        load();
+        setInterval(load, 30000);
+      })();
+    </script>
+  </body>
+</html>
