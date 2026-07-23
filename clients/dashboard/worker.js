@@ -1,5 +1,6 @@
 /**
  * Cloudflare Worker for dashboard.cumulusvpn.com — the public fleet monitor.
+ * Auto-deployed via the Worker's Git (Workers Builds) connection on push.
  *
  * Serves the static page (ASSETS binding) and exposes `/api/fleet`, which
  * aggregates every gateway's /v1/info SERVER-SIDE (no mixed-content block) and
