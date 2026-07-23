@@ -48,7 +48,7 @@ export const nl: Catalog = {
   connect_enrolling: 'Inschrijven…',
   connect_generate: '.conf genereren',
   connect_no_gateway_in_country:
-    'Geen actieve gateway bereikbaar in {country} vanuit de browser. Inschrijving gaat naar de control-API van een gateway (http :51821), die https-pagina\'s niet kunnen bereiken — dit werkt wel vanuit de desktop- en mobiele clients, die deze kern delen.',
+    "Geen actieve gateway bereikbaar in {country} vanuit de browser. Inschrijving gaat naar de control-API van een gateway (http :51821), die https-pagina's niet kunnen bereiken — dit werkt wel vanuit de desktop- en mobiele clients, die deze kern delen.",
   connect_error_enroll_failed: 'Inschrijving mislukt.',
   connect_qr_caption: 'Scan met de WireGuard-app',
   connect_stat_assigned_ip: 'Toegewezen IP',

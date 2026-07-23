@@ -88,8 +88,7 @@ export const fa: Catalog = {
   multihop_exit_label: 'کشور خروجی (مقصد شما را می‌بیند)',
   multihop_exit_aria: 'کشور خروجی',
   multihop_style_same: 'سبک مسیر: متعادل — کشور یکسان (یک حوزه قضایی)',
-  multihop_style_cross:
-    'سبک مسیر: حداکثر حریم خصوصی — بین حوزه‌های قضایی (دو اپراتور، دو کشور)',
+  multihop_style_cross: 'سبک مسیر: حداکثر حریم خصوصی — بین حوزه‌های قضایی (دو اپراتور، دو کشور)',
   multihop_enrolling: 'در حال ثبت‌نام هر دو جهش…',
   multihop_generate: 'ساخت دو پیکربندی',
   multihop_error_no_exit: 'چندجهشی به یک دروازه خروجی مجزا نیاز دارد؛ هیچ‌کدام یافت نشد.',

@@ -3,8 +3,13 @@ import type { Locale } from './engine';
 import type { Message } from './messages';
 
 export {
-  SUPPORTED_LOCALES, RTL_LOCALES, LOCALE_NAMES,
-  detectLocale, isLocale, formatMessage, formatRich,
+  SUPPORTED_LOCALES,
+  RTL_LOCALES,
+  LOCALE_NAMES,
+  detectLocale,
+  isLocale,
+  formatMessage,
+  formatRich,
 } from './engine';
 export type { Locale } from './engine';
 export type { Message, Params, PluralMessage, RichHandlers } from './messages';

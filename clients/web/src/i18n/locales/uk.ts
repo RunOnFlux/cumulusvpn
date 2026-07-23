@@ -3,7 +3,7 @@ import type { Catalog } from '../index';
 export const uk: Catalog = {
   app_title: 'CumulusVPN — Приватний інтернет, без акаунта, без логів',
 
-  header_nav_connect: "Підключення",
+  header_nav_connect: 'Підключення',
   header_nav_upgrade: 'Оновлення',
   header_theme_label: 'Тема: {mode}',
   header_theme_system: 'системна',
@@ -43,7 +43,12 @@ export const uk: Catalog = {
   connect_loading_directory: 'Завантаження підписаного каталогу та пошук шлюзів…',
   connect_your_config: 'Твоя конфігурація',
   connect_source_directory: 'Каталог {source}',
-  connect_live_nodes: { one: '{n} активний вузол', few: '{n} активні вузли', many: '{n} активних вузлів', other: '{n} активного вузла' },
+  connect_live_nodes: {
+    one: '{n} активний вузол',
+    few: '{n} активні вузли',
+    many: '{n} активних вузлів',
+    other: '{n} активного вузла',
+  },
   connect_select_country: 'Обери країну, щоб продовжити',
   connect_enrolling: 'Реєстрація…',
   connect_generate: 'Згенерувати .conf',
@@ -56,7 +61,7 @@ export const uk: Catalog = {
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Завантажити .conf',
   connect_upgrade_cta: 'Оновити до повної швидкості →',
-  connect_identity_title: "Ідентичність цього пристрою",
+  connect_identity_title: 'Ідентичність цього пристрою',
   connect_regenerate: 'Перегенерувати ключ',
   connect_identity_note:
     'Одна пара ключів на пристрій реєструється на багатьох шлюзах; преміум супроводжує ключ на всіх них через chain. Наведений нижче код платежу пов’язує платіж у FLUX із цим ключем.',

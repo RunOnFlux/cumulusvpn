@@ -92,7 +92,8 @@ export const es: Catalog = {
     'Estilo de ruta: máxima privacidad — entre jurisdicciones (dos operadores, dos países)',
   multihop_enrolling: 'Inscribiendo ambos saltos…',
   multihop_generate: 'Generar dos configuraciones',
-  multihop_error_no_exit: 'Multi-hop necesita un gateway de salida distinto; no se resolvió ninguno.',
+  multihop_error_no_exit:
+    'Multi-hop necesita un gateway de salida distinto; no se resolvió ninguno.',
   multihop_error_no_gateways:
     'No hay gateways activos accesibles desde el navegador, así que no se pudo resolver ninguna ruta. El anidamiento multi-hop es en realidad una función de nuestras apps — los clientes de escritorio y móvil (mismo núcleo) prueban los gateways directamente y ejecutan los dos túneles por ti.',
   multihop_error_failed: 'Falló la generación de multi-hop.',

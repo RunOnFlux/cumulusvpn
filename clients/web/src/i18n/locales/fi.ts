@@ -92,7 +92,8 @@ export const fi: Catalog = {
     'Reititystyyli: paras yksityisyys — lainkäyttöalueiden välillä (kaksi operaattoria, kaksi maata)',
   multihop_enrolling: 'Rekisteröidään molempia hyppyjä…',
   multihop_generate: 'Luo kaksi asetustiedostoa',
-  multihop_error_no_exit: 'Multi-hop tarvitsee erillisen uloskäynti-yhdyskäytävän; yhtään ei löytynyt.',
+  multihop_error_no_exit:
+    'Multi-hop tarvitsee erillisen uloskäynti-yhdyskäytävän; yhtään ei löytynyt.',
   multihop_error_no_gateways:
     'Selaimesta ei tavoiteta yhtään aktiivista yhdyskäytävää, joten reittiä ei voitu ratkaista. Multi-hop-sisäkkäisyys on itse asiassa omien sovellustemme ominaisuus — työpöytä- ja mobiilisovellukset (sama ydin) etsivät yhdyskäytäviä suoraan ja ajavat kaksi tunnelia puolestasi.',
   multihop_error_failed: 'Multi-hopin luonti epäonnistui.',

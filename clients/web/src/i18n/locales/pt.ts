@@ -92,7 +92,8 @@ export const pt: Catalog = {
     'Estilo de rota: privacidade máxima — entre jurisdições (dois operadores, dois países)',
   multihop_enrolling: 'Inscrevendo os dois saltos…',
   multihop_generate: 'Gerar duas configurações',
-  multihop_error_no_exit: 'Multi-hop precisa de um gateway de saída distinto; nenhum foi resolvido.',
+  multihop_error_no_exit:
+    'Multi-hop precisa de um gateway de saída distinto; nenhum foi resolvido.',
   multihop_error_no_gateways:
     'Nenhum gateway ativo acessível a partir do navegador, então nenhuma rota pôde ser resolvida. O encadeamento multi-hop é, na verdade, um recurso dos nossos apps — os clientes desktop e mobile (mesmo núcleo) sondam os gateways diretamente e rodam os dois túneis por você.',
   multihop_error_failed: 'A geração do multi-hop falhou.',

@@ -67,14 +67,14 @@ export const fr: Catalog = {
   upgrade_eyebrow: 'Premium · payez en FLUX',
   upgrade_title: 'Passez à la vitesse maximale',
   upgrade_lede:
-    'Envoyez FLUX avec le message exact ci-dessous. Chaque passerelle scanne la chaîne et débloque votre clé en ~1 minute — sur tous les serveurs à la fois, pendant 30 jours. Sans compte, sans carte, sans aucune société capable de livrer ce qu\'elle n\'a jamais eu.',
+    "Envoyez FLUX avec le message exact ci-dessous. Chaque passerelle scanne la chaîne et débloque votre clé en ~1 minute — sur tous les serveurs à la fois, pendant 30 jours. Sans compte, sans carte, sans aucune société capable de livrer ce qu'elle n'a jamais eu.",
   upgrade_usd_line: '≈ {usd} · tous les 30 jours',
   upgrade_qr_caption: 'Scannez avec Zelcore / SSP Wallet',
   upgrade_field_address: 'Adresse de paiement',
   upgrade_field_message: 'Message (obligatoire)',
   upgrade_open_wallet: 'Ouvrir dans le wallet',
   upgrade_prepay_note:
-    '<strong>Prépayez à l\'avance :</strong> payez un multiple du montant pour ajouter autant de mois d\'un coup — p. ex. {amount} FLUX = 3 mois. Les mois supplémentaires se cumulent (jusqu\'à 24), vous pouvez donc recharger à tout moment.',
+    "<strong>Prépayez à l'avance :</strong> payez un multiple du montant pour ajouter autant de mois d'un coup — p. ex. {amount} FLUX = 3 mois. Les mois supplémentaires se cumulent (jusqu'à 24), vous pouvez donc recharger à tout moment.",
   upgrade_privacy_note:
     "S'ouvre dans Zelcore / SSP Wallet. Le paiement est vérifié sur la blockchain Flux — nous ne voyons jamais qui vous êtes. Le message relie le paiement à votre clé ; l'envoyer sans lui fait arriver les fonds, mais rien ne se débloque.",
   upgrade_back: '← Retour à Connexion',
@@ -92,7 +92,8 @@ export const fr: Catalog = {
     'Style de route : confidentialité maximale — inter-juridictions (deux opérateurs, deux pays)',
   multihop_enrolling: 'Inscription des deux sauts…',
   multihop_generate: 'Générer les deux configurations',
-  multihop_error_no_exit: "Le multi-hop nécessite une passerelle de sortie distincte ; aucune n'a été résolue.",
+  multihop_error_no_exit:
+    "Le multi-hop nécessite une passerelle de sortie distincte ; aucune n'a été résolue.",
   multihop_error_no_gateways:
     "Aucune passerelle active accessible depuis le navigateur, donc aucune route n'a pu être résolue. L'imbrication multi-hop est en réalité une fonctionnalité de nos apps — les clients desktop et mobile (même cœur) sondent les passerelles directement et font tourner les deux tunnels pour vous.",
   multihop_error_failed: 'Échec de la génération multi-hop.',

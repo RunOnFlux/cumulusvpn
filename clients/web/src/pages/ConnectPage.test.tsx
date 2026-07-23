@@ -41,12 +41,8 @@ describe('<ConnectPage />', () => {
     expect(screen.getByText('Select a country to continue')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate .conf' })).toBeInTheDocument();
     expect(screen.getByText('This device’s identity')).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
-      'One key, every gateway.',
-    );
-    expect(
-      screen.getByText(/No live gateway reachable from the browser\./),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('One key, every gateway.');
+    expect(screen.getByText(/No live gateway reachable from the browser\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'upgrade with FLUX' })).toBeInTheDocument();
   });
 

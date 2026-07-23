@@ -106,7 +106,9 @@ export function ConnectPage({
       <div className="wrap">
         <div className="page-head">
           <span className="eyebrow">{t('connect_eyebrow')}</span>
-          <h1>{rich('connect_title', { glow: (label) => <span className="glow">{label}</span> })}</h1>
+          <h1>
+            {rich('connect_title', { glow: (label) => <span className="glow">{label}</span> })}
+          </h1>
           <p className="lede">
             {rich('connect_lede', {
               mono: (label) => <span className="mono">{label}</span>,
@@ -125,9 +127,7 @@ export function ConnectPage({
           </p>
         </div>
 
-        {discovery.verified ? null : (
-          <div className="banner warn">{t('connect_verify_warn')}</div>
-        )}
+        {discovery.verified ? null : <div className="banner warn">{t('connect_verify_warn')}</div>}
         {discovery.notice === 'no-live-gateway' ? (
           <div className="banner info">{t('connect_notice_no_live_gateway')}</div>
         ) : null}
