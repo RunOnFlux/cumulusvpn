@@ -44,6 +44,10 @@ const COUNTRY_CODES = [
   'kr',
   'in',
   'za',
+  'ru',
+  'my',
+  'hk',
+  'ae',
 ];
 const FLUX_API = 'https://api.runonflux.io';
 const CONTROL_PORT = 51821;
