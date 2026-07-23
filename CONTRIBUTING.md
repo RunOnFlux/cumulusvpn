@@ -8,13 +8,13 @@ welcome.
 
 ## Repository layout (monorepo)
 
-| Path         | What                                                             | Stack                    |
-| ------------ | --------------------------------------------------------------- | ------------------------ |
-| `gateway/`   | Userspace WireGuard exit gateway + chain scanner + control API  | Go                       |
-| `clients/`   | `core-ts` shared logic · `web` · `desktop` (Tauri) · `mobile` (RN) | TypeScript / Rust / native |
-| `deploy/`    | Flux v8 app specs + generate/encrypt/register tooling           | Node (ESM)               |
-| `docs/`      | Architecture, payments, multi-hop, the byte-level API contract  | —                        |
-| `brand/`     | Icon + wordmark masters and generated assets                    | SVG / PNG                |
+| Path       | What                                                               | Stack                      |
+| ---------- | ------------------------------------------------------------------ | -------------------------- |
+| `gateway/` | Userspace WireGuard exit gateway + chain scanner + control API     | Go                         |
+| `clients/` | `core-ts` shared logic · `web` · `desktop` (Tauri) · `mobile` (RN) | TypeScript / Rust / native |
+| `deploy/`  | Flux v8 app specs + generate/encrypt/register tooling              | Node (ESM)                 |
+| `docs/`    | Architecture, payments, multi-hop, the byte-level API contract     | —                          |
+| `brand/`   | Icon + wordmark masters and generated assets                       | SVG / PNG                  |
 
 Start with `docs/01-architecture.md` and `docs/10-api-contract.md` — the API
 contract is the byte-level source of truth every component conforms to.

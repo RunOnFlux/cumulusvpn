@@ -6,73 +6,73 @@
 version: 2
 updates:
   - package-ecosystem: npm
-    directory: "/" # root TS workspace: core-ts, web, desktop frontend
+    directory: '/' # root TS workspace: core-ts, web, desktop frontend
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
       root-npm:
-        patterns: ["*"]
+        patterns: ['*']
     ignore:
       # TypeScript 7 (native rewrite) is unusable until typescript-eslint supports
       # it — the latest typescript-eslint peer-caps TS at <6.1.0, and yarn's builtin
       # TS compat patch fails on 7.x. Hold at the newest 5.x. Revisit (remove this)
       # once typescript-eslint ships TS 7 support.
-      - dependency-name: "typescript"
-        update-types: ["version-update:semver-major"]
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: npm
-    directory: "/clients/mobile" # standalone React Native app
+    directory: '/clients/mobile' # standalone React Native app
     schedule:
       interval: weekly
     open-pull-requests-limit: 10
     groups:
       mobile-npm:
-        patterns: ["*"]
+        patterns: ['*']
 
   - package-ecosystem: npm
-    directory: "/deploy" # standalone deploy tooling
+    directory: '/deploy' # standalone deploy tooling
     schedule:
       interval: weekly
     groups:
       deploy-npm:
-        patterns: ["*"]
+        patterns: ['*']
 
   - package-ecosystem: cargo
-    directory: "/clients/desktop/src-tauri" # desktop Rust / Tauri
+    directory: '/clients/desktop/src-tauri' # desktop Rust / Tauri
     schedule:
       interval: weekly
     groups:
       desktop-cargo:
-        patterns: ["*"]
+        patterns: ['*']
 
   - package-ecosystem: gradle
-    directory: "/clients/mobile/android" # Android native deps
+    directory: '/clients/mobile/android' # Android native deps
     schedule:
       interval: weekly
     groups:
       android-gradle:
-        patterns: ["*"]
+        patterns: ['*']
     ignore:
       # Hold the Gradle wrapper at RN 0.86's version (9.3.x). 9.6.1 ships Kotlin
       # 2.3+, which @react-native/gradle-plugin (compiled against Kotlin <=2.2)
       # cannot compile — it breaks the APK build. ci-ts never runs a gradle build,
       # so this only fails in android-release. Revisit when RN ships a plugin built
       # for newer Kotlin. (The com.wireguard.android:tunnel bumps stay allowed.)
-      - dependency-name: "gradle-wrapper"
+      - dependency-name: 'gradle-wrapper'
 
   - package-ecosystem: gomod
-    directory: "/gateway" # Go gateway
+    directory: '/gateway' # Go gateway
     schedule:
       interval: weekly
     groups:
       gateway-gomod:
-        patterns: ["*"]
+        patterns: ['*']
 
   - package-ecosystem: github-actions
-    directory: "/" # workflow action versions
+    directory: '/' # workflow action versions
     schedule:
       interval: weekly
     groups:
       actions:
-        patterns: ["*"]
+        patterns: ['*']

@@ -42,6 +42,7 @@ Builds `gateway/Dockerfile` and publishes to the **GitHub Container Registry**,
 built-in `GITHUB_TOKEN` via `packages: write`).
 
 Triggers & tags:
+
 - **push to `main`** (paths `gateway/**`) → `:latest` + `:sha-<short>`
 - **tag** `vX.Y.Z` or `gateway-vX.Y.Z` → `:X.Y.Z` (+ `:X.Y`) and `:latest`
 - **pull request** → build only, no push (smoke test)
@@ -54,11 +55,11 @@ add `linux/arm64` to `platforms:` once the Dockerfile is confirmed cross-arch.
 
 ## What CD is — and is NOT — automated
 
-| Stage                                 | Automated?                        | Where                                     |
-| ------------------------------------- | --------------------------------- | ----------------------------------------- |
-| Lint / type / test / build (TS + Go)  | ✅ CI on every push/PR            | `ci-ts.yml`, `ci-gateway.yml`             |
-| Build + publish gateway image to GHCR | ✅ push to main / tag             | `gateway-image.yml`                       |
-| **Deploy / register gateway on Flux** | ❌ **manual**                     | `deploy/scripts` (see `deploy/README.md`) |
+| Stage                                 | Automated?             | Where                                     |
+| ------------------------------------- | ---------------------- | ----------------------------------------- |
+| Lint / type / test / build (TS + Go)  | ✅ CI on every push/PR | `ci-ts.yml`, `ci-gateway.yml`             |
+| Build + publish gateway image to GHCR | ✅ push to main / tag  | `gateway-image.yml`                       |
+| **Deploy / register gateway on Flux** | ❌ **manual**          | `deploy/scripts` (see `deploy/README.md`) |
 
 On-chain **register/deploy to the Flux network is deliberately manual**: it
 requires a funded wallet and signing key, which CI never holds. Run it by hand
