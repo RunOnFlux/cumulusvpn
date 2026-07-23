@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="">
+<html lang="%LANG%"%DIR% data-theme="">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -9,8 +9,9 @@
 <meta property="og:title" content="{{meta.index_social_title}}" />
 <meta property="og:description" content="{{meta.index_social_desc}}" />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://cumulusvpn.com/" />
+<meta property="og:url" content="%CANONICAL%" />
 <meta property="og:site_name" content="CumulusVPN" />
+<meta property="og:locale" content="%OG_LOCALE%" />
 <meta property="og:image" content="https://cumulusvpn.com/og-image.png" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
@@ -18,7 +19,8 @@
 <meta name="twitter:title" content="{{meta.index_social_title}}" />
 <meta name="twitter:description" content="{{meta.index_social_desc}}" />
 <meta name="twitter:image" content="https://cumulusvpn.com/og-image.png" />
-<link rel="canonical" href="https://cumulusvpn.com/" />
+<link rel="canonical" href="%CANONICAL%" />
+%ALTERNATES%
 <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
 <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
@@ -330,6 +332,7 @@
       "@type": "SoftwareApplication",
       "name": "CumulusVPN",
       "url": "https://cumulusvpn.com/",
+      "inLanguage": "%LANG%",
       "applicationCategory": "SecurityApplication",
       "operatingSystem": "Android, iOS, Windows, macOS, Linux",
       "offers": [

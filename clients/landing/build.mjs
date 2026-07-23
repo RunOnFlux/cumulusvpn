@@ -78,6 +78,14 @@ export function render(templateText, locale, page, catalog, activeLocales) {
     '%HOME%': localeBase(locale.code),
     '%SUPPORT%': localeBase(locale.code) + 'support',
     '%PRIVACY%': localeBase(locale.code) + 'privacy',
+    '%LANG%': locale.code,
+    '%DIR%': locale.rtl ? ' dir="rtl"' : '',
+    '%CANONICAL%': pageUrl(locale.code, page.slug),
+    '%OG_LOCALE%': locale.og,
+    '%ALTERNATES%': [
+      ...activeLocales.map((l) => `<link rel="alternate" hreflang="${l.code}" href="${pageUrl(l.code, page.slug)}" />`),
+      `<link rel="alternate" hreflang="x-default" href="${pageUrl('en', page.slug)}" />`,
+    ].join('\n'),
   };
   html = html.replace(/%[A-Z_]{2,}%/g, (m) => {
     if (m in tokens) return tokens[m];
@@ -101,6 +109,20 @@ export function buildAll() {
   return { out, active, catalogs };
 }
 
+function sitemapXml(active) {
+  const urls = [];
+  for (const page of PAGES) {
+    for (const l of active) {
+      const links = [
+        ...active.map((a) => `    <xhtml:link rel="alternate" hreflang="${a.code}" href="${pageUrl(a.code, page.slug)}" />`),
+        `    <xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl('en', page.slug)}" />`,
+      ].join('\n');
+      urls.push(`  <url>\n    <loc>${pageUrl(l.code, page.slug)}</loc>\n${links}\n  </url>`);
+    }
+  }
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">\n${urls.join('\n')}\n</urlset>\n`;
+}
+
 function write() {
   const { out, active } = buildAll();
   for (const [rel, content] of out) {
@@ -108,6 +130,7 @@ function write() {
     mkdirSync(dirname(file), { recursive: true });
     writeFileSync(file, content);
   }
+  writeFileSync(join(PUB, 'sitemap.xml'), sitemapXml(active));
   console.log(`landing i18n: wrote ${out.size} pages for ${active.length} locale(s)`);
 }
 
@@ -171,6 +194,23 @@ function check(allowMissing) {
     if (!m) { errors.push(`jsonld: ${rel} block missing`); continue; }
     try { JSON.parse(m[1]); } catch { errors.push(`jsonld: ${rel} is not valid JSON`); }
   }
+
+  // 6. hreflang integrity: every page lists exactly active+x-default, correct doc.
+  for (const page of PAGES) {
+    const expected = new Set([...active.map((l) => pageUrl(l.code, page.slug)), pageUrl('en', page.slug)]);
+    for (const l of active) {
+      const rel = l.code === 'en' ? page.out : `${l.code}/${page.out}`;
+      const found = [...out.get(rel).matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)" \/>/g)];
+      if (found.length !== active.length + 1) errors.push(`hreflang: ${rel} has ${found.length}, want ${active.length + 1}`);
+      for (const [, , href] of found) if (!expected.has(href)) errors.push(`hreflang: ${rel} stray href ${href}`);
+    }
+  }
+  // 7. Sitemap: <loc> set == generated page URL set; drift vs disk.
+  const expectedLocs = new Set(PAGES.flatMap((p) => active.map((l) => pageUrl(l.code, p.slug))));
+  const sm = sitemapXml(active);
+  const locs = new Set([...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]));
+  if (locs.size !== expectedLocs.size || [...locs].some((u) => !expectedLocs.has(u))) errors.push('sitemap: loc set mismatch');
+  if (!existsSync(join(PUB, 'sitemap.xml')) || readFileSync(join(PUB, 'sitemap.xml'), 'utf8') !== sm) errors.push('sitemap: drift');
 
   if (errors.length) {
     for (const e of errors) console.error(`CHECK FAIL: ${e}`);
