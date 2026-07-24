@@ -90,9 +90,21 @@ Response `data`:
   "load": 0.12, "capacity": 1988,
   "version": "0.1.0-poc", "min_client_version": "0.1.0",
   "build_commit": "<short git sha, optional>",
-  "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>"
+  "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>",
+  "transports": [{ "type": "wg", "port": 51820 }]
 }
 ```
+
+**`transports`** — the DPI-resistance negotiation array (docs/15-transports.md): the
+transports this gateway can serve, each `{ "type", "port", "params"? }`. `type` is a
+stable slug (`"wg"` = vanilla WireGuard; later `"awg"` = AmneziaWG, `"wg-tls"` =
+WireGuard-over-TLS); `port` is where that transport listens; optional `params`
+carries transport-specific knobs (e.g. AmneziaWG obfuscation values), absent for
+`wg`. A client dials the best transport it *implements* that the gateway advertises,
+and ignores types it doesn't. Backward compatibility: a **pre-negotiation (0.1.0)
+gateway omits the field entirely** — clients then assume vanilla WireGuard on `51820`,
+so old gateways and old apps keep interoperating with no flag-day. The array rides the
+signed body, so it is covered by the `X-CVPN-Signature` with no separate signing.
 
 ## Discovery (no server of ours)
 

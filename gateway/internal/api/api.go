@@ -47,18 +47,31 @@ var BuildCommit = "dev"
 // resolver and hand out 10.8.0.1 as the DNS instead — docs/03-gateway.md).
 const dnsServer = "1.1.1.1"
 
+// Transport is one dialable way into this gateway, advertised so clients can
+// negotiate a DPI-resistant path and fall back. `type` is a stable slug
+// ("wg" = vanilla WireGuard); `port` is the port that transport listens on
+// (transports may share a port number across TCP/UDP); `params` carries any
+// transport-specific knobs (e.g. AmneziaWG obfuscation values), empty for wg.
+// A 0.1.0 gateway omits the array entirely — clients treat that as vanilla-only.
+type Transport struct {
+	Type   string            `json:"type"`
+	Port   int               `json:"port"`
+	Params map[string]string `json:"params,omitempty"`
+}
+
 // Info self-description served at /v1/info.
 type Info struct {
-	Country          string  `json:"country"`
-	Region           string  `json:"region"`
-	City             string  `json:"city"`
-	Load             float64 `json:"load"`     // 0..1 utilisation estimate
-	Capacity         int     `json:"capacity"` // remaining peer slots
-	Version          string  `json:"version"`
-	ServerPubKey     string  `json:"server_pubkey"` // WG pubkey (base64)
-	SignPubKey       string  `json:"sign_pubkey"`   // ed25519 verify key (base64)
-	MinClientVersion string  `json:"min_client_version"`
-	BuildCommit      string  `json:"build_commit"` // git short-SHA of the image build
+	Country          string      `json:"country"`
+	Region           string      `json:"region"`
+	City             string      `json:"city"`
+	Load             float64     `json:"load"`     // 0..1 utilisation estimate
+	Capacity         int         `json:"capacity"` // remaining peer slots
+	Version          string      `json:"version"`
+	ServerPubKey     string      `json:"server_pubkey"` // WG pubkey (base64)
+	SignPubKey       string      `json:"sign_pubkey"`   // ed25519 verify key (base64)
+	MinClientVersion string      `json:"min_client_version"`
+	BuildCommit      string      `json:"build_commit"` // git short-SHA of the image build
+	Transports       []Transport `json:"transports"`   // dialable transports (negotiation)
 }
 
 // Server is the control API.
@@ -102,6 +115,10 @@ func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.M
 	s.info.Version = Version
 	s.info.MinClientVersion = MinClientVersion
 	s.info.BuildCommit = BuildCommit
+	// Advertise the transports this gateway can serve. M0 ships vanilla only;
+	// obfuscated/TLS tiers append their own entries here as they land. The
+	// array rides the signed /v1/info body, so it needs no separate signing.
+	s.info.Transports = []Transport{{Type: "wg", Port: config.WGListenPort}}
 	return s
 }
 

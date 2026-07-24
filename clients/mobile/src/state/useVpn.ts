@@ -12,6 +12,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  applyTransportToEndpoint,
   buildMultihopConfig,
   buildWgConfig,
   enroll,
@@ -19,6 +20,7 @@ import {
   paymentCode,
   paymentMemo,
   selectHops,
+  selectTransport,
   status as fetchStatus,
 } from '@cumulusvpn/core';
 import type { EnrollResponse, GatewayInfo, Keypair, RouteStyle, Tier } from '@cumulusvpn/core';
@@ -691,12 +693,22 @@ export function useVpn(): VpnModel & VpnActions {
         setActiveEntry(entryEp);
         setActiveExit(null);
 
+        // Transport negotiation (docs/15-transports.md): pick the transport this
+        // gateway advertises for the current mode and point the config at its
+        // port. M0 implements vanilla WG only, so this resolves to :51820 — a
+        // no-op today — but wires the seam the obfuscated/TLS tiers will use.
+        // Mode is fixed to 'auto' until the M3 Speed/Stealth UI toggle.
+        const transport = selectTransport(gw.transports, 'auto');
+        const endpoint = transport
+          ? applyTransportToEndpoint(resp.endpoint, transport)
+          : resp.endpoint;
+
         const wgConfig = buildWgConfig({
           privateKey: keypair.privateKey,
           assignedIp: resp.assigned_ip,
           dns: resp.dns,
           serverPubKey: resp.server_pubkey,
-          endpoint: resp.endpoint,
+          endpoint,
         });
         await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
         // Persist the live route so a force-quit + relaunch can restore where

@@ -37,10 +37,18 @@ export { ApiError } from './http.js';
 export type { SignedResult } from './http.js';
 
 export { CONTROL_PORT, WG_PORT, POW_BITS, MEMO_PREFIX } from './types.js';
+export {
+  selectTransport,
+  transportFallbackChain,
+  applyTransportToEndpoint,
+  IMPLEMENTED_TRANSPORTS,
+} from './transport.js';
+export type { TransportMode } from './transport.js';
 export type {
   Keypair,
   ApiEnvelope,
   ApiErrorData,
+  Transport,
   InfoResponse,
   EnrollResponse,
   Tier,
