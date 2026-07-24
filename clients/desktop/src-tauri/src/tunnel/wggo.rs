@@ -51,6 +51,11 @@ pub struct WgConfig {
     pub endpoint: String,
     pub allowed_ips: Vec<String>,
     pub persistent_keepalive: u16,
+    /// AmneziaWG obfuscation params from an `awg` transport's `[Interface]`
+    /// (lowercased key → value, in `.conf` order: jc/jmin/…/h4). Empty for the
+    /// vanilla and wg-tls transports. Emitted as device-level UAPI before the
+    /// peer; requires the amneziawg-go sidecar to be accepted.
+    pub obfs: Vec<(String, String)>,
 }
 
 impl WgConfig {
@@ -68,6 +73,7 @@ impl WgConfig {
         let mut endpoint = None;
         let mut allowed_ips: Vec<String> = Vec::new();
         let mut persistent_keepalive: u16 = 25;
+        let mut obfs: Vec<(String, String)> = Vec::new();
 
         for raw in conf.lines() {
             let line = raw.trim();
@@ -96,6 +102,9 @@ impl WgConfig {
                 "PersistentKeepalive" => {
                     persistent_keepalive = value.parse().unwrap_or(25);
                 }
+                "Jc" | "Jmin" | "Jmax" | "S1" | "S2" | "H1" | "H2" | "H3" | "H4" => {
+                    obfs.push((key.to_lowercase(), value));
+                }
                 _ => {}
             }
         }
@@ -115,6 +124,7 @@ impl WgConfig {
                 allowed_ips
             },
             persistent_keepalive,
+            obfs,
         })
     }
 
@@ -130,6 +140,10 @@ impl WgConfig {
         let mut out = String::new();
         out.push_str("set=1\n");
         out.push_str(&format!("private_key={priv_hex}\n"));
+        // Device-level AmneziaWG obfuscation params (if any) go BEFORE the peer.
+        for (k, v) in &self.obfs {
+            out.push_str(&format!("{k}={v}\n"));
+        }
         out.push_str("replace_peers=true\n");
         out.push_str(&format!("public_key={peer_hex}\n"));
         out.push_str(&format!("endpoint={}\n", self.endpoint));
@@ -494,5 +508,41 @@ impl Drop for Sidecar {
             let _ = child.kill();
             let _ = child.wait();
         }
+    }
+}
+
+#[cfg(test)]
+mod obfs_tests {
+    use super::WgConfig;
+
+    // 32 zero bytes, standard base64 — valid input for b64_to_hex.
+    const KEY: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
+    #[test]
+    fn obfs_params_parse_and_emit_before_peer() {
+        let conf = format!(
+            "[Interface]\nPrivateKey = {KEY}\nAddress = 10.8.0.2/32\nDNS = 1.1.1.1\n\
+             Jc = 4\nJmin = 40\nH1 = 5\n\n[Peer]\nPublicKey = {KEY}\n\
+             Endpoint = 1.2.3.4:51821\nAllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
+        );
+        let cfg = WgConfig::parse(&conf).expect("parse");
+        assert_eq!(cfg.obfs.len(), 3, "jc/jmin/h1 collected");
+        let uapi = cfg.to_uapi_set().expect("uapi");
+        let jc = uapi.find("jc=4").expect("jc present");
+        let pk = uapi.find("public_key=").expect("public_key present");
+        assert!(jc < pk, "device obfs params must precede the peer");
+        assert!(uapi.contains("jmin=40") && uapi.contains("h1=5"));
+    }
+
+    #[test]
+    fn vanilla_conf_carries_no_obfs() {
+        let conf = format!(
+            "[Interface]\nPrivateKey = {KEY}\nAddress = 10.8.0.2/32\nDNS = 1.1.1.1\n\n\
+             [Peer]\nPublicKey = {KEY}\nEndpoint = 1.2.3.4:51820\n\
+             AllowedIPs = 0.0.0.0/0\nPersistentKeepalive = 25\n"
+        );
+        let cfg = WgConfig::parse(&conf).expect("parse");
+        assert!(cfg.obfs.is_empty());
+        assert!(!cfg.to_uapi_set().unwrap().contains("jc="));
     }
 }
