@@ -4,7 +4,7 @@
  * live polling of native tunnel status + chain entitlement.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Keypair, Tier } from '@cumulusvpn/core';
+import type { Keypair, Tier, TransportMode } from '@cumulusvpn/core';
 import { loadOrCreateKeypair, loadSelectedCountry, saveSelectedCountry } from '../lib/storage.js';
 import {
   discoverCountries,
@@ -62,6 +62,9 @@ export interface ConnectionModel {
   // ---- kill switch (leak protection) -------------------------------------
   /** Whether to engage the kill switch when connecting (persisted; default on). */
   readonly killSwitch: boolean;
+  /** Transport mode: 'auto' (fastest) or 'stealth' (obfuscated); persisted. */
+  readonly transportMode: TransportMode;
+  readonly setTransportMode: (mode: TransportMode) => void;
   /** Toggle the kill switch; applies on the next connect. */
   readonly setKillSwitch: (on: boolean) => void;
   /** Auto-connect on launch once discovery settles (persisted; default off). */
@@ -113,6 +116,10 @@ export function useConnection(): ConnectionModel {
   const [multihop, setMultihopState] = useState(false);
   const [routeStyle, setRouteStyleState] = useState<MultihopStyle>('multihop-same-country');
   const [exit, setExit] = useState<CountryOption | null>(null);
+  // Transport mode: 'auto' (fastest) or 'stealth' (obfuscated); persisted.
+  const [transportMode, setTransportModeState] = useState<TransportMode>(() =>
+    localStorage.getItem('cvpn.transportMode') === 'stealth' ? 'stealth' : 'auto',
+  );
   // Kill switch defaults ON (leak protection by default); persisted in localStorage.
   const [killSwitch, setKillSwitchState] = useState(
     () => localStorage.getItem('cvpn.killSwitch') !== '0',
@@ -193,6 +200,11 @@ export function useConnection(): ConnectionModel {
   const setMultihop = useCallback((on: boolean) => setMultihopState(on), []);
   const setRouteStyle = useCallback((style: MultihopStyle) => setRouteStyleState(style), []);
 
+  const setTransportMode = useCallback((mode: TransportMode) => {
+    setTransportModeState(mode);
+    localStorage.setItem('cvpn.transportMode', mode);
+  }, []);
+
   const setKillSwitch = useCallback((on: boolean) => {
     setKillSwitchState(on);
     localStorage.setItem('cvpn.killSwitch', on ? '1' : '0');
@@ -249,7 +261,7 @@ export function useConnection(): ConnectionModel {
           setPhase('connected');
           await refreshEntitlement(result.exitGatewayIp, exit.signPubKey);
         } else {
-          const result = await establish(entry, keypair, killSwitch);
+          const result = await establish(entry, keypair, killSwitch, transportMode);
           setTunnel(result.tunnel);
           setPhase('connected');
           await refreshEntitlement(result.gatewayIp, entry.signPubKey);
@@ -260,7 +272,17 @@ export function useConnection(): ConnectionModel {
         setPhase('error');
       }
     })();
-  }, [selected, exit, multihop, routeStyle, phase, keypair, killSwitch, refreshEntitlement]);
+  }, [
+    selected,
+    exit,
+    multihop,
+    routeStyle,
+    phase,
+    keypair,
+    killSwitch,
+    transportMode,
+    refreshEntitlement,
+  ]);
 
   const disconnect = useCallback(() => {
     wasConnectedRef.current = false;
@@ -351,6 +373,8 @@ export function useConnection(): ConnectionModel {
     selectExit,
     killSwitch,
     setKillSwitch,
+    transportMode,
+    setTransportMode,
     autoConnect,
     setAutoConnect,
     connectedSince,

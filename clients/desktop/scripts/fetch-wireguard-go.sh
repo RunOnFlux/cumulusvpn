@@ -1,38 +1,36 @@
 #!/usr/bin/env bash
 #
-# fetch-wireguard-go.sh — build (or vendor) the userspace `wireguard-go`
-# binary and place it where Tauri's `externalBin` expects it:
+# fetch-wireguard-go.sh — build the userspace WireGuard engine binary and place
+# it where Tauri's `externalBin` expects it:
 #
 #     src-tauri/binaries/wireguard-go-<rust-target-triple>[.exe]
 #
-# `wireguard-go` is the reference userspace WireGuard implementation
-# (https://git.zx2c4.com/wireguard-go). It is licensed MIT — see the
-# LICENCE note this script drops next to the binary
-# (src-tauri/binaries/wireguard-go.LICENSE). Because it is MIT we may
-# redistribute it inside our installers; we build it from a pinned commit
-# rather than trusting an opaque download.
+# ENGINE: we build **AmneziaWG** (github.com/amnezia-vpn/amneziawg-go), a fork of
+# wireguard-go whose cryptography is byte-identical to upstream WireGuard but
+# which adds DPI-obfuscation params (jc/jmin/jmax/s1/s2/h1-h4). With no params it
+# behaves exactly like wireguard-go, so the SAME binary serves both the vanilla
+# and obfuscated (`wg-tls`/`awg`) transports — hence we keep the `wireguard-go-*`
+# output name as a drop-in (the Rust sidecar resolver is unchanged). This matches
+# the gateway + wgnest engines (docs/15-transports.md). AmneziaWG is MIT-licensed
+# (like wireguard-go), so we may redistribute it in our installers; we build it
+# from a pinned module version rather than trusting an opaque download.
+#
+# We hold the AWG-1.5 line (v0.2.x); the AWG-2.0 line (v1.x) drags a newer gVisor
+# — keep this pin in lockstep with gateway/go.mod and wgnest/go.mod.
 #
 # Usage:
 #   scripts/fetch-wireguard-go.sh                 # build for the host triple
 #   scripts/fetch-wireguard-go.sh <target-triple> # cross-build for another target
 #
-# Requires: git, go (>= 1.23). Cross-compiling only needs the Go toolchain
-# (wireguard-go is pure Go, CGO disabled) — no C cross-toolchain.
-#
-# Examples of targets Tauri may ask for (one binary per platform you ship):
-#   aarch64-apple-darwin
-#   x86_64-apple-darwin
-#   x86_64-unknown-linux-gnu
-#   aarch64-unknown-linux-gnu
-#   x86_64-pc-windows-msvc   (produces wireguard-go-...-msvc.exe)
+# Requires: go (>= 1.23). Cross-compiling only needs the Go toolchain (pure Go,
+# CGO disabled) — no C cross-toolchain.
 #
 set -euo pipefail
 
-# Pinned upstream commit. v0.0.20250522 — the first release whose bundled
-# golang.org/x/net compiles cleanly on modern Go toolchains (the older
-# 0.0.20230223 tag fails to link against Go >= 1.24). Bump deliberately.
-WGGO_REPO="https://git.zx2c4.com/wireguard-go"
-WGGO_COMMIT="ecfc5a8d54462e18e13c72173e2623d16d8e25a0"
+# Pinned AmneziaWG module version (AWG-1.5 line). Bump in lockstep with the
+# gateway and wgnest go.mod pins.
+AWG_MODULE="github.com/amnezia-vpn/amneziawg-go"
+AWG_VERSION="v0.2.19"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESKTOP_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
@@ -44,7 +42,6 @@ host_triple() {
     rustc -vV | sed -n 's/^host: //p'
     return
   fi
-  # Fallback if rustc is absent: derive from uname.
   local arch os
   case "$(uname -m)" in
     arm64 | aarch64) arch="aarch64" ;;
@@ -86,36 +83,36 @@ EXT=""
 [ "${GOOS}" = "windows" ] && EXT=".exe"
 OUT="${BIN_DIR}/wireguard-go-${TRIPLE}${EXT}"
 
+echo ">> engine        : AmneziaWG (${AWG_MODULE}@${AWG_VERSION})"
 echo ">> target triple : ${TRIPLE}"
 echo ">> GOOS/GOARCH   : ${GOOS}/${GOARCH}"
 echo ">> output        : ${OUT}"
 
 command -v go >/dev/null 2>&1 || { echo "error: 'go' toolchain not found on PATH" >&2; exit 1; }
-command -v git >/dev/null 2>&1 || { echo "error: 'git' not found on PATH" >&2; exit 1; }
 
-# ---- Fetch source at the pinned commit ------------------------------------
+# ---- Build the amneziawg-go main package in module mode -------------------
+# A throwaway module pins the version; `go build <module>` compiles its main
+# package (the userspace engine binary). Pure Go + CGO disabled → trivial cross.
+mkdir -p "${BIN_DIR}"
 WORK="$(mktemp -d)"
 trap 'rm -rf "${WORK}"' EXIT
-echo ">> cloning ${WGGO_REPO} @ ${WGGO_COMMIT}"
-git clone --quiet "${WGGO_REPO}" "${WORK}/src"
-git -C "${WORK}/src" checkout --quiet "${WGGO_COMMIT}"
-
-# ---- Build (static, no CGO so cross-compiles trivially) -------------------
-mkdir -p "${BIN_DIR}"
-echo ">> building (CGO disabled) ..."
 (
-  cd "${WORK}/src"
-  CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" \
-    go build -trimpath -ldflags "-s -w" -o "${OUT}" .
+  cd "${WORK}"
+  cat > go.mod <<EOF
+module awgbuild
+
+go 1.23
+EOF
+  echo ">> resolving ${AWG_MODULE}@${AWG_VERSION} ..."
+  GOFLAGS=-mod=mod go get "${AWG_MODULE}@${AWG_VERSION}"
+  echo ">> building (CGO disabled) ..."
+  CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" GOFLAGS=-mod=mod \
+    go build -trimpath -ldflags "-s -w" -o "${OUT}" "${AWG_MODULE}"
 )
 chmod +x "${OUT}"
-
-# ---- Drop the licence note next to the binary -----------------------------
-cp "${WORK}/src/LICENSE" "${BIN_DIR}/wireguard-go.LICENSE"
 
 echo ">> done."
 ls -la "${OUT}"
 echo
-echo "wireguard-go is MIT-licensed; the full text was written to"
-echo "  ${BIN_DIR}/wireguard-go.LICENSE"
-echo "Built from ${WGGO_REPO} @ ${WGGO_COMMIT}"
+echo "AmneziaWG is MIT-licensed. Built from ${AWG_MODULE}@${AWG_VERSION}."
+echo "With no obfuscation params it is wire-compatible with stock WireGuard."

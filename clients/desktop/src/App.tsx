@@ -161,8 +161,10 @@ export function App(): JSX.Element {
         <Settings
           autoConnect={conn.autoConnect}
           killSwitch={conn.killSwitch}
+          stealth={conn.transportMode === 'stealth'}
           onAutoConnect={conn.setAutoConnect}
           onKillSwitch={conn.setKillSwitch}
+          onStealth={(v) => conn.setTransportMode(v ? 'stealth' : 'auto')}
           onClose={() => setShowSettings(false)}
         />
       )}

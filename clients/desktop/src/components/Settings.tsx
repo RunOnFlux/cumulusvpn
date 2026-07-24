@@ -7,8 +7,10 @@ const APP_VERSION = '0.1.0';
 interface Props {
   readonly autoConnect: boolean;
   readonly killSwitch: boolean;
+  readonly stealth: boolean;
   readonly onAutoConnect: (v: boolean) => void;
   readonly onKillSwitch: (v: boolean) => void;
+  readonly onStealth: (v: boolean) => void;
   readonly onClose: () => void;
 }
 
@@ -16,8 +18,10 @@ interface Props {
 export function Settings({
   autoConnect,
   killSwitch,
+  stealth,
   onAutoConnect,
   onKillSwitch,
+  onStealth,
   onClose,
 }: Props): JSX.Element {
   return (
@@ -36,6 +40,12 @@ export function Settings({
         sub="Block all traffic if the VPN drops"
         value={killSwitch}
         onChange={onKillSwitch}
+      />
+      <SettingToggle
+        label="Stealth mode"
+        sub="Disguise VPN traffic to bypass blocking"
+        value={stealth}
+        onChange={onStealth}
       />
 
       <div className="setsec">About</div>

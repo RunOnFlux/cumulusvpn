@@ -7,11 +7,14 @@
  * signed snapshot as the cold-start fallback (`docs/10-api-contract.md`).
  */
 import {
+  applyTransportToEndpoint,
   buildMultihopConfig,
   buildWgConfig,
   discoverGateways,
   enroll,
+  obfsForTransport,
   selectHops,
+  selectTransport,
   status as entitlementStatus,
 } from '@cumulusvpn/core';
 import type {
@@ -20,11 +23,20 @@ import type {
   Keypair,
   RouteStyle,
   StatusResponse,
+  Transport,
+  TransportMode,
 } from '@cumulusvpn/core';
 import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
+
+/**
+ * Transport slugs the desktop tunnel can dial. The wireguard-go sidecar is the
+ * amneziawg-go build (a superset — vanilla with no params), so it can do `awg`.
+ * `wg-tls` awaits the Rust TLS bridge. Passed to core `selectTransport`.
+ */
+const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> = new Set(['wg', 'awg']);
 
 /**
  * Enroll at a gateway — or, when running outside Tauri (a plain browser: dev,
@@ -65,6 +77,9 @@ export interface CountryOption {
   readonly load: number;
   /** Gateway signing pubkey (base64) learned from `/v1/info`, for pinning. */
   readonly signPubKey: string;
+  /** Transports this gateway advertises (DPI-resistance negotiation); absent for
+   *  a 0.1.0 gateway or the offline seed fallback. */
+  readonly transports?: readonly Transport[];
 }
 
 /** Result of bringing a tunnel up: the gateway's enroll reply + native status. */
@@ -108,6 +123,7 @@ function toCountryOptions(gateways: readonly GatewayInfo[]): CountryOption[] {
         city: g.city,
         load: g.load,
         signPubKey: g.sign_pubkey,
+        ...(g.transports ? { transports: g.transports } : {}),
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
@@ -208,17 +224,26 @@ export async function establish(
   country: CountryOption,
   keypair: Keypair,
   killSwitch: boolean,
+  transportMode: TransportMode = 'auto',
   fetchImpl?: typeof fetch,
 ): Promise<EstablishResult> {
   const enrollOpts = enrollOptsFor(country, fetchImpl);
   const reply = await enrollOrMock(country.gatewayIp, keypair.publicKey, enrollOpts);
+
+  // Transport negotiation (docs/15): pick the transport for the mode this
+  // gateway advertises, point the config at its port, and fold in obfuscation
+  // params for `awg`. Absent transports / unsupported mode → vanilla endpoint.
+  const transport = selectTransport(country.transports, transportMode, IMPLEMENTED_TRANSPORTS);
+  const endpoint = transport ? applyTransportToEndpoint(reply.endpoint, transport) : reply.endpoint;
+  const obfs = transport ? obfsForTransport(transport) : undefined;
 
   const wgConfig = buildWgConfig({
     privateKey: keypair.privateKey,
     assignedIp: reply.assigned_ip,
     dns: reply.dns,
     serverPubKey: reply.server_pubkey,
-    endpoint: reply.endpoint,
+    endpoint,
+    ...(obfs ? { obfs } : {}),
   });
 
   const tunnelStatus = await tunnel.connect({
