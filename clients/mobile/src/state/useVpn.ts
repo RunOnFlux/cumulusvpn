@@ -84,15 +84,15 @@ export function isMultihop(style: RouteStyle): boolean {
 }
 
 /**
- * Transport slugs THIS platform's native tunnel can actually dial. iOS runs the
- * amneziawg-go engine via wgnest for single-hop, so it can do `awg`; Android
- * single-hop still uses the official wireguard library (no obfs), so it stays
- * vanilla until it's rerouted through wgnest. `wg-tls` awaits the native TLS
- * bridge on each platform. Passed to core `selectTransport` so a mode only picks
- * a transport this build can bring up.
+ * Transport slugs THIS platform's native tunnel can actually dial. Both iOS and
+ * Android run the amneziawg-go engine via wgnest for obfuscated single-hop
+ * (iOS: the packet-tunnel extension; Android: CumulusObfsVpnService, while
+ * vanilla single-hop stays on the stock GoBackend), so both can do `awg`.
+ * `wg-tls` awaits the native TLS bridge on each platform. Passed to core
+ * `selectTransport` so a mode only picks a transport this build can bring up.
  */
 const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> =
-  Platform.OS === 'ios' ? new Set(['wg', 'awg']) : new Set(['wg']);
+  Platform.OS === 'ios' || Platform.OS === 'android' ? new Set(['wg', 'awg']) : new Set(['wg']);
 
 /** Everything the UI renders from. */
 export interface VpnModel {

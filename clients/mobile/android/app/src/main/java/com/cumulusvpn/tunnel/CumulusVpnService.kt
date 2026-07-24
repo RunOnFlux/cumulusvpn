@@ -58,6 +58,10 @@ object CumulusTunnelController {
     @Volatile
     private var multihopActive: Boolean = false
 
+    /** True while the active tunnel is the obfuscated single-hop wgnest service. */
+    @Volatile
+    private var obfsActive: Boolean = false
+
     /** The active tunnel handle, if any. Named [TUNNEL_NAME]. */
     private val tunnel =
         object : Tunnel {
@@ -93,14 +97,101 @@ object CumulusTunnelController {
     fun startTunnel(context: Context, wgQuickConfig: String) {
         setState(STATE_CONNECTING)
         try {
-            val config = parse(wgQuickConfig)
-            backend(context).setState(tunnel, Tunnel.State.UP, config)
-            setState(STATE_CONNECTED)
+            val obfs = extractObfsUapi(wgQuickConfig)
+            if (obfs.isNotEmpty()) {
+                // Obfuscated (AmneziaWG) single-hop runs in the wgnest service —
+                // the official Config parser can't represent the awg params.
+                // Vanilla single-hop stays on GoBackend, unchanged.
+                startObfsSingleHop(context, wgQuickConfig, obfs)
+            } else {
+                val config = parse(wgQuickConfig)
+                backend(context).setState(tunnel, Tunnel.State.UP, config)
+                setState(STATE_CONNECTED)
+            }
         } catch (t: Throwable) {
             Log.e(TAG, "startTunnel failed", t)
+            obfsActive = false
             setState(STATE_ERROR)
             throw t
         }
+    }
+
+    /** The AmneziaWG [Interface] keys, capitalized as in the wg-quick `.conf`. */
+    private val obfsKeys =
+        listOf("Jc", "Jmin", "Jmax", "S1", "S2", "H1", "H2", "H3", "H4")
+
+    /**
+     * Scan a `.conf` for AmneziaWG `[Interface]` params and render them as the
+     * device-level UAPI lines (`jc=…\n…`), in a fixed order. Empty when the
+     * config carries none — i.e. it is a vanilla or wg-tls transport.
+     */
+    private fun extractObfsUapi(conf: String): String {
+        val vals = HashMap<String, String>()
+        for (raw in conf.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            val key = line.substring(0, eq).trim()
+            if (key in obfsKeys) {
+                vals[key.lowercase()] = line.substring(eq + 1).trim()
+            }
+        }
+        if (vals.isEmpty()) return ""
+        return listOf("jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4")
+            .mapNotNull { k -> vals[k]?.let { "$k=$it" } }
+            .joinToString("\n", postfix = "\n")
+    }
+
+    /**
+     * Hand an obfuscated single-hop config to [CumulusObfsVpnService]. We parse
+     * the fields manually (the official [Config] parser rejects awg keys) and
+     * pass them as Intent extras, mirroring [startMultihop].
+     */
+    private fun startObfsSingleHop(context: Context, wgQuickConfig: String, obfs: String) {
+        var priv = ""
+        var pub = ""
+        var endpoint = ""
+        var address = ""
+        var dns = "1.1.1.1"
+        for (raw in wgQuickConfig.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            val key = line.substring(0, eq).trim()
+            val value = line.substring(eq + 1).trim()
+            when (key) {
+                "PrivateKey" -> priv = value
+                "PublicKey" -> pub = value
+                "Endpoint" -> endpoint = value
+                "Address" -> address = value.substringBefore(',').substringBefore('/').trim()
+                "DNS" -> dns = value.substringBefore(',').trim()
+            }
+        }
+        val serverIp = endpoint.substringBeforeLast(':', endpoint)
+        val port = endpoint.substringAfterLast(':', "").toIntOrNull() ?: 0
+        Log.i(TAG, "startObfsSingleHop: server=$serverIp:$port (stealth)")
+
+        val intent = Intent(context, CumulusObfsVpnService::class.java).apply {
+            action = CumulusObfsVpnService.ACTION_START
+            putExtra(CumulusObfsVpnService.EXTRA_CLIENT_PRIV, priv)
+            putExtra(CumulusObfsVpnService.EXTRA_SERVER_PUB, pub)
+            putExtra(CumulusObfsVpnService.EXTRA_SERVER_IP, serverIp)
+            putExtra(CumulusObfsVpnService.EXTRA_SERVER_ASSIGNED, address)
+            putExtra(CumulusObfsVpnService.EXTRA_PORT, port)
+            putExtra(CumulusObfsVpnService.EXTRA_OBFS, obfs)
+            putExtra(CumulusObfsVpnService.EXTRA_DNS, dns)
+        }
+        obfsActive = true
+        context.startService(intent)
+        // State advances to CONNECTED/ERROR asynchronously via onObfsState.
+    }
+
+    /** Called by [CumulusObfsVpnService] as the obfuscated tunnel changes state. */
+    fun onObfsState(state: String) {
+        if (state == STATE_DISCONNECTED || state == STATE_ERROR) {
+            obfsActive = false
+        }
+        setState(state)
     }
 
     /**
@@ -174,7 +265,13 @@ object CumulusTunnelController {
     fun stopTunnel(context: Context) {
         setState(STATE_DISCONNECTING)
         try {
-            if (multihopActive) {
+            if (obfsActive) {
+                val intent = Intent(context, CumulusObfsVpnService::class.java).apply {
+                    action = CumulusObfsVpnService.ACTION_STOP
+                }
+                context.startService(intent)
+                // onObfsState(DISCONNECTED) fires from the service's teardown.
+            } else if (multihopActive) {
                 val intent = Intent(context, CumulusMultihopVpnService::class.java).apply {
                     action = CumulusMultihopVpnService.ACTION_STOP
                 }
@@ -200,6 +297,9 @@ object CumulusTunnelController {
      * are stable (multi-hop reports a real handshake time from the Go core).
      */
     fun statistics(context: Context): Stats {
+        if (obfsActive) {
+            return CumulusObfsVpnService.statistics()
+        }
         if (multihopActive) {
             return CumulusMultihopVpnService.statistics()
         }

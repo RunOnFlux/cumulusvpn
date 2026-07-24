@@ -64,5 +64,21 @@
           android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
           android:value="CumulusVPN multi-hop tunnel" />
       </service>
+
+      <!-- Obfuscated (AmneziaWG) single-hop tunnel, Stealth mode. Runs in the
+           userspace wgnest core (same as multi-hop) rather than GoBackend, so it
+           needs its own VpnService declaration. -->
+      <service
+        android:name=".tunnel.CumulusObfsVpnService"
+        android:permission="android.permission.BIND_VPN_SERVICE"
+        android:foregroundServiceType="specialUse"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="android.net.VpnService" />
+        </intent-filter>
+        <property
+          android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+          android:value="CumulusVPN obfuscated tunnel" />
+      </service>
     </application>
 </manifest>

@@ -208,10 +208,10 @@ export function ConnectScreen({
       )}
 
       {/* Stealth mode — obfuscate the tunnel to bypass DPI/VPN-blocking
-          (docs/15). iOS only for now (the native obfuscated engine); Android and
-          desktop follow. Falls back to the fastest transport where a gateway
-          doesn't offer an obfuscated one. */}
-      {Platform.OS === 'ios' ? (
+          (docs/15). iOS + Android run the obfuscated engine natively; desktop
+          follows. Falls back to the fastest transport where a gateway doesn't
+          offer an obfuscated one. */}
+      {Platform.OS === 'ios' || Platform.OS === 'android' ? (
         <View style={[styles.divRow, (connected || busy) && styles.divRowDisabled]}>
           <View style={styles.divMeta}>
             <Text style={styles.divTitle}>Stealth mode</Text>
