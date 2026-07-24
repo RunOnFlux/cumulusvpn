@@ -66,6 +66,16 @@ export function transportFallbackChain(
     .sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
 }
 
+/**
+ * The AmneziaWG obfuscation params to feed {@link buildWgConfig} for a chosen
+ * transport, or undefined for transports that carry no `[Interface]` obfuscation
+ * (`wg` vanilla and `wg-tls`, whose obfuscation is the TLS wrapper, not WG
+ * framing). Only `awg` transports advertise the jc/jmin/…/h4 profile.
+ */
+export function obfsForTransport(t: Transport): Readonly<Record<string, string>> | undefined {
+  return t.type === 'awg' ? t.params : undefined;
+}
+
 /** The single best transport for a gateway under `mode`, or null if none fit. */
 export function selectTransport(
   transports: readonly Transport[] | undefined,

@@ -13,8 +13,8 @@ import (
 	"net/netip"
 	"sync"
 
-	"golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun"
+	"github.com/amnezia-vpn/amneziawg-go/device"
+	"github.com/amnezia-vpn/amneziawg-go/tun"
 
 	wgnest "github.com/runonflux/cumulusvpn-wgnest"
 )

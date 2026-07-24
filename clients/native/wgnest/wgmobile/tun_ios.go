@@ -6,7 +6,7 @@ import (
 	"os"
 
 	"golang.org/x/sys/unix"
-	"golang.zx2c4.com/wireguard/tun"
+	"github.com/amnezia-vpn/amneziawg-go/tun"
 )
 
 // tunFromFD wraps the iOS NEPacketTunnelFlow utun fd (found on the Swift side via

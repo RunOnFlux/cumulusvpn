@@ -182,4 +182,11 @@ export interface WgConfigParams {
   readonly serverPubKey: string;
   /** `<nodeIP>:51820`. */
   readonly endpoint: string;
+  /**
+   * AmneziaWG obfuscation params for an `awg` transport (the lowercase
+   * `jc`/`jmin`/…/`h4` map from `/v1/info` transports[].params). When present,
+   * {@link buildWgConfig} emits the matching `[Interface]` lines; absent for the
+   * vanilla and `wg-tls` transports. Use {@link obfsForTransport} to derive it.
+   */
+  readonly obfs?: Readonly<Record<string, string>>;
 }

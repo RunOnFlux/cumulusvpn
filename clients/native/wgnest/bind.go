@@ -5,8 +5,8 @@ import (
 	"net/netip"
 	"sync"
 
-	"golang.zx2c4.com/wireguard/conn"
-	"golang.zx2c4.com/wireguard/tun/netstack"
+	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/tun/netstack"
 )
 
 // netstackBind is a wireguard-go conn.Bind whose "socket" is a UDP connection on

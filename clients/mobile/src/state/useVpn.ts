@@ -17,6 +17,7 @@ import {
   buildWgConfig,
   enroll,
   generateKeypair,
+  obfsForTransport,
   paymentCode,
   paymentMemo,
   selectHops,
@@ -702,6 +703,7 @@ export function useVpn(): VpnModel & VpnActions {
         const endpoint = transport
           ? applyTransportToEndpoint(resp.endpoint, transport)
           : resp.endpoint;
+        const obfs = transport ? obfsForTransport(transport) : undefined;
 
         const wgConfig = buildWgConfig({
           privateKey: keypair.privateKey,
@@ -709,6 +711,7 @@ export function useVpn(): VpnModel & VpnActions {
           dns: resp.dns,
           serverPubKey: resp.server_pubkey,
           endpoint,
+          ...(obfs ? { obfs } : {}),
         });
         await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
         // Persist the live route so a force-quit + relaunch can restore where

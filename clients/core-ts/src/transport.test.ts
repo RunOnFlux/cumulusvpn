@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { applyTransportToEndpoint, selectTransport, transportFallbackChain } from './transport.js';
+import {
+  applyTransportToEndpoint,
+  obfsForTransport,
+  selectTransport,
+  transportFallbackChain,
+} from './transport.js';
 import { WG_PORT } from './types.js';
 import type { Transport } from './types.js';
 
@@ -46,6 +51,19 @@ describe('transportFallbackChain / selectTransport', () => {
   it('drops unknown/unmodelled transport types', () => {
     const weird = { type: 'quux', port: 9 } as Transport;
     expect(transportFallbackChain([weird, wg], 'auto', ALL).map((t) => t.type)).toEqual(['wg']);
+  });
+});
+
+describe('obfsForTransport', () => {
+  it('returns the params for an awg transport', () => {
+    expect(obfsForTransport({ type: 'awg', port: 51821, params: { jc: '4' } })).toEqual({
+      jc: '4',
+    });
+  });
+
+  it('returns undefined for wg and wg-tls (no [Interface] obfuscation)', () => {
+    expect(obfsForTransport({ type: 'wg', port: 51820 })).toBeUndefined();
+    expect(obfsForTransport({ type: 'wg-tls', port: 443, params: { sni: 'x' } })).toBeUndefined();
   });
 });
 
