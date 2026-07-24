@@ -8,6 +8,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"net/netip"
 	"os"
 	"sync"
@@ -105,7 +106,11 @@ var DefaultObfsParams = ObfsParams{
 // listenPort, and loads (or generates and persists) the server keypair from
 // keyFile. Wire-identical to upstream WireGuard (no obfuscation).
 func New(listenPort int, keyFile string) (*Device, error) {
-	return newDevice(listenPort, keyFile, "")
+	key, err := LoadOrGenerateKey(keyFile)
+	if err != nil {
+		return nil, err
+	}
+	return NewWithKey(listenPort, key)
 }
 
 // NewObfuscated is New plus the AmneziaWG obfuscation profile applied to the
@@ -113,17 +118,32 @@ func New(listenPort int, keyFile string) (*Device, error) {
 // vanilla device (one server identity, one enrollment serves both transports);
 // only the listen port and the obfuscation framing differ.
 func NewObfuscated(listenPort int, keyFile string, p ObfsParams) (*Device, error) {
-	return newDevice(listenPort, keyFile, p.UAPI())
-}
-
-// newDevice is the shared constructor; extraUAPI appends transport-specific
-// settings (empty for vanilla, the obfuscation lines for the obfs listener).
-func newDevice(listenPort int, keyFile string, extraUAPI string) (*Device, error) {
-	priv, err := loadOrGenerateKey(keyFile)
+	key, err := LoadOrGenerateKey(keyFile)
 	if err != nil {
 		return nil, err
 	}
+	return NewObfuscatedWithKey(listenPort, key, p)
+}
 
+// NewWithKey builds a vanilla device from an ALREADY-LOADED key. Use this when
+// one process runs several devices (vanilla + obfuscated) that must share the
+// same server identity: load the key ONCE with LoadOrGenerateKey and hand the
+// same bytes to each device, so they can never diverge — which would silently
+// break the obfs transport (clients pin the vanilla pubkey) if the key file is
+// unwritable and each device generated its own random key.
+func NewWithKey(listenPort int, key [32]byte) (*Device, error) {
+	return newDevice(listenPort, key, "")
+}
+
+// NewObfuscatedWithKey is NewWithKey plus the AmneziaWG obfuscation profile.
+func NewObfuscatedWithKey(listenPort int, key [32]byte, p ObfsParams) (*Device, error) {
+	return newDevice(listenPort, key, p.UAPI())
+}
+
+// newDevice is the shared constructor; priv is the already-loaded server key and
+// extraUAPI appends transport-specific settings (empty for vanilla, the
+// obfuscation lines for the obfs listener).
+func newDevice(listenPort int, priv [32]byte, extraUAPI string) (*Device, error) {
 	gwAddr := netip.MustParseAddr(GatewayIP)
 	// The DNS address handed to netstack here only matters for the
 	// gateway's own outbound lookups through the stack (none in v1);
@@ -280,11 +300,17 @@ func decodeKey(b64 string) ([]byte, error) {
 	return raw, nil
 }
 
-// loadOrGenerateKey reads a persisted private key or creates a new one.
 // POC: also persist the peer table to /data/peers.cache (pubkey, assigned
 // IP, paid_until) so restarts are seamless; losing it is fine — clients
 // auto-re-enroll (docs/03-gateway.md "Peer management").
-func loadOrGenerateKey(path string) ([32]byte, error) {
+//
+// LoadOrGenerateKey loads the base64 server key from path, or generates and
+// persists a new one if the file is absent. Persistence failure is non-fatal
+// (an ephemeral identity still works — clients just re-enroll after a restart),
+// but callers that run multiple devices MUST load the key ONCE and share it (see
+// NewWithKey): letting each device call this independently on an unwritable path
+// would hand each a DIFFERENT random key.
+func LoadOrGenerateKey(path string) ([32]byte, error) {
 	var key [32]byte
 	if raw, err := os.ReadFile(path); err == nil {
 		dec, err := base64.StdEncoding.DecodeString(string(raw))
@@ -302,9 +328,10 @@ func loadOrGenerateKey(path string) ([32]byte, error) {
 	key[31] &= 127
 	key[31] |= 64
 	if err := os.WriteFile(path, []byte(base64.StdEncoding.EncodeToString(key[:])), 0o600); err != nil {
-		// Non-fatal: ephemeral identity still works, clients just
-		// re-enroll after a restart. POC: log a warning.
-		_ = err
+		// Non-fatal: the process keeps this in-memory key (shared across devices
+		// by the caller), so the identity is stable for this run; it just isn't
+		// persisted across restarts.
+		log.Printf("wg: WARNING: could not persist key file %s (%v); identity is ephemeral this run", path, err)
 	}
 	return key, nil
 }

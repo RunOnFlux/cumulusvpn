@@ -4,10 +4,10 @@
  * live polling of native tunnel status + chain entitlement.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Keypair, Tier, TransportMode } from '@cumulusvpn/core';
+import type { GatewayInfo, Keypair, Tier, TransportMode } from '@cumulusvpn/core';
 import { loadOrCreateKeypair, loadSelectedCountry, saveSelectedCountry } from '../lib/storage.js';
 import {
-  discoverCountries,
+  discoverFleetAndCountries,
   establish,
   establishMultihop,
   fetchEntitlement,
@@ -108,6 +108,10 @@ export function useConnection(): ConnectionModel {
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [countries, setCountries] = useState<readonly CountryOption[]>([]);
+  // The full discovered fleet (several gateways per country), kept for multi-hop
+  // hop selection — the collapsed `countries` list can't supply a distinct
+  // second in-country gateway for a same-country route.
+  const fleetRef = useRef<readonly GatewayInfo[]>([]);
   const [selected, setSelected] = useState<CountryOption | null>(null);
   const [tunnel, setTunnel] = useState<TunnelStatus>(DOWN);
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
@@ -141,10 +145,11 @@ export function useConnection(): ConnectionModel {
     let alive = true;
     void (async () => {
       try {
-        const list = await discoverCountries();
+        const { countries: list, fleet } = await discoverFleetAndCountries();
         if (!alive) {
           return;
         }
+        fleetRef.current = fleet;
         setCountries(list);
         const remembered = loadSelectedCountry();
         const pick = list.find((c) => c.code === remembered) ?? list[0] ?? null;
@@ -170,7 +175,9 @@ export function useConnection(): ConnectionModel {
   // the quality ratings). Keeps the current selection.
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      setCountries(await discoverCountries());
+      const { countries: list, fleet } = await discoverFleetAndCountries();
+      fleetRef.current = fleet;
+      setCountries(list);
     } catch (err) {
       setError(messageOf(err));
     }
@@ -257,6 +264,7 @@ export function useConnection(): ConnectionModel {
         if (multihop && exit) {
           // Same key K enrolls at both hops (one payment); exit meters egress.
           const result = await establishMultihop(
+            fleetRef.current,
             entry,
             exit,
             routeStyle,

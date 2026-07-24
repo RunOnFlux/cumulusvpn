@@ -188,6 +188,7 @@ object CumulusTunnelController {
             putExtra(CumulusObfsVpnService.EXTRA_DNS, dns)
         }
         obfsActive = true
+        multihopActive = false // reciprocal: an obfs→multihop switch must not leave this stale
         context.startService(intent)
         // State advances to CONNECTED/ERROR asynchronously via onObfsState.
     }
@@ -247,6 +248,7 @@ object CumulusTunnelController {
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_DNS, exitDns)
             }
             multihopActive = true
+            obfsActive = false // reciprocal: a multihop switch must not leave the obfs flag stale
             // Connect is always user-initiated (app in foreground), so a plain
             // startService is allowed; the established tun keeps the service alive.
             context.startService(intent)

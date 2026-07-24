@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { discoverGateways, enroll } from '@cumulusvpn/core';
 import type { EnrollResponse, GatewayInfo, Keypair } from '@cumulusvpn/core';
 import type * as CumulusCore from '@cumulusvpn/core';
-import { discoverCountries, establish, teardown } from './session';
+import { discoverCountries, establish, establishMultihop, teardown } from './session';
+import type { CountryOption } from './session';
 
 // Keep everything real except the two network primitives session orchestrates.
 vi.mock('@cumulusvpn/core', async (importOriginal) => {
@@ -132,5 +133,73 @@ describe('establish', () => {
     expect(result.tunnel.state).toBe('up');
     expect(result.tunnel.assignedIp).toBe('10.8.0.2');
     expect(result.tunnel.country).toBe('DE');
+  });
+});
+
+describe('establishMultihop', () => {
+  const enrollReply: EnrollResponse = {
+    server_pubkey: 'SRVPUB',
+    endpoint: '198.51.100.9:51820',
+    assigned_ip: '10.8.0.2',
+    dns: '10.8.0.1',
+    payment_address: 't1addr',
+    payment_memo: 'CVPN1:code',
+    price_flux: 20,
+  };
+  const deEntry: CountryOption = {
+    code: 'DE',
+    name: 'Germany',
+    flag: '🇩🇪',
+    gatewayIp: '198.51.100.2',
+    city: 'Frankfurt',
+    load: 0.2,
+    signPubKey: 'sign-de',
+  };
+  const nlExit: CountryOption = {
+    code: 'NL',
+    name: 'Netherlands',
+    flag: '🇳🇱',
+    gatewayIp: '198.51.100.3',
+    city: 'Amsterdam',
+    load: 0.5,
+    signPubKey: 'sign-nl',
+  };
+
+  it('same-country ("Balanced") picks two distinct in-country gateways from the fleet', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    // Two DE gateways in the fleet; the exit PICK is a different country on
+    // purpose — same-country must ignore it and still find a second DE hop
+    // rather than throwing (the pre-fix bug, where the collapsed one-per-country
+    // list made this structurally impossible).
+    const fleet = [
+      gateway({ country: 'DE', ip: '198.51.100.1', load: 0.5, sign_pubkey: 'sign-de-a' }),
+      gateway({ country: 'DE', ip: '198.51.100.2', load: 0.2, sign_pubkey: 'sign-de-b' }),
+    ];
+
+    const result = await establishMultihop(
+      fleet,
+      deEntry,
+      nlExit,
+      'multihop-same-country',
+      keypair,
+      true,
+    );
+
+    const enrolledIps = mockedEnroll.mock.calls.map((c) => c[0]).sort();
+    expect(enrolledIps).toEqual(['198.51.100.1', '198.51.100.2']);
+    expect(result.tunnel.state).toBe('up');
+  });
+
+  it('refuses Stealth over multi-hop instead of silently downgrading the entry hop', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    const fleet = [
+      gateway({ country: 'DE', ip: '198.51.100.1', load: 0.5 }),
+      gateway({ country: 'DE', ip: '198.51.100.2', load: 0.2 }),
+    ];
+
+    await expect(
+      establishMultihop(fleet, deEntry, deEntry, 'multihop-same-country', keypair, true, 'stealth'),
+    ).rejects.toThrow(/Stealth/);
+    expect(mockedEnroll).not.toHaveBeenCalled();
   });
 });

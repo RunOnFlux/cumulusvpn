@@ -201,9 +201,18 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	// Serialize check → assign → register so a concurrent same-pubkey enroll
 	// can't slip between the PeerAddr check and AddPeer and double-allocate (see
 	// enrollMu). assign() takes s.mu internally; enrollMu is a distinct lock, so
-	// no deadlock.
+	// no deadlock. Scope: released right after registration (below), BEFORE the
+	// network I/O of writeSigned, so enrolls don't serialize on response writes.
+	// The defer is a safety net for the early error returns.
 	s.enrollMu.Lock()
-	defer s.enrollMu.Unlock()
+	enrollUnlocked := false
+	unlockEnroll := func() {
+		if !enrollUnlocked {
+			enrollUnlocked = true
+			s.enrollMu.Unlock()
+		}
+	}
+	defer unlockEnroll()
 
 	// Capacity guards (docs/03-gateway.md "Capacity guards").
 	premium, _ := s.ent.Tier(req.PubKey)
@@ -259,6 +268,8 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	}
 	// Ensure the limiter reflects the current tier immediately.
 	s.lim.SetTier(req.PubKey, premium)
+	// Registration is done — release the enroll lock before the response I/O.
+	unlockEnroll()
 
 	resp := enrollResponse{
 		ServerPubKey:   s.dev.PublicKey(),

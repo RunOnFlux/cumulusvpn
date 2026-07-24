@@ -76,6 +76,17 @@ type NestedTunnel struct {
 // private key (base64), shared by both hops. `innerTun` is the tun the real
 // 0.0.0.0/0 traffic flows over (caller-owned). `logLevel` is a device.LogLevel*.
 func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLevel int) (*NestedTunnel, error) {
+	// The caller hands us ownership of innerTun. Until it is wrapped in the inner
+	// device (whose Close() then owns it), close it ourselves on any early error
+	// so a failed connect doesn't leak the caller's tun fd (on Android the fd is
+	// detached from the ParcelFileDescriptor and never reclaimed otherwise).
+	innerOwned := false
+	defer func() {
+		if !innerOwned {
+			_ = innerTun.Close()
+		}
+	}()
+
 	privHex, err := b64ToHex(clientPrivB64)
 	if err != nil {
 		return nil, fmt.Errorf("client key: %w", err)
@@ -119,6 +130,7 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 	// outer netstack to <exitIP>:51820, so its packets ride the outer tunnel. ----
 	exitEndpoint := netip.AddrPortFrom(exit.IP, wgPort)
 	inner := device.NewDevice(innerTun, newNetstackBind(outerNet, exitEndpoint), device.NewLogger(logLevel, "inner "))
+	innerOwned = true // inner.Close() now owns innerTun
 	innerCfg := fmt.Sprintf(
 		"private_key=%s\npublic_key=%s\nendpoint=%s\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
 		privHex, exitPubHex, exitEndpoint,
@@ -150,6 +162,15 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 // `gw.AssignedIP` is unused here. Reuses NestedTunnel (single device as `inner`,
 // `outer` nil) so Stats/Close work unchanged.
 func StartSingle(clientPrivB64 string, gw Gateway, t tun.Device, logLevel int) (*NestedTunnel, error) {
+	// The caller hands us ownership of t; close it on any error before the device
+	// wraps it, so a failed connect doesn't leak the caller's tun fd.
+	tOwned := false
+	defer func() {
+		if !tOwned {
+			_ = t.Close()
+		}
+	}()
+
 	privHex, err := b64ToHex(clientPrivB64)
 	if err != nil {
 		return nil, fmt.Errorf("client key: %w", err)
@@ -159,6 +180,7 @@ func StartSingle(clientPrivB64 string, gw Gateway, t tun.Device, logLevel int) (
 		return nil, fmt.Errorf("server key: %w", err)
 	}
 	dev := device.NewDevice(t, conn.NewDefaultBind(), device.NewLogger(logLevel, "wg "))
+	tOwned = true // dev.Close() now owns t
 	// Device-level obfs UAPI (if any) sits between private_key and the peer.
 	cfg := fmt.Sprintf("private_key=%s\n", privHex) + gw.Obfs + fmt.Sprintf(
 		"public_key=%s\nendpoint=%s:%d\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",

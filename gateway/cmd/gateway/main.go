@@ -6,6 +6,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -80,7 +81,15 @@ func run() error {
 	}
 
 	// --- WireGuard userspace device + netstack ---
-	dev, err := wg.New(config.WGListenPort, cfg.KeyFile)
+	// Load the server key ONCE and share it across the vanilla and obfuscated
+	// devices. If we let each device load it independently and the key file is
+	// unwritable, they would generate DIFFERENT random keys — silently breaking
+	// the obfs transport, since clients pin the vanilla pubkey for both.
+	serverKey, err := wg.LoadOrGenerateKey(cfg.KeyFile)
+	if err != nil {
+		return err
+	}
+	dev, err := wg.NewWithKey(config.WGListenPort, serverKey)
 	if err != nil {
 		return err
 	}
@@ -103,7 +112,7 @@ func run() error {
 	// default; when off, nothing is advertised and the node behaves like 0.1.0.
 	var obfsTransports []api.ExtraTransport
 	if cfg.ObfsEnable {
-		obfsDev, err := wg.NewObfuscated(config.WGObfsPort, cfg.KeyFile, wg.DefaultObfsParams)
+		obfsDev, err := wg.NewObfuscatedWithKey(config.WGObfsPort, serverKey, wg.DefaultObfsParams)
 		if err != nil {
 			return err
 		}
@@ -133,8 +142,12 @@ func run() error {
 			return err
 		}
 		relay := tlsrelay.NewRelay(config.WGListenPort, cert)
+		// Bind on the TLS port directly. Do NOT route this through addr() —
+		// CVPN_BIND is the control-API's dev override (a full host:port) and
+		// reusing it verbatim here would put the relay and the API on the same
+		// address, so one listener fails and shuts the whole gateway down.
 		go func() {
-			if err := relay.ListenAndServe(ctx, addr(cfg.TLSPort)); err != nil {
+			if err := relay.ListenAndServe(ctx, fmt.Sprintf(":%d", cfg.TLSPort)); err != nil {
 				log.Printf("gateway: TLS relay error: %v", err)
 				stop()
 			}

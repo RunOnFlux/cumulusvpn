@@ -129,8 +129,22 @@ function toCountryOptions(gateways: readonly GatewayInfo[]): CountryOption[] {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** Discovery result: the collapsed picker rows plus the full underlying fleet. */
+export interface FleetDiscovery {
+  /** One least-loaded row per country, for the picker. */
+  readonly countries: CountryOption[];
+  /**
+   * Every discovered gateway (several per country). Multi-hop hop selection
+   * needs this — the collapsed one-per-country `countries` can't supply a second
+   * distinct gateway for a same-country ("Balanced") route. Empty for the
+   * browser-demo / offline-seed fallbacks (no live fleet).
+   */
+  readonly fleet: readonly GatewayInfo[];
+}
+
 /**
- * Enumerate connectable countries. Tries live Flux discovery across the bundled
+ * Discover the fleet: the full gateway list AND the collapsed per-country picker
+ * rows, in a single discovery pass. Tries live Flux discovery across the bundled
  * spec names; if nothing is reachable, falls back to the bundled directory's
  * seed gateways so the picker is never empty offline.
  *
@@ -138,17 +152,17 @@ function toCountryOptions(gateways: readonly GatewayInfo[]): CountryOption[] {
  * (load defaults to 0, city empty); a real client also reads a TTL disk cache
  * ahead of live discovery.
  */
-export async function discoverCountries(fetchImpl?: typeof fetch): Promise<CountryOption[]> {
+export async function discoverFleetAndCountries(fetchImpl?: typeof fetch): Promise<FleetDiscovery> {
   const options = fetchImpl ? { fetchImpl } : {};
   const gateways = await discoverGateways(BUNDLED_DIRECTORY.specs, options);
   if (gateways.length > 0) {
-    return toCountryOptions(gateways);
+    return { countries: toCountryOptions(gateways), fleet: gateways };
   }
   // Browser demo (dev / Storybook / headless render): the Flux discovery API
   // isn't reachable from a plain browser, so synthesize the fleet's countries
   // from the signed directory specs. No effect in the shipped app.
   if (!isTauri()) {
-    return BUNDLED_DIRECTORY.specs
+    const countries = BUNDLED_DIRECTORY.specs
       .map((spec): CountryOption => {
         const code = spec.replace(/^cumulusvpn/, '').toUpperCase();
         const meta = countryMeta(code);
@@ -163,11 +177,12 @@ export async function discoverCountries(fetchImpl?: typeof fetch): Promise<Count
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+    return { countries, fleet: [] };
   }
   // Offline cold-start: synthesize options from the signed seed list. Skip the
   // 0.0.0.0 placeholder seeds (live discovery resolves real IPs), matching the
   // mobile client — better to show nothing than an unconnectable gateway.
-  return BUNDLED_DIRECTORY.seed_gateways
+  const countries = BUNDLED_DIRECTORY.seed_gateways
     .filter((seed) => seed.ip !== '0.0.0.0')
     .map((seed): CountryOption => {
       const meta = countryMeta(seed.country);
@@ -182,6 +197,12 @@ export async function discoverCountries(fetchImpl?: typeof fetch): Promise<Count
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
+  return { countries, fleet: [] };
+}
+
+/** Enumerate connectable countries (the collapsed picker rows). */
+export async function discoverCountries(fetchImpl?: typeof fetch): Promise<CountryOption[]> {
+  return (await discoverFleetAndCountries(fetchImpl)).countries;
 }
 
 /** Per-gateway enroll options: attach the pinned sign key + any fetch override. */
@@ -189,6 +210,14 @@ function enrollOptsFor(country: CountryOption, fetchImpl?: typeof fetch) {
   return {
     ...(fetchImpl ? { fetchImpl } : {}),
     ...(country.signPubKey ? { signPubKey: country.signPubKey } : {}),
+  };
+}
+
+/** Enroll options from a live {@link GatewayInfo} (multi-hop hops come from the fleet). */
+function enrollOptsForGateway(g: GatewayInfo, fetchImpl?: typeof fetch) {
+  return {
+    ...(fetchImpl ? { fetchImpl } : {}),
+    ...(g.sign_pubkey ? { signPubKey: g.sign_pubkey } : {}),
   };
 }
 
@@ -227,15 +256,17 @@ export async function establish(
   transportMode: TransportMode = 'auto',
   fetchImpl?: typeof fetch,
 ): Promise<EstablishResult> {
+  // Transport negotiation (docs/15): pick the transport for the mode this
+  // gateway advertises BEFORE enrolling, so a Stealth request against a
+  // vanilla-only location fails fast without spending an enrollment.
+  // `requireTransport` THROWS rather than falling back to vanilla, so Stealth
+  // never silently downgrades to fingerprintable plain WG (Auto still resolves
+  // to :51820 — vanilla is its floor). `obfs` is set only for `awg`.
+  const transport = requireTransport(country.transports, transportMode, IMPLEMENTED_TRANSPORTS);
+
   const enrollOpts = enrollOptsFor(country, fetchImpl);
   const reply = await enrollOrMock(country.gatewayIp, keypair.publicKey, enrollOpts);
 
-  // Transport negotiation (docs/15): pick the transport for the mode this
-  // gateway advertises, point the config at its port, and fold in obfuscation
-  // params for `awg`. `requireTransport` THROWS rather than falling back to
-  // vanilla, so Stealth never silently downgrades to fingerprintable plain WG
-  // (Auto still resolves to :51820 — vanilla is its floor).
-  const transport = requireTransport(country.transports, transportMode, IMPLEMENTED_TRANSPORTS);
   const endpoint = applyTransportToEndpoint(reply.endpoint, transport);
   const obfs = obfsForTransport(transport);
 
@@ -276,6 +307,9 @@ export async function establish(
  * MTU 1340, exit DNS), which the native `connectMultihop` command runs as two
  * stacked wireguard-go devices.
  *
+ * @param fleet - The full discovered fleet (from {@link discoverFleetAndCountries});
+ *   hop selection needs several gateways per country. Falls back to the two
+ *   picked rows only when the live fleet is unavailable (offline/browser-demo).
  * @param entryCountry - The user's chosen ENTRY (sees real IP, not destination).
  * @param exitCountry - The user's chosen EXIT (sees destination, not real IP).
  * @param style - `'multihop-same-country'` or `'multihop-cross-jurisdiction'`.
@@ -283,6 +317,7 @@ export async function establish(
  *   exit, or same country when cross-jurisdiction was asked).
  */
 export async function establishMultihop(
+  fleet: readonly GatewayInfo[],
   entryCountry: CountryOption,
   exitCountry: CountryOption,
   style: RouteStyle,
@@ -300,11 +335,20 @@ export async function establishMultihop(
       'Stealth mode isn’t available with multi-hop yet. Turn off multi-hop, or switch to Auto.',
     );
   }
-  // Let the core contract pick + validate the ordered hops from the two picks.
-  const hops = selectHops([toGatewayInfo(entryCountry), toGatewayInfo(exitCountry)], style, {
-    entryCountry: entryCountry.code,
-    exitCountry: exitCountry.code,
-  });
+  // Hop selection needs the FULL fleet (several gateways per country); the
+  // collapsed one-per-country picker rows can't supply a distinct second gateway
+  // for a same-country route. Fall back to the two picked rows only offline.
+  const candidates: readonly GatewayInfo[] =
+    fleet.length > 0 ? fleet : [toGatewayInfo(entryCountry), toGatewayInfo(exitCountry)];
+
+  // Same-country ("Balanced"): let selectHops choose the second hop WITHIN the
+  // entry's country — don't pin the exit to a different picked country, which
+  // would be unsatisfiable. Cross-jurisdiction: honor both country picks.
+  const hopOpts =
+    style === 'multihop-same-country'
+      ? { entryCountry: entryCountry.code }
+      : { entryCountry: entryCountry.code, exitCountry: exitCountry.code };
+  const hops = selectHops(candidates, style, hopOpts);
   if (!hops.exit) {
     throw new Error('multi-hop requires a distinct exit hop');
   }
@@ -313,12 +357,12 @@ export async function establishMultihop(
   const entryReply = await enrollOrMock(
     hops.entry.ip,
     keypair.publicKey,
-    enrollOptsFor(entryCountry, fetchImpl),
+    enrollOptsForGateway(hops.entry, fetchImpl),
   );
   const exitReply = await enrollOrMock(
     hops.exit.ip,
     keypair.publicKey,
-    enrollOptsFor(exitCountry, fetchImpl),
+    enrollOptsForGateway(hops.exit, fetchImpl),
   );
 
   const cfg = buildMultihopConfig({

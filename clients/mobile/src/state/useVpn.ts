@@ -726,6 +726,16 @@ export function useVpn(): VpnModel & VpnActions {
       // Failover-aware: skip any node that just dropped/failed us.
       const gw = pickGateway(target);
       gatewayIpRef.current = gw.ip;
+
+      // Transport negotiation (docs/15-transports.md): pick the transport this
+      // gateway advertises for the current mode BEFORE enrolling. `requireTransport`
+      // THROWS rather than falling back to vanilla, so Stealth never silently
+      // downgrades to fingerprintable plain WireGuard — Auto still resolves to
+      // :51820 (vanilla is its floor). Doing it before enroll means a
+      // Stealth-on-vanilla request fails fast without spending a PoW/enrollment
+      // or marking the gateway bad (it's not a node failure). `obfs` is set only
+      // for `awg`.
+      const transport = requireTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS);
       try {
         const resp = await enroll(gw.ip, keypair.publicKey, {
           signPubKey: gw.sign_pubkey,
@@ -736,13 +746,6 @@ export function useVpn(): VpnModel & VpnActions {
         setActiveEntry(entryEp);
         setActiveExit(null);
 
-        // Transport negotiation (docs/15-transports.md): pick the transport this
-        // gateway advertises for the current mode and point the config at its
-        // port. `requireTransport` THROWS rather than falling back to vanilla, so
-        // Stealth never silently downgrades to fingerprintable plain WireGuard —
-        // Auto still resolves to :51820 (vanilla is its floor). `obfs` is set only
-        // for `awg`.
-        const transport = requireTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS);
         const endpoint = applyTransportToEndpoint(resp.endpoint, transport);
         const obfs = obfsForTransport(transport);
 
