@@ -207,6 +207,28 @@ export function ConnectScreen({
         </Pressable>
       )}
 
+      {/* Stealth mode — obfuscate the tunnel to bypass DPI/VPN-blocking
+          (docs/15). iOS only for now (the native obfuscated engine); Android and
+          desktop follow. Falls back to the fastest transport where a gateway
+          doesn't offer an obfuscated one. */}
+      {Platform.OS === 'ios' ? (
+        <View style={[styles.divRow, (connected || busy) && styles.divRowDisabled]}>
+          <View style={styles.divMeta}>
+            <Text style={styles.divTitle}>Stealth mode</Text>
+            <Text style={styles.divSub}>
+              {vpn.transportMode === 'stealth'
+                ? 'On — disguise VPN traffic to bypass blocking'
+                : 'Off — fastest connection'}
+            </Text>
+          </View>
+          <Toggle
+            value={vpn.transportMode === 'stealth'}
+            disabled={connected || busy}
+            onValueChange={(v) => void vpn.setTransportMode(v ? 'stealth' : 'auto')}
+          />
+        </View>
+      ) : null}
+
       {/* Kill switch — block all traffic if the tunnel drops (docs/05). */}
       <KillSwitchRow
         enabled={vpn.killSwitch}

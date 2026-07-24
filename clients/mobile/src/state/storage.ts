@@ -11,7 +11,7 @@
  * every launch), but a production build should move it to the hardware-backed
  * Keychain / Keystore (`react-native-keychain`) and keep only a reference here.
  */
-import type { GatewayInfo, Keypair, RouteStyle } from '@cumulusvpn/core';
+import type { GatewayInfo, Keypair, RouteStyle, TransportMode } from '@cumulusvpn/core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RouteEndpoint } from '../lib/gateways';
 
@@ -20,6 +20,7 @@ const K = {
   keypair: 'cvpn:keypair',
   country: 'cvpn:country',
   routeStyle: 'cvpn:routeStyle',
+  transportMode: 'cvpn:transportMode',
   killSwitch: 'cvpn:killSwitch',
   nodeDiversity: 'cvpn:nodeDiversity',
   autoConnect: 'cvpn:autoConnect',
@@ -79,6 +80,24 @@ const ROUTE_STYLES: readonly RouteStyle[] = [
 
 function isRouteStyle(v: string): v is RouteStyle {
   return (ROUTE_STYLES as readonly string[]).includes(v);
+}
+
+/** The transport modes a user may persist (mirrors core `TransportMode`). */
+const TRANSPORT_MODES: readonly TransportMode[] = ['auto', 'speed', 'stealth'];
+
+function isTransportMode(v: string): v is TransportMode {
+  return (TRANSPORT_MODES as readonly string[]).includes(v);
+}
+
+/** Load the persisted transport mode, defaulting to `auto` (fastest-that-works). */
+export async function loadTransportMode(): Promise<TransportMode> {
+  const raw = await AsyncStorage.getItem(K.transportMode);
+  return raw && isTransportMode(raw) ? raw : 'auto';
+}
+
+/** Persist the selected transport mode (Auto vs Stealth). */
+export async function saveTransportMode(mode: TransportMode): Promise<void> {
+  await AsyncStorage.setItem(K.transportMode, mode);
 }
 
 /** Load the persisted device keypair, or null on first launch. */

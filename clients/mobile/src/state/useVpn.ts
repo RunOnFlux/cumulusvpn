@@ -11,6 +11,7 @@
  *   config → hand to native tunnel → poll status for tier.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
   applyTransportToEndpoint,
   buildMultihopConfig,
@@ -24,7 +25,14 @@ import {
   selectTransport,
   status as fetchStatus,
 } from '@cumulusvpn/core';
-import type { EnrollResponse, GatewayInfo, Keypair, RouteStyle, Tier } from '@cumulusvpn/core';
+import type {
+  EnrollResponse,
+  GatewayInfo,
+  Keypair,
+  RouteStyle,
+  Tier,
+  TransportMode,
+} from '@cumulusvpn/core';
 import {
   CumulusTunnel,
   onTunnelStatus,
@@ -54,6 +62,7 @@ import {
   loadKillSwitch,
   loadNodeDiversity,
   loadRouteStyle,
+  loadTransportMode,
   loadSelectedCountry,
   saveActiveRoute,
   saveAutoConnect,
@@ -65,6 +74,7 @@ import {
   saveKillSwitch,
   saveNodeDiversity,
   saveRouteStyle,
+  saveTransportMode,
   saveSelectedCountry,
 } from './storage';
 
@@ -72,6 +82,17 @@ import {
 export function isMultihop(style: RouteStyle): boolean {
   return style !== 'single';
 }
+
+/**
+ * Transport slugs THIS platform's native tunnel can actually dial. iOS runs the
+ * amneziawg-go engine via wgnest for single-hop, so it can do `awg`; Android
+ * single-hop still uses the official wireguard library (no obfs), so it stays
+ * vanilla until it's rerouted through wgnest. `wg-tls` awaits the native TLS
+ * bridge on each platform. Passed to core `selectTransport` so a mode only picks
+ * a transport this build can bring up.
+ */
+const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> =
+  Platform.OS === 'ios' ? new Set(['wg', 'awg']) : new Set(['wg']);
 
 /** Everything the UI renders from. */
 export interface VpnModel {
@@ -97,6 +118,12 @@ export interface VpnModel {
    * styles opt into the nested-onion path from `docs/11-multihop.md`.
    */
   readonly routeStyle: RouteStyle;
+  /**
+   * Transport mode (DPI resistance). `'auto'` (default) prefers the fastest that
+   * connects; `'stealth'` picks an obfuscated transport (AmneziaWG / WG-over-TLS)
+   * where the gateway advertises one and this build implements it. Persisted.
+   */
+  readonly transportMode: TransportMode;
   /** Convenience flag: true for any `multihop-*` style. */
   readonly multihop: boolean;
   /** Chosen multi-hop entry country, or null to auto-pick the nearest healthy. */
@@ -156,6 +183,8 @@ export interface VpnActions {
   refresh(): Promise<void>;
   /** Switch route style (Fast vs the two multi-hop styles); persisted. */
   setRouteStyle(style: RouteStyle): Promise<void>;
+  /** Switch transport mode (Auto vs Stealth); persisted. Applies on next connect. */
+  setTransportMode(mode: TransportMode): Promise<void>;
   /** Pick the multi-hop entry country (`null` = auto-pick nearest); persisted. */
   selectEntryCountry(code: string | null): Promise<void>;
   /** Pick the multi-hop exit country (`null` = auto-pick); persisted. */
@@ -195,6 +224,7 @@ export function useVpn(): VpnModel & VpnActions {
   const [error, setError] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<EnrollResponse | null>(null);
   const [routeStyle, setRouteStyleState] = useState<RouteStyle>('single');
+  const [transportMode, setTransportModeState] = useState<TransportMode>('auto');
   const [entryCode, setEntryCode] = useState<string | null>(null);
   const [exitCode, setExitCode] = useState<string | null>(null);
   const [killSwitch, setKillSwitchState] = useState(false);
@@ -381,6 +411,7 @@ export function useVpn(): VpnModel & VpnActions {
         setKeypair(restored);
         setSelectedCode(await loadSelectedCountry());
         setRouteStyleState(await loadRouteStyle());
+        setTransportModeState(await loadTransportMode());
         setEntryCode(await loadEntryCountry());
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
@@ -699,7 +730,7 @@ export function useVpn(): VpnModel & VpnActions {
         // port. M0 implements vanilla WG only, so this resolves to :51820 — a
         // no-op today — but wires the seam the obfuscated/TLS tiers will use.
         // Mode is fixed to 'auto' until the M3 Speed/Stealth UI toggle.
-        const transport = selectTransport(gw.transports, 'auto');
+        const transport = selectTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS);
         const endpoint = transport
           ? applyTransportToEndpoint(resp.endpoint, transport)
           : resp.endpoint;
@@ -732,6 +763,7 @@ export function useVpn(): VpnModel & VpnActions {
     locations,
     selectedCode,
     routeStyle,
+    transportMode,
     entryCode,
     exitCode,
     killSwitch,
@@ -808,6 +840,11 @@ export function useVpn(): VpnModel & VpnActions {
     await saveRouteStyle(style);
   }, []);
 
+  const setTransportMode = useCallback(async (mode: TransportMode): Promise<void> => {
+    setTransportModeState(mode);
+    await saveTransportMode(mode);
+  }, []);
+
   const selectEntryCountry = useCallback(async (code: string | null): Promise<void> => {
     setEntryCode(code);
     await saveEntryCountry(code);
@@ -859,6 +896,7 @@ export function useVpn(): VpnModel & VpnActions {
     error,
     payment,
     routeStyle,
+    transportMode,
     multihop,
     entry,
     exit,
@@ -876,6 +914,7 @@ export function useVpn(): VpnModel & VpnActions {
     selectCountry,
     refresh,
     setRouteStyle,
+    setTransportMode,
     selectEntryCountry,
     selectExitCountry,
     setKillSwitch,
