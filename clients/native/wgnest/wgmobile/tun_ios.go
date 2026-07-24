@@ -5,8 +5,8 @@ package wgmobile
 import (
 	"os"
 
-	"golang.org/x/sys/unix"
 	"github.com/amnezia-vpn/amneziawg-go/tun"
+	"golang.org/x/sys/unix"
 )
 
 // tunFromFD wraps the iOS NEPacketTunnelFlow utun fd (found on the Swift side via
