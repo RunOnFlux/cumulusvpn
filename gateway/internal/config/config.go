@@ -88,6 +88,20 @@ type Config struct {
 	// 0.2.0 image with obfs disabled behaves exactly like 0.1.0. Set via
 	// CVPN_OBFS_ENABLE.
 	ObfsEnable bool
+
+	// TLSEnable turns on the WG-over-TLS "stealth" listener (transport wg-tls,
+	// docs/15-transports.md): WireGuard tunnelled inside an ordinary-looking TLS
+	// session so it survives both the WG fingerprint and UDP/port blocking. Off
+	// by default. Set via CVPN_TLS_ENABLE.
+	TLSEnable bool
+	// TLSPort is the TCP port the TLS relay listens on. Default WGListenPort
+	// (the free TCP side of the WG UDP port → no extra Flux port); set to 443 on
+	// a stealth-subset node for HTTPS camouflage. Set via CVPN_TLS_PORT.
+	TLSPort int
+	// TLSSNI is the server name the client presents / the self-signed cert CN.
+	// Cosmetic (the cert is camouflage only), but a plausible value blends in.
+	// Set via CVPN_TLS_SNI.
+	TLSSNI string
 }
 
 // Load reads configuration from the environment, applying documented defaults
@@ -107,6 +121,9 @@ func Load() (*Config, error) {
 		KeyFile:           envStr("CVPN_KEY_FILE", "/data/server.key"),
 		GatewayFleetAllow: envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
 		ObfsEnable:        envBool("CVPN_OBFS_ENABLE", false),
+		TLSEnable:         envBool("CVPN_TLS_ENABLE", false),
+		TLSPort:           envInt("CVPN_TLS_PORT", WGListenPort),
+		TLSSNI:            os.Getenv("CVPN_TLS_SNI"),
 	}
 
 	if v := os.Getenv("CVPN_EGRESS_ALLOW_PORTS"); v != "" {

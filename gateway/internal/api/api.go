@@ -215,10 +215,15 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusInternalServerError, "add_peer_failed", err.Error())
 		return
 	}
-	// Mirror the peer onto every additional transport's device with the SAME
-	// assigned IP, so one enrollment works whether the client dials vanilla,
-	// obfuscated, or TLS. s.dev stays the allocation authority.
+	// Mirror the peer onto every additional transport that has its OWN device
+	// (e.g. the obfuscated listener) with the SAME assigned IP, so one enrollment
+	// works whichever transport the client dials. Transports with a nil Device
+	// (e.g. wg-tls, which relays into the vanilla device) need no mirroring.
+	// s.dev stays the allocation authority.
 	for _, e := range s.extra {
+		if e.Device == nil {
+			continue
+		}
 		if err := e.Device.AddPeer(req.PubKey, assigned); err != nil {
 			writeErr(w, http.StatusInternalServerError, "add_peer_failed", err.Error())
 			return

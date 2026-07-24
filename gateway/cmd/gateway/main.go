@@ -20,6 +20,7 @@ import (
 	"github.com/runonflux/cumulusvpn-gateway/internal/fluxnode"
 	"github.com/runonflux/cumulusvpn-gateway/internal/geoip"
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
+	"github.com/runonflux/cumulusvpn-gateway/internal/tlsrelay"
 	"github.com/runonflux/cumulusvpn-gateway/internal/wg"
 )
 
@@ -120,6 +121,32 @@ func run() error {
 			},
 		})
 		log.Printf("gateway: obfuscated (AmneziaWG) listener up on :%d/udp", config.WGObfsPort)
+	}
+
+	// --- WG-over-TLS "stealth" listener: additive, env-gated (docs/15) ---
+	// A self-signed TLS relay in front of the vanilla WG device (looks like
+	// HTTPS, beats UDP-blocking). No own device — it relays into the vanilla WG
+	// listener, so an existing enrollment works. Off by default.
+	if cfg.TLSEnable {
+		cert, err := tlsrelay.SelfSignedCert(cfg.TLSSNI)
+		if err != nil {
+			return err
+		}
+		relay := tlsrelay.NewRelay(config.WGListenPort, cert)
+		go func() {
+			if err := relay.ListenAndServe(ctx, addr(cfg.TLSPort)); err != nil {
+				log.Printf("gateway: TLS relay error: %v", err)
+				stop()
+			}
+		}()
+		obfsTransports = append(obfsTransports, api.ExtraTransport{
+			Advertise: api.Transport{
+				Type:   "wg-tls",
+				Port:   cfg.TLSPort,
+				Params: map[string]string{"sni": cfg.TLSSNI},
+			},
+		})
+		log.Printf("gateway: WG-over-TLS relay up on :%d/tcp (sni=%q)", cfg.TLSPort, cfg.TLSSNI)
 	}
 
 	// --- entitlement engine (chain scanner) ---
