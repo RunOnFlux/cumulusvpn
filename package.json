@@ -23,6 +23,6 @@
     "deploy:landing": "node clients/landing/build.mjs --check && npx wrangler deploy --config clients/landing/wrangler.jsonc"
   },
   "devDependencies": {
-    "prettier": "3.9.5"
+    "prettier": "3.9.6"
   }
 }
