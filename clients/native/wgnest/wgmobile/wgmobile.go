@@ -39,7 +39,12 @@ var (
 // one wireguard-go device, peer = the gateway, real UDP socket. Same one Go
 // runtime as the nested path, so the iOS extension needn't also link
 // WireGuardKit's libwg-go (two Go runtimes crash). Returns a Stop handle.
-func StartSingle(clientPriv, serverPub, serverIP, serverAssigned string, tunFd int) (int64, error) {
+//
+// port is the gateway WG UDP port (0 => default 51820; the AmneziaWG transport
+// uses 51821). obfs is the device-level AmneziaWG UAPI (jc=…\n…), "" for the
+// vanilla and wg-tls transports (wg-tls tunnels vanilla WG over a native TLS
+// bridge, so serverIP/port point at the local bridge and obfs is empty).
+func StartSingle(clientPriv, serverPub, serverIP, serverAssigned string, tunFd, port int, obfs string) (int64, error) {
 	t, err := tunFromFD(tunFd, singleTunMTU)
 	if err != nil {
 		return 0, fmt.Errorf("wrap tun fd: %w", err)
@@ -56,7 +61,7 @@ func StartSingle(clientPriv, serverPub, serverIP, serverAssigned string, tunFd i
 	}
 	nt, err := wgnest.StartSingle(
 		clientPriv,
-		wgnest.Gateway{PubKeyB64: serverPub, IP: serverAddr, AssignedIP: assignedAddr},
+		wgnest.Gateway{PubKeyB64: serverPub, IP: serverAddr, AssignedIP: assignedAddr, Port: port, Obfs: obfs},
 		t,
 		device.LogLevelError,
 	)
@@ -76,11 +81,16 @@ func StartSingle(clientPriv, serverPub, serverIP, serverAssigned string, tunFd i
 // VpnService tun file descriptor. `clientPriv` is the client's WireGuard private
 // key (base64), shared by both hops. Returns a handle for Stop, or an error
 // (surfaced to Kotlin as an exception).
+//
+// entryPort/obfs apply to the ENTRY (outer) hop only — the local network only
+// sees the entry handshake, so obfuscating the outer hop is what defeats DPI;
+// the exit hop rides inside the outer tunnel and stays vanilla. entryPort 0 =>
+// default 51820; obfs "" => vanilla entry.
 func Start(
 	clientPriv,
 	entryPub, entryIP, entryAssigned,
 	exitPub, exitIP, exitAssigned string,
-	tunFd int,
+	tunFd, entryPort int, obfs string,
 ) (int64, error) {
 	innerTun, err := tunFromFD(tunFd, nestedTunMTU)
 	if err != nil {
@@ -109,7 +119,7 @@ func Start(
 
 	t, err := wgnest.Start(
 		clientPriv,
-		wgnest.Gateway{PubKeyB64: entryPub, IP: entryAddr, AssignedIP: entryAssignedAddr},
+		wgnest.Gateway{PubKeyB64: entryPub, IP: entryAddr, AssignedIP: entryAssignedAddr, Port: entryPort, Obfs: obfs},
 		wgnest.Gateway{PubKeyB64: exitPub, IP: exitAddr, AssignedIP: exitAssignedAddr},
 		innerTun,
 		device.LogLevelError,

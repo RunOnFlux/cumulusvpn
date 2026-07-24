@@ -88,7 +88,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             var h: Int64 = 0
             var startErr: NSError?
             let ok = WgmobileStartSingle(
-                conf.privateKey, conf.peerPublicKey, serverIp, assigned, Int(fd), &h, &startErr
+                conf.privateKey, conf.peerPublicKey, serverIp, assigned,
+                Int(fd), conf.endpointPort, conf.obfs, &h, &startErr
             )
             if !ok || startErr != nil {
                 self.log.error("single WgmobileStartSingle failed: \(String(describing: startErr), privacy: .public)")
@@ -161,7 +162,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             let ok = WgmobileStart(
                 clientPriv, entryPub, entryIp, entryAssigned,
                 exitPub, exitIp, exitAssigned,
-                Int(fd), &h, &startErr
+                Int(fd), outer.endpointPort, outer.obfs, &h, &startErr
             )
             if !ok || startErr != nil {
                 self.log.error("multihop WgmobileStart failed: \(String(describing: startErr), privacy: .public)")
@@ -258,6 +259,11 @@ private struct WgQuick {
     let address: String? // [Interface] Address, first IP, mask stripped
     let dns: String? // [Interface] DNS, first entry
     let endpointHost: String? // [Peer] Endpoint, port stripped
+    let endpointPort: Int // [Peer] Endpoint port (0 if absent → engine default 51820)
+    let obfs: String // AmneziaWG [Interface] params as device-level UAPI ("" = vanilla)
+
+    // AmneziaWG [Interface] keys (lowercased), emitted as UAPI in this order.
+    private static let obfsKeys = ["jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4"]
 
     init?(_ text: String) {
         var priv: String?
@@ -265,6 +271,7 @@ private struct WgQuick {
         var addr: String?
         var dns: String?
         var endpoint: String?
+        var obfsVals: [String: String] = [:]
         for raw in text.split(whereSeparator: { $0 == "\n" || $0 == "\r" }) {
             let line = raw.trimmingCharacters(in: .whitespaces)
             guard let eq = line.firstIndex(of: "=") else { continue }
@@ -282,6 +289,8 @@ private struct WgQuick {
                     String($0).trimmingCharacters(in: .whitespaces)
                 }
             case "endpoint": endpoint = val
+            case "jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4":
+                obfsVals[key] = val
             default: break
             }
         }
@@ -290,11 +299,18 @@ private struct WgQuick {
         peerPublicKey = pub
         address = addr
         self.dns = dns
-        // Strip ":port" from an IPv4 endpoint (our gateways are IPv4 literals).
+        // Split "ip:port" (our gateways are IPv4 literals); keep both parts.
         if let endpoint, let colon = endpoint.lastIndex(of: ":") {
             endpointHost = String(endpoint[..<colon])
+            endpointPort = Int(endpoint[endpoint.index(after: colon)...]) ?? 0
         } else {
             endpointHost = endpoint
+            endpointPort = 0
         }
+        // Device-level obfuscation UAPI (jc=…\n…), in a fixed order; "" when the
+        // config carries no AmneziaWG params (vanilla / wg-tls).
+        obfs = WgQuick.obfsKeys.compactMap { k in obfsVals[k].map { "\(k)=\($0)" } }
+            .joined(separator: "\n")
+            .appending(obfsVals.isEmpty ? "" : "\n")
     }
 }

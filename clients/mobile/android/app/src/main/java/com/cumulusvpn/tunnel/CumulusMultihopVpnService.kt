@@ -132,6 +132,11 @@ class CumulusMultihopVpnService : VpnService() {
             entryPub, entryIp, entryAssigned,
             exitPub, exitIp, exitAssigned,
             fd.toLong(),
+            // entryPort 0 => default 51820; obfs "" => vanilla entry. Android
+            // obfuscation (threading the awg params + port through the Intent
+            // extras) is a later step; multi-hop stays vanilla for now.
+            0L,
+            "",
         )
         activeHandle = handle
         Log.i(TAG, "nested tunnel up: entry=$entryIp exit=$exitIp handle=$handle")

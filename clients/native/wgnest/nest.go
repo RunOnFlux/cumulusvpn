@@ -47,6 +47,22 @@ type Gateway struct {
 	PubKeyB64  string     // WireGuard server public key (base64)
 	IP         netip.Addr // gateway public IP
 	AssignedIP netip.Addr // this client's assigned 10.8.x.y at this gateway
+	// Port is the WG endpoint UDP port; 0 means the default 51820. The
+	// obfuscated (AmneziaWG) transport listens on a different port (51821).
+	Port int
+	// Obfs is the device-level AmneziaWG UAPI (jc=…\njmin=…\n…) applied to this
+	// hop's device before the peer. "" = vanilla WireGuard. For multi-hop only
+	// the ENTRY hop is obfuscated — the exit hop rides inside the outer tunnel,
+	// invisible to the local network, so it stays vanilla.
+	Obfs string
+}
+
+// port returns the endpoint port, defaulting to the standard WG port.
+func (g Gateway) port() int {
+	if g.Port == 0 {
+		return wgPort
+	}
+	return g.Port
 }
 
 // NestedTunnel owns the two stacked wireguard-go devices. Close() tears both
@@ -84,9 +100,11 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 		return nil, fmt.Errorf("outer netstack: %w", err)
 	}
 	outer := device.NewDevice(outerTun, conn.NewDefaultBind(), device.NewLogger(logLevel, "outer "))
-	outerCfg := fmt.Sprintf(
-		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\nallowed_ip=%s/32\npersistent_keepalive_interval=15\n",
-		privHex, entryPubHex, entry.IP, wgPort, exit.IP,
+	// Obfuscation (if any) applies to the ENTRY hop only; the device-level obfs
+	// UAPI goes between private_key and the peer's public_key.
+	outerCfg := fmt.Sprintf("private_key=%s\n", privHex) + entry.Obfs + fmt.Sprintf(
+		"public_key=%s\nendpoint=%s:%d\nallowed_ip=%s/32\npersistent_keepalive_interval=15\n",
+		entryPubHex, entry.IP, entry.port(), exit.IP,
 	)
 	if err := outer.IpcSet(outerCfg); err != nil {
 		outer.Close()
@@ -141,9 +159,10 @@ func StartSingle(clientPrivB64 string, gw Gateway, t tun.Device, logLevel int) (
 		return nil, fmt.Errorf("server key: %w", err)
 	}
 	dev := device.NewDevice(t, conn.NewDefaultBind(), device.NewLogger(logLevel, "wg "))
-	cfg := fmt.Sprintf(
-		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
-		privHex, pubHex, gw.IP, wgPort,
+	// Device-level obfs UAPI (if any) sits between private_key and the peer.
+	cfg := fmt.Sprintf("private_key=%s\n", privHex) + gw.Obfs + fmt.Sprintf(
+		"public_key=%s\nendpoint=%s:%d\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
+		pubHex, gw.IP, gw.port(),
 	)
 	if err := dev.IpcSet(cfg); err != nil {
 		dev.Close()
