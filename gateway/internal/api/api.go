@@ -322,8 +322,13 @@ type statusResponse struct {
 
 func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	pubkey := strings.TrimPrefix(r.URL.Path, "/v1/status/")
-	if pubkey == "" {
-		writeErr(w, http.StatusBadRequest, "bad_request", "pubkey required")
+	// Validate the pubkey shape (base64 of 32 bytes) before any lookup. This
+	// endpoint is unauthenticated (no PoW, no rate limit), so reject garbage keys
+	// up front — and read the byte counter with the NON-creating BytesOf, never
+	// Get, so a flood of /v1/status queries can't manufacture phantom limiter
+	// peers and starve the enroll capacity guard.
+	if raw, err := base64.StdEncoding.DecodeString(pubkey); err != nil || len(raw) != 32 {
+		writeErr(w, http.StatusBadRequest, "bad_pubkey", "pubkey must be base64 of 32 bytes")
 		return
 	}
 	premium, paidUntil := s.ent.Tier(pubkey)
@@ -334,7 +339,7 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 	resp := statusResponse{
 		Tier:      tier,
 		PaidUntil: paidUntil,
-		BytesUsed: s.lim.Get(pubkey).Bytes(),
+		BytesUsed: s.lim.BytesOf(pubkey),
 	}
 	s.writeSigned(w, resp)
 }

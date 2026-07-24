@@ -135,7 +135,11 @@ export function App(): JSX.Element {
         <button
           className="btn-primary"
           onClick={conn.connect}
-          disabled={!selected || conn.phase === 'loading' || (conn.multihop && !conn.exit)}
+          disabled={
+            !selected ||
+            conn.phase === 'loading' ||
+            (conn.multihop && conn.routeStyle === 'multihop-cross-jurisdiction' && !conn.exit)
+          }
         >
           {conn.phase === 'loading'
             ? 'Loading…'

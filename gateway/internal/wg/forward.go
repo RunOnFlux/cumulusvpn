@@ -51,13 +51,14 @@ const copyBufSize = 32 * 1024
 
 // Forwarder wires the gVisor stack's TCP/UDP forwarders to host sockets.
 type Forwarder struct {
-	dev        *Device
-	lim        *limiter.Manager
-	dialer     net.Dialer
-	allow      map[uint16]struct{} // egress allowlist; empty = allow all (minus SMTP)
-	fleetAllow bool                // implicitly permit UDP 51820 to peer gateways (multi-hop)
-	stk        *stack.Stack        // cached from dev.Stack() at Start
-	udpConn    sync.WaitGroup
+	dev          *Device
+	lim          *limiter.Manager
+	dialer       net.Dialer
+	allow        map[uint16]struct{} // egress allowlist; empty = allow all (minus SMTP)
+	fleetAllow   bool                // implicitly permit UDP 51820 to peer gateways (multi-hop)
+	allowPrivate bool                // permit egress to private/loopback dsts (dev/test only)
+	stk          *stack.Stack        // cached from dev.Stack() at Start
+	udpConn      sync.WaitGroup
 }
 
 // NewForwarder builds a forwarder. allowPorts empty => allow-all (minus SMTP).
@@ -79,6 +80,11 @@ func NewForwarder(dev *Device, lim *limiter.Manager, allowPorts []uint16, fleetA
 	}
 	return f
 }
+
+// SetAllowPrivateEgress permits forwarding to private/loopback/link-local
+// destinations. Default OFF (the SSRF guard). Intended only for dev/test or a
+// deliberately private-network deployment (CVPN_ALLOW_PRIVATE_EGRESS).
+func (f *Forwarder) SetAllowPrivateEgress(v bool) { f.allowPrivate = v }
 
 // Start enables promiscuous mode + spoofing on the NIC and registers the
 // TCP and UDP forwarders on the stack's transport protocol dispatch.
@@ -116,6 +122,10 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 	peer, ok := f.dev.PeerByAddr(srcIP)
 	if !ok {
 		r.Complete(true) // unknown source -> RST
+		return
+	}
+	if !f.destAllowed(dstIP) {
+		r.Complete(true) // non-public destination (SSRF guard) -> RST
 		return
 	}
 	if !f.portAllowed(dstPort, false /* isUDP */) {
@@ -197,6 +207,9 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 	if !ok {
 		return
 	}
+	if !f.destAllowed(dstIP) {
+		return // non-public destination (SSRF guard) -> drop
+	}
 	if !f.portAllowed(dstPort, true /* isUDP */) {
 		return
 	}
@@ -270,6 +283,32 @@ func (f *Forwarder) relayUDP(client, host net.Conn, lp *limiter.Peer) {
 // POC: if/when the fleet's WG port is discovered/rotated rather than fixed at
 // 51820, gate this on the destination IP being a known gateway (directory.json)
 // instead of a bare port match, to avoid a generic UDP:51820 egress hole.
+// destAllowed rejects egress to non-public destinations, so an enrolled client
+// can't turn the VPN exit into an SSRF pivot into the node's own network: cloud
+// metadata (169.254.169.254), the gateway's own control API on loopback, other
+// gateways' internals, and RFC1918/ULA/CGNAT hosts. Only globally-routable
+// destinations are forwarded — normal internet egress plus gateway-to-gateway
+// multi-hop (public gateway IPs) are unaffected. SetAllowPrivateEgress overrides
+// this for dev/test or an explicitly private-network deployment.
+func (f *Forwarder) destAllowed(ip netip.Addr) bool {
+	if f.allowPrivate {
+		return ip.IsValid()
+	}
+	if !ip.IsValid() || ip.IsLoopback() || ip.IsUnspecified() ||
+		ip.IsMulticast() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() ||
+		ip.IsPrivate() {
+		return false
+	}
+	// 100.64.0.0/10 (CGNAT / carrier NAT) — not covered by IsPrivate.
+	if ip.Is4() {
+		b := ip.As4()
+		if b[0] == 100 && b[1] >= 64 && b[1] <= 127 {
+			return false
+		}
+	}
+	return true
+}
+
 func (f *Forwarder) portAllowed(port uint16, isUDP bool) bool {
 	if _, blocked := smtpBlocked[port]; blocked {
 		return false

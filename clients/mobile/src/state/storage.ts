@@ -103,7 +103,17 @@ export async function saveTransportMode(mode: TransportMode): Promise<void> {
 /** Load the persisted device keypair, or null on first launch. */
 export async function loadKeypair(): Promise<Keypair | null> {
   const raw = await AsyncStorage.getItem(K.keypair);
-  return raw ? (JSON.parse(raw) as Keypair) : null;
+  if (!raw) {
+    return null;
+  }
+  // Guard the parse: a truncated/corrupt blob (e.g. a partial write on a crash)
+  // must not throw — returning null lets the caller regenerate a keypair rather
+  // than getting permanently stuck re-parsing the same bad value every launch.
+  try {
+    return JSON.parse(raw) as Keypair;
+  } catch {
+    return null;
+  }
 }
 
 /** Persist the device keypair. Future: move to the secure enclave / Keychain. */

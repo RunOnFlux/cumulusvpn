@@ -209,8 +209,15 @@ fn default_interface() -> Option<String> {
 #[cfg(target_os = "linux")]
 fn engage_linux(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelError> {
     // A dedicated inet table with a default-drop output chain: allow loopback,
-    // the tunnel devices (cvpn* — logical names on Linux), the WireGuard endpoint
-    // handshake, and continuation of established flows; drop the rest.
+    // the tunnel devices (cvpn* — logical names on Linux), and the WireGuard
+    // endpoint handshake/data (the endpoint rule matches every packet to the
+    // gateway, so no conntrack exemption is needed); drop the rest.
+    //
+    // Deliberately NO `ct state established,related accept`: that would let every
+    // connection open on the physical NIC *before* the tunnel came up keep
+    // egressing in plaintext outside the tunnel — a leak, and it's not needed for
+    // WireGuard (covered by the endpoint rule). This matches the fail-closed macOS
+    // pf ruleset (block all on the physical except loopback + endpoint).
     let table = format!(
         "table inet {TABLE} {{\n\
          \tchain output {{\n\
@@ -218,7 +225,6 @@ fn engage_linux(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelErro
          \t\toifname \"lo\" accept\n\
          \t\toifname \"cvpn*\" accept\n\
          \t\tip daddr {endpoint_ip} udp dport {endpoint_port} accept\n\
-         \t\tct state established,related accept\n\
          \t}}\n\
          }}\n"
     );

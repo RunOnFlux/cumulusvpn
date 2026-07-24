@@ -45,6 +45,12 @@ function advertisedOrLegacy(transports: readonly Transport[] | undefined): reado
   return transports && transports.length > 0 ? transports : [{ type: 'wg', port: WG_PORT }];
 }
 
+/** A usable TCP/UDP port — guards against a gateway advertising 0/negative/>65535
+ *  or a non-integer, which would otherwise produce a bogus `host:port` endpoint. */
+function isValidPort(port: number): boolean {
+  return Number.isInteger(port) && port >= 1 && port <= 65535;
+}
+
 /**
  * Ordered transports to attempt for a gateway under `mode` — filtered to those
  * this client implements and the mode permits, most-preferred first. Empty when
@@ -62,7 +68,7 @@ export function transportFallbackChain(
 ): Transport[] {
   const order = PREFERENCE[mode];
   return advertisedOrLegacy(transports)
-    .filter((t) => implemented.has(t.type) && order.includes(t.type))
+    .filter((t) => implemented.has(t.type) && order.includes(t.type) && isValidPort(t.port))
     .sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
 }
 

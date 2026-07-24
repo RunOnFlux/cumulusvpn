@@ -71,6 +71,13 @@ type Config struct {
 	// CVPN_GATEWAY_FLEET_ALLOW=false to disable (also disables multi-hop entry).
 	GatewayFleetAllow bool
 
+	// AllowPrivateEgress, when true, lets the forwarder reach private/loopback/
+	// link-local destinations. Default FALSE — the SSRF guard, so an enrolled
+	// client can't pivot through the exit into the node's own network or cloud
+	// metadata. Set CVPN_ALLOW_PRIVATE_EGRESS=true only for a deliberately
+	// private-network deployment.
+	AllowPrivateEgress bool
+
 	// NodeHostIP is the public IP of the Flux node hosting this container
 	// (FLUX_NODE_HOST_IP, injected by FluxOS). Used for daemon API calls.
 	NodeHostIP string
@@ -108,22 +115,23 @@ type Config struct {
 // and validating required values.
 func Load() (*Config, error) {
 	cfg := &Config{
-		PriceFlux:         envFloat("CVPN_PRICE_FLUX", 0),
-		PaymentAddress:    os.Getenv("CVPN_PAYMENT_ADDRESS"),
-		DirectoryPubKey:   os.Getenv("CVPN_DIRECTORY_PUBKEY"),
-		FreeRateKBps:      envInt("CVPN_FREE_RATE_KBPS", 100),
-		PremiumRateMbps:   envInt("CVPN_PREMIUM_RATE_MBPS", 50),
-		MaxPeersFree:      envInt("CVPN_MAX_PEERS_FREE", 500),
-		MaxPeersTotal:     envInt("CVPN_MAX_PEERS_TOTAL", 2000),
-		CapacityMbps:      envInt("CVPN_CAPACITY_MBPS", 1000),
-		NodeHostIP:        os.Getenv("FLUX_NODE_HOST_IP"),
-		AppName:           os.Getenv("FLUX_APP_NAME"),
-		KeyFile:           envStr("CVPN_KEY_FILE", "/data/server.key"),
-		GatewayFleetAllow: envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
-		ObfsEnable:        envBool("CVPN_OBFS_ENABLE", false),
-		TLSEnable:         envBool("CVPN_TLS_ENABLE", false),
-		TLSPort:           envInt("CVPN_TLS_PORT", WGListenPort),
-		TLSSNI:            os.Getenv("CVPN_TLS_SNI"),
+		PriceFlux:          envFloat("CVPN_PRICE_FLUX", 0),
+		PaymentAddress:     os.Getenv("CVPN_PAYMENT_ADDRESS"),
+		DirectoryPubKey:    os.Getenv("CVPN_DIRECTORY_PUBKEY"),
+		FreeRateKBps:       envInt("CVPN_FREE_RATE_KBPS", 100),
+		PremiumRateMbps:    envInt("CVPN_PREMIUM_RATE_MBPS", 50),
+		MaxPeersFree:       envInt("CVPN_MAX_PEERS_FREE", 500),
+		MaxPeersTotal:      envInt("CVPN_MAX_PEERS_TOTAL", 2000),
+		CapacityMbps:       envInt("CVPN_CAPACITY_MBPS", 1000),
+		NodeHostIP:         os.Getenv("FLUX_NODE_HOST_IP"),
+		AppName:            os.Getenv("FLUX_APP_NAME"),
+		KeyFile:            envStr("CVPN_KEY_FILE", "/data/server.key"),
+		GatewayFleetAllow:  envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
+		AllowPrivateEgress: envBool("CVPN_ALLOW_PRIVATE_EGRESS", false),
+		ObfsEnable:         envBool("CVPN_OBFS_ENABLE", false),
+		TLSEnable:          envBool("CVPN_TLS_ENABLE", false),
+		TLSPort:            envInt("CVPN_TLS_PORT", WGListenPort),
+		TLSSNI:             os.Getenv("CVPN_TLS_SNI"),
 	}
 
 	if v := os.Getenv("CVPN_EGRESS_ALLOW_PORTS"); v != "" {

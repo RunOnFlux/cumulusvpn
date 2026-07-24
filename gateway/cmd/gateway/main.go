@@ -101,6 +101,7 @@ func run() error {
 
 	// --- exit forwarder (the crux) ---
 	fwd := wg.NewForwarder(dev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
+	fwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
 	if err := fwd.Start(); err != nil {
 		return err
 	}
@@ -118,6 +119,7 @@ func run() error {
 		}
 		defer obfsDev.Close()
 		obfsFwd := wg.NewForwarder(obfsDev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
+		obfsFwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
 		if err := obfsFwd.Start(); err != nil {
 			return err
 		}

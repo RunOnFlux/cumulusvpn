@@ -53,6 +53,21 @@ describe('transportFallbackChain / selectTransport', () => {
     const weird = { type: 'quux', port: 9 } as Transport;
     expect(transportFallbackChain([weird, wg], 'auto', ALL).map((t) => t.type)).toEqual(['wg']);
   });
+
+  it('drops transports with an invalid port (0, out-of-range, non-integer)', () => {
+    const badAwg = [
+      { type: 'awg', port: 0 },
+      { type: 'awg', port: 99999 },
+      { type: 'awg', port: -1 },
+      { type: 'awg', port: 51821.5 },
+    ] as Transport[];
+    for (const t of badAwg) {
+      // a bogus awg port is dropped → stealth finds nothing usable here
+      expect(transportFallbackChain([wg, t], 'stealth', ALL).map((x) => x.type)).toEqual([]);
+    }
+    // a valid awg port is kept
+    expect(transportFallbackChain([wg, awg], 'stealth', ALL).map((x) => x.type)).toEqual(['awg']);
+  });
 });
 
 describe('requireTransport (never silently downgrades)', () => {

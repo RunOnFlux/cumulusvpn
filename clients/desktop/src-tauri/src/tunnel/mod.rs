@@ -189,6 +189,9 @@ impl TunnelManager {
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
 
         // Replace any existing tunnel first (including a prior multi-hop pair).
+        // This path is reachable via auto-reconnect/failover WITHOUT an
+        // intervening disconnect(), so it must fully clear the previous session's
+        // leak-protection state, not just its sidecars.
         if let Some(old) = inner.sidecar.take() {
             let _ = old.kill();
         }
@@ -198,14 +201,27 @@ impl TunnelManager {
         if let Some(old_exit_ip) = inner.exit_ip.take() {
             let _ = routing::clear_multihop_routes(&old_exit_ip);
         }
+        // Remove the previous endpoint's /32 bypass route before we overwrite
+        // inner.endpoint — otherwise each reconnect strands it, and a stale route
+        // to a former gateway IP can later blackhole traffic to that IP.
+        if let Some(old_endpoint) = inner.endpoint.take() {
+            routing::remove_endpoint_bypass(strip_endpoint_port(&old_endpoint));
+        }
         inner.state = TunnelState::Connecting;
         inner.country = Some(country.to_string());
         inner.endpoint = Some(endpoint.to_string());
         inner.error = None;
 
+        // Leak protection. engage REPLACES any prior ruleset atomically (no open
+        // window), so re-engaging on reconnect is safe. But when THIS session has
+        // the kill switch OFF, we must tear down any ruleset a prior session left
+        // engaged — otherwise the user's "off" is ignored AND the stale allow-rule
+        // (pinned to the old endpoint) drops this tunnel's handshake.
         if kill_switch {
             killswitch::engage(inner.backend, endpoint, IFACE)
                 .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        } else {
+            let _ = killswitch::disengage(inner.backend);
         }
 
         let sidecar = match Sidecar::spawn(IFACE) {
@@ -276,6 +292,8 @@ impl TunnelManager {
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
 
         // Replace any existing tunnel (single-hop or a prior multi-hop pair).
+        // Reachable via reconnect without a disconnect(), so clear the previous
+        // session's leak-protection state fully (see connect()).
         if let Some(old) = inner.sidecar.take() {
             let _ = old.kill();
         }
@@ -284,6 +302,9 @@ impl TunnelManager {
         }
         if let Some(old_exit_ip) = inner.exit_ip.take() {
             let _ = routing::clear_multihop_routes(&old_exit_ip);
+        }
+        if let Some(old_endpoint) = inner.endpoint.take() {
+            routing::remove_endpoint_bypass(strip_endpoint_port(&old_endpoint));
         }
 
         inner.state = TunnelState::Connecting;
@@ -294,10 +315,13 @@ impl TunnelManager {
         inner.error = None;
 
         // Kill switch allow-lists the entry endpoint only — the exit is reached
-        // *through* the entry tunnel, never directly from the host.
+        // *through* the entry tunnel, never directly from the host. Off → tear
+        // down any ruleset a prior session left engaged (see connect()).
         if params.kill_switch {
             killswitch::engage(inner.backend, params.entry_endpoint, IFACE_ENTRY)
                 .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        } else {
+            let _ = killswitch::disengage(inner.backend);
         }
 
         // Helper: unwind everything set up so far on any failure.

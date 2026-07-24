@@ -98,6 +98,13 @@ export interface EstablishResult {
 export interface MultihopResult {
   readonly entryGatewayIp: string;
   readonly exitGatewayIp: string;
+  /**
+   * The ACTUAL exit gateway's signing pubkey, for entitlement polling. This is
+   * `hops.exit.sign_pubkey`, not the user-picked exit CountryOption's key — for a
+   * same-country route the exit is auto-chosen within the entry country, so the
+   * picked country's key would fail signature verification against the real exit.
+   */
+  readonly exitSignPubKey: string;
   readonly entryEnroll: EnrollResponse;
   readonly exitEnroll: EnrollResponse;
   readonly tunnel: TunnelStatus;
@@ -386,6 +393,7 @@ export async function establishMultihop(
   return {
     entryGatewayIp: hops.entry.ip,
     exitGatewayIp: hops.exit.ip,
+    exitSignPubKey: hops.exit.sign_pubkey,
     entryEnroll: entryReply,
     exitEnroll: exitReply,
     tunnel: tunnelStatus,

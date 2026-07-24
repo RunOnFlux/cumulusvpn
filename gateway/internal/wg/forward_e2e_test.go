@@ -89,6 +89,7 @@ func runTunnelDataPlaneE2E(t *testing.T, obfs *ObfsParams) {
 	t.Cleanup(gw.Close)
 
 	fwd := NewForwarder(gw, limiter.New(100, 50), nil, true)
+	fwd.SetAllowPrivateEgress(true) // e2e origin binds a LAN (private) IP
 	if err := fwd.Start(); err != nil {
 		t.Fatalf("forwarder Start: %v", err)
 	}
@@ -194,6 +195,7 @@ func TestTLSTunnelDataPlaneEndToEnd(t *testing.T) {
 	}
 	t.Cleanup(gw.Close)
 	fwd := NewForwarder(gw, limiter.New(100, 50), nil, true)
+	fwd.SetAllowPrivateEgress(true) // e2e origin binds a LAN (private) IP
 	if err := fwd.Start(); err != nil {
 		t.Fatalf("forwarder Start: %v", err)
 	}

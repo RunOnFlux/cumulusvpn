@@ -252,8 +252,10 @@ export function useConnection(): ConnectionModel {
     if (!entry || phase === 'connecting') {
       return;
     }
-    if (multihop && !exit) {
-      setError('Pick an exit location for multi-hop.');
+    // Only cross-jurisdiction needs an explicit exit pick; Balanced (same-country)
+    // auto-selects a second gateway in the entry country and ignores any pick.
+    if (multihop && routeStyle === 'multihop-cross-jurisdiction' && !exit) {
+      setError('Pick an exit location for cross-jurisdiction multi-hop.');
       return;
     }
     setError(null);
@@ -261,12 +263,15 @@ export function useConnection(): ConnectionModel {
     setTunnel((t) => ({ ...t, state: 'connecting', country: entry.code }));
     void (async () => {
       try {
-        if (multihop && exit) {
+        if (multihop) {
           // Same key K enrolls at both hops (one payment); exit meters egress.
+          // Same-country ignores the exit pick (auto-chosen in the entry country),
+          // so pass a non-null placeholder; cross-jurisdiction required a pick.
+          const exitArg = exit ?? entry;
           const result = await establishMultihop(
             fleetRef.current,
             entry,
-            exit,
+            exitArg,
             routeStyle,
             keypair,
             killSwitch,
@@ -274,7 +279,10 @@ export function useConnection(): ConnectionModel {
           );
           setTunnel(result.tunnel);
           setPhase('connected');
-          await refreshEntitlement(result.exitGatewayIp, exit.signPubKey);
+          // Poll the ACTUAL exit gateway's key (same-country auto-picks the exit
+          // within the entry country, so exit.signPubKey — the picked row's key —
+          // would fail verification against the real exit gateway).
+          await refreshEntitlement(result.exitGatewayIp, result.exitSignPubKey);
         } else {
           const result = await establish(entry, keypair, killSwitch, transportMode);
           setTunnel(result.tunnel);

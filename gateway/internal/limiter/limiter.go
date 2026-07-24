@@ -91,6 +91,20 @@ func (m *Manager) Get(pubkey string) *Peer {
 	return p
 }
 
+// BytesOf returns a peer's byte counter WITHOUT creating an entry — 0 if the
+// peer is unknown. Read-only surfaces (e.g. the unauthenticated /v1/status
+// handler) MUST use this rather than Get: Get inserts a peer and bumps the
+// capacity counters, so a flood of status queries for arbitrary keys would
+// otherwise manufacture phantom peers and exhaust the enroll capacity guard.
+func (m *Manager) BytesOf(pubkey string) uint64 {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if p, ok := m.peers[pubkey]; ok {
+		return p.Bytes()
+	}
+	return 0
+}
+
 // SetTier switches a peer between free and premium. Retunes the existing
 // rate.Limiter so in-flight WaitN calls pick the new rate up immediately.
 func (m *Manager) SetTier(pubkey string, premium bool) {

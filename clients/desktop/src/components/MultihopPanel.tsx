@@ -90,18 +90,28 @@ export function MultihopPanel({
             </button>
           </div>
 
-          <button className="loc-btn mh-exit" onClick={onOpenExit} disabled={locked}>
-            <span className="hop-tag">EXIT</span>
-            <span className="flag">{exit?.flag ?? '🌐'}</span>
-            <span className="meta">
-              <span className="n">{exit?.name ?? 'Choose exit'}</span>
-              <span className="s">
-                {exit ? `${exit.city || exit.code} · ${exit.gatewayIp}` : 'where traffic emerges'}
+          {/* Balanced routes both hops WITHIN the entry country, so the exit is
+              auto-chosen (a second gateway there) — showing an exit-country
+              picker would be misleading since the pick is ignored. Only
+              cross-jurisdiction lets the user choose where traffic emerges. */}
+          {routeStyle === 'multihop-cross-jurisdiction' ? (
+            <button className="loc-btn mh-exit" onClick={onOpenExit} disabled={locked}>
+              <span className="hop-tag">EXIT</span>
+              <span className="flag">{exit?.flag ?? '🌐'}</span>
+              <span className="meta">
+                <span className="n">{exit?.name ?? 'Choose exit'}</span>
+                <span className="s">
+                  {exit ? `${exit.city || exit.code} · ${exit.gatewayIp}` : 'where traffic emerges'}
+                </span>
               </span>
-            </span>
-            {exit && <span className={pingClass(exit.load)} />}
-            <span className="chev">›</span>
-          </button>
+              {exit && <span className={pingClass(exit.load)} />}
+              <span className="chev">›</span>
+            </button>
+          ) : (
+            <p className="mh-exit-note">
+              Exit auto-selected — a second gateway in the entry country.
+            </p>
+          )}
 
           <p className="mh-tradeoff">
             Slower, worse ping — but no single server sees both who you are and where you go.
