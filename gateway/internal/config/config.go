@@ -16,10 +16,15 @@ import (
 // Fixed ports. These are host-mapped 1:1 by the Flux app spec, so they are
 // constants of the protocol rather than tunables.
 const (
-	// WGListenPort is the WireGuard UDP listen port.
+	// WGListenPort is the vanilla WireGuard UDP listen port.
 	WGListenPort = 51820
 	// APIPort is the control API (enroll/status/info) TCP port.
 	APIPort = 51821
+	// WGObfsPort is the obfuscated (AmneziaWG) WireGuard UDP listen port. It
+	// rides the UDP side of the already-listed API port (51821 is TCP for the
+	// API, UDP for obfs), so the DPI-resistant transport costs no extra Flux
+	// port (docs/15-transports.md). Enabled by CVPN_OBFS_ENABLE.
+	WGObfsPort = APIPort
 )
 
 // Config is the fully resolved gateway configuration.
@@ -76,6 +81,13 @@ type Config struct {
 	// restarts keep the same identity. Loss is survivable (clients
 	// re-enroll via discovery) but churny.
 	KeyFile string
+
+	// ObfsEnable turns on the DPI-resistant AmneziaWG listener on WGObfsPort
+	// (docs/15-transports.md). Off by default; when off the gateway serves only
+	// vanilla WireGuard and does not advertise the obfuscated transport, so a
+	// 0.2.0 image with obfs disabled behaves exactly like 0.1.0. Set via
+	// CVPN_OBFS_ENABLE.
+	ObfsEnable bool
 }
 
 // Load reads configuration from the environment, applying documented defaults
@@ -94,6 +106,7 @@ func Load() (*Config, error) {
 		AppName:           os.Getenv("FLUX_APP_NAME"),
 		KeyFile:           envStr("CVPN_KEY_FILE", "/data/server.key"),
 		GatewayFleetAllow: envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
+		ObfsEnable:        envBool("CVPN_OBFS_ENABLE", false),
 	}
 
 	if v := os.Getenv("CVPN_EGRESS_ALLOW_PORTS"); v != "" {

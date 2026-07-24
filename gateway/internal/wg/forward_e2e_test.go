@@ -16,17 +16,34 @@ import (
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
 	"github.com/runonflux/cumulusvpn-gateway/internal/netstack"
 
+	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/device"
 	"golang.org/x/crypto/curve25519"
-	"golang.zx2c4.com/wireguard/conn"
-	"golang.zx2c4.com/wireguard/device"
 )
 
 // TestTunnelDataPlaneEndToEnd is the guard for the crux of the product: a real
 // WireGuard tunnel must actually carry traffic to the internet through the
-// gVisor exit forwarder. It stands up an in-process gateway (WG device + netstack
-// forwarder) and a client (userspace WG via netstack), does a real handshake over
-// UDP loopback, and fetches an HTTP server through the tunnel — asserting the
-// bytes round-trip.
+// gVisor exit forwarder.
+func TestTunnelDataPlaneEndToEnd(t *testing.T) {
+	runTunnelDataPlaneE2E(t, nil)
+}
+
+// TestObfuscatedTunnelDataPlaneEndToEnd is the same guard for the AmneziaWG
+// obfuscated transport: the gateway device and the client both apply the
+// matching DefaultObfsParams (junk packets + reshaped headers), the handshake
+// completes, and real traffic round-trips. Proves the obfuscated listener
+// carries traffic — not merely that it builds — and that obfuscation is
+// symmetric (both ends must agree on the profile).
+func TestObfuscatedTunnelDataPlaneEndToEnd(t *testing.T) {
+	p := DefaultObfsParams
+	runTunnelDataPlaneE2E(t, &p)
+}
+
+// runTunnelDataPlaneE2E stands up an in-process gateway (WG device + netstack
+// forwarder) and a client (userspace WG via netstack), does a real handshake
+// over UDP loopback, and fetches an HTTP server through the tunnel — asserting
+// the bytes round-trip. obfs==nil is vanilla WireGuard; non-nil applies the
+// AmneziaWG obfuscation profile on BOTH the gateway device and the client.
 //
 // This specifically pins the netstack stack.Options{HandleLocal:false} decision:
 // with HandleLocal=true, promiscuous-mode exit routing makes gVisor drop every
@@ -34,7 +51,7 @@ import (
 // future re-vendor of internal/netstack that reintroduces HandleLocal:true (the
 // upstream wireguard-go default) would fail here instead of silently shipping a
 // gateway that enrolls clients but tunnels nothing.
-func TestTunnelDataPlaneEndToEnd(t *testing.T) {
+func runTunnelDataPlaneE2E(t *testing.T, obfs *ObfsParams) {
 	// Origin server the client will reach *through* the tunnel. It must NOT be on
 	// 127.0.0.0/8: the gateway netstack deliberately drops loopback destinations
 	// (IsV4LoopbackAddress -> InvalidDestinationAddressesReceived), which stops a
@@ -55,9 +72,15 @@ func TestTunnelDataPlaneEndToEnd(t *testing.T) {
 	origin.Start()
 	defer origin.Close()
 
-	// --- gateway ---
+	// --- gateway (vanilla or obfuscated, same server identity path) ---
 	port := freeUDPPort(t)
-	gw, err := New(port, t.TempDir()+"/srv.key")
+	key := t.TempDir() + "/srv.key"
+	var gw *Device
+	if obfs != nil {
+		gw, err = NewObfuscated(port, key, *obfs)
+	} else {
+		gw, err = New(port, key)
+	}
 	if err != nil {
 		t.Fatalf("gateway New: %v", err)
 	}
@@ -87,9 +110,17 @@ func TestTunnelDataPlaneEndToEnd(t *testing.T) {
 	}
 	cdev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelError, "c "))
 	t.Cleanup(cdev.Close)
-	cfg := fmt.Sprintf(
-		"private_key=%s\npublic_key=%s\nendpoint=127.0.0.1:%d\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=1\n",
-		hexKey(t, cpriv), hexKey(t, gw.PublicKey()), port,
+	// Interface section first (private key + any obfuscation profile), THEN the
+	// peer: obfs params are device-level UAPI keys, so they must precede the
+	// public_key= line that opens the peer section (same order the real client's
+	// [Interface] block produces).
+	cfg := fmt.Sprintf("private_key=%s\n", hexKey(t, cpriv))
+	if obfs != nil {
+		cfg += obfs.UAPI() // client must apply the SAME obfuscation profile as the gateway
+	}
+	cfg += fmt.Sprintf(
+		"public_key=%s\nendpoint=127.0.0.1:%d\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=1\n",
+		hexKey(t, gw.PublicKey()), port,
 	)
 	if err := cdev.IpcSet(cfg); err != nil {
 		t.Fatalf("client IpcSet: %v", err)

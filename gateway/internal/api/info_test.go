@@ -73,3 +73,58 @@ func TestInfoAdvertisesSignedTransports(t *testing.T) {
 		t.Fatalf("want vanilla transport {wg, %d}, got {%s, %d}", config.WGListenPort, got.Type, got.Port)
 	}
 }
+
+// TestInfoAdvertisesObfsTransport verifies that when an obfuscated listener is
+// wired via ExtraTransport, /v1/info advertises BOTH the vanilla and the awg
+// transport (with obfuscation params), still under a valid body signature.
+func TestInfoAdvertisesObfsTransport(t *testing.T) {
+	dev, err := wg.New(0, t.TempDir()+"/srv.key")
+	if err != nil {
+		t.Fatalf("wg.New: %v", err)
+	}
+	defer dev.Close()
+	obfsDev, err := wg.NewObfuscated(0, t.TempDir()+"/srv.key", wg.DefaultObfsParams)
+	if err != nil {
+		t.Fatalf("wg.NewObfuscated: %v", err)
+	}
+	defer obfsDev.Close()
+
+	cfg := &config.Config{MaxPeersTotal: 2000, CapacityMbps: 1000}
+	extra := ExtraTransport{
+		Device:    obfsDev,
+		Advertise: Transport{Type: "awg", Port: config.WGObfsPort, Params: wg.DefaultObfsParams.Map()},
+	}
+	srv := New(cfg, dev, nil, limiter.New(100, 50), Info{Country: "DE"}, "203.0.113.1", extra)
+
+	ts := httptest.NewServer(srv.Handler())
+	defer ts.Close()
+	resp, err := http.Get(ts.URL + "/v1/info")
+	if err != nil {
+		t.Fatalf("GET /v1/info: %v", err)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(resp.Body)
+
+	sig, _ := base64.StdEncoding.DecodeString(resp.Header.Get("X-CVPN-Signature"))
+	pub, _ := base64.StdEncoding.DecodeString(resp.Header.Get("X-CVPN-Sign-PubKey"))
+	if !ed25519.Verify(ed25519.PublicKey(pub), body, sig) {
+		t.Fatal("signature does not verify with the awg transport present")
+	}
+
+	var env struct {
+		Data Info `json:"data"`
+	}
+	if err := json.Unmarshal(body, &env); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if len(env.Data.Transports) != 2 {
+		t.Fatalf("want 2 transports (wg + awg), got %d", len(env.Data.Transports))
+	}
+	awg := env.Data.Transports[1]
+	if awg.Type != "awg" || awg.Port != config.WGObfsPort {
+		t.Fatalf("want {awg, %d}, got {%s, %d}", config.WGObfsPort, awg.Type, awg.Port)
+	}
+	if awg.Params["jc"] == "" || awg.Params["h1"] == "" {
+		t.Fatalf("awg transport missing obfuscation params: %v", awg.Params)
+	}
+}

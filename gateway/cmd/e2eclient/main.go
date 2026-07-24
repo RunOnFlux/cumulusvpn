@@ -31,10 +31,11 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/device"
 	"github.com/runonflux/cumulusvpn-gateway/internal/netstack"
+	"github.com/runonflux/cumulusvpn-gateway/internal/wg"
 	"golang.org/x/crypto/curve25519"
-	"golang.zx2c4.com/wireguard/conn"
-	"golang.zx2c4.com/wireguard/device"
 )
 
 func b2h(s string) string { b, _ := base64.StdEncoding.DecodeString(s); return hex.EncodeToString(b) }
@@ -99,7 +100,15 @@ type enrollResp struct {
 
 func main() {
 	control := env("CONTROL", "http://127.0.0.1:51821")
-	wgEndpoint := env("ENDPOINT", "127.0.0.1:51820")
+	// CVPN_OBFS=1 exercises the DPI-resistant (AmneziaWG) transport: dial the
+	// obfs UDP port by default and apply the fleet obfuscation profile. Requires
+	// the gateway to run with CVPN_OBFS_ENABLE=1.
+	obfs := env("CVPN_OBFS", "") != ""
+	defEndpoint := "127.0.0.1:51820"
+	if obfs {
+		defEndpoint = "127.0.0.1:51821"
+	}
+	wgEndpoint := env("ENDPOINT", defEndpoint)
 	testURL := env("TEST_URL", "http://checkip.amazonaws.com/")
 
 	priv, pub := genKeypair()
@@ -133,8 +142,14 @@ func main() {
 		panic(err)
 	}
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelError, "c "))
-	cfg := fmt.Sprintf("private_key=%s\npublic_key=%s\nendpoint=%s\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=5\n",
-		b2h(priv), b2h(er.Data.ServerPubKey), wgEndpoint)
+	// Interface section first (private key + obfuscation profile, device-level),
+	// THEN the peer — obfs UAPI keys must precede the public_key= peer line.
+	cfg := fmt.Sprintf("private_key=%s\n", b2h(priv))
+	if obfs {
+		cfg += wg.DefaultObfsParams.UAPI()
+	}
+	cfg += fmt.Sprintf("public_key=%s\nendpoint=%s\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=5\n",
+		b2h(er.Data.ServerPubKey), wgEndpoint)
 	if err := dev.IpcSet(cfg); err != nil {
 		panic(err)
 	}

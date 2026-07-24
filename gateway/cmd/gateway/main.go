@@ -96,6 +96,32 @@ func run() error {
 	}
 	log.Printf("gateway: forwarder started (allowlist=%v fleet_allow=%v)", cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
 
+	// --- obfuscated (AmneziaWG) listener: additive, env-gated (docs/15) ---
+	// Same server identity as vanilla (one enrollment serves both) on the UDP
+	// side of the API port, its own forwarder sharing the limiter. Off by
+	// default; when off, nothing is advertised and the node behaves like 0.1.0.
+	var obfsTransports []api.ExtraTransport
+	if cfg.ObfsEnable {
+		obfsDev, err := wg.NewObfuscated(config.WGObfsPort, cfg.KeyFile, wg.DefaultObfsParams)
+		if err != nil {
+			return err
+		}
+		defer obfsDev.Close()
+		obfsFwd := wg.NewForwarder(obfsDev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
+		if err := obfsFwd.Start(); err != nil {
+			return err
+		}
+		obfsTransports = append(obfsTransports, api.ExtraTransport{
+			Device: obfsDev,
+			Advertise: api.Transport{
+				Type:   "awg",
+				Port:   config.WGObfsPort,
+				Params: wg.DefaultObfsParams.Map(),
+			},
+		})
+		log.Printf("gateway: obfuscated (AmneziaWG) listener up on :%d/udp", config.WGObfsPort)
+	}
+
 	// --- entitlement engine (chain scanner) ---
 	chain := fluxnode.NewClient(cfg.NodeHostIP)
 	ent := entitle.New(chainAdapter{chain}, cfg.PaymentAddress, cfg.PriceFlux)
@@ -114,7 +140,7 @@ func run() error {
 	go syncTiers(ctx, dev, ent, lim)
 
 	// --- control API ---
-	srv := api.New(cfg, dev, ent, lim, info, nodePublicIP)
+	srv := api.New(cfg, dev, ent, lim, info, nodePublicIP, obfsTransports...)
 	go srv.SampleLoad(ctx) // live throughput → real /v1/info load
 	httpSrv := &http.Server{
 		Addr:              addr(config.APIPort),

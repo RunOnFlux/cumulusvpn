@@ -74,10 +74,20 @@ type Info struct {
 	Transports       []Transport `json:"transports"`   // dialable transports (negotiation)
 }
 
+// ExtraTransport pairs an additional listener's device with the transport entry
+// advertised for it in /v1/info. Enrolled peers are mirrored onto Device (same
+// assigned IP) so a single enrollment works over any transport; s.dev remains
+// the address-allocation authority.
+type ExtraTransport struct {
+	Device    *wg.Device
+	Advertise Transport
+}
+
 // Server is the control API.
 type Server struct {
 	cfg          *config.Config
 	dev          *wg.Device
+	extra        []ExtraTransport
 	ent          *entitle.Engine
 	lim          *limiter.Manager
 	info         Info
@@ -97,10 +107,11 @@ type Server struct {
 // New builds the control API server. info fields (geo) come from fluxnode;
 // nodePublicIP is the hostinfo public IP used as the endpoint fallback when
 // FLUX_NODE_HOST_IP is unset (local dev).
-func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.Manager, info Info, nodePublicIP string) *Server {
+func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.Manager, info Info, nodePublicIP string, extra ...ExtraTransport) *Server {
 	s := &Server{
 		cfg:          cfg,
 		dev:          dev,
+		extra:        extra,
 		ent:          ent,
 		lim:          lim,
 		info:         info,
@@ -115,10 +126,13 @@ func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.M
 	s.info.Version = Version
 	s.info.MinClientVersion = MinClientVersion
 	s.info.BuildCommit = BuildCommit
-	// Advertise the transports this gateway can serve. M0 ships vanilla only;
-	// obfuscated/TLS tiers append their own entries here as they land. The
-	// array rides the signed /v1/info body, so it needs no separate signing.
+	// Advertise the transports this gateway can serve: always vanilla, plus any
+	// additional (obfuscated/TLS) listeners. The array rides the signed /v1/info
+	// body, so it needs no separate signing.
 	s.info.Transports = []Transport{{Type: "wg", Port: config.WGListenPort}}
+	for _, e := range extra {
+		s.info.Transports = append(s.info.Transports, e.Advertise)
+	}
 	return s
 }
 
@@ -200,6 +214,15 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	if err := s.dev.AddPeer(req.PubKey, assigned); err != nil {
 		writeErr(w, http.StatusInternalServerError, "add_peer_failed", err.Error())
 		return
+	}
+	// Mirror the peer onto every additional transport's device with the SAME
+	// assigned IP, so one enrollment works whether the client dials vanilla,
+	// obfuscated, or TLS. s.dev stays the allocation authority.
+	for _, e := range s.extra {
+		if err := e.Device.AddPeer(req.PubKey, assigned); err != nil {
+			writeErr(w, http.StatusInternalServerError, "add_peer_failed", err.Error())
+			return
+		}
 	}
 	// Ensure the limiter reflects the current tier immediately.
 	s.lim.SetTier(req.PubKey, premium)

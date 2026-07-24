@@ -12,9 +12,9 @@ import (
 	"os"
 	"sync"
 
+	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/device"
 	"golang.org/x/crypto/curve25519"
-	"golang.zx2c4.com/wireguard/conn"
-	"golang.zx2c4.com/wireguard/device"
 
 	"github.com/runonflux/cumulusvpn-gateway/internal/netstack"
 
@@ -42,9 +42,83 @@ type Device struct {
 	byAddr map[netip.Addr]string // assigned IP -> pubkey (base64)
 }
 
-// New creates the netstack TUN, brings up the WireGuard device on listenPort,
-// and loads (or generates and persists) the server keypair from keyFile.
+// ObfsParams is the AmneziaWG obfuscation profile (docs/15-transports.md). The
+// zero value is vanilla WireGuard (no obfuscation). Every field MUST match on
+// the client for the handshake to complete, so the gateway advertises the
+// profile in /v1/info transports[].params. Jc/Jmin/Jmax control junk packets;
+// S1/S2 the handshake-header junk; H1..H4 the custom message-type magic (must be
+// distinct and outside the reserved 1..4). None of this alters the WireGuard
+// cryptography — it only reshapes the framing so the handshake loses the fixed
+// 148/92-byte fingerprint.
+type ObfsParams struct {
+	Jc, Jmin, Jmax int
+	S1, S2         int
+	H1, H2, H3, H4 uint32
+}
+
+// UAPI renders the obfuscation settings as device-level UAPI lines. They belong
+// in the interface section (before any public_key= peer line) both here and in
+// the client's [Interface] block.
+func (p ObfsParams) UAPI() string {
+	return fmt.Sprintf(
+		"jc=%d\njmin=%d\njmax=%d\ns1=%d\ns2=%d\nh1=%d\nh2=%d\nh3=%d\nh4=%d\n",
+		p.Jc, p.Jmin, p.Jmax, p.S1, p.S2, p.H1, p.H2, p.H3, p.H4,
+	)
+}
+
+// Map renders the profile as the string params advertised in /v1/info, so the
+// client can build a matching config.
+func (p ObfsParams) Map() map[string]string {
+	u32 := func(v uint32) string { return fmt.Sprintf("%d", v) }
+	return map[string]string{
+		"jc":   fmt.Sprintf("%d", p.Jc),
+		"jmin": fmt.Sprintf("%d", p.Jmin),
+		"jmax": fmt.Sprintf("%d", p.Jmax),
+		"s1":   fmt.Sprintf("%d", p.S1),
+		"s2":   fmt.Sprintf("%d", p.S2),
+		"h1":   u32(p.H1),
+		"h2":   u32(p.H2),
+		"h3":   u32(p.H3),
+		"h4":   u32(p.H4),
+	}
+}
+
+// DefaultObfsParams is the fleet-wide AmneziaWG-1.5 obfuscation profile ("v1").
+// Gateway and client must agree; the gateway advertises it in /v1/info so the
+// client applies a matching config. A single fixed profile is fine for a first
+// release (it defeats the vanilla-WG fingerprint); per-gateway/rotating profiles
+// are a later refinement (docs/15-transports.md). H1..H4 are distinct and well
+// outside the reserved 1..4 message types.
+var DefaultObfsParams = ObfsParams{
+	Jc:   4,
+	Jmin: 40,
+	Jmax: 70,
+	S1:   50,
+	S2:   100,
+	H1:   1148746654,
+	H2:   1148746655,
+	H3:   1148746656,
+	H4:   1148746657,
+}
+
+// New creates the netstack TUN, brings up a VANILLA WireGuard device on
+// listenPort, and loads (or generates and persists) the server keypair from
+// keyFile. Wire-identical to upstream WireGuard (no obfuscation).
 func New(listenPort int, keyFile string) (*Device, error) {
+	return newDevice(listenPort, keyFile, "")
+}
+
+// NewObfuscated is New plus the AmneziaWG obfuscation profile applied to the
+// device, for the DPI-resistant listener. It loads the SAME keyFile as the
+// vanilla device (one server identity, one enrollment serves both transports);
+// only the listen port and the obfuscation framing differ.
+func NewObfuscated(listenPort int, keyFile string, p ObfsParams) (*Device, error) {
+	return newDevice(listenPort, keyFile, p.UAPI())
+}
+
+// newDevice is the shared constructor; extraUAPI appends transport-specific
+// settings (empty for vanilla, the obfuscation lines for the obfs listener).
+func newDevice(listenPort int, keyFile string, extraUAPI string) (*Device, error) {
 	priv, err := loadOrGenerateKey(keyFile)
 	if err != nil {
 		return nil, err
@@ -67,8 +141,9 @@ func New(listenPort int, keyFile string) (*Device, error) {
 	logger := device.NewLogger(device.LogLevelError, "wg ")
 	dev := device.NewDevice(tunDev, conn.NewDefaultBind(), logger)
 
-	// Configure via UAPI: hex-encoded keys, one setting per line.
-	uapi := fmt.Sprintf("private_key=%s\nlisten_port=%d\n", hex.EncodeToString(priv[:]), listenPort)
+	// Configure via UAPI: hex-encoded keys, one setting per line. extraUAPI
+	// carries the obfuscation profile for an obfs device (empty for vanilla).
+	uapi := fmt.Sprintf("private_key=%s\nlisten_port=%d\n", hex.EncodeToString(priv[:]), listenPort) + extraUAPI
 	if err := dev.IpcSet(uapi); err != nil {
 		dev.Close()
 		return nil, fmt.Errorf("wg: IpcSet: %w", err)
