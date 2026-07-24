@@ -99,6 +99,13 @@ type Server struct {
 	enrollIP map[string]time.Time // per-IP last enroll (rate limit)
 	powSeen  map[string]struct{}  // spent PoW nonces (replay guard)
 
+	// enrollMu serializes the capacity-check → assign → AddPeer(+mirror) section
+	// of handleEnroll so two concurrent enrolls for the SAME pubkey (client
+	// roaming, IPv4/IPv6 racing, a NAT pool — allowEnroll is keyed per source IP,
+	// not per pubkey) can't both miss the PeerAddr check and allocate two IPs
+	// (leaking one from the pool + accumulating two allowed_ips on the peer).
+	enrollMu sync.Mutex
+
 	// throughputBps is the current aggregate forwarding rate in bytes/s, updated
 	// by SampleLoad; feeds the real (bandwidth) component of /v1/info load.
 	throughputBps atomic.Uint64
@@ -191,10 +198,18 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Serialize check → assign → register so a concurrent same-pubkey enroll
+	// can't slip between the PeerAddr check and AddPeer and double-allocate (see
+	// enrollMu). assign() takes s.mu internally; enrollMu is a distinct lock, so
+	// no deadlock.
+	s.enrollMu.Lock()
+	defer s.enrollMu.Unlock()
+
 	// Capacity guards (docs/03-gateway.md "Capacity guards").
 	premium, _ := s.ent.Tier(req.PubKey)
 	free, total := s.lim.Counts()
-	if _, already := s.dev.PeerAddr(req.PubKey); !already {
+	_, existed := s.dev.PeerAddr(req.PubKey)
+	if !existed {
 		if total >= s.cfg.MaxPeersTotal {
 			writeErr(w, http.StatusServiceUnavailable, "at_capacity", "gateway full")
 			return
@@ -219,12 +234,25 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	// (e.g. the obfuscated listener) with the SAME assigned IP, so one enrollment
 	// works whichever transport the client dials. Transports with a nil Device
 	// (e.g. wg-tls, which relays into the vanilla device) need no mirroring.
-	// s.dev stays the allocation authority.
-	for _, e := range s.extra {
+	// s.dev stays the allocation authority. If a mirror fails on a NEW enrollment,
+	// roll back the peers we added this call so the client isn't left
+	// half-provisioned (vanilla works, obfs doesn't) — a clean error it can retry.
+	// For a REUSED enrollment we don't roll back: the peer was already working on
+	// every device before this call, and a transient mirror failure shouldn't
+	// deregister it — a retry re-syncs.
+	for i, e := range s.extra {
 		if e.Device == nil {
 			continue
 		}
 		if err := e.Device.AddPeer(req.PubKey, assigned); err != nil {
+			if !existed {
+				_ = s.dev.RemovePeer(req.PubKey)
+				for _, prior := range s.extra[:i] {
+					if prior.Device != nil {
+						_ = prior.Device.RemovePeer(req.PubKey)
+					}
+				}
+			}
 			writeErr(w, http.StatusInternalServerError, "add_peer_failed", err.Error())
 			return
 		}

@@ -104,6 +104,12 @@ object CumulusTunnelController {
                 // Vanilla single-hop stays on GoBackend, unchanged.
                 startObfsSingleHop(context, wgQuickConfig, obfs)
             } else {
+                // Vanilla single-hop on GoBackend. Reset the obfs/multihop flags:
+                // a prior obfs or multi-hop tunnel may have set them, and a connect
+                // without a clean disconnect would otherwise leave stop/statistics
+                // routing to the wrong (nested/wgnest) backend.
+                obfsActive = false
+                multihopActive = false
                 val config = parse(wgQuickConfig)
                 backend(context).setState(tunnel, Tunnel.State.UP, config)
                 setState(STATE_CONNECTED)

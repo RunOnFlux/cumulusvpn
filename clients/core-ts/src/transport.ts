@@ -86,6 +86,32 @@ export function selectTransport(
 }
 
 /**
+ * Like {@link selectTransport} but THROWS instead of returning null, so a caller
+ * can never silently downgrade. This is the load-bearing guarantee for Stealth:
+ * `auto` always resolves (vanilla `wg` is its floor against any normal gateway),
+ * but an explicit `stealth`/`speed` request against a gateway that offers nothing
+ * the mode + this build allow is a hard error the UI surfaces — NOT a quiet
+ * fallback to plain, DPI-fingerprintable WireGuard. The thrown message is
+ * mode-aware so the user knows to pick another location or switch to Auto.
+ */
+export function requireTransport(
+  transports: readonly Transport[] | undefined,
+  mode: TransportMode,
+  implemented: ReadonlySet<string> = IMPLEMENTED_TRANSPORTS,
+): Transport {
+  const t = selectTransport(transports, mode, implemented);
+  if (!t) {
+    if (mode === 'stealth') {
+      throw new Error(
+        'Stealth mode: this location offers no DPI-resistant transport. Pick another location, or switch to Auto.',
+      );
+    }
+    throw new Error('This location offers no transport compatible with the selected mode.');
+  }
+  return t;
+}
+
+/**
  * Rewrite an endpoint's port to the chosen transport's port, host untouched.
  * `"1.2.3.4:51820"` + `{port:443}` → `"1.2.3.4:443"`; a bare host gains the port.
  * A bracketed IPv6 `"[::1]:51820"` keeps its host. For M0 the vanilla transport

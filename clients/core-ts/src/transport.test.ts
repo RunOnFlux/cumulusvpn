@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   applyTransportToEndpoint,
   obfsForTransport,
+  requireTransport,
   selectTransport,
   transportFallbackChain,
 } from './transport.js';
@@ -51,6 +52,36 @@ describe('transportFallbackChain / selectTransport', () => {
   it('drops unknown/unmodelled transport types', () => {
     const weird = { type: 'quux', port: 9 } as Transport;
     expect(transportFallbackChain([weird, wg], 'auto', ALL).map((t) => t.type)).toEqual(['wg']);
+  });
+});
+
+describe('requireTransport (never silently downgrades)', () => {
+  it('auto resolves to vanilla wg against any normal gateway', () => {
+    expect(requireTransport([wg], 'auto').type).toBe('wg');
+    expect(requireTransport(undefined, 'auto').type).toBe('wg'); // 0.1.0 gateway
+  });
+
+  it('stealth returns the obfuscated transport the gateway offers (prefers wg-tls, else awg)', () => {
+    expect(requireTransport([wg, awg, tls], 'stealth', ALL).type).toBe('wg-tls');
+    expect(requireTransport([wg, awg], 'stealth', ALL).type).toBe('awg');
+  });
+
+  it('stealth THROWS against a vanilla-only gateway instead of falling back to plain wg', () => {
+    expect(() => requireTransport([wg], 'stealth', ALL)).toThrow(/Stealth/);
+    // a 0.1.0 gateway is vanilla-only → also throws, never a silent downgrade
+    expect(() => requireTransport(undefined, 'stealth', ALL)).toThrow(/Stealth/);
+  });
+
+  it('stealth picks awg when the client does not implement wg-tls (mobile/desktop today)', () => {
+    const AWG_ONLY = new Set(['wg', 'awg']);
+    expect(requireTransport([wg, awg], 'stealth', AWG_ONLY).type).toBe('awg');
+    // vanilla-only gateway still throws under the awg-capable client
+    expect(() => requireTransport([wg], 'stealth', AWG_ONLY)).toThrow(/Stealth/);
+  });
+
+  it('throws for a non-auto mode when the gateway offers nothing compatible', () => {
+    const weird = { type: 'quux', port: 9 } as Transport;
+    expect(() => requireTransport([weird], 'speed')).toThrow();
   });
 });
 

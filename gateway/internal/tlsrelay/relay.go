@@ -150,10 +150,16 @@ func (r *Relay) handle(tlsConn net.Conn) {
 	if err != nil {
 		return
 	}
-	defer udp.Close()
 
-	// TLS -> UDP (WG device). Closing the conns on return unblocks this.
+	// Teardown must be SYMMETRIC or a dropped-while-idle TLS connection (the
+	// common mobile-backgrounded case) leaks this goroutine + the UDP socket +
+	// the TLS fd forever: the WG device never sends to an idle peer (no
+	// persistent-keepalive), so the outer udp.Read below would block indefinitely
+	// with nothing to unblock it. So the TLS->UDP pump OWNS udp and closes it when
+	// the TLS side dies (unblocking udp.Read); the UDP->TLS pump owns tlsConn (via
+	// the defer above) and closes it when the UDP side dies (unblocking readFrame).
 	go func() {
+		defer udp.Close()
 		for {
 			pkt, err := readFrame(tlsConn)
 			if err != nil {
@@ -245,6 +251,10 @@ func (b *ClientBridge) udpToTLS() {
 			}
 		}
 		if err := writeFrame(b.tlsConn, buf[:n]); err != nil {
+			// Close BOTH sides: closing only localUDP leaves the sibling tlsToUDP
+			// parked in readFrame on a half-open TLS conn (write broken, read still
+			// alive) until an external Close. Closing tlsConn unblocks it too.
+			_ = b.tlsConn.Close()
 			_ = b.localUDP.Close()
 			return
 		}

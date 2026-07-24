@@ -2,7 +2,10 @@
 //! nothing leaks if the WireGuard handshake drops.
 //!
 //! The policy is identical everywhere: allow loopback, allow the WireGuard
-//! endpoint (UDP :51820) and the tunnel, drop the rest of the plaintext egress.
+//! endpoint (UDP on the transport's port — 51820 vanilla, 51821 for the
+//! obfuscated `awg` transport) and the tunnel, drop the rest of the plaintext
+//! egress. The port is parsed from the endpoint we're handed, not hardcoded, so
+//! Stealth (awg on 51821) isn't dropped by the kill switch.
 //! Only the mechanism differs per OS — pf (macOS), nftables (Linux), Windows
 //! Firewall / NetSecurity, which sits on top of WFP (Windows).
 //!
@@ -83,18 +86,18 @@ pub fn detect_backend() -> Backend {
 /// it and block on the physical (macOS).
 pub fn engage(backend: Backend, endpoint: &str, interface: &str) -> Result<(), TunnelError> {
     let _ = interface;
-    let endpoint_ip = strip_port(endpoint);
+    let (endpoint_ip, endpoint_port) = split_endpoint(endpoint);
     match backend {
         #[cfg(target_os = "macos")]
-        Backend::MacosPf => engage_macos(endpoint_ip),
+        Backend::MacosPf => engage_macos(endpoint_ip, endpoint_port),
         #[cfg(target_os = "linux")]
-        Backend::LinuxNftables => engage_linux(endpoint_ip),
+        Backend::LinuxNftables => engage_linux(endpoint_ip, endpoint_port),
         #[cfg(target_os = "windows")]
-        Backend::WindowsWfp => engage_windows(endpoint_ip),
+        Backend::WindowsWfp => engage_windows(endpoint_ip, endpoint_port),
         // A backend that isn't native to this build: seam.
         #[allow(unreachable_patterns)]
         _ => {
-            let _ = endpoint_ip;
+            let _ = (endpoint_ip, endpoint_port);
             Ok(())
         }
     }
@@ -117,6 +120,23 @@ pub fn disengage(backend: Backend) -> Result<(), TunnelError> {
     Ok(())
 }
 
+/// The vanilla WireGuard port — the fallback when an endpoint carries no `:port`.
+const DEFAULT_WG_PORT: &str = "51820";
+
+/// Split an `ip:port` endpoint into `(host, port)` (our gateways are IPv4, so a
+/// single rsplit is safe). A missing port defaults to the vanilla WG port; a
+/// non-numeric port is rejected (defense-in-depth — the port is interpolated
+/// into firewall rules, so it must never carry anything but digits) and also
+/// falls back to the default with the bad port stripped from the host.
+fn split_endpoint(endpoint: &str) -> (&str, &str) {
+    match endpoint.rsplit_once(':') {
+        Some((host, port)) if !port.is_empty() && port.bytes().all(|b| b.is_ascii_digit()) => {
+            (host, port)
+        }
+        _ => (strip_port(endpoint), DEFAULT_WG_PORT),
+    }
+}
+
 /// Strip a trailing `:port` from an `ip:port` endpoint (our gateways are IPv4, so
 /// a single rsplit is safe). Returns the input unchanged if there is no port.
 fn strip_port(endpoint: &str) -> &str {
@@ -126,7 +146,7 @@ fn strip_port(endpoint: &str) -> &str {
 // ---- macOS (pf) ------------------------------------------------------------
 
 #[cfg(target_os = "macos")]
-fn engage_macos(endpoint_ip: &str) -> Result<(), TunnelError> {
+fn engage_macos(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelError> {
     let phys = default_interface().ok_or(TunnelError::KillSwitch("no default interface"))?;
 
     // Our anchor: pass loopback + the WireGuard endpoint out the physical, block
@@ -134,7 +154,7 @@ fn engage_macos(endpoint_ip: &str) -> Result<(), TunnelError> {
     // is never on the physical, so it flows untouched.
     let anchor_rules = format!(
         "pass quick on lo0 all\n\
-         pass out quick on {phys} proto udp to {endpoint_ip} port 51820 keep state\n\
+         pass out quick on {phys} proto udp to {endpoint_ip} port {endpoint_port} keep state\n\
          block drop out on {phys} all\n"
     );
     run_stdin(
@@ -187,7 +207,7 @@ fn default_interface() -> Option<String> {
 // ---- Linux (nftables) ------------------------------------------------------
 
 #[cfg(target_os = "linux")]
-fn engage_linux(endpoint_ip: &str) -> Result<(), TunnelError> {
+fn engage_linux(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelError> {
     // A dedicated inet table with a default-drop output chain: allow loopback,
     // the tunnel devices (cvpn* — logical names on Linux), the WireGuard endpoint
     // handshake, and continuation of established flows; drop the rest.
@@ -197,7 +217,7 @@ fn engage_linux(endpoint_ip: &str) -> Result<(), TunnelError> {
          \t\ttype filter hook output priority 0; policy drop;\n\
          \t\toifname \"lo\" accept\n\
          \t\toifname \"cvpn*\" accept\n\
-         \t\tip daddr {endpoint_ip} udp dport 51820 accept\n\
+         \t\tip daddr {endpoint_ip} udp dport {endpoint_port} accept\n\
          \t\tct state established,related accept\n\
          \t}}\n\
          }}\n"
@@ -215,7 +235,7 @@ fn disengage_linux() {
 // ---- Windows (Windows Firewall / NetSecurity) ------------------------------
 
 #[cfg(target_os = "windows")]
-fn engage_windows(endpoint_ip: &str) -> Result<(), TunnelError> {
+fn engage_windows(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelError> {
     // Clear any stale rules from a previous run, then add our allow rules BEFORE
     // flipping the default policy to block — so there's never a window where the
     // block is active without the exceptions in place.
@@ -230,7 +250,7 @@ fn engage_windows(endpoint_ip: &str) -> Result<(), TunnelError> {
         "powershell",
         &["-NoProfile", "-Command", &format!(
             "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — endpoint' -Group '{GROUP}' \
-             -Direction Outbound -Action Allow -Protocol UDP -RemoteAddress {endpoint_ip} -RemotePort 51820 | Out-Null"
+             -Direction Outbound -Action Allow -Protocol UDP -RemoteAddress {endpoint_ip} -RemotePort {endpoint_port} | Out-Null"
         )],
         "failed to add endpoint allow rule",
     )?;
@@ -308,4 +328,29 @@ fn run(program: &str, args: &[&str], err: &'static str) -> Result<(), TunnelErro
 /// Best-effort command for teardown paths: never fails the caller.
 fn run_best_effort(program: &str, args: &[&str]) {
     let _ = Command::new(program).args(args).output();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{split_endpoint, DEFAULT_WG_PORT};
+
+    #[test]
+    fn parses_ipv4_host_and_port() {
+        assert_eq!(split_endpoint("1.2.3.4:51821"), ("1.2.3.4", "51821"));
+        assert_eq!(split_endpoint("10.0.0.1:51820"), ("10.0.0.1", "51820"));
+    }
+
+    #[test]
+    fn missing_port_defaults_to_vanilla() {
+        assert_eq!(split_endpoint("1.2.3.4"), ("1.2.3.4", DEFAULT_WG_PORT));
+    }
+
+    #[test]
+    fn non_numeric_port_is_rejected_and_stripped() {
+        // A non-numeric port must never reach a firewall rule; fall back to the
+        // default and drop the bad token from the host.
+        assert_eq!(split_endpoint("1.2.3.4:evil"), ("1.2.3.4", DEFAULT_WG_PORT));
+        assert_eq!(split_endpoint("1.2.3.4:80 drop"), ("1.2.3.4", DEFAULT_WG_PORT));
+        assert_eq!(split_endpoint("1.2.3.4:"), ("1.2.3.4", DEFAULT_WG_PORT));
+    }
 }

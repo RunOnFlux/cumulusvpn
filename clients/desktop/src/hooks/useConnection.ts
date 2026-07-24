@@ -256,7 +256,14 @@ export function useConnection(): ConnectionModel {
       try {
         if (multihop && exit) {
           // Same key K enrolls at both hops (one payment); exit meters egress.
-          const result = await establishMultihop(entry, exit, routeStyle, keypair, killSwitch);
+          const result = await establishMultihop(
+            entry,
+            exit,
+            routeStyle,
+            keypair,
+            killSwitch,
+            transportMode,
+          );
           setTunnel(result.tunnel);
           setPhase('connected');
           await refreshEntitlement(result.exitGatewayIp, exit.signPubKey);

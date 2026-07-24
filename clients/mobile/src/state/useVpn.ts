@@ -21,8 +21,8 @@ import {
   obfsForTransport,
   paymentCode,
   paymentMemo,
+  requireTransport,
   selectHops,
-  selectTransport,
   status as fetchStatus,
 } from '@cumulusvpn/core';
 import type {
@@ -675,6 +675,17 @@ export function useVpn(): VpnModel & VpnActions {
       }
 
       if (isMultihop(routeStyle)) {
+        // Stealth over multi-hop isn't wired end-to-end yet (the obfuscated
+        // entry hop needs obfs params threaded through buildMultihopConfig + the
+        // native chained bridge). Until it is, refuse rather than silently run
+        // the multi-hop entry as plain WireGuard — Stealth must never downgrade.
+        if (transportMode !== 'auto') {
+          setState('error');
+          setError(
+            'Stealth mode isn’t available with multi-hop yet. Turn off multi-hop, or switch to Auto.',
+          );
+          return;
+        }
         // Auto entry: prefer the NEAREST measured country (countries are
         // latency-sorted) that can satisfy the route, instead of letting
         // selectHops fall back to the globally least-loaded gateway — which can
@@ -727,14 +738,13 @@ export function useVpn(): VpnModel & VpnActions {
 
         // Transport negotiation (docs/15-transports.md): pick the transport this
         // gateway advertises for the current mode and point the config at its
-        // port. M0 implements vanilla WG only, so this resolves to :51820 — a
-        // no-op today — but wires the seam the obfuscated/TLS tiers will use.
-        // Mode is fixed to 'auto' until the M3 Speed/Stealth UI toggle.
-        const transport = selectTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS);
-        const endpoint = transport
-          ? applyTransportToEndpoint(resp.endpoint, transport)
-          : resp.endpoint;
-        const obfs = transport ? obfsForTransport(transport) : undefined;
+        // port. `requireTransport` THROWS rather than falling back to vanilla, so
+        // Stealth never silently downgrades to fingerprintable plain WireGuard —
+        // Auto still resolves to :51820 (vanilla is its floor). `obfs` is set only
+        // for `awg`.
+        const transport = requireTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS);
+        const endpoint = applyTransportToEndpoint(resp.endpoint, transport);
+        const obfs = obfsForTransport(transport);
 
         const wgConfig = buildWgConfig({
           privateKey: keypair.privateKey,

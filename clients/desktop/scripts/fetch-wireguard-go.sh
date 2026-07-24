@@ -108,6 +108,18 @@ EOF
   echo ">> building (CGO disabled) ..."
   CGO_ENABLED=0 GOOS="${GOOS}" GOARCH="${GOARCH}" GOFLAGS=-mod=mod \
     go build -trimpath -ldflags "-s -w" -o "${OUT}" "${AWG_MODULE}"
+
+  # AmneziaWG is MIT-licensed; redistributing the binary means shipping its
+  # license. In module mode the source isn't checked out, so copy the LICENSE
+  # from the resolved module in the Go cache (best-effort — never fail the build
+  # on a missing/renamed license file).
+  MODDIR="$(GOFLAGS=-mod=mod go list -m -f '{{.Dir}}' "${AWG_MODULE}" 2>/dev/null || true)"
+  if [ -n "${MODDIR}" ] && [ -f "${MODDIR}/LICENSE" ]; then
+    cp "${MODDIR}/LICENSE" "${BIN_DIR}/wireguard-go-LICENSE.txt"
+    echo ">> license       : ${BIN_DIR}/wireguard-go-LICENSE.txt"
+  else
+    echo ">> WARNING: could not locate the AmneziaWG LICENSE to bundle" >&2
+  fi
 )
 chmod +x "${OUT}"
 

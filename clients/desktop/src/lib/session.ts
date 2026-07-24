@@ -13,8 +13,8 @@ import {
   discoverGateways,
   enroll,
   obfsForTransport,
+  requireTransport,
   selectHops,
-  selectTransport,
   status as entitlementStatus,
 } from '@cumulusvpn/core';
 import type {
@@ -232,10 +232,12 @@ export async function establish(
 
   // Transport negotiation (docs/15): pick the transport for the mode this
   // gateway advertises, point the config at its port, and fold in obfuscation
-  // params for `awg`. Absent transports / unsupported mode → vanilla endpoint.
-  const transport = selectTransport(country.transports, transportMode, IMPLEMENTED_TRANSPORTS);
-  const endpoint = transport ? applyTransportToEndpoint(reply.endpoint, transport) : reply.endpoint;
-  const obfs = transport ? obfsForTransport(transport) : undefined;
+  // params for `awg`. `requireTransport` THROWS rather than falling back to
+  // vanilla, so Stealth never silently downgrades to fingerprintable plain WG
+  // (Auto still resolves to :51820 — vanilla is its floor).
+  const transport = requireTransport(country.transports, transportMode, IMPLEMENTED_TRANSPORTS);
+  const endpoint = applyTransportToEndpoint(reply.endpoint, transport);
+  const obfs = obfsForTransport(transport);
 
   const wgConfig = buildWgConfig({
     privateKey: keypair.privateKey,
@@ -246,10 +248,14 @@ export async function establish(
     ...(obfs ? { obfs } : {}),
   });
 
+  // Hand the tunnel the CHOSEN transport endpoint (not the vanilla reply), so the
+  // kill switch and endpoint bypass allow the port the sidecar actually dials
+  // (e.g. awg on :51821). Passing reply.endpoint (:51820) would make the kill
+  // switch drop the awg handshake.
   const tunnelStatus = await tunnel.connect({
     country: country.code,
     wgConfig,
-    endpoint: reply.endpoint,
+    endpoint,
     assignedIp: reply.assigned_ip,
     killSwitch,
   });
@@ -282,8 +288,18 @@ export async function establishMultihop(
   style: RouteStyle,
   keypair: Keypair,
   killSwitch: boolean,
+  transportMode: TransportMode = 'auto',
   fetchImpl?: typeof fetch,
 ): Promise<MultihopResult> {
+  // Stealth over multi-hop isn't wired end-to-end yet (the obfuscated entry hop
+  // needs obfs params threaded through buildMultihopConfig + the native chained
+  // sidecars). Until it is, refuse rather than silently run the entry hop as
+  // plain WireGuard — Stealth must never downgrade.
+  if (transportMode !== 'auto') {
+    throw new Error(
+      'Stealth mode isn’t available with multi-hop yet. Turn off multi-hop, or switch to Auto.',
+    );
+  }
   // Let the core contract pick + validate the ordered hops from the two picks.
   const hops = selectHops([toGatewayInfo(entryCountry), toGatewayInfo(exitCountry)], style, {
     entryCountry: entryCountry.code,
