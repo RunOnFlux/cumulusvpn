@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { invoke } from '@tauri-apps/api/core';
 import { discoverGateways, enroll } from '@cumulusvpn/core';
 import type { EnrollResponse, GatewayInfo, Keypair } from '@cumulusvpn/core';
 import type * as CumulusCore from '@cumulusvpn/core';
@@ -133,6 +134,28 @@ describe('establish', () => {
     expect(result.tunnel.state).toBe('up');
     expect(result.tunnel.assignedIp).toBe('10.8.0.2');
     expect(result.tunnel.country).toBe('DE');
+  });
+
+  it('wg-tls (Stealth): bridges over TLS — passes the relay addr + SNI to native connect', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply); // endpoint 198.51.100.2:51820
+    vi.mocked(invoke).mockClear();
+    const tlsCountry = {
+      ...country,
+      transports: [{ type: 'wg-tls' as const, port: 8443, params: { sni: 'cdn.example.net' } }],
+    };
+
+    await establish(tlsCountry, keypair, true, 'stealth');
+
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect');
+    expect(call, 'connect was invoked').toBeDefined();
+    // endpoint host comes from the enroll reply, port from the wg-tls transport.
+    expect(call?.[1]).toMatchObject({
+      endpoint: '198.51.100.2:8443',
+      tlsServerAddr: '198.51.100.2:8443',
+      tlsSni: 'cdn.example.net',
+    });
+    // wg-tls carries no [Interface] obfs — the config must be vanilla-shaped.
+    expect(String((call?.[1] as { wgConfig: string }).wgConfig)).not.toContain('Jc =');
   });
 });
 

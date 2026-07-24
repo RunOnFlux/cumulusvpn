@@ -13,19 +13,29 @@
 
 use tauri::State;
 
-use crate::tunnel::{MultihopParams, TunnelManager, TunnelStatus};
+use crate::tunnel::{MultihopParams, TlsParams, TunnelManager, TunnelStatus};
 
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn connect(
     country: String,
     wg_config: String,
     endpoint: String,
     assigned_ip: String,
     kill_switch: bool,
+    // wg-tls transport (optional): the gateway's TLS relay address + SNI. Present
+    // → the WG device is bridged over TLS instead of dialing UDP directly. Tauri
+    // maps JS `tlsServerAddr`/`tlsSni` onto these.
+    tls_server_addr: Option<String>,
+    tls_sni: Option<String>,
     manager: State<'_, TunnelManager>,
 ) -> Result<TunnelStatus, String> {
+    let tls = tls_server_addr.map(|server_addr| TlsParams {
+        server_addr,
+        sni: tls_sni.unwrap_or_default(),
+    });
     manager
-        .connect(&country, &wg_config, &endpoint, &assigned_ip, kill_switch)
+        .connect(&country, &wg_config, &endpoint, &assigned_ip, kill_switch, tls)
         .map_err(|e| e.to_string())
 }
 

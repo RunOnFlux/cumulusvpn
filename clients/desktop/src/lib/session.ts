@@ -33,10 +33,11 @@ import type { TunnelStatus } from './tauri.js';
 
 /**
  * Transport slugs the desktop tunnel can dial. The wireguard-go sidecar is the
- * amneziawg-go build (a superset — vanilla with no params), so it can do `awg`.
- * `wg-tls` awaits the Rust TLS bridge. Passed to core `selectTransport`.
+ * amneziawg-go build (a superset — vanilla with no params), so it can do `awg`;
+ * `wg-tls` rides the native Rust UDP<->TLS bridge (tunnel::tlsbridge). Passed to
+ * core `requireTransport`.
  */
-const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> = new Set(['wg', 'awg']);
+const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> = new Set(['wg', 'awg', 'wg-tls']);
 
 /**
  * Enroll at a gateway — or, when running outside Tauri (a plain browser: dev,
@@ -277,6 +278,16 @@ export async function establish(
   const endpoint = applyTransportToEndpoint(reply.endpoint, transport);
   const obfs = obfsForTransport(transport);
 
+  // wg-tls: the endpoint is the gateway's TLS relay (TCP `ip:tlsPort`). The
+  // native side bridges the WG device over TLS to it and rewrites the config's
+  // endpoint to the local bridge; `obfs` is undefined (the TLS wrapper IS the
+  // obfuscation, not `[Interface]` params). SNI comes from the advertised
+  // params, falling back to the gateway IP.
+  const tls =
+    transport.type === 'wg-tls'
+      ? { serverAddr: endpoint, sni: transport.params?.sni || country.gatewayIp }
+      : undefined;
+
   const wgConfig = buildWgConfig({
     privateKey: keypair.privateKey,
     assignedIp: reply.assigned_ip,
@@ -288,14 +299,15 @@ export async function establish(
 
   // Hand the tunnel the CHOSEN transport endpoint (not the vanilla reply), so the
   // kill switch and endpoint bypass allow the port the sidecar actually dials
-  // (e.g. awg on :51821). Passing reply.endpoint (:51820) would make the kill
-  // switch drop the awg handshake.
+  // (e.g. awg on :51821, or the wg-tls relay's TCP port). Passing reply.endpoint
+  // (:51820) would make the kill switch drop the handshake.
   const tunnelStatus = await tunnel.connect({
     country: country.code,
     wgConfig,
     endpoint,
     assignedIp: reply.assigned_ip,
     killSwitch,
+    ...(tls ? { tls } : {}),
   });
 
   return { gatewayIp: country.gatewayIp, enroll: reply, tunnel: tunnelStatus };

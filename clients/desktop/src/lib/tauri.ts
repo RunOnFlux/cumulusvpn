@@ -44,6 +44,15 @@ export interface ConnectArgs {
   readonly assignedIp: string;
   /** Engage the leak-protection kill switch (firewall rules) for this session. */
   readonly killSwitch: boolean;
+  /**
+   * `wg-tls` transport only: the gateway's TLS relay address (`endpoint`, a TCP
+   * `ip:tlsPort`) + the SNI to present. When set, the native side bridges the WG
+   * device over TLS instead of dialing UDP, so the tunnel survives UDP-blocking.
+   */
+  readonly tls?: {
+    readonly serverAddr: string;
+    readonly sni: string;
+  };
 }
 
 /**
@@ -147,6 +156,10 @@ export async function connect(args: ConnectArgs): Promise<TunnelStatus> {
     endpoint: args.endpoint,
     assignedIp: args.assignedIp,
     killSwitch: args.killSwitch,
+    // Flattened for Tauri's arg mapping (tlsServerAddr → tls_server_addr, etc.);
+    // absent → the native side takes the plain UDP path.
+    tlsServerAddr: args.tls?.serverAddr ?? null,
+    tlsSni: args.tls?.sni ?? null,
   });
 }
 

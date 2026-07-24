@@ -8,6 +8,7 @@
 
 pub mod killswitch;
 pub mod routing;
+pub mod tlsbridge;
 pub mod wggo;
 
 use std::sync::Mutex;
@@ -64,6 +65,19 @@ pub struct MultihopParams<'a> {
     pub kill_switch: bool,
 }
 
+/// Parameters for the `wg-tls` transport on [`TunnelManager::connect`]. When
+/// present, the WG device is pointed at a local UDP<->TLS bridge instead of
+/// dialing the gateway directly, so the tunnel rides a TLS/TCP session that
+/// survives UDP-blocking (see [`tlsbridge`]).
+#[derive(Debug, Clone)]
+pub struct TlsParams {
+    /// `<gatewayIp>:<tlsPort>` — the TLS relay to bridge to (TCP).
+    pub server_addr: String,
+    /// SNI / cert name to present. Camouflage only (not verified), but a
+    /// plausible value blends in.
+    pub sni: String,
+}
+
 /// Anything that can go wrong bringing a tunnel up or down.
 #[derive(Debug, Error)]
 pub enum TunnelError {
@@ -116,6 +130,9 @@ struct Inner {
     /// The inner (exit) wireguard-go device for a multi-hop session; `None` for
     /// single-hop. When present, `sidecar` is the outer (entry) device.
     exit_sidecar: Option<Sidecar>,
+    /// The UDP<->TLS bridge for a `wg-tls` session; `None` for vanilla/awg. Kept
+    /// alive for the session's lifetime and torn down on replace/disconnect.
+    bridge: Option<tlsbridge::ClientBridge>,
     /// Exit gateway IP whose host route we installed, for teardown cleanup.
     exit_ip: Option<String>,
     backend: Backend,
@@ -163,6 +180,7 @@ impl TunnelManager {
                 error: None,
                 sidecar: None,
                 exit_sidecar: None,
+                bridge: None,
                 exit_ip: None,
                 backend: killswitch::detect_backend(),
                 rx_bytes: 0,
@@ -183,8 +201,18 @@ impl TunnelManager {
         endpoint: &str,
         assigned_ip: &str,
         kill_switch: bool,
+        tls: Option<TlsParams>,
     ) -> Result<TunnelStatus, TunnelError> {
-        let config = WgConfig::parse(wg_config)?;
+        let mut config = WgConfig::parse(wg_config)?;
+        // wg-tls rides a TLS/TCP session; vanilla/awg dial the gateway over UDP.
+        // The kill switch + endpoint bypass are scoped to `endpoint` (the real
+        // gateway address) either way — for wg-tls that's the TLS relay's TCP
+        // port, and the WG device's own socket is loopback to the local bridge.
+        let proto = if tls.is_some() {
+            killswitch::Proto::Tcp
+        } else {
+            killswitch::Proto::Udp
+        };
 
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
 
@@ -197,6 +225,9 @@ impl TunnelManager {
         }
         if let Some(old_exit) = inner.exit_sidecar.take() {
             let _ = old_exit.kill();
+        }
+        if let Some(mut old_bridge) = inner.bridge.take() {
+            old_bridge.shutdown();
         }
         if let Some(old_exit_ip) = inner.exit_ip.take() {
             let _ = routing::clear_multihop_routes(&old_exit_ip);
@@ -218,11 +249,33 @@ impl TunnelManager {
         // engaged — otherwise the user's "off" is ignored AND the stale allow-rule
         // (pinned to the old endpoint) drops this tunnel's handshake.
         if kill_switch {
-            killswitch::engage(inner.backend, endpoint, IFACE)
+            killswitch::engage(inner.backend, endpoint, IFACE, proto)
                 .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
         } else {
             let _ = killswitch::disengage(inner.backend);
         }
+
+        // wg-tls: stand up the UDP<->TLS bridge to the gateway relay and point the
+        // WG device at its LOCAL udp endpoint. The bridge's TLS connection is made
+        // now, before the default route flips to the tunnel, and kept on the
+        // physical by the endpoint bypass below. `bridge` drops (shutting the TLS
+        // connection) on any error return before it's stored in `inner`.
+        let bridge = if let Some(tls) = tls.as_ref() {
+            match tlsbridge::ClientBridge::connect(&tls.server_addr, &tls.sni) {
+                Ok(b) => {
+                    config.endpoint = b.local_endpoint();
+                    Some(b)
+                }
+                Err(e) => {
+                    let _ = killswitch::disengage(inner.backend);
+                    inner.state = TunnelState::Error;
+                    inner.error = Some(e.to_string());
+                    return Err(e);
+                }
+            }
+        } else {
+            None
+        };
 
         let sidecar = match Sidecar::spawn(IFACE) {
             Ok(s) => s,
@@ -262,6 +315,7 @@ impl TunnelManager {
         }
 
         inner.sidecar = Some(sidecar);
+        inner.bridge = bridge; // keep the wg-tls bridge alive for the session
         inner.assigned_ip = Some(assigned_ip.to_string());
         inner.state = TunnelState::Up;
         inner.last_handshake = Some(now_unix());
@@ -300,6 +354,9 @@ impl TunnelManager {
         if let Some(old_exit) = inner.exit_sidecar.take() {
             let _ = old_exit.kill();
         }
+        if let Some(mut old_bridge) = inner.bridge.take() {
+            old_bridge.shutdown();
+        }
         if let Some(old_exit_ip) = inner.exit_ip.take() {
             let _ = routing::clear_multihop_routes(&old_exit_ip);
         }
@@ -315,11 +372,17 @@ impl TunnelManager {
         inner.error = None;
 
         // Kill switch allow-lists the entry endpoint only — the exit is reached
-        // *through* the entry tunnel, never directly from the host. Off → tear
-        // down any ruleset a prior session left engaged (see connect()).
+        // *through* the entry tunnel, never directly from the host. Multi-hop is
+        // vanilla UDP today (Stealth+multi-hop isn't wired), so proto is Udp. Off
+        // → tear down any ruleset a prior session left engaged (see connect()).
         if params.kill_switch {
-            killswitch::engage(inner.backend, params.entry_endpoint, IFACE_ENTRY)
-                .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+            killswitch::engage(
+                inner.backend,
+                params.entry_endpoint,
+                IFACE_ENTRY,
+                killswitch::Proto::Udp,
+            )
+            .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
         } else {
             let _ = killswitch::disengage(inner.backend);
         }
@@ -448,6 +511,10 @@ impl TunnelManager {
         if let Some(ep) = inner.endpoint.as_deref() {
             routing::remove_endpoint_bypass(strip_endpoint_port(ep));
         }
+        // Shut the wg-tls bridge (if any) down before we drop it below.
+        if let Some(mut bridge) = inner.bridge.take() {
+            bridge.shutdown();
+        }
         let _ = killswitch::disengage(inner.backend);
         let backend = inner.backend;
         *inner = Inner {
@@ -458,6 +525,7 @@ impl TunnelManager {
             error: None,
             sidecar: None,
             exit_sidecar: None,
+            bridge: None,
             exit_ip: None,
             backend,
             rx_bytes: 0,

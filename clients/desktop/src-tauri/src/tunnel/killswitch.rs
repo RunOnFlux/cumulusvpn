@@ -61,6 +61,33 @@ pub enum Backend {
     WindowsWfp,
 }
 
+/// Transport protocol of the WireGuard endpoint the kill switch must permit.
+/// Vanilla / awg dial the gateway over UDP; the wg-tls transport dials the TLS
+/// relay over TCP (the local UDP side is loopback, always allowed).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Proto {
+    Udp,
+    Tcp,
+}
+
+impl Proto {
+    /// pf (macOS) / nftables (Linux) spelling — both use lowercase `udp`/`tcp`.
+    fn pf_nft(self) -> &'static str {
+        match self {
+            Proto::Udp => "udp",
+            Proto::Tcp => "tcp",
+        }
+    }
+    /// Windows Firewall `-Protocol` spelling.
+    #[cfg(target_os = "windows")]
+    fn win(self) -> &'static str {
+        match self {
+            Proto::Udp => "UDP",
+            Proto::Tcp => "TCP",
+        }
+    }
+}
+
 /// Detect the firewall backend for the current OS at runtime.
 pub fn detect_backend() -> Backend {
     #[cfg(target_os = "macos")]
@@ -84,20 +111,25 @@ pub fn detect_backend() -> Backend {
 /// `interface` is the *logical* label (the real tun name isn't known yet — see
 /// the module docs); the rules match the tun by prefix (Linux/Windows) or ignore
 /// it and block on the physical (macOS).
-pub fn engage(backend: Backend, endpoint: &str, interface: &str) -> Result<(), TunnelError> {
+pub fn engage(
+    backend: Backend,
+    endpoint: &str,
+    interface: &str,
+    proto: Proto,
+) -> Result<(), TunnelError> {
     let _ = interface;
     let (endpoint_ip, endpoint_port) = split_endpoint(endpoint);
     match backend {
         #[cfg(target_os = "macos")]
-        Backend::MacosPf => engage_macos(endpoint_ip, endpoint_port),
+        Backend::MacosPf => engage_macos(endpoint_ip, endpoint_port, proto),
         #[cfg(target_os = "linux")]
-        Backend::LinuxNftables => engage_linux(endpoint_ip, endpoint_port),
+        Backend::LinuxNftables => engage_linux(endpoint_ip, endpoint_port, proto),
         #[cfg(target_os = "windows")]
-        Backend::WindowsWfp => engage_windows(endpoint_ip, endpoint_port),
+        Backend::WindowsWfp => engage_windows(endpoint_ip, endpoint_port, proto),
         // A backend that isn't native to this build: seam.
         #[allow(unreachable_patterns)]
         _ => {
-            let _ = (endpoint_ip, endpoint_port);
+            let _ = (endpoint_ip, endpoint_port, proto);
             Ok(())
         }
     }
@@ -146,15 +178,17 @@ fn strip_port(endpoint: &str) -> &str {
 // ---- macOS (pf) ------------------------------------------------------------
 
 #[cfg(target_os = "macos")]
-fn engage_macos(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelError> {
+fn engage_macos(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<(), TunnelError> {
     let phys = default_interface().ok_or(TunnelError::KillSwitch("no default interface"))?;
+    let proto_s = proto.pf_nft();
 
     // Our anchor: pass loopback + the WireGuard endpoint out the physical, block
     // every other plaintext egress on the physical. Tunnel traffic (out the tun)
-    // is never on the physical, so it flows untouched.
+    // is never on the physical, so it flows untouched. `proto` is udp for
+    // vanilla/awg, tcp for the wg-tls relay connection.
     let anchor_rules = format!(
         "pass quick on lo0 all\n\
-         pass out quick on {phys} proto udp to {endpoint_ip} port {endpoint_port} keep state\n\
+         pass out quick on {phys} proto {proto_s} to {endpoint_ip} port {endpoint_port} keep state\n\
          block drop out on {phys} all\n"
     );
     run_stdin(
@@ -207,11 +241,13 @@ fn default_interface() -> Option<String> {
 // ---- Linux (nftables) ------------------------------------------------------
 
 #[cfg(target_os = "linux")]
-fn engage_linux(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelError> {
+fn engage_linux(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<(), TunnelError> {
+    let proto_s = proto.pf_nft();
     // A dedicated inet table with a default-drop output chain: allow loopback,
     // the tunnel devices (cvpn* — logical names on Linux), and the WireGuard
     // endpoint handshake/data (the endpoint rule matches every packet to the
-    // gateway, so no conntrack exemption is needed); drop the rest.
+    // gateway, so no conntrack exemption is needed); drop the rest. `proto` is
+    // udp for vanilla/awg, tcp for the wg-tls relay connection.
     //
     // Deliberately NO `ct state established,related accept`: that would let every
     // connection open on the physical NIC *before* the tunnel came up keep
@@ -224,7 +260,7 @@ fn engage_linux(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelErro
          \t\ttype filter hook output priority 0; policy drop;\n\
          \t\toifname \"lo\" accept\n\
          \t\toifname \"cvpn*\" accept\n\
-         \t\tip daddr {endpoint_ip} udp dport {endpoint_port} accept\n\
+         \t\tip daddr {endpoint_ip} {proto_s} dport {endpoint_port} accept\n\
          \t}}\n\
          }}\n"
     );
@@ -241,7 +277,8 @@ fn disengage_linux() {
 // ---- Windows (Windows Firewall / NetSecurity) ------------------------------
 
 #[cfg(target_os = "windows")]
-fn engage_windows(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelError> {
+fn engage_windows(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<(), TunnelError> {
+    let proto_s = proto.win();
     // Clear any stale rules from a previous run, then add our allow rules BEFORE
     // flipping the default policy to block — so there's never a window where the
     // block is active without the exceptions in place.
@@ -256,7 +293,7 @@ fn engage_windows(endpoint_ip: &str, endpoint_port: &str) -> Result<(), TunnelEr
         "powershell",
         &["-NoProfile", "-Command", &format!(
             "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — endpoint' -Group '{GROUP}' \
-             -Direction Outbound -Action Allow -Protocol UDP -RemoteAddress {endpoint_ip} -RemotePort {endpoint_port} | Out-Null"
+             -Direction Outbound -Action Allow -Protocol {proto_s} -RemoteAddress {endpoint_ip} -RemotePort {endpoint_port} | Out-Null"
         )],
         "failed to add endpoint allow rule",
     )?;
