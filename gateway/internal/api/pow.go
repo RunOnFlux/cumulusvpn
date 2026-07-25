@@ -11,11 +11,20 @@ import (
 // "Anti-abuse on enroll").
 const powBits = 20
 
+// maxNonceLen bounds an accepted nonce. Every client searches a decimal counter
+// (≤20 digits), so this is enormously generous — but it is load-bearing for
+// memory: an accepted nonce is retained in the replay guard, and the request
+// body alone would otherwise permit a ~4 KB nonce, making each retained entry
+// ~40× larger than the per-entry budget maxPowSeen is sized against. Bounding
+// the input keeps that cap meaningful instead of trying to size a cap around
+// attacker-controlled entry sizes.
+const maxNonceLen = 64
+
 // checkPoW verifies a hashcash-style solution and guards against nonce replay.
 // The client searches for a nonce such that sha256(pubkey||nonce) has powBits
 // leading zero bits. Each accepted nonce is single-use.
 func (s *Server) checkPoW(pubkey, nonce string) bool {
-	if nonce == "" {
+	if nonce == "" || len(nonce) > maxNonceLen {
 		return false
 	}
 	h := sha256.New()
@@ -24,13 +33,20 @@ func (s *Server) checkPoW(pubkey, nonce string) bool {
 	if !hasLeadingZeroBits(h.Sum(nil), powBits) {
 		return false
 	}
-	// Replay guard: a valid nonce may be spent only once.
-	// POC: this map grows unbounded; bind nonces to a rotating server epoch
-	// (e.g. include a time-bucketed challenge in the hash) and GC old ones.
+	// Replay guard: a valid nonce may be spent only once, for at least one
+	// rotation period (GC swaps powSeen → powSeenPrev, so the guaranteed window
+	// is powGeneration..2×powGeneration rather than forever — that is what keeps
+	// the map bounded). Both generations are consulted; only the current one is
+	// written. Sound because a nonce is bound to its pubkey (hashed in AND part
+	// of the key here), re-enrolling an existing pubkey is idempotent, and
+	// allowEnroll rate-limits per source IP regardless.
 	key := pubkey + "|" + nonce
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, seen := s.powSeen[key]; seen {
+		return false
+	}
+	if _, seen := s.powSeenPrev[key]; seen { // nil map reads fine
 		return false
 	}
 	s.powSeen[key] = struct{}{}

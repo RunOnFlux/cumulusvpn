@@ -135,15 +135,50 @@ func run() error {
 	}
 
 	// --- WG-over-TLS "stealth" listener: additive, env-gated (docs/15) ---
-	// A self-signed TLS relay in front of the vanilla WG device (looks like
-	// HTTPS, beats UDP-blocking). No own device — it relays into the vanilla WG
-	// listener, so an existing enrollment works. Off by default.
+	// A self-signed TLS relay in front of a WG device (looks like HTTPS, beats
+	// UDP-blocking). Off by default. Two shapes:
+	//
+	//   CVPN_TLS_PREMIUM=0 (default) — the relay fronts the VANILLA device, so
+	//     any existing enrollment works and the transport is open to everyone.
+	//     This is the standard group, where wg-tls rides the free TCP side of
+	//     51820 and costs nothing.
+	//   CVPN_TLS_PREMIUM=1 — the relay fronts a DEDICATED device whose peer set
+	//     holds only entitled keys, reserving the scarce 443 stealth tier for
+	//     paying users. The relay bridges opaque WireGuard frames and can't read
+	//     the peer key, so gating has to live in the device's peer set: a free
+	//     user completes TLS but never the inner WG handshake. That device's UDP
+	//     port is container-internal (never in a Flux spec's ports[]), so the
+	//     relay is the only way in.
 	if cfg.TLSEnable {
 		cert, err := tlsrelay.SelfSignedCert(cfg.TLSSNI)
 		if err != nil {
 			return err
 		}
-		relay := tlsrelay.NewRelay(config.WGListenPort, cert)
+		// Which device the relay bridges into, and how it's advertised.
+		relayWGPort := config.WGListenPort
+		params := map[string]string{"sni": cfg.TLSSNI}
+		var tlsDev *wg.Device
+		if cfg.TLSPremium {
+			// Same server identity as the other devices (share the loaded key —
+			// never re-load it, or an unwritable /data mints a second identity).
+			tlsDev, err = wg.NewWithKey(config.WGTLSPremiumPort, serverKey)
+			if err != nil {
+				return err
+			}
+			defer tlsDev.Close()
+			// Its own netstack forwarder (handlers are per-stack), sharing the
+			// limiter so per-peer rate limits stay global across transports.
+			tlsFwd := wg.NewForwarder(tlsDev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
+			tlsFwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
+			if err := tlsFwd.Start(); err != nil {
+				return err
+			}
+			relayWGPort = config.WGTLSPremiumPort
+			// Advertised to everyone (/v1/info is unauthenticated) but tagged, so
+			// clients skip it for free users instead of failing a handshake.
+			params["tier"] = "premium"
+		}
+		relay := tlsrelay.NewRelay(relayWGPort, cert)
 		// Bind on the TLS port directly. Do NOT route this through addr() —
 		// CVPN_BIND is the control-API's dev override (a full host:port) and
 		// reusing it verbatim here would put the relay and the API on the same
@@ -155,13 +190,16 @@ func run() error {
 			}
 		}()
 		obfsTransports = append(obfsTransports, api.ExtraTransport{
+			Device:      tlsDev, // nil unless premium-gated
+			PremiumOnly: cfg.TLSPremium,
 			Advertise: api.Transport{
 				Type:   "wg-tls",
 				Port:   cfg.TLSPort,
-				Params: map[string]string{"sni": cfg.TLSSNI},
+				Params: params,
 			},
 		})
-		log.Printf("gateway: WG-over-TLS relay up on :%d/tcp (sni=%q)", cfg.TLSPort, cfg.TLSSNI)
+		log.Printf("gateway: WG-over-TLS relay up on :%d/tcp (sni=%q premium=%v)",
+			cfg.TLSPort, cfg.TLSSNI, cfg.TLSPremium)
 	}
 
 	// --- entitlement engine (chain scanner) ---
@@ -176,14 +214,18 @@ func run() error {
 	}
 	go ent.Run(ctx)
 
-	// Reconcile every enrolled peer's tier with chain state periodically.
-	// entitle keys by payment code (hash of pubkey), the limiter keys by
-	// pubkey, so we bridge here rather than in the OnChange callback.
-	go syncTiers(ctx, dev, ent, lim)
-
 	// --- control API ---
 	srv := api.New(cfg, dev, ent, lim, info, nodePublicIP, obfsTransports...)
 	go srv.SampleLoad(ctx) // live throughput → real /v1/info load
+	go srv.GC(ctx)         // bound the enroll-rate-limit + PoW-replay maps
+
+	// Reconcile every enrolled peer's tier with chain state periodically.
+	// entitle keys by payment code (hash of pubkey), the limiter keys by
+	// pubkey, so we bridge here rather than in the OnChange callback. Runs after
+	// the API exists because it also reconciles membership of any premium-gated
+	// transport device (a peer that pays after enrolling must be added; an
+	// expired one removed).
+	go syncTiers(ctx, dev, ent, lim, srv)
 	httpSrv := &http.Server{
 		Addr:              addr(config.APIPort),
 		Handler:           srv.Handler(),
@@ -206,10 +248,14 @@ func run() error {
 	return nil
 }
 
-// syncTiers flips each enrolled peer's limiter to match chain entitlement.
-// Runs on the same cadence as the block poll so a confirmed payment unlocks
-// premium within one cycle without any reconnect (docs/03-gateway.md).
-func syncTiers(ctx context.Context, dev *wg.Device, ent *entitle.Engine, lim *limiter.Manager) {
+// syncTiers flips each enrolled peer's limiter to match chain entitlement, and
+// reconciles membership of any premium-gated transport device. Runs on the same
+// cadence as the block poll so a confirmed payment unlocks premium — both the
+// rate limit and premium-only transports — within one cycle without any
+// reconnect (docs/03-gateway.md). It also handles the reverse: entitlement
+// expiry is eventless (Tier re-evaluates against the clock), so polling is the
+// only way a lapsed subscription loses premium access.
+func syncTiers(ctx context.Context, dev *wg.Device, ent *entitle.Engine, lim *limiter.Manager, srv *api.Server) {
 	t := time.NewTicker(15 * time.Second)
 	defer t.Stop()
 	for {
@@ -217,9 +263,12 @@ func syncTiers(ctx context.Context, dev *wg.Device, ent *entitle.Engine, lim *li
 		case <-ctx.Done():
 			return
 		case <-t.C:
+			// dev is the vanilla device — the allocation authority every enroll
+			// hits first, so its peer list is the superset of all transports.
 			for _, pk := range dev.Peers() {
 				premium, _ := ent.Tier(pk)
 				lim.SetTier(pk, premium)
+				srv.SyncPremiumPeers(pk, premium)
 			}
 		}
 	}

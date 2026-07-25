@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { invoke } from '@tauri-apps/api/core';
-import { discoverGateways, enroll } from '@cumulusvpn/core';
+import { discoverGateways, enroll, status } from '@cumulusvpn/core';
 import type { EnrollResponse, GatewayInfo, Keypair } from '@cumulusvpn/core';
 import type * as CumulusCore from '@cumulusvpn/core';
 import { discoverCountries, establish, establishMultihop, teardown } from './session';
@@ -9,7 +9,10 @@ import type { CountryOption } from './session';
 // Keep everything real except the two network primitives session orchestrates.
 vi.mock('@cumulusvpn/core', async (importOriginal) => {
   const actual = await importOriginal<typeof CumulusCore>();
-  return { ...actual, discoverGateways: vi.fn(), enroll: vi.fn() };
+  // `status` is mocked too: establish() consults the gateway being dialled for
+  // its authoritative tier whenever that gateway advertises a premium-gated
+  // transport, and an unmocked call would hit the network.
+  return { ...actual, discoverGateways: vi.fn(), enroll: vi.fn(), status: vi.fn() };
 });
 
 // Exercise the production (in-Tauri) path: isTauri()=true so establish uses the
@@ -31,6 +34,7 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 const mockedDiscover = vi.mocked(discoverGateways);
 const mockedEnroll = vi.mocked(enroll);
+const mockedStatus = vi.mocked(status);
 
 function gateway(overrides: Partial<GatewayInfo>): GatewayInfo {
   return {
@@ -54,6 +58,7 @@ const keypair: Keypair = { publicKey: 'PUB', privateKey: 'PRIV' };
 beforeEach(() => {
   mockedDiscover.mockReset();
   mockedEnroll.mockReset();
+  mockedStatus.mockReset();
 });
 
 afterEach(async () => {
@@ -156,6 +161,110 @@ describe('establish', () => {
     });
     // wg-tls carries no [Interface] obfs — the config must be vanilla-shaped.
     expect(String((call?.[1] as { wgConfig: string }).wgConfig)).not.toContain('Jc =');
+  });
+
+  it('premium-gated wg-tls: a FREE user degrades to awg instead of a doomed handshake', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    // The 443 stealth tier the gateway reserves for paying users, alongside the
+    // ungated awg it also advertises.
+    const gatedCountry = {
+      ...country,
+      transports: [
+        { type: 'wg-tls' as const, port: 443, params: { tier: 'premium', sni: 'x' } },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+
+    // The gateway that ENFORCES the gate is the authority on the tier.
+    mockedStatus.mockResolvedValue({ tier: 'free', paid_until: '', bytes_used: 0 });
+
+    await establish(gatedCountry, keypair, true, 'stealth', 'free');
+
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect');
+    const args = call?.[1] as { endpoint: string; wgConfig: string; tlsServerAddr: string | null };
+    expect(args.endpoint).toMatch(/:51821$/); // dialled awg, not the 443 relay
+    expect(args.tlsServerAddr).toBeNull(); // no TLS bridge for a free user
+    expect(args.wgConfig).toContain('Jc = 4'); // still obfuscated — Stealth holds
+  });
+
+  it('premium-gated wg-tls: the DIALLED gateway is authoritative, overriding a stale cached tier', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    const gatedCountry = {
+      ...country,
+      transports: [
+        { type: 'wg-tls' as const, port: 443, params: { tier: 'premium', sni: 'x' } },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+    // A user who just paid: the cached fleet-wide tier still says 'free' (cold
+    // launch / a node that hasn't caught up), but the gateway we're dialling has
+    // seen the payment. Trusting the stale cache would silently sell them the
+    // weaker transport; trusting a stale 'premium' would hang the handshake.
+    mockedStatus.mockResolvedValue({ tier: 'premium', paid_until: '', bytes_used: 0 });
+
+    await establish(gatedCountry, keypair, true, 'stealth', 'free');
+
+    expect(mockedStatus).toHaveBeenCalledWith(
+      '198.51.100.2', // asked the gateway being dialled, not some other node
+      'PUB',
+      expect.objectContaining({ signPubKey: 'sign-de' }),
+    );
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect');
+    expect(call?.[1]).toMatchObject({ endpoint: '198.51.100.2:443', tlsSni: 'x' });
+  });
+
+  it('premium-gated wg-tls: a failed tier probe falls back to the cached value, never hangs', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    const gatedCountry = {
+      ...country,
+      transports: [
+        { type: 'wg-tls' as const, port: 443, params: { tier: 'premium', sni: 'x' } },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+    mockedStatus.mockRejectedValue(new Error('gateway unreachable'));
+
+    await establish(gatedCountry, keypair, true, 'stealth', 'free');
+
+    // Conservative: a weaker-but-working transport beats a dead one.
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect');
+    expect((call?.[1] as { endpoint: string }).endpoint).toMatch(/:51821$/);
+  });
+
+  it('does NOT probe the gateway when nothing it advertises is gated', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    mockedStatus.mockClear();
+    const ungated = {
+      ...country,
+      transports: [{ type: 'awg' as const, port: 51821, params: { jc: '4' } }],
+    };
+
+    await establish(ungated, keypair, true, 'stealth', 'free');
+
+    // The extra round-trip is only paid on the rare gated path.
+    expect(mockedStatus).not.toHaveBeenCalled();
+  });
+
+  it('premium-gated wg-tls: a PREMIUM user gets the 443 TLS tier', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    const gatedCountry = {
+      ...country,
+      transports: [
+        { type: 'wg-tls' as const, port: 443, params: { tier: 'premium', sni: 'x' } },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+
+    mockedStatus.mockResolvedValue({ tier: 'premium', paid_until: '', bytes_used: 0 });
+
+    await establish(gatedCountry, keypair, true, 'stealth', 'premium');
+
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect');
+    expect(call?.[1]).toMatchObject({ endpoint: '198.51.100.2:443', tlsSni: 'x' });
   });
 });
 

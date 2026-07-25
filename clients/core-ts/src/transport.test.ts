@@ -100,6 +100,55 @@ describe('requireTransport (never silently downgrades)', () => {
   });
 });
 
+describe('premium-gated transports (params.tier)', () => {
+  // The 443 stealth tier: the gateway advertises it to everyone but keeps free
+  // keys out of the listener's peer set, so the client must skip it rather than
+  // complete TLS and then fail an opaque inner handshake.
+  const premiumTls: Transport = {
+    type: 'wg-tls',
+    port: 443,
+    params: { tier: 'premium', sni: 'cdn.example.net' },
+  };
+
+  it('drops a premium transport for a free user, keeps it for a premium user', () => {
+    expect(transportFallbackChain([premiumTls], 'stealth', ALL, 'free')).toHaveLength(0);
+    expect(
+      transportFallbackChain([premiumTls], 'stealth', ALL, 'premium').map((t) => t.type),
+    ).toEqual(['wg-tls']);
+  });
+
+  it('degrades a free Stealth user to the ungated awg instead of failing', () => {
+    // The whole point of gating in the client: Stealth still works, just weaker.
+    expect(requireTransport([premiumTls, awg], 'stealth', ALL, 'free').type).toBe('awg');
+    // A premium user gets the preferred wg-tls.
+    expect(requireTransport([premiumTls, awg], 'stealth', ALL, 'premium').type).toBe('wg-tls');
+  });
+
+  it('never turns Auto into an error — a free user falls to vanilla wg', () => {
+    expect(requireTransport([wg, premiumTls], 'auto', ALL, 'free').type).toBe('wg');
+  });
+
+  it('throws an UPGRADE message when the only fit is premium-gated', () => {
+    // "Pick another location" is wrong advice when every location gates it.
+    expect(() => requireTransport([premiumTls], 'stealth', ALL, 'free')).toThrow(/Premium-only/);
+    // ...but a genuinely empty offering keeps the location-specific message.
+    expect(() => requireTransport([wg], 'stealth', ALL, 'free')).toThrow(/Pick another location/);
+  });
+
+  it('defaults to free (fail-closed) when the caller supplies no tier', () => {
+    expect(selectTransport([premiumTls, awg], 'stealth', ALL)).toEqual(awg);
+  });
+
+  it('never gates a legacy (0.1.0) gateway, which advertises nothing', () => {
+    expect(requireTransport(undefined, 'auto', ALL, 'free').type).toBe('wg');
+  });
+
+  it('fails OPEN on an unknown gate value so old clients survive a future tier', () => {
+    const future: Transport = { type: 'awg', port: 51821, params: { tier: 'enterprise' } };
+    expect(selectTransport([future], 'stealth', ALL, 'free')).toEqual(future);
+  });
+});
+
 describe('obfsForTransport', () => {
   it('returns the params for an awg transport', () => {
     expect(obfsForTransport({ type: 'awg', port: 51821, params: { jc: '4' } })).toEqual({

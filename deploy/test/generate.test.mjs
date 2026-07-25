@@ -69,6 +69,21 @@ test('generate.mjs (open, default) expands countries.yaml into 12 beta v8 OPEN s
       'stealth group runs the TLS relay on 443',
     );
     assert.equal(tlsDe.geolocation[0], 'acEU_DE', 'stealth group stays in its country');
+
+    // The scarce 443 tier is premium-gated; the standard group's free-side
+    // wg-tls is NOT (gating it would cost free users stealth for no saving).
+    assert.ok(tlsEnv.includes('CVPN_TLS_PREMIUM=1'), '443 stealth tier is premium-gated');
+    assert.ok(!deEnv.includes('CVPN_TLS_PREMIUM=1'), 'standard wg-tls stays open to everyone');
+
+    // The gateway's premium WG device is container-internal: publishing 51822
+    // would let clients bypass the TLS relay and defeat the gate.
+    for (const f of onchain) {
+      const spec = JSON.parse(readFileSync(join(onchainDir, f), 'utf8'));
+      for (const comp of spec.compose) {
+        assert.ok(!comp.ports.includes(51822), `${f}: 51822 must never be published`);
+        assert.ok(!comp.containerPorts.includes(51822), `${f}: 51822 must never be published`);
+      }
+    }
   } finally {
     cleanup(sb);
   }

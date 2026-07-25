@@ -106,6 +106,16 @@ gateway omits the field entirely** — clients then assume vanilla WireGuard on 
 so old gateways and old apps keep interoperating with no flag-day. The array rides the
 signed body, so it is covered by the `X-CVPN-Signature` with no separate signing.
 
+**Reserved param — `params.tier`.** `"premium"` marks a transport as entitled-users-only
+(the scarce 443 stealth tier). `/v1/info` is unauthenticated, so the gateway advertises
+it to everyone and *enforces* separately: that listener fronts a WireGuard device whose
+peer set holds only paid keys, so a free client can reach it but never completes the
+inner handshake. Clients must therefore **skip** a `tier: "premium"` transport unless
+`/v1/status` reports `premium`, falling back to the next-best transport (e.g. `awg`)
+rather than dialling one they can't finish. Any other value — or an absent `params.tier` —
+is ungated; unknown values fail **open**, so an old client still works against a gateway
+that later introduces further tiers.
+
 ## Discovery (no server of ours)
 
 1. For each spec name (`cumulusvpnde`, `cumulusvpnus`, … from the signed directory): `GET

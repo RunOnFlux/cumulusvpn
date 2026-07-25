@@ -12,7 +12,7 @@
  * gateways and old apps keep interoperating with no flag-day.
  */
 import { WG_PORT } from './types.js';
-import type { Transport } from './types.js';
+import type { Tier, Transport } from './types.js';
 
 /**
  * How aggressively to trade speed for un-blockability.
@@ -52,6 +52,37 @@ function isValidPort(port: number): boolean {
 }
 
 /**
+ * Whether `tier` may use a transport, honouring the gateway's `params.tier`
+ * gate. A transport tagged `tier: 'premium'` (the scarce 443 stealth tier) is
+ * reserved for paying users; everything else is ungated.
+ *
+ * The gateway ENFORCES this by keeping free keys out of the gated listener's
+ * peer set — this filter is the client half, so a free user quietly gets the
+ * next-best transport instead of completing TLS and then failing an inner
+ * handshake with no diagnostic. Unknown gate values (a future tier) fail OPEN,
+ * so an old client keeps working against a newer gateway.
+ */
+function tierAllows(t: Transport, tier: Tier): boolean {
+  return t.params?.tier !== 'premium' || tier === 'premium';
+}
+
+/**
+ * Whether a gateway advertises any entitlement-gated transport — i.e. whether
+ * the caller's tier can actually change which transport is chosen here.
+ *
+ * Callers use this to decide when a cached, fleet-wide tier is not good enough.
+ * Entitlement is chain-derived and each gateway evaluates it independently, so
+ * a tier learned from gateway A can disagree with gateway B that actually
+ * enforces the gate — and the cost of guessing high is not a clean error but a
+ * TLS session that connects and then hangs, because the relay bridges opaque
+ * WireGuard frames into a device the key isn't a member of. When this returns
+ * true, resolve the tier against THIS gateway before selecting.
+ */
+export function hasPremiumTransport(transports: readonly Transport[] | undefined): boolean {
+  return (transports ?? []).some((t) => t.params?.tier === 'premium');
+}
+
+/**
  * Ordered transports to attempt for a gateway under `mode` — filtered to those
  * this client implements and the mode permits, most-preferred first. Empty when
  * the gateway offers nothing the mode allows (e.g. Stealth against a
@@ -60,15 +91,26 @@ function isValidPort(port: number): boolean {
  * @param transports - The gateway's advertised `/v1/info.transports` (or undefined for 0.1.0).
  * @param mode - The user's {@link TransportMode}.
  * @param implemented - Slugs this client can dial (defaults to {@link IMPLEMENTED_TRANSPORTS}).
+ * @param tier - The user's entitlement, which gates `params.tier: 'premium'`
+ *   transports. Defaults to `'free'` — fail-closed, so a caller that hasn't been
+ *   taught about tiers can never dial a transport it may not be entitled to
+ *   (which would fail as an opaque handshake timeout rather than a clean skip).
  */
 export function transportFallbackChain(
   transports: readonly Transport[] | undefined,
   mode: TransportMode,
   implemented: ReadonlySet<string> = IMPLEMENTED_TRANSPORTS,
+  tier: Tier = 'free',
 ): Transport[] {
   const order = PREFERENCE[mode];
   return advertisedOrLegacy(transports)
-    .filter((t) => implemented.has(t.type) && order.includes(t.type) && isValidPort(t.port))
+    .filter(
+      (t) =>
+        implemented.has(t.type) &&
+        order.includes(t.type) &&
+        isValidPort(t.port) &&
+        tierAllows(t, tier),
+    )
     .sort((a, b) => order.indexOf(a.type) - order.indexOf(b.type));
 }
 
@@ -87,8 +129,9 @@ export function selectTransport(
   transports: readonly Transport[] | undefined,
   mode: TransportMode,
   implemented: ReadonlySet<string> = IMPLEMENTED_TRANSPORTS,
+  tier: Tier = 'free',
 ): Transport | null {
-  return transportFallbackChain(transports, mode, implemented)[0] ?? null;
+  return transportFallbackChain(transports, mode, implemented, tier)[0] ?? null;
 }
 
 /**
@@ -104,9 +147,22 @@ export function requireTransport(
   transports: readonly Transport[] | undefined,
   mode: TransportMode,
   implemented: ReadonlySet<string> = IMPLEMENTED_TRANSPORTS,
+  tier: Tier = 'free',
 ): Transport {
-  const t = selectTransport(transports, mode, implemented);
+  const t = selectTransport(transports, mode, implemented, tier);
   if (!t) {
+    // Distinguish "nothing here fits your mode" from "the only thing that fits
+    // is Premium-only": telling a free user to pick another location is wrong
+    // advice when every location gates it. Re-runs the chain once, on the
+    // failure path only.
+    if (
+      tier !== 'premium' &&
+      transportFallbackChain(transports, mode, implemented, 'premium').length > 0
+    ) {
+      throw new Error(
+        "This location's DPI-resistant transport is Premium-only. Upgrade, or switch to Auto.",
+      );
+    }
     if (mode === 'stealth') {
       throw new Error(
         'Stealth mode: this location offers no DPI-resistant transport. Pick another location, or switch to Auto.',

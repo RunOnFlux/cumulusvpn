@@ -12,6 +12,7 @@ import {
   buildWgConfig,
   discoverGateways,
   enroll,
+  hasPremiumTransport,
   obfsForTransport,
   requireTransport,
   selectHops,
@@ -23,6 +24,7 @@ import type {
   Keypair,
   RouteStyle,
   StatusResponse,
+  Tier,
   Transport,
   TransportMode,
 } from '@cumulusvpn/core';
@@ -215,6 +217,42 @@ export async function discoverCountries(fetchImpl?: typeof fetch): Promise<Count
   return (await discoverFleetAndCountries(fetchImpl)).countries;
 }
 
+/**
+ * The entitlement tier to use when selecting a transport for `country`, resolved
+ * against that gateway itself when it advertises a premium-gated transport.
+ *
+ * The gate is enforced per-gateway (the gated listener's peer set), but the
+ * cached tier comes from a poll that may target a different node, may not have
+ * resolved yet on a cold launch, or may have failed. Acting on a wrong
+ * "premium" is the expensive direction: TLS connects and the inner WireGuard
+ * handshake then hangs with no per-transport fallback. So when it matters, ask
+ * the node that decides. Returns `cached` when nothing here is gated or the
+ * probe fails (conservative: a weaker-but-working transport beats a dead one).
+ */
+async function resolveGatewayTier(
+  gw: {
+    readonly gatewayIp: string;
+    readonly signPubKey: string;
+    readonly transports?: readonly Transport[];
+  },
+  publicKey: string,
+  cached: Tier,
+  fetchImpl?: typeof fetch,
+): Promise<Tier> {
+  if (!hasPremiumTransport(gw.transports) || !isTauri()) {
+    return cached;
+  }
+  try {
+    const s = await entitlementStatus(gw.gatewayIp, publicKey, {
+      ...(fetchImpl ? { fetchImpl } : {}),
+      ...(gw.signPubKey ? { signPubKey: gw.signPubKey } : {}),
+    });
+    return s.tier;
+  } catch {
+    return cached;
+  }
+}
+
 /** Per-gateway enroll options: attach the pinned sign key + any fetch override. */
 function enrollOptsFor(country: CountryOption, fetchImpl?: typeof fetch) {
   return {
@@ -264,6 +302,7 @@ export async function establish(
   keypair: Keypair,
   killSwitch: boolean,
   transportMode: TransportMode = 'auto',
+  tier: Tier = 'free',
   fetchImpl?: typeof fetch,
 ): Promise<EstablishResult> {
   // Transport negotiation (docs/15): pick the transport for the mode this
@@ -272,7 +311,12 @@ export async function establish(
   // `requireTransport` THROWS rather than falling back to vanilla, so Stealth
   // never silently downgrades to fingerprintable plain WG (Auto still resolves
   // to :51820 — vanilla is its floor). `obfs` is set only for `awg`.
-  const transport = requireTransport(country.transports, transportMode, IMPLEMENTED_TRANSPORTS);
+  const transport = requireTransport(
+    country.transports,
+    transportMode,
+    IMPLEMENTED_TRANSPORTS,
+    await resolveGatewayTier(country, keypair.publicKey, tier, fetchImpl),
+  );
 
   const enrollOpts = enrollOptsFor(country, fetchImpl);
   const reply = await enrollOrMock(country.gatewayIp, keypair.publicKey, enrollOpts);
@@ -345,6 +389,7 @@ export async function establishMultihop(
   keypair: Keypair,
   killSwitch: boolean,
   transportMode: TransportMode = 'auto',
+  tier: Tier = 'free',
   fetchImpl?: typeof fetch,
 ): Promise<MultihopResult> {
   // Hop selection needs the FULL fleet (several gateways per country); the
@@ -371,7 +416,22 @@ export async function establishMultihop(
   // Resolved BEFORE enrolling so a refusal doesn't spend an enrollment.
   const entryTransport =
     transportMode === 'stealth'
-      ? requireTransport(hops.entry.transports, 'stealth', new Set(['awg']))
+      ? requireTransport(
+          hops.entry.transports,
+          'stealth',
+          new Set(['awg']),
+          // Same rule as single-hop: the entry gateway enforces its own gate.
+          await resolveGatewayTier(
+            {
+              gatewayIp: hops.entry.ip,
+              signPubKey: hops.entry.sign_pubkey,
+              ...(hops.entry.transports ? { transports: hops.entry.transports } : {}),
+            },
+            keypair.publicKey,
+            tier,
+            fetchImpl,
+          ),
+        )
       : undefined;
 
   // Enroll the SAME key K at both gateways — one payment, premium follows K.

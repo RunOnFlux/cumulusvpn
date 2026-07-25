@@ -18,6 +18,7 @@ import {
   buildWgConfig,
   enroll,
   generateKeypair,
+  hasPremiumTransport,
   obfsForTransport,
   paymentCode,
   paymentMemo,
@@ -267,6 +268,12 @@ export function useVpn(): VpnModel & VpnActions {
   // re-dialling the dead one. Entries expire; a manual disconnect clears them.
   const avoidRef = useRef<Map<string, number>>(new Map());
   const AVOID_MS = 90_000;
+  // Entitlement tier for TRANSPORT SELECTION (premium-gated transports). Held in
+  // a ref, not read from the `tier` state: putting tier in connect's dep array
+  // would give `connect` a new identity on every 30s poll, and the
+  // auto-reconnect effect depends on `connect` — its cleanup would clear the
+  // pending retry timer, silently starving a drop of its reconnect.
+  const tierRef = useRef<Tier>('free');
 
   /** Mark a gateway IP as recently-failed so failover skips it for a while. */
   const avoidGateway = useCallback((ip: string | null): void => {
@@ -635,7 +642,17 @@ export function useVpn(): VpnModel & VpnActions {
         return;
       }
       const results = await Promise.all(
-        sample.map((g) => fetchStatus(g.ip, pubkey).catch(() => null)),
+        // Pin each gateway's signing key, as enroll does — this binds /v1/status
+        // to the key learned at discovery (defeating a later key swap). It is
+        // NOT a defence against a node lying about its own tier: that key comes
+        // from the node's own /v1/info, so it signs its own answer. This polled
+        // tier is for display only; a gated transport is decided against the
+        // gateway being dialled (see resolveGatewayTier).
+        sample.map((g) =>
+          fetchStatus(g.ip, pubkey, g.sign_pubkey ? { signPubKey: g.sign_pubkey } : {}).catch(
+            () => null,
+          ),
+        ),
       );
       if (!alive) {
         return;
@@ -643,9 +660,11 @@ export function useVpn(): VpnModel & VpnActions {
       const premiumResult = results.find((r) => r?.tier === 'premium');
       if (premiumResult) {
         setTier('premium');
+        tierRef.current = 'premium';
         setPaidUntil(premiumResult.paid_until);
       } else if (results.some((r) => r)) {
         setTier('free');
+        tierRef.current = 'free';
         setPaidUntil(null);
       }
     };
@@ -691,6 +710,7 @@ export function useVpn(): VpnModel & VpnActions {
           keypair,
           routeStyle,
           transportMode,
+          tier: tierRef.current,
           gateways: availableGateways(),
           entryCountry: entryCode ?? autoEntry ?? null,
           exitCountry: exitCode,
@@ -729,7 +749,19 @@ export function useVpn(): VpnModel & VpnActions {
       // Stealth-on-vanilla request fails fast without spending a PoW/enrollment
       // or marking the gateway bad (it's not a node failure). `obfs` is set only
       // for `awg`.
-      const transport = requireTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS);
+      // Entitlement is chain-derived and each gateway evaluates it on its own
+      // schedule, so the fleet-wide polled tier can disagree with the node that
+      // actually enforces the gate — and guessing wrong doesn't error, it hangs
+      // (TLS connects, the inner handshake never does). When THIS gateway gates
+      // a transport, ask THIS gateway. One request, only on the gated path;
+      // failure leaves the conservative cached value.
+      const gwTier = await resolveGatewayTier(gw, keypair.publicKey, tierRef.current);
+      const transport = requireTransport(
+        gw.transports,
+        transportMode,
+        IMPLEMENTED_TRANSPORTS,
+        gwTier,
+      );
       try {
         const resp = await enroll(gw.ip, keypair.publicKey, {
           signPubKey: gw.sign_pubkey,
@@ -943,6 +975,35 @@ export function useVpn(): VpnModel & VpnActions {
 }
 
 /**
+ * The entitlement tier to use when selecting a transport for `gw`, resolved
+ * against `gw` itself when it advertises a premium-gated transport.
+ *
+ * The gate is enforced per-gateway (the gated listener's peer set), but the
+ * cached tier is polled fleet-wide, so the two can disagree — a payment one node
+ * has seen and another hasn't, or simply a tier we never managed to poll. Acting
+ * on a wrong "premium" is the expensive direction: the TLS session connects and
+ * the inner WireGuard handshake then hangs until the connect watchdog fires,
+ * with no per-transport fallback. So when it matters, ask the node that decides.
+ * Returns `cached` unchanged when nothing here is gated, or when the probe fails
+ * (conservative: a weaker-but-working transport beats a dead one).
+ */
+async function resolveGatewayTier(gw: GatewayInfo, publicKey: string, cached: Tier): Promise<Tier> {
+  if (!hasPremiumTransport(gw.transports)) {
+    return cached;
+  }
+  try {
+    const s = await fetchStatus(
+      gw.ip,
+      publicKey,
+      gw.sign_pubkey ? { signPubKey: gw.sign_pubkey } : {},
+    );
+    return s.tier;
+  } catch {
+    return cached;
+  }
+}
+
+/**
  * Bring up a multi-hop route: enroll the *same* key `K` at both the entry and
  * exit gateways (one payment covers both — entitlement follows the key on every
  * gateway, docs/11), resolve the ordered hops with core `selectHops`, render the
@@ -953,6 +1014,8 @@ async function connectMultihop(args: {
   keypair: Keypair;
   routeStyle: RouteStyle;
   transportMode: TransportMode;
+  /** Entitlement, for premium-gated transports on the entry hop. */
+  tier: Tier;
   gateways: readonly GatewayInfo[];
   entryCountry: string | null;
   exitCountry: string | null;
@@ -965,6 +1028,7 @@ async function connectMultihop(args: {
     keypair,
     routeStyle,
     transportMode,
+    tier,
     gateways,
     entryCountry,
     exitCountry,
@@ -1004,7 +1068,13 @@ async function connectMultihop(args: {
   // resolved BEFORE enrolling so a refusal doesn't spend a PoW/enrollment.
   const entryTransport =
     transportMode === 'stealth'
-      ? requireTransport(hops.entry.transports, 'stealth', new Set(['awg']))
+      ? requireTransport(
+          hops.entry.transports,
+          'stealth',
+          new Set(['awg']),
+          // Same rule as single-hop: the entry gateway enforces its own gate.
+          await resolveGatewayTier(hops.entry, keypair.publicKey, tier),
+        )
       : undefined;
 
   // Enroll key K at both hops. Same key → premium at both automatically.

@@ -81,6 +81,13 @@ type Info struct {
 type ExtraTransport struct {
 	Device    *wg.Device
 	Advertise Transport
+	// PremiumOnly restricts Device's peer set to entitled (premium) keys — the
+	// enforcement behind a premium-gated transport (docs/15-transports.md). A
+	// free key is simply never mirrored here, so it can reach the listener but
+	// never completes the inner WireGuard handshake. Membership is reconciled as
+	// entitlement changes (a peer that pays after enrolling is added, an expired
+	// one removed) by the gateway's syncTiers loop via SyncPremiumPeers.
+	PremiumOnly bool
 }
 
 // Server is the control API.
@@ -97,7 +104,12 @@ type Server struct {
 	mu       sync.Mutex
 	nextHost uint32               // rolling host part for 10.8.x.y assignment
 	enrollIP map[string]time.Time // per-IP last enroll (rate limit)
-	powSeen  map[string]struct{}  // spent PoW nonces (replay guard)
+	powSeen  map[string]struct{}  // spent PoW nonces, current generation
+	// powSeenPrev is the previous nonce generation, kept readable so a nonce
+	// stays rejected across a rotation (see GC). Rotation is what bounds the
+	// replay guard's memory without timestamping every entry.
+	powSeenPrev  map[string]struct{}
+	powRotatedAt time.Time
 
 	// enrollMu serializes the capacity-check → assign → AddPeer(+mirror) section
 	// of handleEnroll so two concurrent enrolls for the SAME pubkey (client
@@ -126,6 +138,8 @@ func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.M
 		nextHost:     2, // .0.1 is the gateway, start clients at .0.2
 		enrollIP:     make(map[string]time.Time),
 		powSeen:      make(map[string]struct{}),
+		powSeenPrev:  make(map[string]struct{}),
+		powRotatedAt: time.Now(),
 	}
 	s.signKey = deriveSignKey(dev.PrivateKey())
 	s.info.ServerPubKey = dev.PublicKey()
@@ -249,17 +263,23 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 	// For a REUSED enrollment we don't roll back: the peer was already working on
 	// every device before this call, and a transient mirror failure shouldn't
 	// deregister it — a retry re-syncs.
+	// A PremiumOnly transport takes only entitled keys — `premium` was already
+	// resolved above for the capacity guard, so no extra entitlement lookup. A
+	// free key is skipped (not an error): it can reach the listener but can't
+	// complete the inner WG handshake. syncTiers adds it later if they pay.
 	for i, e := range s.extra {
-		if e.Device == nil {
+		if e.Device == nil || (e.PremiumOnly && !premium) {
 			continue
 		}
 		if err := e.Device.AddPeer(req.PubKey, assigned); err != nil {
 			if !existed {
 				_ = s.dev.RemovePeer(req.PubKey)
+				// Roll back only devices we actually added to (same predicate).
 				for _, prior := range s.extra[:i] {
-					if prior.Device != nil {
-						_ = prior.Device.RemovePeer(req.PubKey)
+					if prior.Device == nil || (prior.PremiumOnly && !premium) {
+						continue
 					}
+					_ = prior.Device.RemovePeer(req.PubKey)
 				}
 			}
 			writeErr(w, http.StatusInternalServerError, "add_peer_failed", err.Error())
@@ -401,6 +421,104 @@ func (s *Server) SampleLoad(ctx context.Context) {
 	}
 }
 
+// SyncPremiumPeers reconciles one peer's membership of every PremiumOnly
+// transport device with its current entitlement — the other half of the gate.
+//
+// Enrollment only mirrors a key onto a premium device if it was already paid up
+// (handleEnroll), but entitlement moves after that: a payment confirms minutes
+// later, and a subscription expires on its own. Without this reconcile a user
+// who pays after enrolling would be stuck failing the inner handshake until they
+// re-enrolled, and an expired one would keep premium access forever. The gateway
+// calls this from its syncTiers loop for every enrolled peer.
+//
+// Cheap and idempotent: it only touches a device when membership actually has to
+// change, so the common (steady-state) case issues no UAPI writes at all.
+func (s *Server) SyncPremiumPeers(pubkey string, premium bool) {
+	for _, e := range s.extra {
+		if e.Device == nil || !e.PremiumOnly {
+			continue
+		}
+		_, onDevice := e.Device.PeerAddr(pubkey)
+		switch {
+		case premium && !onDevice:
+			// s.dev is the address authority; skip if it isn't enrolled there.
+			if addr, ok := s.dev.PeerAddr(pubkey); ok {
+				_ = e.Device.AddPeer(pubkey, addr)
+			}
+		case !premium && onDevice:
+			_ = e.Device.RemovePeer(pubkey)
+		}
+	}
+}
+
+// Bounds for the GC of the control API's two unbounded maps. powGeneration is
+// the rotation period, so a spent PoW nonce stays rejected for between one and
+// two periods (see GC).
+const (
+	// enrollWindow is the per-source-IP enroll rate limit (see allowEnroll). The
+	// GC's sweep threshold is derived from it so the two can't drift apart.
+	enrollWindow  = 2 * time.Second
+	gcInterval    = 30 * time.Second
+	powGeneration = 5 * time.Minute
+	// maxPowSeen caps live nonces so an enroll flood degrades into a SHORTER
+	// replay window rather than an OOM kill. An entry is the map key
+	// `pubkey|nonce`, bounded to 44+1+maxNonceLen ≈ 109 B by the pubkey and
+	// nonce validation in handleEnroll/checkPoW (without that bound the entry
+	// size would be attacker-controlled and this count-based cap would be
+	// meaningless). Two live generations → ~250 MB worst case on a 1 GB node.
+	maxPowSeen = 1 << 20
+)
+
+// GC bounds the two maps that would otherwise grow for the process lifetime:
+// the per-IP enroll rate limiter and the spent-PoW-nonce replay guard. It runs
+// until ctx is cancelled; start it once from main (`go srv.GC(ctx)`).
+//
+// enrollIP: an entry older than the rate-limit window can no longer affect a
+// decision (allowEnroll takes the same branch for "stale" and "absent"), so
+// sweeping past 2× the window is provably behaviour-neutral.
+//
+// powSeen: rotated in generations instead of timestamped per entry — an O(1)
+// swap that keeps the previous generation readable, so a nonce stays rejected
+// for powGeneration..2×powGeneration and the whole old generation is freed at
+// once. The window is finite rather than forever, which is sound because a nonce
+// is bound to its pubkey (it is hashed in AND part of the map key), re-enrolling
+// an existing pubkey is idempotent (same address, no new peer/limiter slot), and
+// allowEnroll rate-limits per source IP anyway — so the replay an expiry permits
+// buys an attacker strictly less than solving a fresh nonce, which they can
+// already afford at that rate.
+//
+// Takes only s.mu and calls nothing while holding it, so it cannot participate
+// in a lock cycle with the enrollMu → mu → device-lock chain.
+func (s *Server) GC(ctx context.Context) {
+	t := time.NewTicker(gcInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case now := <-t.C:
+			s.gcOnce(now)
+		}
+	}
+}
+
+// gcOnce is one GC pass, split out so tests can drive it deterministically.
+func (s *Server) gcOnce(now time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Deleting during range is defined behaviour in Go.
+	for ip, last := range s.enrollIP {
+		if now.Sub(last) >= 2*enrollWindow {
+			delete(s.enrollIP, ip)
+		}
+	}
+	if now.Sub(s.powRotatedAt) >= powGeneration || len(s.powSeen) > maxPowSeen {
+		s.powSeenPrev = s.powSeen
+		s.powSeen = make(map[string]struct{}, len(s.powSeen))
+		s.powRotatedAt = now
+	}
+}
+
 // --- signing + helpers ---
 
 // deriveSignKey turns the 32-byte WG private key into a stable ed25519 key by
@@ -439,11 +557,10 @@ func writeErr(w http.ResponseWriter, code int, name, msg string) {
 // allowEnroll is a simple per-IP token: one enroll per IP per 2s window.
 // POC: replace with a proper per-IP token bucket + periodic map GC.
 func (s *Server) allowEnroll(ip string) bool {
-	const window = 2 * time.Second
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now()
-	if last, ok := s.enrollIP[ip]; ok && now.Sub(last) < window {
+	if last, ok := s.enrollIP[ip]; ok && now.Sub(last) < enrollWindow {
 		return false
 	}
 	s.enrollIP[ip] = now

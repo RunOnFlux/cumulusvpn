@@ -3,6 +3,7 @@ package api
 import (
 	"crypto/sha256"
 	"strconv"
+	"strings"
 	"testing"
 )
 
@@ -82,5 +83,26 @@ func TestCheckPoWReplay(t *testing.T) {
 	}
 	if s.checkPoW(pk, nonce) {
 		t.Error("replayed nonce should be rejected the second time")
+	}
+}
+
+// An accepted nonce is retained in the replay guard, so its length is a memory
+// input. The request-body limit alone would allow ~4 KB, which would make the
+// entry-count cap (maxPowSeen) meaningless — bound the input instead.
+func TestCheckPoWRejectsOversizedNonce(t *testing.T) {
+	s := &Server{powSeen: make(map[string]struct{})}
+	pk := "pubkey"
+	long := strings.Repeat("9", maxNonceLen+1)
+	if s.checkPoW(pk, long) {
+		t.Fatal("a nonce longer than maxNonceLen must be rejected outright")
+	}
+	// The bound must not reject what real clients actually send (a decimal
+	// counter), so a genuine solution still verifies.
+	nonce := solvePoW(pk, powBits)
+	if len(nonce) > maxNonceLen {
+		t.Fatalf("solver produced a %d-byte nonce, over the %d bound", len(nonce), maxNonceLen)
+	}
+	if !s.checkPoW(pk, nonce) {
+		t.Error("a legitimately solved nonce must still be accepted")
 	}
 }

@@ -5,6 +5,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { GatewayInfo, Keypair, Tier, TransportMode } from '@cumulusvpn/core';
+// (Tier is used for both the displayed entitlement and transport gating.)
 import { loadOrCreateKeypair, loadSelectedCountry, saveSelectedCountry } from '../lib/storage.js';
 import {
   discoverFleetAndCountries,
@@ -115,6 +116,11 @@ export function useConnection(): ConnectionModel {
   const [selected, setSelected] = useState<CountryOption | null>(null);
   const [tunnel, setTunnel] = useState<TunnelStatus>(DOWN);
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
+  // Tier for TRANSPORT SELECTION, mirrored into a ref so `connect` can read it
+  // without taking `entitlement` as a dependency — that would re-create
+  // `connect` on every poll, and the auto-reconnect effect depends on it (its
+  // cleanup would clear the pending retry timer).
+  const tierRef = useRef<Tier>('free');
   const [error, setError] = useState<string | null>(null);
   // Multi-hop is OFF by default; Balanced (same country) is the default style.
   const [multihop, setMultihopState] = useState(false);
@@ -240,12 +246,31 @@ export function useConnection(): ConnectionModel {
           paidUntil: ent.paid_until,
           bytesUsed: ent.bytes_used,
         });
+        tierRef.current = ent.tier;
       } catch {
-        setEntitlement(null);
+        // Preserve the last known entitlement: the tier now drives transport
+        // selection, so treating one flaky poll as a downgrade would silently
+        // demote a paying user's stealth transport mid-session.
+        setEntitlement((prev) => prev);
       }
     },
     [keypair],
   );
+
+  // Populate the tier badge before the first connect — entitlement is otherwise
+  // only fetched once a tunnel is up, so a fresh launch would always read
+  // "free". This is a DISPLAY hint and a cheap hot cache; it is deliberately not
+  // what decides a premium-gated transport, because it can't be relied on (it is
+  // fire-and-forget, so an auto-connect can race it, and it targets one node
+  // that may not be the one dialled). That decision is made in `establish`,
+  // against the gateway that actually enforces the gate.
+  useEffect(() => {
+    const first = countries[0];
+    if (!first || !first.signPubKey) {
+      return;
+    }
+    void refreshEntitlement(first.gatewayIp, first.signPubKey);
+  }, [countries, refreshEntitlement]);
 
   const connect = useCallback(() => {
     const entry = selected;
@@ -276,6 +301,7 @@ export function useConnection(): ConnectionModel {
             keypair,
             killSwitch,
             transportMode,
+            tierRef.current,
           );
           setTunnel(result.tunnel);
           setPhase('connected');
@@ -284,7 +310,13 @@ export function useConnection(): ConnectionModel {
           // would fail verification against the real exit gateway).
           await refreshEntitlement(result.exitGatewayIp, result.exitSignPubKey);
         } else {
-          const result = await establish(entry, keypair, killSwitch, transportMode);
+          const result = await establish(
+            entry,
+            keypair,
+            killSwitch,
+            transportMode,
+            tierRef.current,
+          );
           setTunnel(result.tunnel);
           setPhase('connected');
           await refreshEntitlement(result.gatewayIp, entry.signPubKey);

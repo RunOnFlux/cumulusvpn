@@ -25,6 +25,16 @@ const (
 	// API, UDP for obfs), so the DPI-resistant transport costs no extra Flux
 	// port (docs/15-transports.md). Enabled by CVPN_OBFS_ENABLE.
 	WGObfsPort = APIPort
+	// WGTLSPremiumPort is the WireGuard UDP port of the PREMIUM-ONLY device that
+	// the TLS relay fronts when CVPN_TLS_PREMIUM is set (docs/15-transports.md).
+	//
+	// It is deliberately NOT listed in any Flux app spec `ports[]`, so FluxOS
+	// never publishes it and it is unreachable from the internet — the only way
+	// in is through the TLS relay, which is exactly what makes the gate
+	// enforceable. (wireguard-go binds 0.0.0.0 inside the container's netns; that
+	// is fine, since WireGuard still authenticates by key. NEVER add 51822 to a
+	// spec's ports[] — that would publish it and bypass the relay entirely.)
+	WGTLSPremiumPort = 51822
 )
 
 // Config is the fully resolved gateway configuration.
@@ -109,6 +119,18 @@ type Config struct {
 	// Cosmetic (the cert is camouflage only), but a plausible value blends in.
 	// Set via CVPN_TLS_SNI.
 	TLSSNI string
+	// TLSPremium reserves the wg-tls transport for PAYING users — intended for
+	// the scarce/expensive 443 stealth spec group (docs/15-transports.md M4).
+	//
+	// When true the relay fronts a dedicated WireGuard device on
+	// WGTLSPremiumPort whose peer set contains only premium keys, so a free user
+	// can complete TLS but never the inner WireGuard handshake. The transport is
+	// still advertised to everyone (/v1/info is unauthenticated) but tagged
+	// `params.tier=premium` so clients skip it rather than fail. Default FALSE:
+	// the standard group's wg-tls rides the free TCP side of 51820 and stays open
+	// to everyone, so turning this on fleet-wide would take stealth away from
+	// free users. Set via CVPN_TLS_PREMIUM.
+	TLSPremium bool
 }
 
 // Load reads configuration from the environment, applying documented defaults
@@ -132,6 +154,7 @@ func Load() (*Config, error) {
 		TLSEnable:          envBool("CVPN_TLS_ENABLE", false),
 		TLSPort:            envInt("CVPN_TLS_PORT", WGListenPort),
 		TLSSNI:             os.Getenv("CVPN_TLS_SNI"),
+		TLSPremium:         envBool("CVPN_TLS_PREMIUM", false),
 	}
 
 	if v := os.Getenv("CVPN_EGRESS_ALLOW_PORTS"); v != "" {

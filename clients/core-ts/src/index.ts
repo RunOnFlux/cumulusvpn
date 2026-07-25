@@ -43,6 +43,7 @@ export {
   transportFallbackChain,
   applyTransportToEndpoint,
   obfsForTransport,
+  hasPremiumTransport,
   IMPLEMENTED_TRANSPORTS,
 } from './transport.js';
 export type { TransportMode } from './transport.js';

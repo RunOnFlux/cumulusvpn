@@ -24,7 +24,14 @@ defaults:
   tlsSni: www.bing.com # camouflage SNI for the self-signed relay cert (not verified)
   # Ports for the separate 443 STEALTH group (cumulusvpntls<cc>), emitted only for
   # countries flagged `stealth: true` — bounds the scarce 443 to a small footprint.
+  # NOTE: never add the gateway's internal premium WG port (51822) here — listing
+  # it would publish that device and let clients bypass the TLS relay entirely.
   stealthPorts: [51820, 51821, 443]
+  # Reserve the 443 stealth tier for PAYING users (CVPN_TLS_PREMIUM). Applies only
+  # to the cumulusvpntls<cc> group; the standard group's wg-tls on 51820/tcp stays
+  # open to everyone since it costs no extra port. Free users in Stealth simply
+  # fall back to awg. Set false to make 443 free-for-all.
+  tlsPremium: true
   # PUBLIC GHCR image (auto-built), no repoauth. NOTE: the tag must be the form CI actually
   # publishes — docker/metadata-action strips the leading "v", so git tag v0.1.0 -> image :0.1.0
   # (NOT :v0.1.0). Before a real registration, pin the immutable digest here

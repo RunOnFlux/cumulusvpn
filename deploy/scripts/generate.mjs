@@ -66,6 +66,12 @@ function gatewayEnv(defaults, opts = {}) {
     env.push('CVPN_TLS_ENABLE=1');
     if (defaults.tlsSni) env.push(`CVPN_TLS_SNI=${defaults.tlsSni}`);
     if (opts.tlsPort) env.push(`CVPN_TLS_PORT=${opts.tlsPort}`);
+    // Reserve the SCARCE 443 stealth tier for paying users (docs/15). Only the
+    // 443 group is gated: the standard group's wg-tls rides the free TCP side of
+    // 51820, so gating it would take stealth away from free users for no saving.
+    // The gateway enforces this by keeping free keys out of that listener's
+    // peer set — clients just skip it and land on awg.
+    if (opts.tlsPort && defaults.tlsPremium) env.push('CVPN_TLS_PREMIUM=1');
   }
   return env;
 }
