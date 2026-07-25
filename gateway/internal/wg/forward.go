@@ -20,6 +20,7 @@ import (
 	"net"
 	"net/netip"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
@@ -49,6 +50,20 @@ const wgFleetPort uint16 = 51820
 // copyBufSize bounds a single WaitN charge; must stay <= the free burst.
 const copyBufSize = 32 * 1024
 
+// maxFlows caps concurrently forwarded flows per protocol (TCP splices, UDP
+// relays). This is a MEMORY bound, not a policy one: each flow commits its pump
+// buffers, goroutines and a host socket the moment it is created — BEFORE any
+// byte is charged to the peer's token bucket — so the rate limiter cannot
+// restrain it. Without a cap, one enrolled peer sending a few thousand tiny
+// datagrams to distinct ports allocates thousands of sockets and buffers in a
+// fraction of its free-tier budget and OOM-kills the container, taking every
+// other peer on the node down with it.
+//
+// Legitimate clients sit far below this (a browser's QUIC/DNS working set is
+// tens of flows). Over the cap, NEW flows are refused; established ones are
+// untouched.
+const maxFlows = 1024
+
 // Forwarder wires the gVisor stack's TCP/UDP forwarders to host sockets.
 type Forwarder struct {
 	dev          *Device
@@ -59,7 +74,22 @@ type Forwarder struct {
 	allowPrivate bool                // permit egress to private/loopback dsts (dev/test only)
 	stk          *stack.Stack        // cached from dev.Stack() at Start
 	udpConn      sync.WaitGroup
+	// Live flow counts, bounding concurrent resource use (see maxFlows).
+	tcpFlows atomic.Int64
+	udpFlows atomic.Int64
 }
+
+// acquireFlow reserves a flow slot, or reports false when already at capacity.
+// The caller must call releaseFlow exactly once on teardown.
+func acquireFlow(n *atomic.Int64) bool {
+	if n.Add(1) > maxFlows {
+		n.Add(-1)
+		return false
+	}
+	return true
+}
+
+func releaseFlow(n *atomic.Int64) { n.Add(-1) }
 
 // NewForwarder builds a forwarder. allowPorts empty => allow-all (minus SMTP).
 // fleetAllow (default true, see config.GatewayFleetAllow) keeps UDP 51820
@@ -133,10 +163,19 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 		return
 	}
 
+	// Reserve a flow slot before committing an endpoint, a host socket and two
+	// pump buffers — refusing here is what keeps a flow flood from exhausting
+	// memory (see maxFlows).
+	if !acquireFlow(&f.tcpFlows) {
+		r.Complete(true) // at capacity -> RST
+		return
+	}
+
 	// Accept the client side: complete the handshake into a gonet.Conn.
 	var wq waiter.Queue
 	ep, tcpErr := r.CreateEndpoint(&wq)
 	if tcpErr != nil {
+		releaseFlow(&f.tcpFlows)
 		r.Complete(true)
 		return
 	}
@@ -147,12 +186,16 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 	dst := net.JoinHostPort(dstIP.String(), fmt.Sprintf("%d", dstPort))
 	hostConn, err := f.dialer.Dial("tcp", dst)
 	if err != nil {
+		releaseFlow(&f.tcpFlows)
 		clientConn.Close()
 		return
 	}
 
 	lp := f.lim.Get(peer)
-	go f.splice(clientConn, hostConn, lp)
+	go func() {
+		defer releaseFlow(&f.tcpFlows)
+		f.splice(clientConn, hostConn, lp)
+	}()
 }
 
 // splice copies bidirectionally, gating both directions through the peer's
@@ -214,9 +257,17 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 		return
 	}
 
+	// gVisor calls this handler INLINE for every datagram with no registered
+	// endpoint and applies no in-flight bound of its own, so this reservation is
+	// the only thing standing between a flood of distinct 5-tuples and OOM.
+	if !acquireFlow(&f.udpFlows) {
+		return // at capacity -> drop
+	}
+
 	var wq waiter.Queue
 	ep, tcpErr := r.CreateEndpoint(&wq)
 	if tcpErr != nil {
+		releaseFlow(&f.udpFlows)
 		return
 	}
 	clientConn := gonet.NewUDPConn(f.stk, &wq, ep)
@@ -224,6 +275,7 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 	dst := net.JoinHostPort(dstIP.String(), fmt.Sprintf("%d", dstPort))
 	hostConn, err := f.dialer.Dial("udp", dst)
 	if err != nil {
+		releaseFlow(&f.udpFlows)
 		clientConn.Close()
 		return
 	}
@@ -232,6 +284,7 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 	f.udpConn.Add(1)
 	go func() {
 		defer f.udpConn.Done()
+		defer releaseFlow(&f.udpFlows)
 		f.relayUDP(clientConn, hostConn, lp)
 	}()
 }

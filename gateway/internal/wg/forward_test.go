@@ -2,6 +2,7 @@ package wg
 
 import (
 	"net/netip"
+	"sync/atomic"
 	"testing"
 )
 
@@ -105,5 +106,29 @@ func TestDestAllowed(t *testing.T) {
 	f.SetAllowPrivateEgress(true)
 	if !f.destAllowed(netip.MustParseAddr("192.168.1.1")) {
 		t.Error("with AllowPrivateEgress, destAllowed(192.168.1.1) should be true")
+	}
+}
+
+// A forwarded flow commits a host socket, two goroutines and two pump buffers
+// BEFORE the peer's token bucket sees a single byte — so the rate limiter cannot
+// bound it. maxFlows is what stops one peer's flow flood from exhausting the
+// container's memory and taking every other peer on the node down with it.
+func TestAcquireFlowCapsConcurrency(t *testing.T) {
+	var n atomic.Int64
+	for i := 0; i < maxFlows; i++ {
+		if !acquireFlow(&n) {
+			t.Fatalf("flow %d refused below the cap", i)
+		}
+	}
+	if acquireFlow(&n) {
+		t.Fatal("a flow past the cap must be refused")
+	}
+	if got := n.Load(); got != maxFlows {
+		t.Errorf("a refused flow must not consume a slot: count=%d want=%d", got, maxFlows)
+	}
+	// Releasing frees capacity again — a burst must not permanently wedge the node.
+	releaseFlow(&n)
+	if !acquireFlow(&n) {
+		t.Error("a released slot must be reusable")
 	}
 }

@@ -30,12 +30,29 @@ import (
 	"io"
 	"math/big"
 	"net"
+	"sync/atomic"
 	"time"
 )
 
 // maxDatagram bounds a single framed WireGuard datagram (well above any WG
 // packet; the 2-byte length prefix caps it at 65535 anyway).
 const maxDatagram = 65535
+
+// maxConns bounds concurrent relay connections. Each accepted connection pins a
+// goroutine, a UDP socket and its read buffer BEFORE the inner WireGuard
+// handshake authenticates anything, so without a cap an unauthenticated peer can
+// exhaust the node's file descriptors and memory just by opening TLS sessions.
+const maxConns = 512
+
+// idleTimeout reaps a connection that never carries a frame. A client that
+// completes TLS and then goes silent would otherwise hold its resources
+// indefinitely — and the client-side transport fallback now opens a connection
+// per attempt and abandons the ones that don't work.
+//
+// Safe for healthy tunnels: every client config sets PersistentKeepalive = 25,
+// so a live peer crosses the relay well inside this window even with no user
+// traffic. Keep this comfortably above that interval.
+const idleTimeout = 60 * time.Second
 
 // writeFrame writes one length-prefixed datagram as a single Write (one TLS
 // record — avoids a two-record-per-packet tell).
@@ -99,6 +116,7 @@ func SelfSignedCert(cn string) (tls.Certificate, error) {
 type Relay struct {
 	wgUDPPort int
 	tlsCfg    *tls.Config
+	conns     atomic.Int64 // live connections, bounded by maxConns
 }
 
 // NewRelay builds a relay serving cert and forwarding to 127.0.0.1:wgUDPPort/udp.
@@ -137,7 +155,16 @@ func (r *Relay) Serve(ctx context.Context, ln net.Listener) error {
 			}
 			return err
 		}
-		go r.handle(conn)
+		// Refuse past the cap rather than accepting into resource exhaustion.
+		if r.conns.Add(1) > maxConns {
+			r.conns.Add(-1)
+			_ = conn.Close()
+			continue
+		}
+		go func() {
+			defer r.conns.Add(-1)
+			r.handle(conn)
+		}()
 	}
 }
 
@@ -161,6 +188,9 @@ func (r *Relay) handle(tlsConn net.Conn) {
 	go func() {
 		defer udp.Close()
 		for {
+			// Bound how long a connection may sit without carrying a frame.
+			// Refreshed per frame, so an active tunnel is never cut.
+			_ = tlsConn.SetReadDeadline(time.Now().Add(idleTimeout))
 			pkt, err := readFrame(tlsConn)
 			if err != nil {
 				return

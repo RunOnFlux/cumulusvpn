@@ -278,6 +278,12 @@ export function useVpn(): VpnModel & VpnActions {
   // True while connect() is walking the transport chain. Suppresses native status
   // events for attempts we are ourselves tearing down (see the status effect).
   const connectingRef = useRef(false);
+  // Monotonic connect generation. A sweep captures this on entry and re-checks it
+  // before every attempt; disconnect() (and any newer connect) bumps it, which
+  // CANCELS the in-flight sweep. Without this, a user tapping Disconnect mid-sweep
+  // looks identical to "this transport failed" — the loop would tear their
+  // teardown down and bring the tunnel straight back up.
+  const connectGenRef = useRef(0);
 
   /** Mark a gateway IP as recently-failed so failover skips it for a while. */
   const avoidGateway = useCallback((ip: string | null): void => {
@@ -614,9 +620,20 @@ export function useVpn(): VpnModel & VpnActions {
     if (state !== 'connecting') {
       return;
     }
+    // Must strictly EXCEED the worst-case sweep, or the backstop would tear down
+    // a connect that is still legitimately working through the chain. Per
+    // attempt: the probe budget, its settle grace, and a teardown wait; plus
+    // enrollment (PoW + two round trips) up front, doubled for multi-hop.
     const maxChain = IMPLEMENTED_TRANSPORTS.size;
-    const budget = Math.max(40_000, 8_000 + maxChain * (PROBE_MS + TEARDOWN_MS));
+    const perAttempt = PROBE_MS + PROBE_SETTLE_MS + TEARDOWN_MS;
+    const budget = Math.max(40_000, 15_000 + maxChain * perAttempt);
     const id = setTimeout(() => {
+      // Cancel the sweep before tearing anything down. Otherwise stopTunnel()
+      // below makes the in-flight probe report a dead tunnel, the loop reads that
+      // as "this transport failed", walks the rest of the chain against a tunnel
+      // the watchdog already killed, and finally blacklists a healthy gateway.
+      connectGenRef.current += 1;
+      connectingRef.current = false;
       setState('error');
       setError('Connection timed out. Try another location.');
       void CumulusTunnel.stopTunnel().catch(() => undefined);
@@ -699,6 +716,13 @@ export function useVpn(): VpnModel & VpnActions {
     if (!keypair) {
       return;
     }
+    // Re-entrancy + cancellation: bumping the generation cancels any sweep still
+    // in flight (a double-tap, or a reconnect racing a manual connect), so two
+    // sweeps can never interleave start/teardown against the same tunnel.
+    connectGenRef.current += 1;
+    const myGen = connectGenRef.current;
+    const cancelled = () => connectGenRef.current !== myGen;
+
     wantConnectedRef.current = true;
     setError(null);
     setState('connecting');
@@ -819,6 +843,13 @@ export function useVpn(): VpnModel & VpnActions {
       setActiveExit(null);
 
       for (let i = 0; i < chain.length; i += 1) {
+        // The user hit Disconnect (or a newer connect started) — stop. Without
+        // this the sweep would read their teardown as "this transport failed"
+        // and immediately bring the tunnel back up against their wishes. No
+        // teardown needed here: this attempt has not started a tunnel yet.
+        if (cancelled()) {
+          return;
+        }
         const transport = chain[i]!;
         const endpoint = applyTransportToEndpoint(resp.endpoint, transport);
         const obfs = obfsForTransport(transport);
@@ -853,9 +884,24 @@ export function useVpn(): VpnModel & VpnActions {
 
         // startTunnel only means the OS started it; only a handshake proves the
         // transport actually works here.
-        if ((await probeHandshake()) === 'up') {
+        const probe = await probeHandshake();
+        // Re-check AFTER the probe: a Disconnect landing mid-probe makes the
+        // tunnel look dead, which is indistinguishable from a failed transport.
+        if (cancelled()) {
+          // This attempt's tunnel is LIVE. disconnect() and the watchdog stop it
+          // themselves, but a newer connect() only bumps the generation and may
+          // die before its own startTunnel (its enroll now runs inside this
+          // tunnel and can be blackholed). Abandoning it would leave a live VPN
+          // holding the default route with no in-app way to disconnect.
+          await teardownAttempt();
+          return;
+        }
+        if (probe === 'up') {
           connectingRef.current = false;
           setState('connected');
+          // The native 'connected' event is suppressed during a sweep, so the
+          // session timer has to be started here or it never starts at all.
+          setConnectedSince((prev) => prev ?? Date.now());
           // Persist the live route so a force-quit + relaunch can restore where
           // we're connected (see the launch-reconciliation effect).
           void saveActiveRoute({ entry: entryEp, exit: null });
@@ -878,8 +924,12 @@ export function useVpn(): VpnModel & VpnActions {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       // Belt and braces: never leave native status events suppressed, or the UI
-      // would stop tracking the tunnel entirely.
-      connectingRef.current = false;
+      // would stop tracking the tunnel entirely. Only the CURRENT sweep may
+      // clear the gate — an older, cancelled sweep unwinding here would
+      // otherwise un-gate the newer sweep that is still running.
+      if (!cancelled()) {
+        connectingRef.current = false;
+      }
     }
   }, [
     keypair,
@@ -898,6 +948,10 @@ export function useVpn(): VpnModel & VpnActions {
   ]);
 
   const disconnect = useCallback(async (): Promise<void> => {
+    // Cancel any in-flight transport sweep FIRST, so it can't misread this
+    // teardown as a failed transport and immediately reconnect.
+    connectGenRef.current += 1;
+    connectingRef.current = false;
     wantConnectedRef.current = false;
     wasConnectedRef.current = false;
     setState('disconnecting');
@@ -1053,6 +1107,9 @@ export function useVpn(): VpnModel & VpnActions {
  *  wireguard-go retries a handshake initiation every ~5s, so this covers two. */
 const PROBE_MS = 9_000;
 const PROBE_INTERVAL_MS = 500;
+/** Grace period before a 'disconnected'/'error' sample is believed — the OS may
+ *  still be reporting the pre-start state (see probeHandshake). */
+const PROBE_SETTLE_MS = 3_000;
 /** Cap on waiting for a failed attempt to actually stop before the next starts. */
 const TEARDOWN_MS = 4_000;
 
@@ -1070,14 +1127,28 @@ const TEARDOWN_MS = 4_000;
  * the rest of the budget.
  */
 async function probeHandshake(budgetMs = PROBE_MS): Promise<'up' | 'dead' | 'gone'> {
-  const deadline = Date.now() + budgetMs;
+  const started = Date.now();
+  const deadline = started + budgetMs;
+  // Whether we have ever seen the tunnel actually leave its initial state.
+  let sawLive = false;
   for (;;) {
     try {
       const s = await CumulusTunnel.getStatus();
       if (s.lastHandshake > 0 || s.rxBytes > 0) {
         return 'up';
       }
-      if (s.state === 'error' || s.state === 'disconnected') {
+      if (s.state === 'connecting' || s.state === 'connected' || s.state === 'reasserting') {
+        sawLive = true;
+      }
+      // A terminal sample only counts once the tunnel has actually started, or
+      // once the settle window has elapsed. On iOS `startTunnel` resolves as soon
+      // as startVPNTunnel() is called, but NEVPNConnection.status is updated
+      // asynchronously — so for the first tens of milliseconds it still reports
+      // the PREVIOUS state ('disconnected', or 'invalid' on the very first
+      // connect). Treating that as terminal would fail every transport in the
+      // chain within milliseconds and blacklist a perfectly healthy gateway.
+      const settled = sawLive || Date.now() - started > PROBE_SETTLE_MS;
+      if (settled && (s.state === 'error' || s.state === 'disconnected')) {
         return 'gone';
       }
     } catch {

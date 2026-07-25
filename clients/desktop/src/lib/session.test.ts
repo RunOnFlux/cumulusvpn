@@ -292,6 +292,35 @@ describe('establish', () => {
     expect(result.transport.type).toBe('awg');
   });
 
+  it('a Disconnect mid-sweep CANCELS it — never re-connects what the user cancelled', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    nativeState.failAttempts = 99; // nothing handshakes, so the sweep would keep going
+    const both = {
+      ...country,
+      transports: [
+        { type: 'wg' as const, port: 51820 },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+    // The user hits Disconnect during the first attempt (onAttempt fires as that
+    // attempt begins, so the abort lands while it is being probed).
+    const ac = new AbortController();
+    const onAttempt = (_t: unknown, i: number) => {
+      if (i === 0) {
+        ac.abort();
+      }
+    };
+
+    await expect(
+      establish(both, keypair, true, 'auto', 'free', undefined, onAttempt as never, ac.signal),
+    ).rejects.toThrow(/cancelled/);
+
+    // Exactly ONE connect: the loop must not start another tunnel (which would
+    // silently re-engage the kill switch the user's Disconnect just removed).
+    expect(vi.mocked(invoke).mock.calls.filter((c) => c[0] === 'connect')).toHaveLength(1);
+  });
+
   it('gives up cleanly when every transport fails, and tears the tunnel down', async () => {
     mockedEnroll.mockResolvedValue(enrollReply);
     vi.mocked(invoke).mockClear();

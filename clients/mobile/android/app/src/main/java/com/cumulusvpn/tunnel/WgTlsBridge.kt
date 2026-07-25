@@ -74,9 +74,28 @@ class WgTlsBridge {
                 Log.w(TAG, "invalid SNI '$sni', connecting without one", t)
             }
         }
-        sock.connect(InetSocketAddress(relayHost, relayPort), CONNECT_TIMEOUT_MS)
-        sock.startHandshake()
+        // Publish the socket BEFORE the (blocking) handshake so stop() can reach
+        // it — otherwise a teardown during the handshake has nothing to close.
         tls = sock
+        sock.connect(InetSocketAddress(relayHost, relayPort), CONNECT_TIMEOUT_MS)
+        // startHandshake() blocks with NO timeout of its own: a relay that accepts
+        // TCP and then never speaks TLS (exactly what a censor doing selective
+        // blackholing looks like) would wedge this thread and leak the socket —
+        // once per wg-tls attempt, and the fallback loop makes several. SO_TIMEOUT
+        // bounds the handshake reads; it is cleared afterwards because the pump
+        // threads must block indefinitely on a healthy idle tunnel.
+        sock.soTimeout = HANDSHAKE_TIMEOUT_MS
+        try {
+            sock.startHandshake()
+        } catch (t: Throwable) {
+            try {
+                sock.close()
+            } catch (_: Throwable) {
+            }
+            tls = null
+            throw t
+        }
+        sock.soTimeout = 0
 
         running = true
         Thread({ pumpUdpToTls(udpSock, sock) }, "wg-tls-udp2tls").start()
@@ -158,5 +177,7 @@ class WgTlsBridge {
         private const val TAG = "WgTlsBridge"
         private const val MAX_DATAGRAM = 65535
         private const val CONNECT_TIMEOUT_MS = 10000
+        /** Bounds the TLS handshake reads; see start(). Cleared once connected. */
+        private const val HANDSHAKE_TIMEOUT_MS = 10000
     }
 }

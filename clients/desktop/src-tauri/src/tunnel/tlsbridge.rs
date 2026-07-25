@@ -92,13 +92,22 @@ fn tls_client_config() -> Result<rustls::ClientConfig, TunnelError> {
     Ok(cfg)
 }
 
-/// A live UDP <-> TLS bridge. Dropping it (or calling [`ClientBridge::shutdown`])
-/// tears down the owned Tokio runtime, which cancels the pump tasks and closes
-/// the TLS connection + local UDP socket.
+/// A live UDP <-> TLS bridge.
+///
+/// The bridge owns a Tokio runtime, but that runtime lives on a **dedicated
+/// thread of its own** rather than being driven from the caller. That is not a
+/// style choice: `TunnelManager::connect` is invoked from an `async` Tauri
+/// command, so it already runs *inside* Tokio's worker context, and calling
+/// `Runtime::block_on` there panics with "Cannot start a runtime from within a
+/// runtime" (likewise `Runtime::drop`). In a release build (`panic = "abort"`)
+/// that killed the app with the kill switch already engaged — no tunnel, no UI,
+/// and no way to clear the firewall. Owning the runtime on a plain thread makes
+/// the bridge safe to construct from sync *or* async context.
 pub struct ClientBridge {
     local_addr: SocketAddr,
-    // Owns the two pump tasks and both sockets; drop = shutdown.
-    runtime: Option<tokio::runtime::Runtime>,
+    /// Dropping this signals the bridge thread to finish, which drops the
+    /// runtime there — cancelling the pumps and closing both sockets.
+    shutdown: Option<std::sync::mpsc::Sender<()>>,
 }
 
 impl ClientBridge {
@@ -106,21 +115,58 @@ impl ClientBridge {
     /// the given `sni`, and bind a local UDP socket the WG sidecar will dial.
     /// Blocks until the TLS handshake completes (so a connect failure surfaces
     /// before the tunnel is configured) and then runs the pumps in the
-    /// background.
+    /// background. Safe to call from within an async runtime.
     pub fn connect(server_addr: &str, sni: &str) -> Result<Self, TunnelError> {
-        let runtime = tokio::runtime::Builder::new_multi_thread()
-            .worker_threads(1)
-            .enable_all()
-            .build()
-            .map_err(|_| TunnelError::Sidecar("tls bridge: runtime"))?;
-
         let server_addr = server_addr.to_string();
         let sni = sni.to_string();
-        let local_addr = runtime.block_on(async move { establish(server_addr, sni).await })?;
+        // `ready` carries the handshake result back; `shutdown` keeps the bridge
+        // thread parked until this handle is dropped.
+        let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<SocketAddr, TunnelError>>();
+        let (shutdown_tx, shutdown_rx) = std::sync::mpsc::channel::<()>();
+
+        std::thread::Builder::new()
+            .name("cvpn-tls-bridge".into())
+            .spawn(move || {
+                let rt = match tokio::runtime::Builder::new_current_thread()
+                    .enable_all()
+                    .build()
+                {
+                    Ok(rt) => rt,
+                    Err(_) => {
+                        let _ = ready_tx.send(Err(TunnelError::Sidecar("tls bridge: runtime")));
+                        return;
+                    }
+                };
+                rt.block_on(async move {
+                    match establish(server_addr, sni).await {
+                        Ok(addr) => {
+                            if ready_tx.send(Ok(addr)).is_err() {
+                                return; // caller vanished; tear down
+                            }
+                            // Park until shutdown (or the handle is dropped) so
+                            // the pump tasks keep running on this runtime.
+                            let _ = tokio::task::spawn_blocking(move || {
+                                let _ = shutdown_rx.recv();
+                            })
+                            .await;
+                        }
+                        Err(e) => {
+                            let _ = ready_tx.send(Err(e));
+                        }
+                    }
+                });
+            })
+            .map_err(|_| TunnelError::Sidecar("tls bridge: thread"))?;
+
+        // Bounded by establish()'s own DIAL_TIMEOUT; the extra margin only
+        // covers thread start-up, so a wedged bridge can't hang the connect.
+        let local_addr = ready_rx
+            .recv_timeout(DIAL_TIMEOUT * 2 + std::time::Duration::from_secs(2))
+            .map_err(|_| TunnelError::Sidecar("tls bridge: timed out starting"))??;
 
         Ok(ClientBridge {
             local_addr,
-            runtime: Some(runtime),
+            shutdown: Some(shutdown_tx),
         })
     }
 
@@ -131,12 +177,10 @@ impl ClientBridge {
 
     /// Tear the bridge down explicitly (idempotent). Drop does the same.
     pub fn shutdown(&mut self) {
-        // Dropping the runtime cancels the pump tasks and closes the sockets.
-        // shutdown_background avoids blocking if called from within an async
-        // context (we never are, but it's the safe choice).
-        if let Some(rt) = self.runtime.take() {
-            rt.shutdown_background();
-        }
+        // Dropping the sender wakes the bridge thread, which then drops its
+        // runtime — cancelling the pumps and closing the sockets. Never touches
+        // a runtime from the caller's thread, so this is safe in async context.
+        self.shutdown.take();
     }
 }
 
@@ -162,13 +206,10 @@ async fn establish(server_addr: String, sni: String) -> Result<SocketAddr, Tunne
     // TunnelManager::connect while it holds the manager mutex, freezing status
     // polls and any transport fallback along with it. Fail fast instead so the
     // caller can try the next transport.
-    let tcp = tokio::time::timeout(
-        DIAL_TIMEOUT,
-        tokio::net::TcpStream::connect(&server_addr),
-    )
-    .await
-    .map_err(|_| TunnelError::Sidecar("tls bridge: tcp connect to relay timed out"))?
-    .map_err(|_| TunnelError::Sidecar("tls bridge: tcp connect to relay failed"))?;
+    let tcp = tokio::time::timeout(DIAL_TIMEOUT, tokio::net::TcpStream::connect(&server_addr))
+        .await
+        .map_err(|_| TunnelError::Sidecar("tls bridge: tcp connect to relay timed out"))?
+        .map_err(|_| TunnelError::Sidecar("tls bridge: tcp connect to relay failed"))?;
     let _ = tcp.set_nodelay(true);
 
     let connector = tokio_rustls::TlsConnector::from(Arc::new(tls_client_config()?));
@@ -246,26 +287,18 @@ mod tests {
     use std::time::Duration;
     use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
-    /// End-to-end: stand up a TLS echo server that speaks the same 2-byte-framed
-    /// protocol as the gateway relay, connect the bridge to it, then act as the
-    /// WG device — send a UDP datagram to the bridge's local endpoint and assert
-    /// the identical bytes come back. Exercises the full UDP→TLS→TLS→UDP path,
-    /// the framing, and the source-address learning.
-    #[test]
-    fn bridge_roundtrips_a_datagram_over_tls() {
-        // Self-signed cert (camouflage; the client never verifies it).
+    /// Stand up a TLS echo server speaking the same 2-byte-framed protocol as the
+    /// gateway relay. Returns its address.
+    fn spawn_echo_relay() -> (String, ()) {
         let ck = rcgen::generate_simple_self_signed(vec!["localhost".to_string()]).unwrap();
         let cert_der = ck.cert.der().clone();
         let key_der = rustls::pki_types::PrivateKeyDer::Pkcs8(ck.key_pair.serialize_der().into());
-
         let (addr_tx, addr_rx) = std::sync::mpsc::channel();
-        // The TLS echo server runs on its own runtime + thread.
         std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().unwrap();
             rt.block_on(async move {
                 let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
                 addr_tx.send(listener.local_addr().unwrap()).unwrap();
-
                 let provider = Arc::new(rustls::crypto::ring::default_provider());
                 let server_config = rustls::ServerConfig::builder_with_provider(provider)
                     .with_safe_default_protocol_versions()
@@ -274,10 +307,8 @@ mod tests {
                     .with_single_cert(vec![cert_der], key_der)
                     .unwrap();
                 let acceptor = tokio_rustls::TlsAcceptor::from(Arc::new(server_config));
-
                 let (tcp, _) = listener.accept().await.unwrap();
                 let mut tls = acceptor.accept(tcp).await.unwrap();
-                // Echo each 2-byte-length-framed datagram straight back.
                 let mut hdr = [0u8; 2];
                 loop {
                     if tls.read_exact(&mut hdr).await.is_err() {
@@ -297,18 +328,47 @@ mod tests {
                 }
             });
         });
+        (addr_rx.recv().unwrap().to_string(), ())
+    }
 
-        let server_addr = addr_rx.recv().unwrap().to_string();
+    /// Drives the connect from inside a multi-thread Tokio runtime from inside a multi-thread Tokio runtime — the
+    /// shape the real app uses, because `TunnelManager::connect` is reached from
+    /// an `async` Tauri command running on a Tokio worker. A bridge that creates
+    /// and blocks on a nested runtime panics with "Cannot start a runtime from
+    /// within a runtime" here, while passing the plain `#[test]` below. That gap
+    /// is exactly how the defect shipped, so this test is the regression guard.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn bridge_connects_from_inside_a_tokio_runtime() {
+        let (addr, _keep) = spawn_echo_relay();
+        let bridge = tokio::task::spawn_blocking(move || ClientBridge::connect(&addr, "localhost"))
+            .await
+            .expect("join")
+            .expect("bridge must connect from within a runtime, not panic");
+        assert!(bridge.local_endpoint().starts_with("127.0.0.1:"));
+    }
+
+    /// End-to-end: connect the bridge, then act as the WG device — send a UDP
+    /// datagram to the bridge's local endpoint and assert the identical bytes come
+    /// back. Exercises the full UDP→TLS→TLS→UDP path, the framing, and the
+    /// source-address learning.
+    #[test]
+    fn bridge_roundtrips_a_datagram_over_tls() {
+        let (server_addr, _keep) = spawn_echo_relay();
         let bridge = ClientBridge::connect(&server_addr, "localhost").expect("bridge connect");
 
-        // Act as the WG device: dial the bridge's local UDP endpoint.
         let sock = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
         sock.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
         let payload = b"hello-wg-over-tls";
         sock.send_to(payload, bridge.local_endpoint()).unwrap();
 
         let mut buf = [0u8; 128];
-        let (n, _from) = sock.recv_from(&mut buf).expect("echo should return within timeout");
-        assert_eq!(&buf[..n], payload, "datagram must survive the UDP<->TLS round trip");
+        let (n, _from) = sock
+            .recv_from(&mut buf)
+            .expect("echo should return within timeout");
+        assert_eq!(
+            &buf[..n],
+            payload,
+            "datagram must survive the UDP<->TLS round trip"
+        );
     }
 }

@@ -121,6 +121,10 @@ export function useConnection(): ConnectionModel {
   // `connect` on every poll, and the auto-reconnect effect depends on it (its
   // cleanup would clear the pending retry timer).
   const tierRef = useRef<Tier>('free');
+  // Cancels an in-flight transport sweep. Without it, a Disconnect landing
+  // mid-sweep looks exactly like "this transport failed", and the loop would
+  // re-engage the kill switch and rebuild the tunnel the user just cancelled.
+  const sweepRef = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Multi-hop is OFF by default; Balanced (same country) is the default style.
   const [multihop, setMultihopState] = useState(false);
@@ -285,6 +289,11 @@ export function useConnection(): ConnectionModel {
     }
     setError(null);
     setPhase('connecting');
+    // Abort any sweep still running (double-click, or a reconnect racing a
+    // manual connect) so two sweeps can't interleave against one TunnelManager.
+    sweepRef.current?.abort();
+    const sweep = new AbortController();
+    sweepRef.current = sweep;
     setTunnel((t) => ({ ...t, state: 'connecting', country: entry.code }));
     void (async () => {
       try {
@@ -316,6 +325,9 @@ export function useConnection(): ConnectionModel {
             killSwitch,
             transportMode,
             tierRef.current,
+            undefined,
+            undefined,
+            sweep.signal,
           );
           setTunnel(result.tunnel);
           setPhase('connected');
@@ -340,6 +352,10 @@ export function useConnection(): ConnectionModel {
   ]);
 
   const disconnect = useCallback(() => {
+    // Cancel the sweep FIRST so it cannot misread this teardown as a failed
+    // transport and immediately reconnect.
+    sweepRef.current?.abort();
+    sweepRef.current = null;
     wasConnectedRef.current = false;
     void (async () => {
       try {

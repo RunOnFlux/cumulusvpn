@@ -111,32 +111,53 @@ class CumulusObfsVpnService : VpnService() {
             ?: throw IllegalStateException("VPN establish() returned null — consent revoked?")
         tun = pfd
 
+        // detachFd() moves ownership of the tun OUT of the ParcelFileDescriptor:
+        // from here on teardown()'s `tun?.close()` is a no-op, and only the Go
+        // core (once startSingle succeeds) or an explicit adoptFd().close() can
+        // release it. Anything that throws in between would strand a live
+        // full-tunnel interface with no data plane — every packet on the device
+        // black-holed, and the service kept alive by the OS because the tun still
+        // exists, so there is no in-app way back. Hence the ownership flag.
         val fd = pfd.detachFd()
+        var fdOwnedByGo = false
+        try {
+            // For wg-tls, stand up the UDP<->TLS bridge to the gateway relay (its
+            // TCP socket bypasses the tun via the gateway-IP route exclusion
+            // above) and point the WG device at 127.0.0.1:<bridgePort> with NO
+            // obfs (the TLS wrapper is the obfuscation). Otherwise the WG device
+            // dials the gateway directly (vanilla awg over UDP).
+            var wgServerIp = serverIp
+            var wgPort = port
+            var wgObfs = obfs
+            if (tlsSni != null && tlsRelay != null) {
+                val (relayHost, relayPort) = splitHostPort(tlsRelay)
+                val bridge = WgTlsBridge()
+                tlsBridge = bridge
+                // Can throw: TCP connect timeout, TLS handshake failure, or the
+                // socket being closed by a concurrent teardown.
+                val localPort = bridge.start(relayHost, relayPort, tlsSni)
+                wgServerIp = "127.0.0.1"
+                wgPort = localPort
+                wgObfs = ""
+            }
 
-        // For wg-tls, stand up the UDP<->TLS bridge to the gateway relay (its TCP
-        // socket bypasses the tun via the gateway-IP route exclusion above) and
-        // point the WG device at 127.0.0.1:<bridgePort> with NO obfs (the TLS
-        // wrapper is the obfuscation). Otherwise the WG device dials the gateway
-        // directly (vanilla awg over UDP).
-        var wgServerIp = serverIp
-        var wgPort = port
-        var wgObfs = obfs
-        if (tlsSni != null && tlsRelay != null) {
-            val (relayHost, relayPort) = splitHostPort(tlsRelay)
-            val bridge = WgTlsBridge()
-            tlsBridge = bridge
-            val localPort = bridge.start(relayHost, relayPort, tlsSni)
-            wgServerIp = "127.0.0.1"
-            wgPort = localPort
-            wgObfs = ""
+            handle = Wgmobile.startSingle(
+                clientPriv, serverPub, wgServerIp, serverAssigned,
+                fd.toLong(), wgPort.toLong(), wgObfs,
+            )
+            // Go owns the fd now and closes it on Wgmobile.stop.
+            fdOwnedByGo = true
+            activeHandle = handle
+            Log.i(TAG, "wgnest single-hop up: server=$wgServerIp:$wgPort tls=${tlsSni != null} handle=$handle")
+        } finally {
+            if (!fdOwnedByGo) {
+                try {
+                    ParcelFileDescriptor.adoptFd(fd).close()
+                } catch (t: Throwable) {
+                    Log.e(TAG, "could not close orphaned tun fd", t)
+                }
+            }
         }
-
-        handle = Wgmobile.startSingle(
-            clientPriv, serverPub, wgServerIp, serverAssigned,
-            fd.toLong(), wgPort.toLong(), wgObfs,
-        )
-        activeHandle = handle
-        Log.i(TAG, "wgnest single-hop up: server=$wgServerIp:$wgPort tls=${tlsSni != null} handle=$handle")
     }
 
     private fun teardown() {

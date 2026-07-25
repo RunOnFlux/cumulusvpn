@@ -317,9 +317,15 @@ const PROBE_INTERVAL_MS = 400;
  *
  * Returns the live status, or null if nothing arrived within the budget.
  */
-async function probeTunnelUp(budgetMs = PROBE_MS): Promise<TunnelStatus | null> {
+async function probeTunnelUp(
+  budgetMs = PROBE_MS,
+  signal?: AbortSignal,
+): Promise<TunnelStatus | null> {
   const deadline = Date.now() + budgetMs;
   for (;;) {
+    if (signal?.aborted) {
+      return null; // cancelled — the caller checks the signal and bails out
+    }
     let s: TunnelStatus;
     try {
       s = await tunnel.status();
@@ -369,6 +375,7 @@ export async function establish(
   tier: Tier = 'free',
   fetchImpl?: typeof fetch,
   onAttempt?: (transport: Transport, index: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<EstablishResult> {
   // Transport negotiation (docs/15). Resolve the gateway's authoritative tier
   // first, then take the WHOLE ordered chain rather than just the best entry —
@@ -399,6 +406,13 @@ export async function establish(
 
   let lastError: Error | null = null;
   for (let i = 0; i < chain.length; i += 1) {
+    // The user hit Disconnect (or a newer connect started). Stop WITHOUT another
+    // tunnel.connect: their teardown already disengaged the kill switch, and
+    // continuing would silently re-engage it and rebuild the tunnel they just
+    // cancelled.
+    if (signal?.aborted) {
+      throw new Error('connect cancelled');
+    }
     const transport = chain[i]!;
     onAttempt?.(transport, i, chain.length);
 
@@ -451,7 +465,13 @@ export async function establish(
       continue;
     }
 
-    const up = await probeTunnelUp();
+    const up = await probeTunnelUp(PROBE_MS, signal);
+    // Re-check AFTER the probe: a Disconnect landing mid-probe makes the tunnel
+    // look dead, which is indistinguishable from a transport that never
+    // handshook. Treating it as the latter would restart the sweep.
+    if (signal?.aborted) {
+      throw new Error('connect cancelled');
+    }
     if (up) {
       return { gatewayIp: country.gatewayIp, enroll: reply, tunnel: up, transport };
     }
