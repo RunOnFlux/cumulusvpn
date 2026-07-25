@@ -213,16 +213,43 @@ describe('establishMultihop', () => {
     expect(result.tunnel.state).toBe('up');
   });
 
-  it('refuses Stealth over multi-hop instead of silently downgrading the entry hop', async () => {
+  it('Stealth: obfuscates the ENTRY hop with awg when the entry gateway advertises it', async () => {
     mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    const awg = { type: 'awg' as const, port: 51821, params: { jc: '4', h1: '1148746654' } };
     const fleet = [
-      gateway({ country: 'DE', ip: '198.51.100.1', load: 0.5 }),
+      gateway({ country: 'DE', ip: '198.51.100.1', load: 0.5, transports: [awg] }),
+      gateway({ country: 'DE', ip: '198.51.100.2', load: 0.2, transports: [awg] }),
+    ];
+
+    const result = await establishMultihop(
+      fleet,
+      deEntry,
+      deEntry,
+      'multihop-same-country',
+      keypair,
+      true,
+      'stealth',
+    );
+    expect(result.tunnel.state).toBe('up');
+
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect_multihop');
+    const args = call?.[1] as { outer: string; inner: string; entryEndpoint: string };
+    expect(args.outer).toContain('Jc = 4'); // entry hop obfuscated
+    expect(args.entryEndpoint).toMatch(/:51821$/); // dials the awg port
+    expect(args.inner).not.toContain('Jc = '); // exit hop stays vanilla
+  });
+
+  it('Stealth: refuses (throws) when the entry gateway offers no awg — never downgrades', async () => {
+    mockedEnroll.mockClear();
+    const fleet = [
+      gateway({ country: 'DE', ip: '198.51.100.1', load: 0.5 }), // no transports → no awg
       gateway({ country: 'DE', ip: '198.51.100.2', load: 0.2 }),
     ];
 
     await expect(
       establishMultihop(fleet, deEntry, deEntry, 'multihop-same-country', keypair, true, 'stealth'),
     ).rejects.toThrow(/Stealth/);
-    expect(mockedEnroll).not.toHaveBeenCalled();
+    expect(mockedEnroll).not.toHaveBeenCalled(); // the refusal precedes enrollment
   });
 });

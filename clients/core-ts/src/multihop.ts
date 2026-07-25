@@ -19,7 +19,9 @@
  * v1.5 introduces distinct keys per hop to close that gap.
  */
 import { WG_PORT } from './types.js';
-import type { EnrollResponse, GatewayInfo } from './types.js';
+import type { EnrollResponse, GatewayInfo, Transport } from './types.js';
+import { obfsInterfaceLines } from './wgconfig.js';
+import { applyTransportToEndpoint, obfsForTransport } from './transport.js';
 
 /**
  * How the tunnel path is routed.
@@ -75,10 +77,14 @@ export interface SelectedHops {
 
 /** The two nested interface configs plus the routing facts a client needs. */
 export interface MultihopConfig {
-  /** wg-entry `.conf`: `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS. */
+  /** wg-entry `.conf`: `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS. Carries the
+   *  entry hop's AmneziaWG obfuscation `[Interface]` lines when Stealth is on. */
   readonly outer: string;
   /** wg-exit `.conf`: `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340, DNS = exit dns. */
   readonly inner: string;
+  /** The ENTRY hop's wire endpoint — `<entryIp>:51820` normally, or `<entryIp>:51821`
+   *  for an obfuscated (awg) entry. The native side allow-lists/routes on this. */
+  readonly entryEndpoint: string;
   /** `<exitIp>:51820` — must route via the outer interface. */
   readonly exitEndpoint: string;
   /** Inner interface MTU (leaves headroom for two WireGuard headers). */
@@ -230,31 +236,51 @@ export function selectHops(
  * exit traverse the entry; the inner interface routes all traffic and sets the
  * exit's DNS and the reduced 1340 MTU.
  *
+ * Stealth multi-hop obfuscates the ENTRY hop only (the local censor sees just the
+ * entry handshake; the inner exit hop travels encapsulated). Pass the entry
+ * gateway's chosen `entryTransport` (an `awg` transport) and the outer config
+ * gains its AmneziaWG `[Interface]` lines and points at the awg port; the inner
+ * (exit) hop stays vanilla. Omit it (or pass a vanilla `wg` transport) for a
+ * fully vanilla multi-hop — the output is then byte-identical to before.
+ *
  * @param args.privateKey - Client WireGuard private key (base64), used on both.
  * @param args.entry - Enrollment of key `K` at the ENTRY gateway.
  * @param args.exit - Enrollment of key `K` at the EXIT gateway.
- * @returns The `outer`/`inner` `.conf` strings, `exitEndpoint`, and `innerMtu`.
+ * @param args.entryTransport - ENTRY hop transport (an `awg` profile obfuscates it).
+ * @returns The `outer`/`inner` `.conf` strings, `entryEndpoint`, `exitEndpoint`, `innerMtu`.
  */
 export function buildMultihopConfig(args: {
   privateKey: string;
   entry: EnrollResponse;
   exit: EnrollResponse;
+  entryTransport?: Transport;
 }): MultihopConfig {
-  const { privateKey, entry, exit } = args;
+  const { privateKey, entry, exit, entryTransport } = args;
   const exitIp = stripEndpointPort(exit.endpoint);
   const exitEndpoint = `${exitIp}:${WG_PORT}`;
 
-  const outer = `[Interface]
-PrivateKey = ${privateKey}
-Address = ${entry.assigned_ip}/32
-MTU = ${OUTER_MTU}
+  // Stealth: fold the entry hop's awg obfuscation into the outer [Interface] and
+  // point it at the transport's port (awg = 51821). Vanilla when absent.
+  const entryObfs = entryTransport ? obfsForTransport(entryTransport) : undefined;
+  const entryEndpoint = entryTransport
+    ? applyTransportToEndpoint(entry.endpoint, entryTransport)
+    : entry.endpoint;
 
-[Peer]
-PublicKey = ${entry.server_pubkey}
-Endpoint = ${entry.endpoint}
-AllowedIPs = ${exitIp}/32
-PersistentKeepalive = 25
-`;
+  const outerIface = [
+    '[Interface]',
+    `PrivateKey = ${privateKey}`,
+    `Address = ${entry.assigned_ip}/32`,
+    `MTU = ${OUTER_MTU}`,
+    ...obfsInterfaceLines(entryObfs),
+  ];
+  const outerPeer = [
+    '[Peer]',
+    `PublicKey = ${entry.server_pubkey}`,
+    `Endpoint = ${entryEndpoint}`,
+    `AllowedIPs = ${exitIp}/32`,
+    'PersistentKeepalive = 25',
+  ];
+  const outer = `${outerIface.join('\n')}\n\n${outerPeer.join('\n')}\n`;
 
   const inner = `[Interface]
 PrivateKey = ${privateKey}
@@ -269,5 +295,5 @@ AllowedIPs = 0.0.0.0/0, ::/0
 PersistentKeepalive = 25
 `;
 
-  return { outer, inner, exitEndpoint, innerMtu: INNER_MTU };
+  return { outer, inner, entryEndpoint, exitEndpoint, innerMtu: INNER_MTU };
 }

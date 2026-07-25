@@ -96,6 +96,10 @@ class CumulusMultihopVpnService : VpnService() {
         val exitIp = intent.req(EXTRA_EXIT_IP)
         val exitAssigned = intent.req(EXTRA_EXIT_ASSIGNED)
         val exitDns = intent.getStringExtra(EXTRA_EXIT_DNS) ?: "1.1.1.1"
+        // Stealth obfuscates the ENTRY hop with AmneziaWG: its awg port (51821) +
+        // the [Interface] obfs UAPI. 0 / "" => vanilla entry (Auto mode).
+        val entryPort = intent.getIntExtra(EXTRA_ENTRY_PORT, 0)
+        val entryObfs = intent.getStringExtra(EXTRA_ENTRY_OBFS) ?: ""
 
         // Inner tun: the exit-assigned address, exit DNS, room for two WG headers.
         val builder = Builder()
@@ -132,14 +136,14 @@ class CumulusMultihopVpnService : VpnService() {
             entryPub, entryIp, entryAssigned,
             exitPub, exitIp, exitAssigned,
             fd.toLong(),
-            // entryPort 0 => default 51820; obfs "" => vanilla entry. Android
-            // obfuscation (threading the awg params + port through the Intent
-            // extras) is a later step; multi-hop stays vanilla for now.
-            0L,
-            "",
+            // entryPort 0 => default 51820, obfs "" => vanilla entry (Auto); for
+            // Stealth these carry the entry's awg port + [Interface] obfs UAPI, so
+            // the entry hop is obfuscated (the exit hop stays vanilla).
+            entryPort.toLong(),
+            entryObfs,
         )
         activeHandle = handle
-        Log.i(TAG, "nested tunnel up: entry=$entryIp exit=$exitIp handle=$handle")
+        Log.i(TAG, "nested tunnel up: entry=$entryIp:$entryPort exit=$exitIp obfs=${entryObfs.isNotEmpty()} handle=$handle")
     }
 
     private fun teardown() {
@@ -246,6 +250,11 @@ class CumulusMultihopVpnService : VpnService() {
         const val EXTRA_EXIT_IP = "exitIp"
         const val EXTRA_EXIT_ASSIGNED = "exitAssigned"
         const val EXTRA_EXIT_DNS = "exitDns"
+
+        // Stealth: the ENTRY hop's awg port (51821) + [Interface] obfs UAPI. Absent
+        // / 0 / "" => vanilla entry.
+        const val EXTRA_ENTRY_PORT = "entryPort"
+        const val EXTRA_ENTRY_OBFS = "entryObfs"
 
         private fun Intent.req(key: String): String =
             getStringExtra(key) ?: throw IllegalArgumentException("missing extra: $key")

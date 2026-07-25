@@ -173,6 +173,43 @@ object CumulusTunnelController {
             .joinToString("\n", postfix = "\n")
     }
 
+    /** The wgnest fields extracted manually from a wg-quick config. */
+    private data class WgFields(
+        val priv: String,
+        val peerPub: String,
+        val endpointHost: String,
+        val endpointPort: Int,
+        val address: String,
+    )
+
+    /**
+     * Manually parse the fields wgnest needs from a wg-quick config. Used for a
+     * multi-hop OUTER (entry) config, which in Stealth mode carries AmneziaWG
+     * `[Interface]` keys the official [Config] parser rejects.
+     */
+    private fun parseWgFields(conf: String): WgFields {
+        var priv = ""
+        var pub = ""
+        var endpoint = ""
+        var address = ""
+        for (raw in conf.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            val key = line.substring(0, eq).trim()
+            val value = line.substring(eq + 1).trim()
+            when (key) {
+                "PrivateKey" -> priv = value
+                "PublicKey" -> pub = value
+                "Endpoint" -> endpoint = value
+                "Address" -> address = value.substringBefore(',').substringBefore('/').trim()
+            }
+        }
+        val host = endpoint.substringBeforeLast(':', endpoint)
+        val port = endpoint.substringAfterLast(':', "").toIntOrNull() ?: 0
+        return WgFields(priv, pub, host, port, address)
+    }
+
     /**
      * Hand an obfuscated single-hop config to [CumulusObfsVpnService]. We parse
      * the fields manually (the official [Config] parser rejects awg keys) and
@@ -258,27 +295,32 @@ object CumulusTunnelController {
     fun startMultihop(context: Context, outerConfig: String, innerConfig: String) {
         setState(STATE_CONNECTING)
         try {
-            val outer = parse(outerConfig) // wg-entry: AllowedIPs = <exitIp>/32, MTU 1420
-            val inner = parse(innerConfig) // wg-exit:  AllowedIPs = 0.0.0.0/0, MTU 1340
+            // The OUTER (entry) config may carry AmneziaWG [Interface] params in
+            // Stealth mode, which the official Config parser rejects — so parse its
+            // fields manually. The INNER (exit) hop is always vanilla.
+            val entryObfs = extractObfsUapi(outerConfig)
+            val entry = parseWgFields(outerConfig)
+            val inner = parse(innerConfig) // wg-exit: AllowedIPs = 0.0.0.0/0, MTU 1340
 
-            val entryPeer = outer.peers.first()
             val exitPeer = inner.peers.first()
-            // The client key K is shared by both hops (one payment, two devices).
-            val clientPriv = outer.`interface`.keyPair.privateKey.toBase64()
-            val entryAssigned = outer.`interface`.addresses.first().address.hostAddress
+            val clientPriv = entry.priv
+            val entryAssigned = entry.address
             val exitAssigned = inner.`interface`.addresses.first().address.hostAddress
-            val entryIp = entryPeer.endpoint.get().host
+            val entryIp = entry.endpointHost
+            val entryPort = entry.endpointPort // 51821 for an obfuscated (awg) entry
             val exitIp = exitPeer.endpoint.get().host
             val exitDns = inner.`interface`.dnsServers.firstOrNull()?.hostAddress ?: "1.1.1.1"
 
-            Log.i(TAG, "startMultihop: entry=$entryIp exit=$exitIp (nested)")
+            Log.i(TAG, "startMultihop: entry=$entryIp:$entryPort exit=$exitIp stealth=${entryObfs.isNotEmpty()}")
 
             val intent = Intent(context, CumulusMultihopVpnService::class.java).apply {
                 action = CumulusMultihopVpnService.ACTION_START
                 putExtra(CumulusMultihopVpnService.EXTRA_CLIENT_PRIV, clientPriv)
-                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_PUB, entryPeer.publicKey.toBase64())
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_PUB, entry.peerPub)
                 putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_IP, entryIp)
                 putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_ASSIGNED, entryAssigned)
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_PORT, entryPort)
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_OBFS, entryObfs)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_PUB, exitPeer.publicKey.toBase64())
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_IP, exitIp)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_ASSIGNED, exitAssigned)

@@ -347,15 +347,6 @@ export async function establishMultihop(
   transportMode: TransportMode = 'auto',
   fetchImpl?: typeof fetch,
 ): Promise<MultihopResult> {
-  // Stealth over multi-hop isn't wired end-to-end yet (the obfuscated entry hop
-  // needs obfs params threaded through buildMultihopConfig + the native chained
-  // sidecars). Until it is, refuse rather than silently run the entry hop as
-  // plain WireGuard — Stealth must never downgrade.
-  if (transportMode !== 'auto') {
-    throw new Error(
-      'Stealth mode isn’t available with multi-hop yet. Turn off multi-hop, or switch to Auto.',
-    );
-  }
   // Hop selection needs the FULL fleet (several gateways per country); the
   // collapsed one-per-country picker rows can't supply a distinct second gateway
   // for a same-country route. Fall back to the two picked rows only offline.
@@ -374,6 +365,15 @@ export async function establishMultihop(
     throw new Error('multi-hop requires a distinct exit hop');
   }
 
+  // Stealth obfuscates the ENTRY hop with AmneziaWG (the exit stays vanilla).
+  // wg-tls isn't wired for the multi-hop entry, so restrict to awg; if the entry
+  // gateway doesn't advertise awg, requireTransport THROWS rather than downgrade.
+  // Resolved BEFORE enrolling so a refusal doesn't spend an enrollment.
+  const entryTransport =
+    transportMode === 'stealth'
+      ? requireTransport(hops.entry.transports, 'stealth', new Set(['awg']))
+      : undefined;
+
   // Enroll the SAME key K at both gateways — one payment, premium follows K.
   const entryReply = await enrollOrMock(
     hops.entry.ip,
@@ -390,6 +390,7 @@ export async function establishMultihop(
     privateKey: keypair.privateKey,
     entry: entryReply,
     exit: exitReply,
+    ...(entryTransport ? { entryTransport } : {}),
   });
 
   const tunnelStatus = await tunnel.connectMultihop({
@@ -397,7 +398,9 @@ export async function establishMultihop(
     exitCountry: hops.exit.country,
     outer: cfg.outer,
     inner: cfg.inner,
-    entryEndpoint: entryReply.endpoint,
+    // The resolved entry endpoint (awg port :51821 for Stealth) — the native side
+    // allow-lists/routes on this, so the kill switch permits the obfuscated port.
+    entryEndpoint: cfg.entryEndpoint,
     exitEndpoint: cfg.exitEndpoint,
     innerMtu: cfg.innerMtu,
     assignedIp: exitReply.assigned_ip,

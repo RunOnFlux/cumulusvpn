@@ -679,17 +679,6 @@ export function useVpn(): VpnModel & VpnActions {
       }
 
       if (isMultihop(routeStyle)) {
-        // Stealth over multi-hop isn't wired end-to-end yet (the obfuscated
-        // entry hop needs obfs params threaded through buildMultihopConfig + the
-        // native chained bridge). Until it is, refuse rather than silently run
-        // the multi-hop entry as plain WireGuard — Stealth must never downgrade.
-        if (transportMode !== 'auto') {
-          setState('error');
-          setError(
-            'Stealth mode isn’t available with multi-hop yet. Turn off multi-hop, or switch to Auto.',
-          );
-          return;
-        }
         // Auto entry: prefer the NEAREST measured country (countries are
         // latency-sorted) that can satisfy the route, instead of letting
         // selectHops fall back to the globally least-loaded gateway — which can
@@ -701,6 +690,7 @@ export function useVpn(): VpnModel & VpnActions {
         const hops = await connectMultihop({
           keypair,
           routeStyle,
+          transportMode,
           gateways: availableGateways(),
           entryCountry: entryCode ?? autoEntry ?? null,
           exitCountry: exitCode,
@@ -962,6 +952,7 @@ export function useVpn(): VpnModel & VpnActions {
 async function connectMultihop(args: {
   keypair: Keypair;
   routeStyle: RouteStyle;
+  transportMode: TransportMode;
   gateways: readonly GatewayInfo[];
   entryCountry: string | null;
   exitCountry: string | null;
@@ -973,6 +964,7 @@ async function connectMultihop(args: {
   const {
     keypair,
     routeStyle,
+    transportMode,
     gateways,
     entryCountry,
     exitCountry,
@@ -1005,6 +997,16 @@ async function connectMultihop(args: {
     throw new Error('Multi-hop needs a distinct exit gateway');
   }
 
+  // Stealth obfuscates the ENTRY hop with AmneziaWG (the exit stays vanilla, so
+  // the local censor sees only an obfuscated entry handshake). wg-tls isn't wired
+  // for the multi-hop entry, so restrict to awg; if the entry gateway doesn't
+  // advertise awg, requireTransport THROWS rather than silently downgrading —
+  // resolved BEFORE enrolling so a refusal doesn't spend a PoW/enrollment.
+  const entryTransport =
+    transportMode === 'stealth'
+      ? requireTransport(hops.entry.transports, 'stealth', new Set(['awg']))
+      : undefined;
+
   // Enroll key K at both hops. Same key → premium at both automatically.
   // Run both concurrently: each solves an independent PoW, and the native
   // solver runs them off the JS thread (on separate cores), so the two solves
@@ -1028,6 +1030,7 @@ async function connectMultihop(args: {
     privateKey: keypair.privateKey,
     entry: entryEnroll,
     exit: exitEnroll,
+    ...(entryTransport ? { entryTransport } : {}),
   });
 
   const label = `${hops.entry.country} → ${hops.exit.country}`;

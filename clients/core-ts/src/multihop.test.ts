@@ -82,6 +82,36 @@ describe('buildMultihopConfig', () => {
   it('derives exitEndpoint as <exitIp>:51820 from the exit endpoint', () => {
     const cfg = buildMultihopConfig({ privateKey: 'K', entry, exit });
     expect(cfg.exitEndpoint).toBe('5.6.7.8:51820');
+    expect(cfg.entryEndpoint).toBe('9.9.9.9:51820'); // vanilla entry
+  });
+
+  it('vanilla (no entryTransport) leaves the outer free of obfuscation', () => {
+    const { outer } = buildMultihopConfig({ privateKey: 'K', entry, exit });
+    expect(outer).not.toMatch(/\bJc =|\bH1 =|\bS1 =/);
+  });
+
+  it('Stealth: an awg entryTransport obfuscates the OUTER hop and dials the awg port', () => {
+    const cfg = buildMultihopConfig({
+      privateKey: 'K',
+      entry,
+      exit,
+      entryTransport: {
+        type: 'awg',
+        port: 51821,
+        params: { jc: '4', jmin: '40', jmax: '70', s1: '86', s2: '120', h1: '1148746654' },
+      },
+    });
+    // Outer [Interface] carries the awg params (before the [Peer]).
+    expect(cfg.outer).toContain('Jc = 4');
+    expect(cfg.outer).toContain('Jmin = 40');
+    expect(cfg.outer).toContain('H1 = 1148746654');
+    expect(cfg.outer.indexOf('Jc = 4')).toBeLessThan(cfg.outer.indexOf('[Peer]'));
+    // Outer dials the entry's awg port; entryEndpoint reflects it.
+    expect(cfg.outer).toContain('Endpoint = 9.9.9.9:51821');
+    expect(cfg.entryEndpoint).toBe('9.9.9.9:51821');
+    // The INNER (exit) hop stays vanilla — obfuscation is entry-only.
+    expect(cfg.inner).not.toMatch(/\bJc =/);
+    expect(cfg.inner).toContain('Endpoint = 5.6.7.8:51820');
   });
 });
 

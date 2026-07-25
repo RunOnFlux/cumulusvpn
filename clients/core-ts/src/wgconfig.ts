@@ -16,7 +16,13 @@ const OBFS_CONF_KEYS: readonly (readonly [wire: string, conf: string])[] = [
   ['h4', 'H4'],
 ];
 
-function obfsInterfaceLines(obfs?: Readonly<Record<string, string>>): string[] {
+/**
+ * The AmneziaWG `[Interface]` obfuscation lines (`Jc`/`Jmin`/…/`H4`) for a
+ * profile, in canonical order, skipping empty values. Empty array when no
+ * profile — so a config stays byte-identical to vanilla. Shared with
+ * `buildMultihopConfig` (the entry hop's obfuscation).
+ */
+export function obfsInterfaceLines(obfs?: Readonly<Record<string, string>>): string[] {
   if (!obfs) return [];
   const lines: string[] = [];
   for (const [wire, conf] of OBFS_CONF_KEYS) {
