@@ -27,13 +27,20 @@ import (
 	"github.com/runonflux/cumulusvpn-gateway/internal/wg"
 )
 
-// Version is the gateway build version, surfaced in /v1/info.
-const Version = "0.1.0-poc"
+// Version is the gateway build version, surfaced in /v1/info. Keep it in step
+// with the released image tag by hand: it is a CONST, so the Dockerfile's
+// -ldflags -X cannot stamp it (the Go linker only patches string *variables*).
+const Version = "0.2.0"
 
 // MinClientVersion is the oldest client the gateway will happily serve.
+//
+// RESERVED, NOT ENFORCED: no handler consults it and no client version ever
+// reaches the server (enroll carries only a pubkey + PoW nonce), so bumping it
+// would be a silent no-op that misleads the next reader. Leave it at the
+// original floor until a real gate exists (docs/05-clients.md).
 const MinClientVersion = "0.1.0"
 
-// BuildCommit is the git short-SHA of this build, injected at compile time via
+// BuildCommit is the full git SHA of this build, injected at compile time via
 //
 //	-ldflags "-X github.com/runonflux/cumulusvpn-gateway/internal/api.BuildCommit=<sha>"
 //
@@ -70,7 +77,7 @@ type Info struct {
 	ServerPubKey     string      `json:"server_pubkey"` // WG pubkey (base64)
 	SignPubKey       string      `json:"sign_pubkey"`   // ed25519 verify key (base64)
 	MinClientVersion string      `json:"min_client_version"`
-	BuildCommit      string      `json:"build_commit"` // git short-SHA of the image build
+	BuildCommit      string      `json:"build_commit"` // full git SHA of the image build
 	Transports       []Transport `json:"transports"`   // dialable transports (negotiation)
 }
 

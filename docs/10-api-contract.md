@@ -88,8 +88,8 @@ Response `data`:
 {
   "country": "DE", "region": "HE", "city": "Frankfurt",
   "load": 0.12, "capacity": 1988,
-  "version": "0.1.0-poc", "min_client_version": "0.1.0",
-  "build_commit": "<short git sha, optional>",
+  "version": "0.2.0", "min_client_version": "0.1.0",
+  "build_commit": "<full git sha, optional>",
   "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>",
   "transports": [{ "type": "wg", "port": 51820 }]
 }

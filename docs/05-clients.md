@@ -26,8 +26,10 @@ Three client-platform pillars:
 2. **Self-updating.** Desktop: built-in updater (Tauri updater, signed manifests, staged rollout;
    the bundled directory snapshot rides along). Mobile: store updates + remote signed directory
    refresh in-app (no binary needed for fleet changes — only discovery data updates OTA, never
-   code, keeping store compliance clean). Gateways report `min_client_version` in `/v1/info` so we
-   can sunset broken versions gracefully.
+   code, keeping store compliance clean). Gateways surface `min_client_version` in `/v1/info` as a
+   **reserved advisory field** — clients do not act on it yet and no enforcement path exists (enroll
+   carries only a pubkey and a PoW nonce, so no client version ever reaches the gateway). Wiring it
+   into a real "update required" state is the mechanism for sunsetting broken versions gracefully.
 3. **Flux branding.** Flux design language, "powered by the Flux network" identity, amber where it
    fits. Being first-party also unblocks `flux*` app-spec names (FluxOS reserves the prefix — as
    the Flux team we whitelist our own) — though the consumer brand-name collision check in

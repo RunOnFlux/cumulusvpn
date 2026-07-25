@@ -90,12 +90,33 @@ cd gateway && go test ./... -race
 
 ## Stage B — Publish an image containing this code
 
-`.github/workflows/gateway-image.yml` builds and pushes on a tag. Either
-`v0.2.0` or `gateway-v0.2.0` produces `…/cumulusvpn-gateway:0.2.0`.
+First bump the version the binary reports, or every 0.2.0 node self-describes as
+the previous release. `api.Version` is a **const**, so `-ldflags -X` cannot stamp
+it — the Go linker only patches string *variables*, and an `-X` against a const
+is silently dropped:
+
+```go
+// gateway/internal/api/api.go
+const Version = "0.2.0"   // must match the tag you are about to cut
+```
+
+Leave `MinClientVersion` alone: nothing enforces it, so bumping it only misleads.
+
+`.github/workflows/gateway-image.yml` then builds and pushes on a tag. Prefer the
+**semver-valid** form — `type=semver` only fires for a ref `semver.valid()`
+accepts, so `v0.2.0` yields `:0.2.0` *and* the floating `:0.2`, while
+`gateway-v0.2.0` matches only the `type=match` rule and yields `:0.2.0` alone.
 
 ```bash
-git tag gateway-v0.2.0 && git push origin gateway-v0.2.0
+git tag v0.2.0 && git push origin v0.2.0
 ```
+
+Two things to know before pushing the tag. The workflow's `on.push` carries both
+`tags:` and `paths:`; path filters are **not** evaluated for tag pushes, so the
+tag does fire it — but confirm the run appears in Actions rather than assuming.
+And `:latest` moves to whatever commit you tag (metadata-action's auto-latest
+fires even though `enable={{is_default_branch}}` is false for a tag ref), so tag
+a commit that is on `main` unless you intend `:latest` to point at unmerged code.
 
 Then pin it (ideally by immutable digest, as `countries.yaml:35-38` advises):
 
@@ -149,6 +170,36 @@ then sign, broadcast and pay manually** with the owner ZelID. Budget for the
 443 port: sub-1024 ports are charged extra on Flux (`docs/02`), and enabling
 stealth on DE doubles its instance footprint (5 standard + 5 stealth), since
 `generate.mjs` gives each group the country's full `instances`.
+
+> **`cumulusvpntlsde` is billed before it is dialable — close the gap right
+> after registering.** Desktop and mobile resolve gateways only from their
+> **bundled** directory snapshot, and no bundled snapshot lists a
+> `cumulusvpntls*` spec, so the 443 nodes are invisible to every installed app
+> from the moment you pay for them. Web live-fetches the directory and picks them
+> up on a worker redeploy. Nothing else is blocked meanwhile: `awg` and `wg-tls`
+> on 51820/tcp are fleet-wide, so Stealth mode works on the standard group — 443
+> uniquely buys surviving a 443-only-egress censor.
+>
+> Follow-up, in order, to make the spend productive:
+>
+> 1. Rebuild and re-sign the directory so it contains the new spec:
+>    ```bash
+>    cd deploy
+>    node directory/make-directory.mjs build --payment-address <addr> --price 20
+>    node directory/make-directory.mjs verify
+>    ```
+> 2. Copy `deploy/directory/directory.signed.json` over the four bundled
+>    snapshots: `clients/desktop/src/data/directory.json`,
+>    `clients/mobile/src/data/directory.json`,
+>    `clients/web/public/directory.json`, `clients/web/src/directory.bundled.json`.
+> 3. Redeploy the web worker (immediate), then cut desktop + mobile builds.
+> 4. Teach the fleet dashboard about the group — `clients/dashboard/worker.js`
+>    probes only `cumulusvpn<cc>` (see `fleet()`), so stealth instances are
+>    missing from monitoring until it also probes `cumulusvpntls<cc>`.
+>
+> Guard it so the next country can't repeat the gap: assert in
+> `deploy/test/make-directory.test.mjs` that every `specs/onchain/cumulus*.json`
+> basename appears in the built directory's `specs[]`.
 
 Confirm placement once it settles:
 
