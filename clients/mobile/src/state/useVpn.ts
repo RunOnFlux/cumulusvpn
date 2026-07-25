@@ -88,11 +88,16 @@ export function isMultihop(style: RouteStyle): boolean {
  * Android run the amneziawg-go engine via wgnest for obfuscated single-hop
  * (iOS: the packet-tunnel extension; Android: CumulusObfsVpnService, while
  * vanilla single-hop stays on the stock GoBackend), so both can do `awg`.
- * `wg-tls` awaits the native TLS bridge on each platform. Passed to core
- * `selectTransport` so a mode only picks a transport this build can bring up.
+ * `wg-tls` rides a native UDP<->TLS bridge — DONE on iOS (WgTlsBridge in the
+ * packet-tunnel extension); Android's TLS bridge is still pending. Passed to core
+ * `requireTransport` so a mode only picks a transport this build can bring up.
  */
 const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> =
-  Platform.OS === 'ios' || Platform.OS === 'android' ? new Set(['wg', 'awg']) : new Set(['wg']);
+  Platform.OS === 'ios'
+    ? new Set(['wg', 'awg', 'wg-tls'])
+    : Platform.OS === 'android'
+      ? new Set(['wg', 'awg'])
+      : new Set(['wg']);
 
 /** Everything the UI renders from. */
 export interface VpnModel {
@@ -749,7 +754,7 @@ export function useVpn(): VpnModel & VpnActions {
         const endpoint = applyTransportToEndpoint(resp.endpoint, transport);
         const obfs = obfsForTransport(transport);
 
-        const wgConfig = buildWgConfig({
+        let wgConfig = buildWgConfig({
           privateKey: keypair.privateKey,
           assignedIp: resp.assigned_ip,
           dns: resp.dns,
@@ -757,6 +762,16 @@ export function useVpn(): VpnModel & VpnActions {
           endpoint,
           ...(obfs ? { obfs } : {}),
         });
+        // wg-tls: the native extension bridges the WG device over TLS to the
+        // gateway relay (the config Endpoint, now gateway:tlsPort). We can't pass
+        // separate fields through the fixed startTunnel(config,name,killSwitch)
+        // bridge, so carry the SNI as a namespaced sentinel line the extension's
+        // WgQuick parser reads (it never reaches wgnest — the UAPI is built from
+        // the parsed fields). obfs stays absent (the TLS wrapper is the obfuscation).
+        if (transport.type === 'wg-tls') {
+          const sni = transport.params?.sni || gw.ip;
+          wgConfig += `\nCVPN_TLS_SNI = ${sni}\n`;
+        }
         await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
         // Persist the live route so a force-quit + relaunch can restore where
         // we're connected (see the launch-reconciliation effect).

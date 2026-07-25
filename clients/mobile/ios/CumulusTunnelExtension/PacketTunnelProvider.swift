@@ -34,6 +34,10 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     // wgnest handle (single- OR multi-hop); 0 while down. Passed to WgmobileStop.
     private var handle: Int64 = 0
 
+    // wg-tls transport: the UDP<->TLS bridge, kept alive for the session (the WG
+    // device dials its local UDP endpoint). nil for vanilla/awg.
+    private var tlsBridge: WgTlsBridge?
+
     // Called by the OS when the user (or the app) starts the tunnel.
     override func startTunnel(
         options _: [String: NSObject]?,
@@ -84,26 +88,72 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 completionHandler(TunnelError.invalidConfig)
                 return
             }
-            #if canImport(Wgnest)
-            var h: Int64 = 0
-            var startErr: NSError?
-            let ok = WgmobileStartSingle(
-                conf.privateKey, conf.peerPublicKey, serverIp, assigned,
-                Int(fd), conf.endpointPort, conf.obfs, &h, &startErr
-            )
-            if !ok || startErr != nil {
-                self.log.error("single WgmobileStartSingle failed: \(String(describing: startErr), privacy: .public)")
-                completionHandler(startErr ?? TunnelError.notImplemented)
+
+            // wg-tls: stand up the UDP<->TLS bridge to the gateway relay and point
+            // the WG device at its LOCAL udp endpoint (the relay is the config
+            // Endpoint — gateway:tlsPort). The bridge's TLS socket is the
+            // provider's own, so iOS keeps it off the tun (no loop). obfs is empty
+            // (the TLS wrapper IS the obfuscation, not [Interface] params).
+            if let sni = conf.tlsSni {
+                let relayPort = UInt16(conf.endpointPort == 0 ? 51820 : conf.endpointPort)
+                let bridge = WgTlsBridge()
+                self.tlsBridge = bridge
+                bridge.start(
+                    relayHost: serverIp,
+                    relayPort: relayPort,
+                    sni: sni,
+                    onReady: { [weak self] localPort in
+                        guard let self else { return }
+                        self.log.log("wg-tls bridge up: relay=\(serverIp, privacy: .public):\(relayPort) local=\(localPort)")
+                        self.startWgSingle(
+                            fd: fd, priv: conf.privateKey, pub: conf.peerPublicKey,
+                            serverIp: "127.0.0.1", assigned: assigned,
+                            port: Int(localPort), obfs: "", completionHandler: completionHandler
+                        )
+                    },
+                    onError: { [weak self] err in
+                        self?.log.error("wg-tls bridge failed: \(String(describing: err), privacy: .public)")
+                        self?.tlsBridge?.stop()
+                        self?.tlsBridge = nil
+                        completionHandler(err)
+                    }
+                )
                 return
             }
-            self.handle = h
-            self.log.log("single-hop up: server=\(serverIp, privacy: .public) handle=\(h)")
-            completionHandler(nil)
-            #else
-            self.log.error("Wgnest unavailable — single-hop not started")
-            completionHandler(TunnelError.notImplemented)
-            #endif
+
+            // Vanilla / awg: the WG device dials the gateway directly over UDP.
+            self.startWgSingle(
+                fd: fd, priv: conf.privateKey, pub: conf.peerPublicKey,
+                serverIp: serverIp, assigned: assigned,
+                port: conf.endpointPort, obfs: conf.obfs, completionHandler: completionHandler
+            )
         }
+    }
+
+    /// Configure the single wgnest device against `serverIp:port` (the gateway for
+    /// vanilla/awg, or `127.0.0.1:<bridgePort>` for wg-tls).
+    private func startWgSingle(
+        fd: Int32, priv: String, pub: String, serverIp: String, assigned: String,
+        port: Int, obfs: String, completionHandler: @escaping (Error?) -> Void
+    ) {
+        #if canImport(Wgnest)
+        var h: Int64 = 0
+        var startErr: NSError?
+        let ok = WgmobileStartSingle(priv, pub, serverIp, assigned, Int(fd), port, obfs, &h, &startErr)
+        if !ok || startErr != nil {
+            self.log.error("single WgmobileStartSingle failed: \(String(describing: startErr), privacy: .public)")
+            self.tlsBridge?.stop()
+            self.tlsBridge = nil
+            completionHandler(startErr ?? TunnelError.notImplemented)
+            return
+        }
+        self.handle = h
+        self.log.log("single-hop up: server=\(serverIp, privacy: .public) handle=\(h)")
+        completionHandler(nil)
+        #else
+        self.log.error("Wgnest unavailable — single-hop not started")
+        completionHandler(TunnelError.notImplemented)
+        #endif
     }
 
     // MARK: - multi-hop (nested onion, docs/11)
@@ -189,6 +239,8 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             handle = 0
         }
         #endif
+        tlsBridge?.stop()
+        tlsBridge = nil
         completionHandler()
     }
 
@@ -261,6 +313,7 @@ private struct WgQuick {
     let endpointHost: String? // [Peer] Endpoint, port stripped
     let endpointPort: Int // [Peer] Endpoint port (0 if absent → engine default 51820)
     let obfs: String // AmneziaWG [Interface] params as device-level UAPI ("" = vanilla)
+    let tlsSni: String? // wg-tls: present → bridge over TLS (the `CVPN_TLS_SNI` sentinel)
 
     // AmneziaWG [Interface] keys (lowercased), emitted as UAPI in this order.
     private static let obfsKeys = ["jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4"]
@@ -271,6 +324,7 @@ private struct WgQuick {
         var addr: String?
         var dns: String?
         var endpoint: String?
+        var sni: String?
         var obfsVals: [String: String] = [:]
         for raw in text.split(whereSeparator: { $0 == "\n" || $0 == "\r" }) {
             let line = raw.trimmingCharacters(in: .whitespaces)
@@ -291,6 +345,11 @@ private struct WgQuick {
             case "endpoint": endpoint = val
             case "jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4":
                 obfsVals[key] = val
+            // wg-tls sentinel injected by the client (useVpn) — signals that the
+            // Endpoint is a TLS relay to bridge to, carrying the SNI to present.
+            // Namespaced so it can't collide with a real wg-quick key; the WG UAPI
+            // is built from the parsed fields, so it never reaches wgnest.
+            case "cvpn_tls_sni": sni = val
             default: break
             }
         }
@@ -299,6 +358,7 @@ private struct WgQuick {
         peerPublicKey = pub
         address = addr
         self.dns = dns
+        tlsSni = sni
         // Split "ip:port" (our gateways are IPv4 literals); keep both parts.
         if let endpoint, let colon = endpoint.lastIndex(of: ":") {
             endpointHost = String(endpoint[..<colon])
