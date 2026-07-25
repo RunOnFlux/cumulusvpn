@@ -23,9 +23,13 @@ import type { Tier, Transport } from './types.js';
 export type TransportMode = 'auto' | 'speed' | 'stealth';
 
 /**
- * Transport slugs THIS client build can actually dial. M0 ships vanilla only;
- * M1/M2 add `'awg'` and `'wg-tls'` here as the native data paths land. Anything
- * a gateway advertises but this set omits is ignored during selection.
+ * Conservative default for transport slugs a client can dial: vanilla only.
+ *
+ * The shared library deliberately claims nothing beyond `wg`, because what can
+ * actually be dialled is a property of the NATIVE build, not of core. Each
+ * client passes its own set at the call site (desktop and both mobile platforms
+ * pass `{wg, awg, wg-tls}`). Anything a gateway advertises but the caller's set
+ * omits is ignored during selection.
  */
 export const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> = new Set(['wg']);
 

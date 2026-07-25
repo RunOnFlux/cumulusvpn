@@ -208,9 +208,9 @@ export function ConnectScreen({
       )}
 
       {/* Stealth mode — obfuscate the tunnel to bypass DPI/VPN-blocking
-          (docs/15). iOS + Android run the obfuscated engine natively; desktop
-          follows. Falls back to the fastest transport where a gateway doesn't
-          offer an obfuscated one. */}
+          (docs/15-transports.md). Prefers wg-tls, then awg. It never falls back
+          to plain WireGuard: a gateway offering no DPI-resistant transport is a
+          clear error, not a silent downgrade. Desktop has its own toggle. */}
       {Platform.OS === 'ios' || Platform.OS === 'android' ? (
         <View style={[styles.divRow, (connected || busy) && styles.divRowDisabled]}>
           <View style={styles.divMeta}>

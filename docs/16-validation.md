@@ -300,9 +300,6 @@ must still connect. That is the entire reason the TLS tier exists.
 
 ## Known gaps
 
-- **`docs/15-transports.md` does not exist** but is cited ~12 times across
-  `gateway/`, `deploy/` and `docs/`. Anyone following those pointers finds
-  nothing.
 - **`register.sh` is 2/5 steps** — sign/broadcast/pay are TODO echoes.
 - **No signature verification tool** for `X-CVPN-Signature`.
 - **`e2eclient` leaks a peer slot per run** (fresh keypair each time, and there
