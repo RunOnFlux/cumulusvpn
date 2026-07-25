@@ -30,6 +30,9 @@ class CumulusObfsVpnService : VpnService() {
 
     private var tun: ParcelFileDescriptor? = null
 
+    // wg-tls transport: the UDP<->TLS bridge, kept for the session. null for awg.
+    private var tlsBridge: WgTlsBridge? = null
+
     @Volatile
     private var handle: Long = 0
 
@@ -80,6 +83,10 @@ class CumulusObfsVpnService : VpnService() {
         val port = intent.getIntExtra(EXTRA_PORT, 0)
         val obfs = intent.getStringExtra(EXTRA_OBFS) ?: ""
         val dns = intent.getStringExtra(EXTRA_DNS) ?: "1.1.1.1"
+        // wg-tls: when a TLS relay + SNI are present, the WG device dials a local
+        // bridge instead of the gateway directly.
+        val tlsRelay = intent.getStringExtra(EXTRA_TLS_RELAY)
+        val tlsSni = intent.getStringExtra(EXTRA_TLS_SNI)
 
         val builder = Builder()
             .setSession("CumulusVPN")
@@ -105,12 +112,31 @@ class CumulusObfsVpnService : VpnService() {
         tun = pfd
 
         val fd = pfd.detachFd()
+
+        // For wg-tls, stand up the UDP<->TLS bridge to the gateway relay (its TCP
+        // socket bypasses the tun via the gateway-IP route exclusion above) and
+        // point the WG device at 127.0.0.1:<bridgePort> with NO obfs (the TLS
+        // wrapper is the obfuscation). Otherwise the WG device dials the gateway
+        // directly (vanilla awg over UDP).
+        var wgServerIp = serverIp
+        var wgPort = port
+        var wgObfs = obfs
+        if (tlsSni != null && tlsRelay != null) {
+            val (relayHost, relayPort) = splitHostPort(tlsRelay)
+            val bridge = WgTlsBridge()
+            tlsBridge = bridge
+            val localPort = bridge.start(relayHost, relayPort, tlsSni)
+            wgServerIp = "127.0.0.1"
+            wgPort = localPort
+            wgObfs = ""
+        }
+
         handle = Wgmobile.startSingle(
-            clientPriv, serverPub, serverIp, serverAssigned,
-            fd.toLong(), port.toLong(), obfs,
+            clientPriv, serverPub, wgServerIp, serverAssigned,
+            fd.toLong(), wgPort.toLong(), wgObfs,
         )
         activeHandle = handle
-        Log.i(TAG, "obfs single-hop up: server=$serverIp:$port handle=$handle")
+        Log.i(TAG, "wgnest single-hop up: server=$wgServerIp:$wgPort tls=${tlsSni != null} handle=$handle")
     }
 
     private fun teardown() {
@@ -125,11 +151,25 @@ class CumulusObfsVpnService : VpnService() {
             }
         }
         try {
+            tlsBridge?.stop()
+        } catch (_: Throwable) {
+        }
+        tlsBridge = null
+        try {
             tun?.close()
         } catch (_: Throwable) {
         }
         tun = null
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+    }
+
+    /** Split `host:port` (IPv4 gateway literals); default to the WG port if absent. */
+    private fun splitHostPort(hostPort: String): Pair<String, Int> {
+        val colon = hostPort.lastIndexOf(':')
+        if (colon <= 0) return hostPort to 51820
+        val host = hostPort.substring(0, colon)
+        val port = hostPort.substring(colon + 1).toIntOrNull() ?: 51820
+        return host to port
     }
 
     private fun startForegroundNotification() {
@@ -184,6 +224,11 @@ class CumulusObfsVpnService : VpnService() {
         const val EXTRA_PORT = "port"
         const val EXTRA_OBFS = "obfs"
         const val EXTRA_DNS = "dns"
+
+        // wg-tls: the gateway TLS relay (host:port) to bridge to, and the SNI to
+        // present. Both present → the WG device is bridged over TLS.
+        const val EXTRA_TLS_RELAY = "tlsRelay"
+        const val EXTRA_TLS_SNI = "tlsSni"
 
         @Volatile
         private var activeHandle: Long = 0

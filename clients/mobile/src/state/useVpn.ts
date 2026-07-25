@@ -88,16 +88,15 @@ export function isMultihop(style: RouteStyle): boolean {
  * Android run the amneziawg-go engine via wgnest for obfuscated single-hop
  * (iOS: the packet-tunnel extension; Android: CumulusObfsVpnService, while
  * vanilla single-hop stays on the stock GoBackend), so both can do `awg`.
- * `wg-tls` rides a native UDP<->TLS bridge — DONE on iOS (WgTlsBridge in the
- * packet-tunnel extension); Android's TLS bridge is still pending. Passed to core
- * `requireTransport` so a mode only picks a transport this build can bring up.
+ * `wg-tls` rides a native UDP<->TLS bridge (iOS: WgTlsBridge in the packet-tunnel
+ * extension; Android: WgTlsBridge in CumulusObfsVpnService), so both can do it
+ * too. Passed to core `requireTransport` so a mode only picks a transport this
+ * build can bring up.
  */
 const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> =
-  Platform.OS === 'ios'
+  Platform.OS === 'ios' || Platform.OS === 'android'
     ? new Set(['wg', 'awg', 'wg-tls'])
-    : Platform.OS === 'android'
-      ? new Set(['wg', 'awg'])
-      : new Set(['wg']);
+    : new Set(['wg']);
 
 /** Everything the UI renders from. */
 export interface VpnModel {

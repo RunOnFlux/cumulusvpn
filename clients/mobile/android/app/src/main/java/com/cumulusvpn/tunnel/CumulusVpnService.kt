@@ -97,12 +97,18 @@ object CumulusTunnelController {
     fun startTunnel(context: Context, wgQuickConfig: String) {
         setState(STATE_CONNECTING)
         try {
+            val tlsSni = extractTlsSni(wgQuickConfig)
             val obfs = extractObfsUapi(wgQuickConfig)
-            if (obfs.isNotEmpty()) {
+            if (tlsSni != null) {
+                // wg-tls single-hop: the wgnest device bridged over TLS. Runs in
+                // the same wgnest service as awg (the official Config parser would
+                // also reject the CVPN_TLS_SNI sentinel line). No [Interface] obfs.
+                startObfsSingleHop(context, wgQuickConfig, "", tlsSni)
+            } else if (obfs.isNotEmpty()) {
                 // Obfuscated (AmneziaWG) single-hop runs in the wgnest service —
                 // the official Config parser can't represent the awg params.
                 // Vanilla single-hop stays on GoBackend, unchanged.
-                startObfsSingleHop(context, wgQuickConfig, obfs)
+                startObfsSingleHop(context, wgQuickConfig, obfs, null)
             } else {
                 // Vanilla single-hop on GoBackend. Reset the obfs/multihop flags:
                 // a prior obfs or multi-hop tunnel may have set them, and a connect
@@ -143,6 +149,25 @@ object CumulusTunnelController {
             }
         }
         if (vals.isEmpty()) return ""
+        return extractObfsUapiOrdered(vals)
+    }
+
+    /** Extract the `CVPN_TLS_SNI` sentinel (wg-tls transport), or null. Injected by
+     *  the client (useVpn) since the fixed startTunnel bridge can't carry separate
+     *  fields; namespaced so it can't collide with a real wg-quick key. */
+    private fun extractTlsSni(conf: String): String? {
+        for (raw in conf.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            if (line.substring(0, eq).trim().equals("CVPN_TLS_SNI", ignoreCase = true)) {
+                return line.substring(eq + 1).trim()
+            }
+        }
+        return null
+    }
+
+    private fun extractObfsUapiOrdered(vals: HashMap<String, String>): String {
         return listOf("jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4")
             .mapNotNull { k -> vals[k]?.let { "$k=$it" } }
             .joinToString("\n", postfix = "\n")
@@ -153,7 +178,12 @@ object CumulusTunnelController {
      * the fields manually (the official [Config] parser rejects awg keys) and
      * pass them as Intent extras, mirroring [startMultihop].
      */
-    private fun startObfsSingleHop(context: Context, wgQuickConfig: String, obfs: String) {
+    private fun startObfsSingleHop(
+        context: Context,
+        wgQuickConfig: String,
+        obfs: String,
+        tlsSni: String?,
+    ) {
         var priv = ""
         var pub = ""
         var endpoint = ""
@@ -175,7 +205,7 @@ object CumulusTunnelController {
         }
         val serverIp = endpoint.substringBeforeLast(':', endpoint)
         val port = endpoint.substringAfterLast(':', "").toIntOrNull() ?: 0
-        Log.i(TAG, "startObfsSingleHop: server=$serverIp:$port (stealth)")
+        Log.i(TAG, "startObfsSingleHop: server=$serverIp:$port tls=${tlsSni != null} (stealth)")
 
         val intent = Intent(context, CumulusObfsVpnService::class.java).apply {
             action = CumulusObfsVpnService.ACTION_START
@@ -186,6 +216,13 @@ object CumulusTunnelController {
             putExtra(CumulusObfsVpnService.EXTRA_PORT, port)
             putExtra(CumulusObfsVpnService.EXTRA_OBFS, obfs)
             putExtra(CumulusObfsVpnService.EXTRA_DNS, dns)
+            // wg-tls: bridge the WG device over TLS to the gateway relay (the
+            // config Endpoint, gateway:tlsPort). The service excludes the gateway
+            // IP from the tun so the TLS socket bypasses it.
+            if (tlsSni != null) {
+                putExtra(CumulusObfsVpnService.EXTRA_TLS_RELAY, endpoint)
+                putExtra(CumulusObfsVpnService.EXTRA_TLS_SNI, tlsSni)
+            }
         }
         obfsActive = true
         multihopActive = false // reciprocal: an obfs→multihop switch must not leave this stale
