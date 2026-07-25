@@ -185,3 +185,34 @@ describe('applyTransportToEndpoint', () => {
     );
   });
 });
+
+describe('fallback chain safety (the invariant a retry loop must respect)', () => {
+  it('stealth chain never contains plain wg, however the gateway orders things', () => {
+    // A fallback loop walks this list. If `wg` could ever appear in it, a
+    // Stealth user whose obfuscated transports all failed would be silently
+    // downgraded to fingerprintable WireGuard — the exact outcome Stealth exists
+    // to prevent. Pinning it here means the loop cannot regress into that.
+    const gw: Transport[] = [wg, tls, awg];
+    const chain = transportFallbackChain(gw, 'stealth', ALL).map((t) => t.type);
+    expect(chain).toEqual(['wg-tls', 'awg']);
+    expect(chain).not.toContain('wg');
+  });
+
+  it('auto walks fastest-first, so a blocked vanilla falls through to obfuscation', () => {
+    expect(transportFallbackChain([tls, wg, awg], 'auto', ALL).map((t) => t.type)).toEqual([
+      'wg',
+      'awg',
+      'wg-tls',
+    ]);
+  });
+
+  it("a premium-gated transport is absent from a free user's chain, so it is never attempted", () => {
+    const premium: Transport = { type: 'wg-tls', port: 443, params: { tier: 'premium' } };
+    expect(
+      transportFallbackChain([premium, awg], 'stealth', ALL, 'free').map((t) => t.type),
+    ).toEqual(['awg']);
+    expect(
+      transportFallbackChain([premium, awg], 'stealth', ALL, 'premium').map((t) => t.type),
+    ).toEqual(['wg-tls', 'awg']);
+  });
+});

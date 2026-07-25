@@ -12,7 +12,6 @@ pub mod tlsbridge;
 pub mod wggo;
 
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use thiserror::Error;
@@ -318,7 +317,13 @@ impl TunnelManager {
         inner.bridge = bridge; // keep the wg-tls bridge alive for the session
         inner.assigned_ip = Some(assigned_ip.to_string());
         inner.state = TunnelState::Up;
-        inner.last_handshake = Some(now_unix());
+        // NOT a handshake: the interface is configured, but no WireGuard
+        // handshake has happened yet. Seeding a timestamp here would make a
+        // never-connecting tunnel indistinguishable from a live one — status()
+        // only ever replaces this with a real UAPI value, so a placeholder can
+        // never be cleared. Leaving it None makes `lastHandshake != null` an
+        // authoritative "the peer answered" signal for the frontend.
+        inner.last_handshake = None;
         inner.rx_bytes = 0;
         inner.tx_bytes = 0;
 
@@ -459,7 +464,7 @@ impl TunnelManager {
         inner.exit_ip = Some(exit_ip);
         inner.assigned_ip = Some(params.assigned_ip.to_string());
         inner.state = TunnelState::Up;
-        inner.last_handshake = Some(now_unix());
+        inner.last_handshake = None; // see connect(): only a real UAPI value counts
         inner.rx_bytes = 0;
         inner.tx_bytes = 0;
 
@@ -534,11 +539,4 @@ impl TunnelManager {
         };
         Ok(inner.snapshot())
     }
-}
-
-fn now_unix() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
 }

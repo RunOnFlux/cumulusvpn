@@ -16,6 +16,7 @@ import {
   obfsForTransport,
   requireTransport,
   selectHops,
+  transportFallbackChain,
   status as entitlementStatus,
 } from '@cumulusvpn/core';
 import type {
@@ -90,6 +91,9 @@ export interface EstablishResult {
   readonly gatewayIp: string;
   readonly enroll: EnrollResponse;
   readonly tunnel: TunnelStatus;
+  /** The transport that actually completed a handshake — not necessarily the
+   *  first choice, since `establish` falls through the chain on failure. */
+  readonly transport: Transport;
 }
 
 /**
@@ -292,10 +296,70 @@ function toGatewayInfo(country: CountryOption): GatewayInfo {
   };
 }
 
+/** How long to wait for a transport's inner handshake before trying the next.
+ *  wireguard-go re-sends a handshake initiation every ~5s, so this buys two
+ *  attempts — enough for any working path, short enough that walking a 3-entry
+ *  chain stays well inside a user's patience. */
+const PROBE_MS = 6000;
+const PROBE_INTERVAL_MS = 400;
+
+/**
+ * Wait for evidence that the tunnel actually came up, or give up.
+ *
+ * `tunnel.connect` resolves once the interface is configured — NOT when the
+ * WireGuard handshake completes — so it cannot tell a working transport from a
+ * blocked one. Only the gateway answering proves the transport works:
+ *   - `lastHandshake` is authoritative (the native side now leaves it null until
+ *     UAPI reports a real handshake time), and
+ *   - `rxBytes > 0` means bytes came back from the peer.
+ * `txBytes` is deliberately NOT used: wireguard-go retries handshakes forever,
+ * so it climbs steadily on a completely dead tunnel.
+ *
+ * Returns the live status, or null if nothing arrived within the budget.
+ */
+async function probeTunnelUp(budgetMs = PROBE_MS): Promise<TunnelStatus | null> {
+  const deadline = Date.now() + budgetMs;
+  for (;;) {
+    let s: TunnelStatus;
+    try {
+      s = await tunnel.status();
+    } catch {
+      return null; // native went away — treat as a failed attempt
+    }
+    if (s.lastHandshake !== null || s.rxBytes > 0) {
+      return s;
+    }
+    if (s.state === 'error' || s.state === 'down') {
+      return null; // native already gave up; don't burn the rest of the budget
+    }
+    if (Date.now() >= deadline) {
+      return null;
+    }
+    await new Promise((resolve) => setTimeout(resolve, PROBE_INTERVAL_MS));
+  }
+}
+
+/**
+ * Whether a failed `tunnel.connect` is a verdict on the TRANSPORT (try the next
+ * one) rather than on the machine (abort — retrying can't help).
+ *
+ * Tauri flattens the Rust error to a string, so this matches the TLS bridge's
+ * messages: a relay that refuses, times out, or fails its handshake says nothing
+ * about whether awg or vanilla would work. Sidecar spawn, routing and privilege
+ * failures are environmental and would repeat identically for every transport.
+ */
+function isTransportLevelFailure(err: unknown): boolean {
+  return String(err instanceof Error ? err.message : err).includes('tls bridge');
+}
+
 /**
  * Enroll the device key at the country's gateway, render the WireGuard config
  * with the core contract builder, and hand it to the native sidecar to bring
  * the tunnel up.
+ *
+ * Brings up the first transport in the gateway's chain that actually completes a
+ * handshake, falling through to the next when one doesn't (a censor blocking
+ * UDP, a relay that never answers). One enrollment serves every attempt.
  */
 export async function establish(
   country: CountryOption,
@@ -304,59 +368,104 @@ export async function establish(
   transportMode: TransportMode = 'auto',
   tier: Tier = 'free',
   fetchImpl?: typeof fetch,
+  onAttempt?: (transport: Transport, index: number, total: number) => void,
 ): Promise<EstablishResult> {
-  // Transport negotiation (docs/15): pick the transport for the mode this
-  // gateway advertises BEFORE enrolling, so a Stealth request against a
-  // vanilla-only location fails fast without spending an enrollment.
-  // `requireTransport` THROWS rather than falling back to vanilla, so Stealth
-  // never silently downgrades to fingerprintable plain WG (Auto still resolves
-  // to :51820 — vanilla is its floor). `obfs` is set only for `awg`.
-  const transport = requireTransport(
+  // Transport negotiation (docs/15). Resolve the gateway's authoritative tier
+  // first, then take the WHOLE ordered chain rather than just the best entry —
+  // bringing a tunnel up is not the same as it working, so we may need the next
+  // one. The chain is already filtered by mode, this build's capabilities, and
+  // entitlement, which is what keeps fallback safe: it can only ever walk within
+  // the mode's own preference list, so Stealth can never fall back to plain WG.
+  const gwTier = await resolveGatewayTier(country, keypair.publicKey, tier, fetchImpl);
+  const chain = transportFallbackChain(
     country.transports,
     transportMode,
     IMPLEMENTED_TRANSPORTS,
-    await resolveGatewayTier(country, keypair.publicKey, tier, fetchImpl),
+    gwTier,
   );
+  if (chain.length === 0) {
+    // Nothing usable here. requireTransport throws the precise, mode- and
+    // tier-aware message (Premium-only vs no-DPI-resistant-transport), so it
+    // stays the single source of that copy.
+    requireTransport(country.transports, transportMode, IMPLEMENTED_TRANSPORTS, gwTier);
+  }
 
+  // ONE enrollment for the entire chain. Enrollment is transport-agnostic (the
+  // same key works over any transport on this gateway) and the gateway rate
+  // limits enroll to one per source IP per 2s — re-enrolling per attempt would
+  // both waste a PoW and trip that limit mid-fallback.
   const enrollOpts = enrollOptsFor(country, fetchImpl);
   const reply = await enrollOrMock(country.gatewayIp, keypair.publicKey, enrollOpts);
 
-  const endpoint = applyTransportToEndpoint(reply.endpoint, transport);
-  const obfs = obfsForTransport(transport);
+  let lastError: Error | null = null;
+  for (let i = 0; i < chain.length; i += 1) {
+    const transport = chain[i]!;
+    onAttempt?.(transport, i, chain.length);
 
-  // wg-tls: the endpoint is the gateway's TLS relay (TCP `ip:tlsPort`). The
-  // native side bridges the WG device over TLS to it and rewrites the config's
-  // endpoint to the local bridge; `obfs` is undefined (the TLS wrapper IS the
-  // obfuscation, not `[Interface]` params). SNI comes from the advertised
-  // params, falling back to the gateway IP.
-  const tls =
-    transport.type === 'wg-tls'
-      ? { serverAddr: endpoint, sni: transport.params?.sni || country.gatewayIp }
-      : undefined;
+    const endpoint = applyTransportToEndpoint(reply.endpoint, transport);
+    const obfs = obfsForTransport(transport);
+    // wg-tls: the endpoint is the gateway's TLS relay (TCP `ip:tlsPort`). The
+    // native side bridges the WG device over TLS to it and rewrites the config's
+    // endpoint to the local bridge; `obfs` is undefined (the TLS wrapper IS the
+    // obfuscation, not `[Interface]` params). SNI comes from the advertised
+    // params, falling back to the gateway IP.
+    const tls =
+      transport.type === 'wg-tls'
+        ? { serverAddr: endpoint, sni: transport.params?.sni || country.gatewayIp }
+        : undefined;
 
-  const wgConfig = buildWgConfig({
-    privateKey: keypair.privateKey,
-    assignedIp: reply.assigned_ip,
-    dns: reply.dns,
-    serverPubKey: reply.server_pubkey,
-    endpoint,
-    ...(obfs ? { obfs } : {}),
-  });
+    const wgConfig = buildWgConfig({
+      privateKey: keypair.privateKey,
+      assignedIp: reply.assigned_ip,
+      dns: reply.dns,
+      serverPubKey: reply.server_pubkey,
+      endpoint,
+      ...(obfs ? { obfs } : {}),
+    });
 
-  // Hand the tunnel the CHOSEN transport endpoint (not the vanilla reply), so the
-  // kill switch and endpoint bypass allow the port the sidecar actually dials
-  // (e.g. awg on :51821, or the wg-tls relay's TCP port). Passing reply.endpoint
-  // (:51820) would make the kill switch drop the handshake.
-  const tunnelStatus = await tunnel.connect({
-    country: country.code,
-    wgConfig,
-    endpoint,
-    assignedIp: reply.assigned_ip,
-    killSwitch,
-    ...(tls ? { tls } : {}),
-  });
+    try {
+      // Hand the tunnel the CHOSEN transport endpoint (not the vanilla reply), so
+      // the kill switch and endpoint bypass allow the port the sidecar actually
+      // dials (e.g. awg on :51821, or the wg-tls relay's TCP port).
+      //
+      // No disconnect() between attempts: connect() already replaces the previous
+      // session (kills the sidecar, shuts any TLS bridge, clears routes) and
+      // re-engages the kill switch atomically. Disconnecting first would disengage
+      // it and open a plaintext leak window for the whole gap between attempts.
+      await tunnel.connect({
+        country: country.code,
+        wgConfig,
+        endpoint,
+        assignedIp: reply.assigned_ip,
+        killSwitch,
+        ...(tls ? { tls } : {}),
+      });
+    } catch (err) {
+      // Distinguish "this transport doesn't work here" from "this machine can't
+      // bring up any tunnel". Sweeping the whole chain over a missing privileged
+      // helper would just repeat the same failure N times and bury the real cause.
+      if (!isTransportLevelFailure(err)) {
+        throw err;
+      }
+      lastError = err instanceof Error ? err : new Error(String(err));
+      continue;
+    }
 
-  return { gatewayIp: country.gatewayIp, enroll: reply, tunnel: tunnelStatus };
+    const up = await probeTunnelUp();
+    if (up) {
+      return { gatewayIp: country.gatewayIp, enroll: reply, tunnel: up, transport };
+    }
+    lastError = new Error(`${transport.type}: no handshake`);
+  }
+
+  // Every transport failed. connect() leaves the manager in a live-looking state
+  // (kill switch engaged, default route on a dead interface), so this teardown is
+  // required — without it the machine is left with no working internet.
+  await tunnel.disconnect().catch(() => undefined);
+  throw new Error(
+    `Could not connect via ${chain.map((t) => t.type).join(' → ')}` +
+      `${lastError ? ` (${lastError.message})` : ''}. Try another location.`,
+  );
 }
 
 /**

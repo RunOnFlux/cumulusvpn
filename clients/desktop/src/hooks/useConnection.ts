@@ -371,7 +371,12 @@ export function useConnection(): ConnectionModel {
     if (phase === 'error' && wasConnectedRef.current) {
       wasConnectedRef.current = false;
       setConnectedSince(null);
-      const id = setTimeout(() => connect(), 3000);
+      // 5s, not 3: a reconnect re-runs the whole transport sweep, which starts
+      // with a fresh enrollment, and the gateway rate-limits enroll to one per
+      // source IP per 2s. Too eager a retry can collide with the enroll that the
+      // failed attempt just made and fail on the rate limit rather than the
+      // actual condition. Still one-shot — wasConnectedRef is cleared above.
+      const id = setTimeout(() => connect(), 5000);
       return () => clearTimeout(id);
     }
     return undefined;

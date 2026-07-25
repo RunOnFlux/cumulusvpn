@@ -15,21 +15,50 @@ vi.mock('@cumulusvpn/core', async (importOriginal) => {
   return { ...actual, discoverGateways: vi.fn(), enroll: vi.fn(), status: vi.fn() };
 });
 
+// Drives the native side's handshake reporting. `establish` probes `status`
+// after each `connect` to decide whether that transport actually came up, so the
+// mock has to model that: `failAttempts` makes the first N attempts report a
+// dead tunnel (state 'down' — the native side gave up, which the probe treats as
+// an immediate failure), after which handshakes land.
+const nativeState = vi.hoisted(() => ({
+  failAttempts: 0,
+  connects: 0,
+  // The real native manager remembers the active session, so `status` echoes it
+  // back; the mock must too, or the probed status looks empty.
+  session: {
+    country: null as string | null,
+    endpoint: null as string | null,
+    assignedIp: null as string | null,
+  },
+}));
+
 // Exercise the production (in-Tauri) path: isTauri()=true so establish uses the
 // real (mocked) enroll rather than the browser demo fallback, and invoke echoes
 // a connected status back from the "native" side.
 vi.mock('@tauri-apps/api/core', () => ({
   isTauri: () => true,
-  invoke: vi.fn(async (_cmd: string, args: Record<string, unknown>) => ({
-    state: 'up',
-    country: (args?.country as string) ?? null,
-    endpoint: (args?.endpoint as string) ?? null,
-    assignedIp: (args?.assignedIp as string) ?? null,
-    rxBytes: 0,
-    txBytes: 0,
-    lastHandshake: null,
-    error: null,
-  })),
+  invoke: vi.fn(async (cmd: string, args: Record<string, unknown>) => {
+    if (cmd === 'connect' || cmd === 'connect_multihop') {
+      nativeState.connects += 1;
+      nativeState.session = {
+        country: (args?.country as string) ?? (args?.exitCountry as string) ?? null,
+        endpoint: (args?.endpoint as string) ?? (args?.entryEndpoint as string) ?? null,
+        assignedIp: (args?.assignedIp as string) ?? null,
+      };
+    }
+    const dead = nativeState.connects <= nativeState.failAttempts;
+    return {
+      state: cmd === 'status' && dead ? 'down' : 'up',
+      country: (args?.country as string) ?? nativeState.session.country,
+      endpoint: (args?.endpoint as string) ?? nativeState.session.endpoint,
+      assignedIp: (args?.assignedIp as string) ?? nativeState.session.assignedIp,
+      rxBytes: 0,
+      txBytes: 0,
+      // A real handshake time is what proves the transport works.
+      lastHandshake: dead ? null : 1_700_000_000,
+      error: null,
+    };
+  }),
 }));
 
 const mockedDiscover = vi.mocked(discoverGateways);
@@ -59,6 +88,9 @@ beforeEach(() => {
   mockedDiscover.mockReset();
   mockedEnroll.mockReset();
   mockedStatus.mockReset();
+  nativeState.failAttempts = 0;
+  nativeState.connects = 0;
+  nativeState.session = { country: null, endpoint: null, assignedIp: null };
 });
 
 afterEach(async () => {
@@ -232,6 +264,78 @@ describe('establish', () => {
     // Conservative: a weaker-but-working transport beats a dead one.
     const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect');
     expect((call?.[1] as { endpoint: string }).endpoint).toMatch(/:51821$/);
+  });
+
+  it('falls back to the next transport when the first never handshakes — one enrollment', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    nativeState.failAttempts = 1; // the first transport comes up but never handshakes
+    const both = {
+      ...country,
+      transports: [
+        { type: 'wg' as const, port: 51820 },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+
+    const result = await establish(both, keypair, true, 'auto');
+
+    const connects = vi.mocked(invoke).mock.calls.filter((c) => c[0] === 'connect');
+    expect(connects).toHaveLength(2);
+    // Auto is fastest-first, so vanilla is tried before the obfuscated transport.
+    expect((connects[0]?.[1] as { endpoint: string }).endpoint).toMatch(/:51820$/);
+    expect((connects[1]?.[1] as { endpoint: string }).endpoint).toMatch(/:51821$/);
+    // Enrollment is transport-agnostic and rate-limited to 1/IP/2s — re-enrolling
+    // per attempt would trip that limit mid-fallback.
+    expect(mockedEnroll).toHaveBeenCalledTimes(1);
+    // The caller learns which transport actually worked.
+    expect(result.transport.type).toBe('awg');
+  });
+
+  it('gives up cleanly when every transport fails, and tears the tunnel down', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    nativeState.failAttempts = 99; // nothing ever handshakes
+    const both = {
+      ...country,
+      transports: [
+        { type: 'wg' as const, port: 51820 },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+
+    await expect(establish(both, keypair, true, 'auto')).rejects.toThrow(/wg → awg/);
+
+    // connect() leaves the manager looking Up with the kill switch engaged and a
+    // default route on a dead interface — without this teardown the machine is
+    // left with no working internet.
+    expect(vi.mocked(invoke).mock.calls.some((c) => c[0] === 'disconnect')).toBe(true);
+  });
+
+  it('Stealth fallback NEVER walks outside the mode — no silent downgrade to plain wg', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    vi.mocked(invoke).mockClear();
+    nativeState.failAttempts = 99;
+    const gw = {
+      ...country,
+      transports: [
+        { type: 'wg' as const, port: 51820 },
+        { type: 'wg-tls' as const, port: 443, params: { sni: 'x' } },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+
+    await expect(establish(gw, keypair, true, 'stealth')).rejects.toThrow();
+
+    // Even with every stealth transport failing and vanilla available and
+    // working, the loop must never dial :51820 — that is the invariant the whole
+    // Stealth mode exists to protect.
+    const dialled = vi
+      .mocked(invoke)
+      .mock.calls.filter((c) => c[0] === 'connect')
+      .map((c) => (c[1] as { endpoint: string }).endpoint);
+    expect(dialled).toEqual(['198.51.100.2:443', '198.51.100.2:51821']);
+    expect(dialled.some((e) => e.endsWith(':51820'))).toBe(false);
   });
 
   it('does NOT probe the gateway when nothing it advertises is gated', async () => {

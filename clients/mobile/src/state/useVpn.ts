@@ -24,6 +24,7 @@ import {
   paymentMemo,
   requireTransport,
   selectHops,
+  transportFallbackChain,
   status as fetchStatus,
 } from '@cumulusvpn/core';
 import type {
@@ -274,6 +275,9 @@ export function useVpn(): VpnModel & VpnActions {
   // auto-reconnect effect depends on `connect` — its cleanup would clear the
   // pending retry timer, silently starving a drop of its reconnect.
   const tierRef = useRef<Tier>('free');
+  // True while connect() is walking the transport chain. Suppresses native status
+  // events for attempts we are ourselves tearing down (see the status effect).
+  const connectingRef = useRef(false);
 
   /** Mark a gateway IP as recently-failed so failover skips it for a while. */
   const avoidGateway = useCallback((ip: string | null): void => {
@@ -460,6 +464,14 @@ export function useVpn(): VpnModel & VpnActions {
   useEffect(() => {
     const sub = onTunnelStatus((s) => {
       setStatus(s);
+      // While a connect is sweeping the transport chain, each failed attempt is
+      // torn down — which emits 'disconnected'/'error' events for a tunnel we are
+      // deliberately replacing. Honouring them would flash the UI to
+      // disconnected mid-sweep and let the auto-reconnect effect fire on top of
+      // an in-flight connect. Keep showing 'connecting' until the sweep decides.
+      if (connectingRef.current) {
+        return;
+      }
       setState(s.state);
       if (s.state === 'connected') {
         setConnectedSince((prev) => prev ?? Date.now());
@@ -590,19 +602,25 @@ export function useVpn(): VpnModel & VpnActions {
   }, [state]);
 
   // ---- connect watchdog: never hang on "connecting" forever --------------
-  // The enroll network step is bounded by core's fetch timeout, but a config
-  // that never completes the WireGuard handshake would otherwise leave the UI
-  // stuck. If we're still connecting after a generous window (multi-hop enrolls
-  // twice + handshakes twice), fail cleanly and tear down.
+  // The enroll network step is bounded by core's fetch timeout, and each
+  // transport attempt is bounded by its own handshake probe — but a native call
+  // that never returns at all (e.g. an iOS TLS connection stuck in .waiting)
+  // would still leave the UI stuck. This is the outer backstop.
+  //
+  // The budget must exceed the worst-case sweep, or it would kill a connect that
+  // was still legitimately working through the chain: a 3-transport chain costs
+  // 3 probes plus 2 teardowns, on top of enrollment.
   useEffect(() => {
     if (state !== 'connecting') {
       return;
     }
+    const maxChain = IMPLEMENTED_TRANSPORTS.size;
+    const budget = Math.max(40_000, 8_000 + maxChain * (PROBE_MS + TEARDOWN_MS));
     const id = setTimeout(() => {
       setState('error');
       setError('Connection timed out. Try another location.');
       void CumulusTunnel.stopTunnel().catch(() => undefined);
-    }, 40_000);
+    }, budget);
     return () => clearTimeout(id);
   }, [state]);
 
@@ -684,6 +702,10 @@ export function useVpn(): VpnModel & VpnActions {
     wantConnectedRef.current = true;
     setError(null);
     setState('connecting');
+    // Suppress native status events for attempts this sweep tears down itself,
+    // and make sure a prior session can't trigger auto-reconnect mid-connect.
+    connectingRef.current = true;
+    wasConnectedRef.current = false;
     try {
       // Android/iOS require explicit VPN consent before a tunnel can be created;
       // without it the native backend throws (Android: GoBackend BackendException).
@@ -719,6 +741,10 @@ export function useVpn(): VpnModel & VpnActions {
           killSwitch,
           requireDistinctSubnet: nodeDiversity,
         });
+        // Multi-hop has a single entry transport, so there is no chain to walk —
+        // it still reaches 'connected' via native status events, which means the
+        // suppression gate must come off BEFORE those events arrive.
+        connectingRef.current = false;
         const entryEp = routeEndpoint(hops.entry);
         const exitEp = routeEndpoint(hops.exit);
         setActiveEntry(entryEp);
@@ -756,22 +782,44 @@ export function useVpn(): VpnModel & VpnActions {
       // a transport, ask THIS gateway. One request, only on the gated path;
       // failure leaves the conservative cached value.
       const gwTier = await resolveGatewayTier(gw, keypair.publicKey, tierRef.current);
-      const transport = requireTransport(
+      // Take the WHOLE ordered chain, not just the best entry: a tunnel coming up
+      // is not the same as it working, so we may need the next one. The chain is
+      // already filtered by mode, this build's capabilities and entitlement —
+      // which is what makes fallback safe, since it can only walk within the
+      // mode's own preference list (Stealth can never fall back to plain WG).
+      const chain = transportFallbackChain(
         gw.transports,
         transportMode,
         IMPLEMENTED_TRANSPORTS,
         gwTier,
       );
+      if (chain.length === 0) {
+        // Throws the precise mode/tier-aware message (Premium-only vs no
+        // DPI-resistant transport) — one source of truth for that copy.
+        requireTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS, gwTier);
+      }
+
+      // ONE enrollment for the whole chain: it's transport-agnostic, and the
+      // gateway rate-limits enroll to one per source IP per 2s, so re-enrolling
+      // per attempt would trip that limit mid-fallback. A failure here IS a node
+      // failure, so it's the only part that marks the gateway bad.
+      let resp;
       try {
-        const resp = await enroll(gw.ip, keypair.publicKey, {
+        resp = await enroll(gw.ip, keypair.publicKey, {
           signPubKey: gw.sign_pubkey,
           powSolver: solvePowFast,
         });
-        setEnrollment(resp);
-        const entryEp = routeEndpoint(gw);
-        setActiveEntry(entryEp);
-        setActiveExit(null);
+      } catch (e) {
+        avoidGateway(gw.ip);
+        throw e;
+      }
+      setEnrollment(resp);
+      const entryEp = routeEndpoint(gw);
+      setActiveEntry(entryEp);
+      setActiveExit(null);
 
+      for (let i = 0; i < chain.length; i += 1) {
+        const transport = chain[i]!;
         const endpoint = applyTransportToEndpoint(resp.endpoint, transport);
         const obfs = obfsForTransport(transport);
 
@@ -793,18 +841,45 @@ export function useVpn(): VpnModel & VpnActions {
           const sni = transport.params?.sni || gw.ip;
           wgConfig += `\nCVPN_TLS_SNI = ${sni}\n`;
         }
-        await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
-        // Persist the live route so a force-quit + relaunch can restore where
-        // we're connected (see the launch-reconciliation effect).
-        void saveActiveRoute({ entry: entryEp, exit: null });
-      } catch (e) {
-        // This node failed — avoid it so the reconnect/retry hops elsewhere.
-        avoidGateway(gw.ip);
-        throw e;
+
+        try {
+          await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
+        } catch {
+          // A native reject is a verdict on this transport, not the node — try
+          // the next one rather than failing the whole connect.
+          await teardownAttempt();
+          continue;
+        }
+
+        // startTunnel only means the OS started it; only a handshake proves the
+        // transport actually works here.
+        if ((await probeHandshake()) === 'up') {
+          connectingRef.current = false;
+          setState('connected');
+          // Persist the live route so a force-quit + relaunch can restore where
+          // we're connected (see the launch-reconciliation effect).
+          void saveActiveRoute({ entry: entryEp, exit: null });
+          return;
+        }
+        await teardownAttempt();
       }
+
+      // Every transport this node offers failed — now it IS the node.
+      avoidGateway(gw.ip);
+      connectingRef.current = false;
+      setState('error');
+      setError(
+        `Tried ${chain.map((t) => t.type).join(' → ')} — none connected. Try another location.`,
+      );
+      return;
     } catch (e) {
+      connectingRef.current = false;
       setState('error');
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      // Belt and braces: never leave native status events suppressed, or the UI
+      // would stop tracking the tunnel entirely.
+      connectingRef.current = false;
     }
   }, [
     keypair,
@@ -972,6 +1047,78 @@ export function useVpn(): VpnModel & VpnActions {
     toggleFavorite,
     openVpnSettings,
   };
+}
+
+/** Per-transport handshake budget before falling through to the next one.
+ *  wireguard-go retries a handshake initiation every ~5s, so this covers two. */
+const PROBE_MS = 9_000;
+const PROBE_INTERVAL_MS = 500;
+/** Cap on waiting for a failed attempt to actually stop before the next starts. */
+const TEARDOWN_MS = 4_000;
+
+/**
+ * Wait for evidence the tunnel really came up, or report why not.
+ *
+ * `startTunnel` resolves once the OS has STARTED the tunnel — not when the
+ * WireGuard handshake completes — so it cannot distinguish a working transport
+ * from one a censor is dropping. Only the gateway answering proves it:
+ * `lastHandshake > 0` (authoritative) or `rxBytes > 0` (bytes came back).
+ * `txBytes` is deliberately ignored — handshake retries make it climb forever on
+ * a dead tunnel.
+ *
+ * `'gone'` means the native side already gave up, so there's no point burning
+ * the rest of the budget.
+ */
+async function probeHandshake(budgetMs = PROBE_MS): Promise<'up' | 'dead' | 'gone'> {
+  const deadline = Date.now() + budgetMs;
+  for (;;) {
+    try {
+      const s = await CumulusTunnel.getStatus();
+      if (s.lastHandshake > 0 || s.rxBytes > 0) {
+        return 'up';
+      }
+      if (s.state === 'error' || s.state === 'disconnected') {
+        return 'gone';
+      }
+    } catch {
+      // Transient (iOS provider-message races) — keep polling until the deadline.
+    }
+    if (Date.now() >= deadline) {
+      return 'dead';
+    }
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, PROBE_INTERVAL_MS);
+    });
+  }
+}
+
+/**
+ * Stop a failed attempt and WAIT for it to actually be down before the next one
+ * starts. The wait is load-bearing on both platforms: iOS refuses to start a
+ * tunnel while the previous one is still `.disconnecting`, and on Android the
+ * next attempt re-enters the same VpnService, which would orphan the previous
+ * wgnest handle and its tun fd.
+ */
+async function teardownAttempt(): Promise<void> {
+  try {
+    await CumulusTunnel.stopTunnel();
+  } catch {
+    // Fall through to the poll — the tunnel may already be gone.
+  }
+  const deadline = Date.now() + TEARDOWN_MS;
+  while (Date.now() < deadline) {
+    try {
+      const s = await CumulusTunnel.getStatus();
+      if (s.state === 'disconnected' || s.state === 'error') {
+        return;
+      }
+    } catch {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 250);
+    });
+  }
 }
 
 /**

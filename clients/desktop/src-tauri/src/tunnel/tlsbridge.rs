@@ -33,6 +33,11 @@ use super::TunnelError;
 /// 65535 anyway); matches the gateway relay's `maxDatagram`.
 const MAX_DATAGRAM: usize = 65535;
 
+/// Ceiling for the TCP connect and the TLS handshake to the relay. Short enough
+/// that a blackholed port fails fast (so transport fallback can move on), long
+/// enough for an intercontinental round trip.
+const DIAL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
+
 /// A no-op TLS certificate verifier. The TLS layer is camouflage only (see the
 /// module doc), so every certificate is accepted; the inner WireGuard handshake
 /// is what actually authenticates the gateway.
@@ -151,17 +156,28 @@ async fn establish(server_addr: String, sni: String) -> Result<SocketAddr, Tunne
         .local_addr()
         .map_err(|_| TunnelError::Sidecar("tls bridge: udp addr"))?;
 
-    let tcp = tokio::net::TcpStream::connect(&server_addr)
-        .await
-        .map_err(|_| TunnelError::Sidecar("tls bridge: tcp connect to relay failed"))?;
+    // Bound the dial. A censor that BLACKHOLES the relay port (rather than
+    // refusing it) is the expected hostile case, and an unbounded connect would
+    // then block for the OS SYN timeout — ~75s on macOS, ~130s on Linux — inside
+    // TunnelManager::connect while it holds the manager mutex, freezing status
+    // polls and any transport fallback along with it. Fail fast instead so the
+    // caller can try the next transport.
+    let tcp = tokio::time::timeout(
+        DIAL_TIMEOUT,
+        tokio::net::TcpStream::connect(&server_addr),
+    )
+    .await
+    .map_err(|_| TunnelError::Sidecar("tls bridge: tcp connect to relay timed out"))?
+    .map_err(|_| TunnelError::Sidecar("tls bridge: tcp connect to relay failed"))?;
     let _ = tcp.set_nodelay(true);
 
     let connector = tokio_rustls::TlsConnector::from(Arc::new(tls_client_config()?));
     let domain =
         ServerName::try_from(sni).map_err(|_| TunnelError::Sidecar("tls bridge: bad sni"))?;
-    let tls = connector
-        .connect(domain, tcp)
+    // Same reasoning: a port that accepts TCP but never speaks TLS would hang here.
+    let tls = tokio::time::timeout(DIAL_TIMEOUT, connector.connect(domain, tcp))
         .await
+        .map_err(|_| TunnelError::Sidecar("tls bridge: tls handshake timed out"))?
         .map_err(|_| TunnelError::Sidecar("tls bridge: tls handshake failed"))?;
 
     let (mut rd, mut wr) = tokio::io::split(tls);
