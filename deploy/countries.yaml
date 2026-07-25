@@ -17,6 +17,14 @@ defaults:
   staticip: true # stable WG endpoints
   datacenter: true # enterprise-only v8 flag → datacenter nodes, not homes
   ports: [51820, 51821] # WG (TCP+UDP auto) + control API
+  # DPI-resistant transports (docs/15) — additive, ride the FREE protocol sides of
+  # the ports above, so they cost NO extra Flux ports fleet-wide:
+  obfs: true # CVPN_OBFS_ENABLE → AmneziaWG (awg) on 51821/udp
+  tls: true # CVPN_TLS_ENABLE  → WireGuard-over-TLS (wg-tls) on 51820/tcp
+  tlsSni: www.bing.com # camouflage SNI for the self-signed relay cert (not verified)
+  # Ports for the separate 443 STEALTH group (cumulusvpntls<cc>), emitted only for
+  # countries flagged `stealth: true` — bounds the scarce 443 to a small footprint.
+  stealthPorts: [51820, 51821, 443]
   # PUBLIC GHCR image (auto-built), no repoauth. NOTE: the tag must be the form CI actually
   # publishes — docker/metadata-action strips the leading "v", so git tag v0.1.0 -> image :0.1.0
   # (NOT :v0.1.0). Before a real registration, pin the immutable digest here
@@ -28,7 +36,10 @@ countries:
   # --- Beta (12) --- instance counts tuned per expected demand; min 3 for failover
   - { cc: us, geolocation: acNA_US, instances: 6, stage: beta }
   - { cc: ca, geolocation: acNA_CA, instances: 3, stage: beta }
-  - { cc: de, geolocation: acEU_DE, instances: 5, stage: beta }
+  # DE is the 443-stealth pilot: also emits cumulusvpntlsde with a 443 TLS relay
+  # (docs/15 M4 — "DE pilot first"). Other countries add `stealth: true` as the
+  # premium 443 tier expands.
+  - { cc: de, geolocation: acEU_DE, instances: 5, stage: beta, stealth: true }
   - { cc: nl, geolocation: acEU_NL, instances: 5, stage: beta }
   - { cc: fr, geolocation: acEU_FR, instances: 4, stage: beta }
   - { cc: gb, geolocation: acEU_GB, instances: 4, stage: beta }

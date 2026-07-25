@@ -36,7 +36,9 @@ test('make-directory build → verify roundtrip passes', () => {
     const dir = JSON.parse(readFileSync(signed, 'utf8'));
     assert.ok(dir.sig, 'signed artifact has sig');
     assert.ok(dir.sign_pubkey, 'signed artifact has sign_pubkey');
-    assert.equal(dir.specs.length, 12, 'directory lists all 12 beta specs');
+    // 12 standard beta specs + the DE 443-stealth group (cumulusvpntlsde).
+    assert.equal(dir.specs.length, 13, 'directory lists 12 standard + 1 stealth spec');
+    assert.ok(dir.specs.includes('cumulusvpntlsde'), 'directory lists the DE stealth group');
 
     const verify = runNode(md, ['verify', '--in', signed]);
     assert.equal(verify.status, 0, `verify should pass; stderr: ${verify.stderr}`);

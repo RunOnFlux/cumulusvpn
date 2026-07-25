@@ -172,7 +172,9 @@ export async function discoverFleetAndCountries(fetchImpl?: typeof fetch): Promi
   if (!isTauri()) {
     const countries = BUNDLED_DIRECTORY.specs
       .map((spec): CountryOption => {
-        const code = spec.replace(/^cumulusvpn/, '').toUpperCase();
+        // Strip `cumulusvpn` and the optional `tls` stealth infix (cumulusvpntlsde
+        // -> DE), matching core specToCountryCode.
+        const code = spec.replace(/^cumulusvpn(?:tls)?/, '').toUpperCase();
         const meta = countryMeta(code);
         return {
           code,
