@@ -68,6 +68,14 @@ export const ar: Catalog = {
   connect_stat_endpoint: 'نقطة النهاية',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'تنزيل .conf',
+  connect_conf_note:
+    'مرتبط بهذا الخادم. إذا أُعيد تشغيله أو تغيّر، سيظل WireGuard يعرض النفق متصلاً دون أن يمر أي شيء — عد إلى هنا وأنشئ ملف ‎.conf‎ جديدًا.',
+  connect_conf_regenerate: 'إنشاء ملف ‎.conf‎ جديد',
+  connect_conf_stale:
+    'تم استبدال الخادم الذي أصدر إعدادك الأخير لـ {country} — لم يعد بإمكان ذلك الإعداد الاتصال. أنشئ إعدادًا جديدًا أدناه.',
+  connect_conf_unsure:
+    'تعذّر الوصول إلى الخادم الذي أصدر إعدادك الأخير لـ {country}. قد يكون متوقفًا مؤقتًا أو زال نهائيًا — إذا كان النفق لا يمرر أي بيانات، فأنشئ إعدادًا جديدًا أدناه.',
+  connect_conf_checking: 'جارٍ فحص إعدادك الأخير…',
   connect_upgrade_cta: 'الترقية إلى السرعة الكاملة ←',
   connect_identity_title: 'هوية هذا الجهاز',
   connect_regenerate: 'إعادة إنشاء المفتاح',

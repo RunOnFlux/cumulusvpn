@@ -55,6 +55,14 @@ export const id: Catalog = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Unduh .conf',
+  connect_conf_note:
+    'Terikat pada server ini. Jika server dimulai ulang atau berpindah, WireGuard tetap menampilkan terowongan sebagai tersambung padahal tidak ada yang lewat — kembali ke sini dan buat .conf baru.',
+  connect_conf_regenerate: 'Buat .conf baru',
+  connect_conf_stale:
+    'Server yang menerbitkan konfigurasi terakhir kamu untuk {country} telah diganti — konfigurasi itu tidak dapat tersambung lagi. Buat yang baru di bawah.',
+  connect_conf_unsure:
+    'Tidak dapat menghubungi server yang menerbitkan konfigurasi terakhir kamu untuk {country}. Mungkin sedang mati sementara, atau hilang selamanya — jika terowonganmu tidak meneruskan lalu lintas, buat konfigurasi baru di bawah.',
+  connect_conf_checking: 'Memeriksa konfigurasi terakhir kamu…',
   connect_upgrade_cta: 'Upgrade ke kecepatan penuh →',
   connect_identity_title: 'Identitas perangkat ini',
   connect_regenerate: 'Buat ulang kunci',

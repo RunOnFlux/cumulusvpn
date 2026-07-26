@@ -55,6 +55,14 @@ export const fa: Catalog = {
   connect_stat_endpoint: 'نقطه پایانی',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'دانلود .conf',
+  connect_conf_note:
+    'به این سرور وابسته است. اگر راه‌اندازی مجدد شود یا تغییر کند، WireGuard همچنان تونل را متصل نشان می‌دهد در حالی که چیزی رد نمی‌شود — به اینجا برگردید و یک ‎.conf‎ تازه بسازید.',
+  connect_conf_regenerate: 'ساخت ‎.conf‎ تازه',
+  connect_conf_stale:
+    'سروری که آخرین پیکربندی شما برای {country} را صادر کرد جایگزین شده است — آن پیکربندی دیگر نمی‌تواند متصل شود. در پایین یکی تازه بسازید.',
+  connect_conf_unsure:
+    'دسترسی به سروری که آخرین پیکربندی شما برای {country} را صادر کرد ممکن نشد. ممکن است موقتاً از کار افتاده یا برای همیشه رفته باشد — اگر تونل شما ترافیکی رد نمی‌کند، در پایین پیکربندی تازه‌ای بسازید.',
+  connect_conf_checking: 'در حال بررسی آخرین پیکربندی شما…',
   connect_upgrade_cta: 'ارتقا به سرعت کامل ←',
   connect_identity_title: 'هویت این دستگاه',
   connect_regenerate: 'ساخت مجدد کلید',

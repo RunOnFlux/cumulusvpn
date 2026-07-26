@@ -67,9 +67,16 @@ export interface InfoResponse {
   readonly capacity: number;
   readonly version: string;
   readonly min_client_version: string;
-  /** Short git commit the gateway image was built from (ldflags). Optional —
+  /** Full git commit the gateway image was built from (ldflags). Optional —
    *  older gateway images may omit it. */
   readonly build_commit?: string;
+  /** Whether enrollments on this gateway survive a restart. `false` means the
+   *  node is running without a durable peer table (unwritable `/data`, or a
+   *  cache it declined to overwrite), so every peer it registers — including any
+   *  issued web `.conf` — is lost at the next restart. ABSENT on gateways older
+   *  than the persistence release; absent is NOT the same as `false`, so treat
+   *  `undefined` as unknown rather than unhealthy. */
+  readonly peers_persisted?: boolean;
   /** Gateway WireGuard public key, base64. */
   readonly server_pubkey: string;
   /** Gateway Ed25519 signing public key, base64. */

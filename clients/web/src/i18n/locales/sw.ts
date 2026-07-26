@@ -55,6 +55,14 @@ export const sw: Catalog = {
   connect_stat_endpoint: 'Kituo',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Pakua .conf',
+  connect_conf_note:
+    'Imefungwa kwa seva hii. Ikianzishwa upya au ikihama, WireGuard bado itaonyesha handaki kama limeunganishwa lakini hakuna kitakachopita — rudi hapa uunde .conf mpya.',
+  connect_conf_regenerate: 'Unda .conf mpya',
+  connect_conf_stale:
+    'Seva iliyotoa mipangilio yako ya mwisho ya {country} imebadilishwa — mipangilio hiyo haiwezi tena kuunganisha. Tengeneza mipya hapa chini.',
+  connect_conf_unsure:
+    'Haikuwezekana kuifikia seva iliyotoa mipangilio yako ya mwisho ya {country}. Huenda imezimwa kwa muda au imeondoka kabisa — kama handaki lako halipitishi data, tengeneza mipangilio mipya hapa chini.',
+  connect_conf_checking: 'Inakagua mipangilio yako ya mwisho…',
   connect_upgrade_cta: 'Boresha upate kasi kamili →',
   connect_identity_title: 'Utambulisho wa kifaa hiki',
   connect_regenerate: 'Tengeneza upya ufunguo',

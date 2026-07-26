@@ -26,6 +26,8 @@ export { gatewayQuality } from './quality.js';
 export type { GatewayQuality, QualityTone } from './quality.js';
 export { pingGateway } from './probe.js';
 export type { PingResult } from './probe.js';
+export { checkIssuedConfig } from './confhealth.js';
+export type { ConfHealth, IssuedConfigRef } from './confhealth.js';
 export type {
   RouteStyle,
   Hop,

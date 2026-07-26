@@ -90,6 +90,7 @@ Response `data`:
   "load": 0.12, "capacity": 1988,
   "version": "0.2.0", "min_client_version": "0.1.0",
   "build_commit": "<full git sha, optional>",
+  "peers_persisted": true,
   "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>",
   "transports": [{ "type": "wg", "port": 51820 }]
 }
@@ -105,6 +106,14 @@ and ignores types it doesn't. Backward compatibility: a **pre-negotiation (0.1.0
 gateway omits the field entirely** — clients then assume vanilla WireGuard on `51820`,
 so old gateways and old apps keep interoperating with no flag-day. The array rides the
 signed body, so it is covered by the `X-CVPN-Signature` with no separate signing.
+
+**`peers_persisted`** — whether enrollments on this gateway survive a restart. `false`
+means the node reverted to holding the peer table only in memory (an unwritable `/data`,
+or a peer cache it could not read and so declined to overwrite), so every peer it
+registers is lost at the next restart. Nothing else distinguishes such a node from
+outside: it keeps enrolling clients and advertising capacity. It matters most for a
+statically-issued `.conf`, which cannot re-enroll. **Absent** on gateways older than the
+persistence release — treat missing as *unknown*, never as `false`.
 
 **Reserved param — `params.tier`.** `"premium"` marks a transport as entitled-users-only
 (the scarce 443 stealth tier). `/v1/info` is unauthenticated, so the gateway advertises

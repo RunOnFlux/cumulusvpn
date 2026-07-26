@@ -55,6 +55,14 @@ export const nb: Catalog = {
   connect_stat_endpoint: 'Endepunkt',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Last ned .conf',
+  connect_conf_note:
+    'Knyttet til denne serveren. Hvis den starter på nytt eller flyttes, viser WireGuard fortsatt tunnelen som tilkoblet selv om ingenting kommer gjennom — kom tilbake hit og lag en ny .conf.',
+  connect_conf_regenerate: 'Lag en ny .conf',
+  connect_conf_stale:
+    'Serveren som utstedte den siste konfigurasjonen din for {country}, er byttet ut — den konfigurasjonen kan ikke lenger koble til. Lag en ny nedenfor.',
+  connect_conf_unsure:
+    'Kunne ikke nå serveren som utstedte den siste konfigurasjonen din for {country}. Den kan være midlertidig nede eller borte for godt — hvis tunnelen ikke slipper gjennom trafikk, lag en ny konfigurasjon nedenfor.',
+  connect_conf_checking: 'Sjekker den siste konfigurasjonen din…',
   connect_upgrade_cta: 'Oppgrader til full hastighet →',
   connect_identity_title: 'Identiteten til denne enheten',
   connect_regenerate: 'Generer ny nøkkel',

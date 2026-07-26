@@ -55,6 +55,14 @@ export const hi: Catalog = {
   connect_stat_endpoint: 'एंडपॉइंट',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf डाउनलोड करें',
+  connect_conf_note:
+    'यह इसी सर्वर से जुड़ी है। सर्वर पुनः चालू होने या बदलने पर WireGuard सुरंग को कनेक्टेड ही दिखाता रहेगा, पर कुछ नहीं गुज़रेगा — यहाँ लौटकर नई .conf बनाएँ।',
+  connect_conf_regenerate: 'नई .conf बनाएँ',
+  connect_conf_stale:
+    '{country} के लिए आपकी पिछली कॉन्फ़िग जारी करने वाला सर्वर बदल दिया गया है — वह कॉन्फ़िग अब कनेक्ट नहीं हो सकती। नीचे नई बनाएँ।',
+  connect_conf_unsure:
+    '{country} के लिए आपकी पिछली कॉन्फ़िग जारी करने वाले सर्वर तक नहीं पहुँचा जा सका। हो सकता है वह अस्थायी रूप से बंद हो या हमेशा के लिए चला गया हो — अगर आपकी सुरंग से ट्रैफ़िक नहीं गुज़र रहा, तो नीचे नई कॉन्फ़िग बनाएँ।',
+  connect_conf_checking: 'आपकी पिछली कॉन्फ़िग जाँची जा रही है…',
   connect_upgrade_cta: 'पूरी स्पीड के लिए अपग्रेड करें →',
   connect_identity_title: 'इस डिवाइस की पहचान',
   connect_regenerate: 'कुंजी फिर से जनरेट करें',

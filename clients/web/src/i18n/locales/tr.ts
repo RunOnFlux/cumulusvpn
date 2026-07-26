@@ -55,6 +55,14 @@ export const tr: Catalog = {
   connect_stat_endpoint: 'Uç nokta',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf indir',
+  connect_conf_note:
+    'Bu sunucuya bağlı. Sunucu yeniden başlar veya değişirse WireGuard tüneli hâlâ bağlı gösterir ama hiçbir şey geçmez — buraya dönüp yeni bir .conf oluşturun.',
+  connect_conf_regenerate: 'Yeni bir .conf oluştur',
+  connect_conf_stale:
+    '{country} için son yapılandırmanı veren sunucu değiştirildi — o yapılandırma artık bağlanamaz. Aşağıdan yenisini oluştur.',
+  connect_conf_unsure:
+    '{country} için son yapılandırmanı veren sunucuya ulaşılamadı. Geçici olarak kapalı ya da tamamen gitmiş olabilir — tünelin trafik geçirmiyorsa aşağıdan yeni bir yapılandırma oluştur.',
+  connect_conf_checking: 'Son yapılandırman kontrol ediliyor…',
   connect_upgrade_cta: 'Tam hız için yükselt →',
   connect_identity_title: 'Bu cihazın kimliği',
   connect_regenerate: 'Anahtarı yeniden oluştur',

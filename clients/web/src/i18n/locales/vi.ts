@@ -55,6 +55,14 @@ export const vi: Catalog = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Tải .conf',
+  connect_conf_note:
+    'Gắn với máy chủ này. Nếu máy chủ khởi động lại hoặc đổi chỗ, WireGuard vẫn hiển thị đường hầm là đã kết nối trong khi không có gì đi qua — hãy quay lại đây và tạo .conf mới.',
+  connect_conf_regenerate: 'Tạo .conf mới',
+  connect_conf_stale:
+    'Máy chủ đã cấp cấu hình gần nhất của bạn cho {country} đã bị thay thế — cấu hình đó không thể kết nối nữa. Hãy tạo cấu hình mới bên dưới.',
+  connect_conf_unsure:
+    'Không liên hệ được máy chủ đã cấp cấu hình gần nhất của bạn cho {country}. Có thể máy chủ tạm ngưng hoặc đã biến mất — nếu đường hầm không truyền dữ liệu, hãy tạo cấu hình mới bên dưới.',
+  connect_conf_checking: 'Đang kiểm tra cấu hình gần nhất của bạn…',
   connect_upgrade_cta: 'Nâng cấp lên tốc độ tối đa →',
   connect_identity_title: 'Danh tính của thiết bị này',
   connect_regenerate: 'Tạo lại khóa',

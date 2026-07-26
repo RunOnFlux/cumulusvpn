@@ -9,6 +9,7 @@ import { useTheme } from './hooks/useTheme';
 import { useI18n } from './hooks/useLocale';
 import { useDiscovery } from './hooks/useDiscovery';
 import { loadOrCreateKeypair, regenerateKeypair } from './lib/keypair';
+import { clearIssuedConfig } from './lib/issuedConfig';
 
 export function App() {
   const [themeMode, toggleTheme] = useTheme();
@@ -17,7 +18,13 @@ export function App() {
   const discovery = useDiscovery(locale);
   const [keypair, setKeypair] = useState<Keypair>(() => loadOrCreateKeypair());
 
-  const onRegenerate = (): void => setKeypair(regenerateKeypair());
+  const onRegenerate = (): void => {
+    // A new keypair voids every config ever issued against the old one, so the
+    // staleness record must go with it — otherwise the next visit would check a
+    // gateway that is fine and report all-clear on a config that is already dead.
+    clearIssuedConfig();
+    setKeypair(regenerateKeypair());
+  };
 
   return (
     <>

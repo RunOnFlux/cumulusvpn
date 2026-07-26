@@ -11,7 +11,10 @@ import (
 	"log"
 	"net/netip"
 	"os"
+	"strconv"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/amnezia-vpn/amneziawg-go/conn"
 	"github.com/amnezia-vpn/amneziawg-go/device"
@@ -41,6 +44,24 @@ type Device struct {
 	mu     sync.RWMutex
 	byKey  map[string]netip.Addr // pubkey (base64) -> assigned IP
 	byAddr map[netip.Addr]string // assigned IP -> pubkey (base64)
+	// seen is when each peer last completed a handshake, refreshed from the
+	// device by TouchFromHandshakes. It is what idle eviction runs on — and it
+	// must come from HANDSHAKES, not from enroll: a web-issued static .conf never
+	// re-enrolls, so an enroll-driven clock would evict exactly the users the
+	// peer cache exists to protect, while they were actively connected.
+	seen map[string]time.Time
+
+	// cachePath, when set, persists the peer table across restarts
+	// (peercache.go). Only ONE device should own it — the allocation authority,
+	// whose table the others mirror — or they would race to rewrite the same
+	// file. cacheMu serializes writers so a slow write can't interleave with a
+	// newer one and land stale content.
+	cachePath string
+	cacheMu   sync.Mutex
+	// cacheFailed/cacheWarned track write health so an unwritable /data is
+	// reported once (and via PersistHealthy) rather than once per enroll.
+	cacheFailed bool
+	cacheWarned bool
 }
 
 // ObfsParams is the AmneziaWG obfuscation profile (docs/15-transports.md). The
@@ -179,6 +200,7 @@ func newDevice(listenPort int, priv [32]byte, extraUAPI string) (*Device, error)
 		priv:   priv,
 		byKey:  make(map[string]netip.Addr),
 		byAddr: make(map[netip.Addr]string),
+		seen:   make(map[string]time.Time),
 	}
 	curve25519.ScalarBaseMult(&d.pub, &d.priv)
 	return d, nil
@@ -226,9 +248,21 @@ func (d *Device) AddPeer(pubkey string, allowedIP netip.Addr) error {
 		return fmt.Errorf("wg: add peer: %w", err)
 	}
 	d.mu.Lock()
+	prior, existed := d.byKey[pubkey]
 	d.byKey[pubkey] = allowedIP
 	d.byAddr[allowedIP] = pubkey
+	if _, stamped := d.seen[pubkey]; !stamped {
+		// Stamp on first registration so a peer that enrolls and never connects
+		// still ages out; handshakes refresh it from here on.
+		d.seen[pubkey] = time.Now()
+	}
 	d.mu.Unlock()
+	// A re-enroll of an unchanged peer is the common case (every app reconnect
+	// hits enroll), and it changes nothing on disk — skip the whole-file rewrite
+	// and fsync, which would otherwise run inside the API's global enroll lock.
+	if !existed || prior != allowedIP {
+		d.persist()
+	}
 	return nil
 }
 
@@ -243,11 +277,16 @@ func (d *Device) RemovePeer(pubkey string) error {
 		return fmt.Errorf("wg: remove peer: %w", err)
 	}
 	d.mu.Lock()
+	_, existed := d.byKey[pubkey]
 	if addr, ok := d.byKey[pubkey]; ok {
 		delete(d.byAddr, addr)
 		delete(d.byKey, pubkey)
 	}
+	delete(d.seen, pubkey)
 	d.mu.Unlock()
+	if existed {
+		d.persist()
+	}
 	return nil
 }
 
@@ -286,6 +325,192 @@ func (d *Device) Peers() []string {
 	return out
 }
 
+// RestorePeers re-registers previously enrolled peers (from LoadPeerCache) and
+// reports how many were restored. Call it BEFORE SetPeerCache: restoring is not
+// a change worth writing back, and persisting per record would rewrite the file
+// once per peer for no gain.
+//
+// A record that fails to register is skipped rather than fatal — one bad entry
+// must not cost every other peer their enrollment.
+func (d *Device) RestorePeers(recs []PeerRecord) int {
+	n := 0
+	for _, r := range recs {
+		if err := d.AddPeer(r.PubKey, r.Addr); err != nil {
+			log.Printf("wg: could not restore peer %s: %v", shortKey(r.PubKey), err)
+			continue
+		}
+		// Carry the stamp forward, or the first eviction sweep would treat every
+		// restored peer as freshly seen and never age any of them out.
+		if !r.Seen.IsZero() {
+			d.mu.Lock()
+			d.seen[r.PubKey] = r.Seen
+			d.mu.Unlock()
+		}
+		n++
+	}
+	return n
+}
+
+// SetPeerCache makes this device persist its peer table to path on every change.
+// Set it on the allocation authority only (see cachePath).
+//
+// It deliberately does NOT write on the way in. At this moment the file on disk
+// is the authority and nothing has changed, so a write could only ever replace
+// it with a table derived from it — which is harmless after a clean load and
+// destructive after a partial one. Callers must skip this entirely when
+// LoadPeerCache reported the load was not clean.
+func (d *Device) SetPeerCache(path string) {
+	d.mu.Lock()
+	d.cachePath = path
+	d.mu.Unlock()
+}
+
+// TouchFromHandshakes refreshes each peer's last-seen stamp from the device's
+// own handshake clock and persists the result. This is what keeps an ACTIVE peer
+// from being evicted: enrollment is a one-time event for a web-issued .conf, but
+// handshakes continue for as long as the tunnel is used.
+//
+// Returns the number of peers whose stamp advanced.
+func (d *Device) TouchFromHandshakes() int {
+	hs, err := d.LastHandshakes()
+	if err != nil {
+		log.Printf("wg: could not read handshake times: %v", err)
+		return 0
+	}
+	n := 0
+	d.mu.Lock()
+	for pk, t := range hs {
+		if _, enrolled := d.byKey[pk]; !enrolled {
+			continue
+		}
+		if t.After(d.seen[pk]) {
+			d.seen[pk] = t
+			n++
+		}
+	}
+	d.mu.Unlock()
+	if n > 0 {
+		d.persist()
+	}
+	return n
+}
+
+// PeerRecords snapshots the peer table with last-seen stamps, for callers that
+// need to decide what to evict.
+func (d *Device) PeerRecords() []PeerRecord {
+	d.mu.RLock()
+	defer d.mu.RUnlock()
+	return d.snapshotLocked()
+}
+
+// snapshotLocked builds the record list. Caller holds at least a read lock.
+func (d *Device) snapshotLocked() []PeerRecord {
+	out := make([]PeerRecord, 0, len(d.byKey))
+	for pk, addr := range d.byKey {
+		out = append(out, PeerRecord{PubKey: pk, Addr: addr, Seen: d.seen[pk]})
+	}
+	return out
+}
+
+// LastHandshakes reports the last successful handshake per peer, from the
+// WireGuard device itself. Peers that have never handshaked are omitted.
+func (d *Device) LastHandshakes() (map[string]time.Time, error) {
+	dump, err := d.dev.IpcGet()
+	if err != nil {
+		return nil, err
+	}
+	out := make(map[string]time.Time)
+	var cur string
+	for _, line := range strings.Split(dump, "\n") {
+		key, val, ok := strings.Cut(strings.TrimSpace(line), "=")
+		if !ok {
+			continue
+		}
+		switch key {
+		case "public_key":
+			cur = ""
+			raw, err := hex.DecodeString(val)
+			if err == nil && len(raw) == 32 {
+				cur = base64.StdEncoding.EncodeToString(raw)
+			}
+		case "last_handshake_time_sec":
+			if cur == "" {
+				continue
+			}
+			secs, err := strconv.ParseInt(val, 10, 64)
+			if err == nil && secs > 0 {
+				out[cur] = time.Unix(secs, 0)
+			}
+		}
+	}
+	return out, nil
+}
+
+// persist snapshots the peer table and writes it out. A no-op unless a cache
+// path is set. Failures are logged (rate-limited — an unwritable /data would
+// otherwise log once per enroll forever) and swallowed: losing persistence
+// degrades to the old in-memory behaviour, which is not worth failing an enroll
+// the client would otherwise complete.
+func (d *Device) persist() {
+	// Take the writer lock FIRST, then snapshot. Snapshotting before serializing
+	// lets two writers interleave — the one that read older state could win the
+	// rename and leave the file behind the in-memory truth.
+	d.cacheMu.Lock()
+	defer d.cacheMu.Unlock()
+
+	d.mu.RLock()
+	path := d.cachePath
+	var recs []PeerRecord
+	if path != "" {
+		recs = d.snapshotLocked()
+	}
+	d.mu.RUnlock()
+	if path == "" {
+		return
+	}
+
+	err := savePeerCache(path, recs)
+	d.cacheFailed, d.cacheWarned = err != nil, d.cacheWarned && err != nil
+	if err != nil && !d.cacheWarned {
+		d.cacheWarned = true
+		log.Printf("wg: WARNING: could not persist peer cache %s (%v); enrollments will not survive a "+
+			"restart, and this will not be logged again until a write succeeds", path, err)
+	}
+	if err == nil {
+		d.cacheWarned = false
+	}
+}
+
+// PersistHealthy reports whether enrollments on this device will actually
+// survive a restart, so the control API can surface a node that silently
+// reverted to the old throw-everything-away behaviour instead of letting it look
+// identical to a healthy one.
+//
+// False covers BOTH ways that happens, which is the point: the last write
+// failed (an unwritable or full /data), or persistence was never enabled at all
+// — main.go deliberately skips it for a boot when the cache could not be read
+// cleanly. Reporting "healthy" for a node that isn't persisting because nobody
+// asked it to would defeat the whole check.
+func (d *Device) PersistHealthy() bool {
+	d.mu.RLock()
+	enabled := d.cachePath != ""
+	d.mu.RUnlock()
+	if !enabled {
+		return false
+	}
+	d.cacheMu.Lock()
+	defer d.cacheMu.Unlock()
+	return !d.cacheFailed
+}
+
+// shortKey abbreviates a pubkey for logs — never log a full key.
+func shortKey(pubkey string) string {
+	if len(pubkey) <= 8 {
+		return "…"
+	}
+	return pubkey[:8] + "…"
+}
+
 // Close shuts the WireGuard device down.
 func (d *Device) Close() {
 	d.dev.Close()
@@ -300,10 +525,6 @@ func decodeKey(b64 string) ([]byte, error) {
 	return raw, nil
 }
 
-// POC: also persist the peer table to /data/peers.cache (pubkey, assigned
-// IP, paid_until) so restarts are seamless; losing it is fine — clients
-// auto-re-enroll (docs/03-gateway.md "Peer management").
-//
 // LoadOrGenerateKey loads the base64 server key from path, or generates and
 // persists a new one if the file is absent. Persistence failure is non-fatal
 // (an ephemeral identity still works — clients just re-enroll after a restart),

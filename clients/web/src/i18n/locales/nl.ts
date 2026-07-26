@@ -55,6 +55,14 @@ export const nl: Catalog = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf downloaden',
+  connect_conf_note:
+    'Gekoppeld aan deze server. Bij een herstart of verplaatsing blijft WireGuard de tunnel als verbonden tonen terwijl er niets doorkomt — kom terug en genereer een nieuwe .conf.',
+  connect_conf_regenerate: 'Nieuwe .conf genereren',
+  connect_conf_stale:
+    'De server die je laatste configuratie voor {country} uitgaf, is vervangen — die configuratie kan geen verbinding meer maken. Genereer hieronder een nieuwe.',
+  connect_conf_unsure:
+    'De server die je laatste configuratie voor {country} uitgaf, was niet bereikbaar. Mogelijk tijdelijk offline, of definitief weg — als je tunnel geen verkeer doorlaat, genereer hieronder een nieuwe configuratie.',
+  connect_conf_checking: 'Je laatste configuratie wordt gecontroleerd…',
   connect_upgrade_cta: 'Upgraden naar volle snelheid →',
   connect_identity_title: 'Identiteit van dit apparaat',
   connect_regenerate: 'Sleutel opnieuw genereren',

@@ -55,6 +55,14 @@ export const ja: Catalog = {
   connect_stat_endpoint: 'エンドポイント',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf をダウンロード',
+  connect_conf_note:
+    'このサーバーに紐づいています。再起動や移動が起きても WireGuard はトンネルを接続済みと表示し続け、通信は一切通りません。ここに戻って新しい .conf を生成してください。',
+  connect_conf_regenerate: '新しい .conf を生成',
+  connect_conf_stale:
+    '{country} 向けの前回の設定を発行したサーバーは入れ替わりました。その設定ではもう接続できません。下で新しく生成してください。',
+  connect_conf_unsure:
+    '{country} 向けの前回の設定を発行したサーバーに接続できませんでした。一時的な停止か、完全になくなった可能性があります。トンネルに通信が流れていない場合は、下で新しい設定を生成してください。',
+  connect_conf_checking: '前回の設定を確認しています…',
   connect_upgrade_cta: 'フルスピードにアップグレード →',
   connect_identity_title: 'このデバイスの識別情報',
   connect_regenerate: '鍵を再生成',

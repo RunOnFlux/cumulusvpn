@@ -60,6 +60,14 @@ export const pl: Catalog = {
   connect_stat_endpoint: 'Punkt końcowy',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Pobierz .conf',
+  connect_conf_note:
+    'Powiązana z tym serwerem. Po jego restarcie lub zmianie WireGuard nadal pokaże tunel jako połączony, choć nic nie przejdzie — wróć tutaj i wygeneruj nowy plik .conf.',
+  connect_conf_regenerate: 'Wygeneruj nowy .conf',
+  connect_conf_stale:
+    'Serwer, który wydał twoją ostatnią konfigurację dla {country}, został zastąpiony — ta konfiguracja nie może się już połączyć. Wygeneruj nową poniżej.',
+  connect_conf_unsure:
+    'Nie udało się połączyć z serwerem, który wydał twoją ostatnią konfigurację dla {country}. Może być chwilowo niedostępny albo zniknął na dobre — jeśli tunel nie przepuszcza ruchu, wygeneruj nową konfigurację poniżej.',
+  connect_conf_checking: 'Sprawdzanie ostatniej konfiguracji…',
   connect_upgrade_cta: 'Ulepsz do pełnej prędkości →',
   connect_identity_title: 'Tożsamość tego urządzenia',
   connect_regenerate: 'Wygeneruj klucz ponownie',

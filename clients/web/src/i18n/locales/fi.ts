@@ -55,6 +55,14 @@ export const fi: Catalog = {
   connect_stat_endpoint: 'Päätepiste',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Lataa .conf',
+  connect_conf_note:
+    'Sidottu tähän palvelimeen. Jos se käynnistyy uudelleen tai vaihtuu, WireGuard näyttää tunnelin yhä yhdistettynä, vaikka mikään ei kulje — palaa tänne ja luo uusi .conf.',
+  connect_conf_regenerate: 'Luo uusi .conf',
+  connect_conf_stale:
+    'Palvelin, joka myönsi viimeisimmän asetuksesi kohteeseen {country}, on korvattu — se asetus ei voi enää yhdistää. Luo uusi alta.',
+  connect_conf_unsure:
+    'Palvelinta, joka myönsi viimeisimmän asetuksesi kohteeseen {country}, ei tavoitettu. Se voi olla väliaikaisesti alhaalla tai poistunut lopullisesti — jos tunneli ei välitä liikennettä, luo uusi asetus alta.',
+  connect_conf_checking: 'Tarkistetaan viimeisintä asetustasi…',
   connect_upgrade_cta: 'Päivitä täyteen nopeuteen →',
   connect_identity_title: 'Tämän laitteen identiteetti',
   connect_regenerate: 'Luo avain uudelleen',

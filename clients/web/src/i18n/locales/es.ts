@@ -55,6 +55,14 @@ export const es: Catalog = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Descargar .conf',
+  connect_conf_note:
+    'Vinculada a este servidor. Si se reinicia o cambia, WireGuard seguirá mostrando el túnel como conectado sin que pase nada — vuelve aquí y genera un .conf nuevo.',
+  connect_conf_regenerate: 'Generar un .conf nuevo',
+  connect_conf_stale:
+    'El servidor que emitió tu última configuración para {country} ha sido reemplazado; esa configuración ya no puede conectarse. Genera una nueva abajo.',
+  connect_conf_unsure:
+    'No se pudo contactar con el servidor que emitió tu última configuración para {country}. Puede estar caído temporalmente o haber desaparecido: si tu túnel no pasa tráfico, genera una nueva configuración abajo.',
+  connect_conf_checking: 'Comprobando tu última configuración…',
   connect_upgrade_cta: 'Mejorar a velocidad completa →',
   connect_identity_title: 'Identidad de este dispositivo',
   connect_regenerate: 'Regenerar clave',

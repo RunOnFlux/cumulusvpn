@@ -61,6 +61,14 @@ export const en = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Download .conf',
+  connect_conf_note:
+    'Tied to this server. If it restarts or moves, WireGuard will still show the tunnel as connected while nothing gets through — come back here and generate a new .conf.',
+  connect_conf_regenerate: 'Generate a new .conf',
+  connect_conf_stale:
+    'The server that issued your last config for {country} has been replaced — that config can no longer connect. Generate a new one below.',
+  connect_conf_unsure:
+    'Couldn’t reach the server that issued your last config for {country}. It may be temporarily down, or gone for good — if your tunnel isn’t passing traffic, generate a new config below.',
+  connect_conf_checking: 'Checking your last config…',
   connect_upgrade_cta: 'Upgrade to full speed →',
   connect_identity_title: 'This device’s identity',
   connect_regenerate: 'Regenerate key',

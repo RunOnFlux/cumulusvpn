@@ -99,6 +99,14 @@ type Config struct {
 	// re-enroll via discovery) but churny.
 	KeyFile string
 
+	// PeerCacheFile is where the peer table (pubkey -> assigned tunnel IP) is
+	// persisted so enrollments survive a restart. Without it a restart silently
+	// de-registers every client: the apps recover by re-enrolling on connect,
+	// but a static WireGuard .conf issued by the web client cannot, so its user
+	// is left with a tunnel that reports connected and never handshakes. Loss is
+	// survivable in the same way KeyFile loss is.
+	PeerCacheFile string
+
 	// ObfsEnable turns on the DPI-resistant AmneziaWG listener on WGObfsPort
 	// (docs/15-transports.md). Off by default; when off the gateway serves only
 	// vanilla WireGuard and does not advertise the obfuscated transport, so a
@@ -148,6 +156,7 @@ func Load() (*Config, error) {
 		NodeHostIP:         os.Getenv("FLUX_NODE_HOST_IP"),
 		AppName:            os.Getenv("FLUX_APP_NAME"),
 		KeyFile:            envStr("CVPN_KEY_FILE", "/data/server.key"),
+		PeerCacheFile:      envStr("CVPN_PEER_CACHE_FILE", "/data/peers.cache"),
 		GatewayFleetAllow:  envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
 		AllowPrivateEgress: envBool("CVPN_ALLOW_PRIVATE_EGRESS", false),
 		ObfsEnable:         envBool("CVPN_OBFS_ENABLE", false),

@@ -54,6 +54,14 @@ export const ko: Catalog = {
   connect_stat_endpoint: '엔드포인트',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf 다운로드',
+  connect_conf_note:
+    '이 서버에 묶여 있습니다. 서버가 재시작되거나 옮겨지면 WireGuard는 계속 터널이 연결된 것으로 표시하지만 아무것도 통과하지 못합니다 — 여기로 돌아와 새 .conf를 생성하세요.',
+  connect_conf_regenerate: '새 .conf 생성',
+  connect_conf_stale:
+    '{country}용 마지막 설정을 발급한 서버가 교체되었습니다 — 그 설정으로는 더 이상 연결할 수 없습니다. 아래에서 새로 생성하세요.',
+  connect_conf_unsure:
+    '{country}용 마지막 설정을 발급한 서버에 연결하지 못했습니다. 일시적으로 중단되었거나 완전히 사라졌을 수 있습니다 — 터널로 트래픽이 흐르지 않는다면 아래에서 새 설정을 생성하세요.',
+  connect_conf_checking: '마지막 설정을 확인하는 중…',
   connect_upgrade_cta: '전체 속도로 업그레이드 →',
   connect_identity_title: '이 기기의 신원',
   connect_regenerate: '키 재생성',

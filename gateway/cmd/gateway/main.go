@@ -214,6 +214,46 @@ func run() error {
 	}
 	go ent.Run(ctx)
 
+	// --- restore enrollments from the previous run ---
+	// Runs after every transport device exists (so restored peers land on all of
+	// them) and before the API accepts a request, so a client that reconnects the
+	// instant we come up finds itself already enrolled.
+	//
+	// Without this, a restart silently de-registered every peer. The apps hide it
+	// by re-enrolling on connect; a static .conf from the web client cannot, so
+	// its user got a tunnel that reports connected and never handshakes. Restarts
+	// are routine here — a Flux app update redeploys every container.
+	recs, cacheClean := wg.LoadPeerCache(cfg.PeerCacheFile, cfg.MaxPeersTotal)
+	if len(recs) > 0 {
+		n := dev.RestorePeers(recs)
+		// Mirror onto each additional transport that owns a device, exactly as
+		// enroll does. Premium-gated devices are skipped here and reconciled by
+		// syncTiers below, which resolves entitlement from chain — the single
+		// source of truth, and the reason tier is not in the cache.
+		for _, e := range obfsTransports {
+			if e.Device == nil || e.PremiumOnly {
+				continue
+			}
+			e.Device.RestorePeers(recs)
+		}
+		log.Printf("gateway: restored %d/%d peer(s) from %s", n, len(recs), cfg.PeerCacheFile)
+	}
+	// Persist from here on — but ONLY if the file was read completely. After a
+	// partial read (unreadable file, a format this build doesn't know, more peers
+	// than the ceiling) the first write would replace a file we couldn't read
+	// with one derived from the little we recovered, turning a transient
+	// permission error or a rollback into permanent data loss. Running read-only
+	// for a boot just costs the old behaviour: peers re-enroll.
+	if cacheClean {
+		// Set AFTER restoring so the restore itself doesn't rewrite the file once
+		// per peer. Only the vanilla device — the allocation authority whose table
+		// is the superset — owns the cache.
+		dev.SetPeerCache(cfg.PeerCacheFile)
+	} else {
+		log.Printf("gateway: WARNING: peer cache %s was not read cleanly; running WITHOUT persistence "+
+			"this boot so the file is preserved — fix it and restart", cfg.PeerCacheFile)
+	}
+
 	// --- control API ---
 	srv := api.New(cfg, dev, ent, lim, info, nodePublicIP, obfsTransports...)
 	go srv.SampleLoad(ctx) // live throughput → real /v1/info load
@@ -226,6 +266,7 @@ func run() error {
 	// transport device (a peer that pays after enrolling must be added; an
 	// expired one removed).
 	go syncTiers(ctx, dev, ent, lim, srv)
+	go reapIdlePeers(ctx, dev, ent, lim, srv, obfsTransports)
 	httpSrv := &http.Server{
 		Addr:              addr(config.APIPort),
 		Handler:           srv.Handler(),
@@ -256,6 +297,20 @@ func run() error {
 // expiry is eventless (Tier re-evaluates against the clock), so polling is the
 // only way a lapsed subscription loses premium access.
 func syncTiers(ctx context.Context, dev *wg.Device, ent *entitle.Engine, lim *limiter.Manager, srv *api.Server) {
+	reconcile := func() {
+		// dev is the vanilla device — the allocation authority every enroll
+		// hits first, so its peer list is the superset of all transports.
+		for _, pk := range dev.Peers() {
+			premium, _ := ent.Tier(pk)
+			lim.SetTier(pk, premium)
+			srv.SyncPremiumPeers(pk, premium)
+		}
+	}
+	// Reconcile once up front rather than waiting out the first tick: peers
+	// restored from the cache have no tier yet, and a premium one would otherwise
+	// be missing from the premium-gated device for the first interval.
+	reconcile()
+
 	t := time.NewTicker(15 * time.Second)
 	defer t.Stop()
 	for {
@@ -263,13 +318,82 @@ func syncTiers(ctx context.Context, dev *wg.Device, ent *entitle.Engine, lim *li
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			// dev is the vanilla device — the allocation authority every enroll
-			// hits first, so its peer list is the superset of all transports.
-			for _, pk := range dev.Peers() {
-				premium, _ := ent.Tier(pk)
-				lim.SetTier(pk, premium)
-				srv.SyncPremiumPeers(pk, premium)
+			reconcile()
+		}
+	}
+}
+
+// reapIdlePeers is the other half of peer persistence. While the table lived
+// only in memory, a restart was an accidental garbage collector: caps like
+// MaxPeersFree were effectively "concurrent peers since the last restart".
+// Persisting the table removes that, so without eviction the caps would become
+// LIFETIME caps — the node would keep advertising capacity while 503-ing every
+// new free user, forever (docs/03-gateway.md "Peer management").
+//
+// Idleness is measured by HANDSHAKE, never by enrollment: a web-issued static
+// .conf enrolls exactly once and then handshakes for as long as it is used, so
+// an enroll-driven clock would evict active users. Premium keys are never
+// reaped while entitled, plus a grace period after expiry so a lapsed
+// subscriber who renews doesn't lose their address.
+func reapIdlePeers(
+	ctx context.Context,
+	dev *wg.Device,
+	ent *entitle.Engine,
+	lim *limiter.Manager,
+	srv *api.Server,
+	extra []api.ExtraTransport,
+) {
+	const (
+		sweepEvery   = time.Hour
+		freeIdle     = 30 * 24 * time.Hour // docs/03: free peers after 30d idle
+		premiumGrace = 35 * 24 * time.Hour // …premium after paid_until + 35d
+	)
+	t := time.NewTicker(sweepEvery)
+	defer t.Stop()
+	for {
+		// Refresh stamps first so a peer that is actively handshaking is never a
+		// candidate, then evict. Both are cheap relative to the hourly period.
+		dev.TouchFromHandshakes()
+
+		now := time.Now()
+		for _, rec := range dev.PeerRecords() {
+			premium, paidUntil := ent.Tier(rec.PubKey)
+			if premium {
+				continue
 			}
+			cutoff := freeIdle
+			// A key that ever paid keeps its address through the longer grace,
+			// measured from expiry rather than from last use.
+			if !paidUntil.IsZero() {
+				if now.Sub(paidUntil) < premiumGrace {
+					continue
+				}
+				cutoff = premiumGrace
+			}
+			// A zero stamp means "never handshaked and never restored with one";
+			// RestorePeers and enroll both stamp, so this is a fresh enroll that
+			// has yet to connect — leave it alone until it ages normally.
+			if rec.Seen.IsZero() || now.Sub(rec.Seen) < cutoff {
+				continue
+			}
+			if err := dev.RemovePeer(rec.PubKey); err != nil {
+				log.Printf("gateway: could not reap idle peer: %v", err)
+				continue
+			}
+			for _, e := range extra {
+				if e.Device == nil {
+					continue
+				}
+				_ = e.Device.RemovePeer(rec.PubKey)
+			}
+			lim.Remove(rec.PubKey)
+			srv.SyncPremiumPeers(rec.PubKey, false)
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
 		}
 	}
 }

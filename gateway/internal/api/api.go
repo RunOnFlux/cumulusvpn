@@ -79,6 +79,13 @@ type Info struct {
 	MinClientVersion string      `json:"min_client_version"`
 	BuildCommit      string      `json:"build_commit"` // full git SHA of the image build
 	Transports       []Transport `json:"transports"`   // dialable transports (negotiation)
+	// PeersPersisted reports whether enrollments on this node survive a restart.
+	// False means the node reverted to throwing the peer table away — an
+	// unwritable /data, or a cache it could not read and so declined to write.
+	// Nothing else distinguishes such a node from outside: it keeps enrolling
+	// peers and advertising capacity, and only loses them at the next restart.
+	// Additive and optional, so a 0.1.0 client that never reads it is unaffected.
+	PeersPersisted bool `json:"peers_persisted"`
 }
 
 // ExtraTransport pairs an additional listener's device with the transport entry
@@ -318,8 +325,14 @@ func (s *Server) assign(pubkey string) (netip.Addr, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// 10.8.0.0/16 minus .0.0 (network) and .0.1 (gateway). Walk host part.
-	// POC: this is a simple monotonic allocator; a real one recycles freed
-	// addresses and persists the map to /data/peers.cache.
+	// The assignment itself IS persisted (peercache.go) and restored into the
+	// device before the API serves, so a restart hands a returning peer the same
+	// address — which matters because the web client's issued .conf pins it.
+	// nextHost deliberately isn't persisted: the loop below skips addresses the
+	// restored table already holds, so restarting the scan at the bottom of the
+	// range is correct, just marginally slower.
+	// POC: still a monotonic allocator — it does not recycle freed addresses
+	// until it wraps.
 	for i := 0; i < 65534; i++ {
 		host := s.nextHost
 		s.nextHost++
@@ -376,12 +389,25 @@ func (s *Server) handleStatus(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 	info := s.info
 	free, total := s.lim.Counts()
-	_ = free
 	remaining := s.cfg.MaxPeersTotal - total
 	if remaining < 0 {
 		remaining = 0
 	}
+	// The free ceiling binds first and independently: a node at MaxPeersFree
+	// rejects every new free enrollment while total headroom may still look
+	// ample. Reporting only the total made such a node advertise capacity it
+	// could not honour, so the directory kept steering free users at a gateway
+	// that would 503 them. Advertise whichever headroom actually binds.
+	if freeRemaining := s.cfg.MaxPeersFree - free; freeRemaining < remaining {
+		if freeRemaining < 0 {
+			freeRemaining = 0
+		}
+		remaining = freeRemaining
+	}
 	info.Capacity = remaining
+	// Read live rather than from the cached struct: persistence health flips at
+	// runtime the moment /data stops accepting writes.
+	info.PeersPersisted = s.dev.PersistHealthy()
 	// Load is the BINDING constraint — whichever of peer-occupancy or real
 	// bandwidth is more saturated — so clients load-balance on what actually
 	// limits a node. Peer ratio catches "full of idle peers"; throughput ratio

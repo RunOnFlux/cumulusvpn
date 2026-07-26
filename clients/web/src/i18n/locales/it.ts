@@ -55,6 +55,14 @@ export const it: Catalog = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Scarica .conf',
+  connect_conf_note:
+    'Legata a questo server. Se si riavvia o cambia, WireGuard continuerà a mostrare il tunnel come connesso senza che passi nulla — torna qui e genera un nuovo .conf.',
+  connect_conf_regenerate: 'Genera un nuovo .conf',
+  connect_conf_stale:
+    'Il server che ha emesso la tua ultima configurazione per {country} è stato sostituito: quella configurazione non può più connettersi. Generane una nuova qui sotto.',
+  connect_conf_unsure:
+    'Non è stato possibile raggiungere il server che ha emesso la tua ultima configurazione per {country}. Potrebbe essere temporaneamente non disponibile o sparito — se il tunnel non fa passare traffico, genera una nuova configurazione qui sotto.',
+  connect_conf_checking: 'Verifica della tua ultima configurazione…',
   connect_upgrade_cta: "Fai l'upgrade alla piena velocità →",
   connect_identity_title: 'Identità di questo dispositivo',
   connect_regenerate: 'Rigenera chiave',

@@ -54,6 +54,14 @@ export const zh: Catalog = {
   connect_stat_endpoint: '端点',
   connect_stat_dns: 'DNS',
   connect_download_conf: '下载 .conf',
+  connect_conf_note:
+    '与该服务器绑定。若服务器重启或迁移，WireGuard 仍会显示隧道已连接，但没有任何流量通过——请回到此页重新生成 .conf。',
+  connect_conf_regenerate: '重新生成 .conf',
+  connect_conf_stale:
+    '为 {country} 签发你上一份配置的服务器已被替换——该配置无法再连接。请在下方重新生成。',
+  connect_conf_unsure:
+    '无法连接到为 {country} 签发你上一份配置的服务器。它可能暂时下线，也可能已永久消失——如果隧道没有流量通过，请在下方重新生成配置。',
+  connect_conf_checking: '正在检查你的上一份配置…',
   connect_upgrade_cta: '升级至全速 →',
   connect_identity_title: '此设备的身份',
   connect_regenerate: '重新生成密钥',
