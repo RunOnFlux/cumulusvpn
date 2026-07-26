@@ -95,15 +95,23 @@ for (const c of wanted) {
   // group that lists 443 and runs the TLS relay there — for censors that allow
   // only 443. Keeping 443 in its own spec bounds that scarce/expensive port to a
   // small strategic footprint instead of the whole fleet (docs/15 M4).
-  const groups = [{ name: `cumulusvpn${c.cc}`, ports: defaults.ports, tlsPort: undefined }];
+  const groups = [
+    { name: `cumulusvpn${c.cc}`, ports: defaults.ports, tlsPort: undefined, instances },
+  ];
   if (c.stealth) {
     groups.push({
       name: `cumulusvpntls${c.cc}`,
       ports: c.stealthPorts ?? defaults.stealthPorts ?? [...defaults.ports, 443],
       tlsPort: 443,
+      // Sized SEPARATELY from the standard group. They used to share a count,
+      // which silently doubled a country's paid footprint the moment it was
+      // flagged stealth — and doubled it onto 443, a sub-1024 port that costs
+      // extra. The 443 tier is a bounded strategic footprint by design (docs/15
+      // M4), so it should be raised deliberately, not inherited.
+      instances: c.stealthInstances ?? defaults.stealthInstances ?? instances,
     });
   }
-  for (const g of groups) emitSpec(c, g, instances);
+  for (const g of groups) emitSpec(c, g, g.instances);
 
   let note = '';
   if (eligibleByCountry) {
@@ -122,7 +130,9 @@ for (const c of wanted) {
       note = `  ⚠️  only ${avail} eligible (${detail}) < ${instances} instances — will under-fill`;
     else note = `  (${avail} eligible; ${detail})`;
   }
-  const stealthNote = c.stealth ? '  (+tls stealth 443)' : '';
+  const stealthNote = c.stealth
+    ? `  (+tls stealth 443 ×${c.stealthInstances ?? defaults.stealthInstances ?? instances})`
+    : '';
   console.log(`✓ cumulusvpn${c.cc}  ${c.geolocation}  instances=${instances}${stealthNote}${note}`);
 }
 

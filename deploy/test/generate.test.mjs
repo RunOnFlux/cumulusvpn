@@ -70,6 +70,15 @@ test('generate.mjs (open, default) expands countries.yaml into 12 beta v8 OPEN s
     );
     assert.equal(tlsDe.geolocation[0], 'acEU_DE', 'stealth group stays in its country');
 
+    // The stealth group is sized INDEPENDENTLY of the country's standard count.
+    // They used to share one number, so flagging a country stealth silently
+    // doubled its paid footprint — onto 443, a surcharged sub-1024 port — which
+    // is the opposite of the "bounded strategic footprint" the group exists for.
+    assert.ok(
+      tlsDe.instances < de.instances,
+      `stealth group (${tlsDe.instances}) must not inherit the standard count (${de.instances})`,
+    );
+
     // The scarce 443 tier is premium-gated; the standard group's free-side
     // wg-tls is NOT (gating it would cost free users stealth for no saving).
     assert.ok(tlsEnv.includes('CVPN_TLS_PREMIUM=1'), '443 stealth tier is premium-gated');

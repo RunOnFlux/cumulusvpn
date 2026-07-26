@@ -27,16 +27,25 @@ defaults:
   # NOTE: never add the gateway's internal premium WG port (51822) here — listing
   # it would publish that device and let clients bypass the TLS relay entirely.
   stealthPorts: [51820, 51821, 443]
+  # Instances for the 443 stealth group, INDEPENDENT of the country's standard
+  # count. 443 is a surcharged sub-1024 port and the group is a bounded pilot,
+  # so it must not inherit a large standard footprint. Raise per-country with
+  # `stealthInstances:` once clients ship a directory that lists the group.
+  stealthInstances: 3
   # Reserve the 443 stealth tier for PAYING users (CVPN_TLS_PREMIUM). Applies only
   # to the cumulusvpntls<cc> group; the standard group's wg-tls on 51820/tcp stays
   # open to everyone since it costs no extra port. Free users in Stealth simply
   # fall back to awg. Set false to make 443 free-for-all.
   tlsPremium: true
-  # PUBLIC GHCR image (auto-built), no repoauth. NOTE: the tag must be the form CI actually
-  # publishes — docker/metadata-action strips the leading "v", so git tag v0.1.0 -> image :0.1.0
-  # (NOT :v0.1.0). Before a real registration, pin the immutable digest here
-  # (…/cumulusvpn-gateway@sha256:…) so a paid spec can't be re-tagged out from under it.
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.1.0'
+  # PUBLIC GHCR image (auto-built), no repoauth.
+  # Pinned by IMMUTABLE DIGEST, not by tag: a spec is paid for on-chain, and a
+  # mutable tag could be repointed under it after the fact. This digest is gateway
+  # 0.2.1 (git tag v0.2.1) — the first build carrying the persistent peer table,
+  # so an issued web .conf survives a container restart.
+  # To move it: cut a tag, let .github/workflows/gateway-image.yml publish, then
+  # read the digest back from the registry (docs/16 Stage B). Note CI strips the
+  # leading "v", so tag v0.2.1 -> image :0.2.1, never :v0.2.1.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway@sha256:4b9021dd11ce07ae5a22da9bb94b2580e68c929b4bcbfb94685b98b2236792e0'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:
@@ -46,7 +55,11 @@ countries:
   # DE is the 443-stealth pilot: also emits cumulusvpntlsde with a 443 TLS relay
   # (docs/15 M4 — "DE pilot first"). Other countries add `stealth: true` as the
   # premium 443 tier expands.
-  - { cc: de, geolocation: acEU_DE, instances: 5, stage: beta, stealth: true }
+  # 12, matching what is already live on chain: the 0.2.x rollout must change the
+  # image and env ONLY. Regenerating at 5 would quietly cut Germany by 7 nodes as
+  # a side effect, and the update-price credit floors at minPrice so the bill
+  # would not flag it. Scale deliberately, as its own change.
+  - { cc: de, geolocation: acEU_DE, instances: 12, stage: beta, stealth: true }
   - { cc: nl, geolocation: acEU_NL, instances: 5, stage: beta }
   - { cc: fr, geolocation: acEU_FR, instances: 4, stage: beta }
   - { cc: gb, geolocation: acEU_GB, instances: 4, stage: beta }
