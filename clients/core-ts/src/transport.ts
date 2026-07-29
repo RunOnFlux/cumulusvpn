@@ -145,7 +145,10 @@ export function selectTransport(
  * but an explicit `stealth`/`speed` request against a gateway that offers nothing
  * the mode + this build allow is a hard error the UI surfaces — NOT a quiet
  * fallback to plain, DPI-fingerprintable WireGuard. The thrown message is
- * mode-aware so the user knows to pick another location or switch to Auto.
+ * mode-aware so the user knows to pick another location or turn Stealth off.
+ * Say "Stealth mode", never the internal mode name: every client presents this
+ * as a boolean Stealth toggle, so "switch to Auto" named a control that exists
+ * in no UI — and it now lives in Settings, off the screen showing the error.
  */
 export function requireTransport(
   transports: readonly Transport[] | undefined,
@@ -164,12 +167,12 @@ export function requireTransport(
       transportFallbackChain(transports, mode, implemented, 'premium').length > 0
     ) {
       throw new Error(
-        "This location's DPI-resistant transport is Premium-only. Upgrade, or switch to Auto.",
+        "This location's DPI-resistant transport is Premium-only. Upgrade, or turn off Stealth mode in Settings.",
       );
     }
     if (mode === 'stealth') {
       throw new Error(
-        'Stealth mode: this location offers no DPI-resistant transport. Pick another location, or switch to Auto.',
+        'Stealth mode: this location offers no DPI-resistant transport. Pick another location, or turn off Stealth mode in Settings.',
       );
     }
     throw new Error('This location offers no transport compatible with the selected mode.');

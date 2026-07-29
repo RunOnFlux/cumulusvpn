@@ -1269,8 +1269,10 @@ async function connectMultihop(args: {
     });
   } catch (e) {
     if (requireDistinctSubnet) {
+      // Name where the setting actually lives — it is no longer on this screen,
+      // so "turn off Node diversity" alone would send the user hunting.
       throw new Error(
-        'No distinct-network route available. Turn off Node diversity, or pick different entry/exit countries.',
+        'No distinct-network route available. Turn off Node diversity in Settings, or pick different entry/exit countries.',
       );
     }
     throw e;

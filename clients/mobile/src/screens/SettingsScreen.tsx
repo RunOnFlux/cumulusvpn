@@ -37,6 +37,11 @@ export function SettingsScreen({
 }: Props): React.JSX.Element {
   const premium = vpn.tier === 'premium';
   const expiry = formatExpiry(vpn.paidUntil);
+  // Transport and routing choices are read when a tunnel is BUILT, so they
+  // cannot apply to one already up. Lock them while a session exists rather than
+  // letting a flipped switch imply an effect it won't have until reconnect.
+  const locked =
+    vpn.state === 'connected' || vpn.state === 'connecting' || vpn.state === 'disconnecting';
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -83,6 +88,37 @@ export function SettingsScreen({
           sub="Block all traffic if the VPN drops"
           value={vpn.killSwitch}
           onValueChange={(v) => void vpn.setKillSwitch(v)}
+        />
+        {/* Stealth mode — disguise the tunnel to get through DPI/VPN blocking
+            (docs/15-transports.md). Prefers wg-tls, then awg, and never falls
+            back to plain WireGuard: a gateway offering no DPI-resistant
+            transport is a clear error, not a silent downgrade. Desktop keeps
+            the same control in its own Settings panel. */}
+        <ToggleRow
+          title="Stealth mode"
+          sub={
+            locked
+              ? 'Disguise VPN traffic to get through blocking — disconnect to change'
+              : 'Disguise VPN traffic to get through blocking. Slower.'
+          }
+          value={vpn.transportMode === 'stealth'}
+          disabled={locked}
+          onValueChange={(v) => void vpn.setTransportMode(v ? 'stealth' : 'auto')}
+        />
+        {/* Node diversity — force the two multi-hop legs onto different subnets
+            so they can't be the same rack (docs/11). Off by default; a small
+            fleet can make it impossible, and connecting then fails with a note
+            pointing back here. Only bites in multi-hop, hence the sub-text. */}
+        <ToggleRow
+          title="Node diversity"
+          sub={
+            locked
+              ? 'Force multi-hop entry and exit onto different networks — disconnect to change'
+              : 'Force multi-hop entry and exit onto different networks'
+          }
+          value={vpn.nodeDiversity}
+          disabled={locked}
+          onValueChange={(v) => void vpn.setNodeDiversity(v)}
         />
 
         <Text style={styles.section}>Privacy &amp; support</Text>
@@ -144,20 +180,24 @@ function ToggleRow({
   title,
   sub,
   value,
+  disabled = false,
   onValueChange,
 }: {
   readonly title: string;
   readonly sub: string;
   readonly value: boolean;
+  /** Dim and ignore taps — for settings that only take effect on the next
+   *  connect, so flipping one mid-session can't imply it applied live. */
+  readonly disabled?: boolean;
   readonly onValueChange: (value: boolean) => void;
 }): React.JSX.Element {
   return (
-    <View style={styles.row}>
+    <View style={[styles.row, disabled && styles.rowDisabled]}>
       <View style={styles.rowMeta}>
         <Text style={styles.rowTitle}>{title}</Text>
         <Text style={styles.rowSub}>{sub}</Text>
       </View>
-      <Toggle value={value} onValueChange={onValueChange} />
+      <Toggle value={value} disabled={disabled} onValueChange={onValueChange} />
     </View>
   );
 }
@@ -212,6 +252,9 @@ const styles = StyleSheet.create({
     marginBottom: space.sm,
     gap: space.md,
   },
+  // Matches the dimming ConnectScreen used for the same locked-while-connected
+  // rows, so moving them here didn't change how "you can't change this now" reads.
+  rowDisabled: { opacity: 0.6 },
   planRow: {
     flexDirection: 'row',
     alignItems: 'center',

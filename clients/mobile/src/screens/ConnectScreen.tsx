@@ -207,27 +207,9 @@ export function ConnectScreen({
         </Pressable>
       )}
 
-      {/* Stealth mode — obfuscate the tunnel to bypass DPI/VPN-blocking
-          (docs/15-transports.md). Prefers wg-tls, then awg. It never falls back
-          to plain WireGuard: a gateway offering no DPI-resistant transport is a
-          clear error, not a silent downgrade. Desktop has its own toggle. */}
-      {Platform.OS === 'ios' || Platform.OS === 'android' ? (
-        <View style={[styles.divRow, (connected || busy) && styles.divRowDisabled]}>
-          <View style={styles.divMeta}>
-            <Text style={styles.divTitle}>Stealth mode</Text>
-            <Text style={styles.divSub}>
-              {vpn.transportMode === 'stealth'
-                ? 'On — disguise VPN traffic to bypass blocking'
-                : 'Off — fastest connection'}
-            </Text>
-          </View>
-          <Toggle
-            value={vpn.transportMode === 'stealth'}
-            disabled={connected || busy}
-            onValueChange={(v) => void vpn.setTransportMode(v ? 'stealth' : 'auto')}
-          />
-        </View>
-      ) : null}
+      {/* Stealth mode lives in Settings — it is a set-once preference, not a
+          per-connection choice, and the connect screen stays the short path to
+          "pick a place, press the button". Node diversity moved there too. */}
 
       {/* Kill switch — block all traffic if the tunnel drops (docs/05). */}
       <KillSwitchRow
@@ -366,24 +348,8 @@ function MultihopControls({
         />
       </View>
 
-      {/* Node diversity — force entry and exit onto different subnets so the two
-          hops can't be the same rack. Off by default (docs/11); a small fleet
-          may make it impossible, in which case connecting fails with a note. */}
-      <View style={[styles.divRow, disabled && styles.divRowDisabled]}>
-        <View style={styles.divMeta}>
-          <Text style={styles.divTitle}>Node diversity</Text>
-          <Text style={styles.divSub}>
-            {vpn.nodeDiversity
-              ? 'On — entry and exit forced onto different networks'
-              : 'Off — entry and exit may share a network'}
-          </Text>
-        </View>
-        <Toggle
-          value={vpn.nodeDiversity}
-          disabled={disabled}
-          onValueChange={(v) => void vpn.setNodeDiversity(v)}
-        />
-      </View>
+      {/* Node diversity is in Settings → Connection (it applies to this panel,
+          but it is a preference, not a per-route pick). */}
 
       {/* Honest tradeoff (docs/11 §Performance). */}
       <Text style={styles.tradeoff}>
@@ -647,21 +613,6 @@ const styles = StyleSheet.create({
   hopMain: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   hopFlag: { fontSize: 18 },
   hopName: { flex: 1, color: color.ink, fontSize: 14, fontWeight: '600' },
-  divRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: color.glass,
-    borderColor: color.hairline,
-    borderWidth: 1,
-    borderRadius: radius.sm,
-    padding: space.md,
-    gap: space.md,
-    marginTop: space.xs,
-  },
-  divRowDisabled: { opacity: 0.6 },
-  divMeta: { flex: 1 },
-  divTitle: { color: color.ink, fontSize: 14, fontWeight: '600' },
-  divSub: { color: color.inkDim, fontSize: 11.5, marginTop: 2 },
   tradeoff: { color: color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: space.xs },
   locBtn: {
     flexDirection: 'row',
