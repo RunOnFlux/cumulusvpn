@@ -9,9 +9,9 @@ screens:
   countries:
     label: "COUNTRIES"
     headline: "Pick a country.\nSee the latency."
-  tier:
-    label: "FREE TIER"
-    headline: "Free to use.\nHonest limits."
+  privacy:
+    label: "PRIVACY"
+    headline: "What we collect:\nnothing."
   multihop:
     label: "MULTI-HOP"
     headline: "Two hops when\none isn't enough."

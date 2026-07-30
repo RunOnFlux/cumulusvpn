@@ -1,15 +1,15 @@
 /**
- * Upgrade — pay in FLUX. Two modes, chosen by the remote `inAppUpgrade` flag
- * (per platform, see lib/flags.ts):
+ * Upgrade — pay in FLUX. ONLY rendered when the remote `inAppUpgrade` flag is
+ * on for this platform (see lib/flags.ts — never on iOS, and only intended for
+ * direct-APK/off-store Android builds): the full in-app flow with a QR of the
+ * BIP21 `flux:` payment URI, an "Open in wallet" hand-off that tries each
+ * registered wallet scheme (`zel:` Zelcore → `flux:` → `ssp:` SSP) until one
+ * opens prefilled, and copyable pay-to details.
  *
- *  - inAppUpgrade ON  → the full in-app flow: QR of the BIP21 `flux:` payment
- *    URI, an "Open in wallet" hand-off that tries each registered wallet scheme
- *    (`zel:` Zelcore → `flux:` → `ssp:` SSP) until one opens prefilled, and
- *    copyable pay-to details. Used where a crypto-pay flow is acceptable (Android).
- *  - inAppUpgrade OFF → the store-compliant "manage on the web" copy: no QR, no
- *    pay-to address, no tappable purchase link — just this device's reference +
- *    steps pointing to vpn.cumulusvpn.com. The safe default (also used whenever
- *    the flags can't be fetched), so App Store review sees no IAP circumvention.
+ * When the flag is off the app shows NO purchase UI anywhere — this screen is
+ * unreachable (no upsell line, no tappable tier pill, no upgrade route), so
+ * store review sees no purchase surface at all (guideline 3.1.1 / Play
+ * Payments).
  *
  * Entitlement is chain-based + device-key-scoped, so the phone unlocks itself
  * ~1 min after the transfer confirms, regardless of where it was paid.
@@ -28,13 +28,8 @@ interface Props {
   /** RFC3339 timestamp premium is paid through, or null when free/unknown. */
   readonly paidUntil: string | null;
   readonly payment: PaymentIdentity | null;
-  /** Remote flag: when true, show the in-app pay flow; else "manage on web". */
-  readonly inAppUpgrade: boolean;
   readonly onClose: () => void;
 }
-
-/** Where the prefilled pay-to-address upgrade flow lives on the web. */
-const UPGRADE_URL = 'vpn.cumulusvpn.com';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -55,13 +50,7 @@ export function formatExpiry(iso: string | null): { date: string; daysLeft: numb
   return { date: `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`, daysLeft };
 }
 
-export function UpgradeScreen({
-  tier,
-  paidUntil,
-  payment,
-  inAppUpgrade,
-  onClose,
-}: Props): React.JSX.Element {
+export function UpgradeScreen({ tier, paidUntil, payment, onClose }: Props): React.JSX.Element {
   const premium = tier === 'premium';
   const expiry = formatExpiry(paidUntil);
   return (
@@ -118,11 +107,7 @@ export function UpgradeScreen({
         )}
       </View>
 
-      {!payment ? null : inAppUpgrade ? (
-        <InAppPay payment={payment} premium={premium} />
-      ) : (
-        <ManageOnWeb payment={payment} premium={premium} />
-      )}
+      {payment ? <InAppPay payment={payment} premium={premium} /> : null}
     </ScrollView>
   );
 }
@@ -212,54 +197,6 @@ function InAppPay({
       <Text style={styles.note}>
         Payment is verified on the Flux blockchain and tied to this device’s key — we never see who
         you are, and there’s no account to create. Tap-and-hold any field to copy it.
-      </Text>
-    </>
-  );
-}
-
-/** Store-compliant "manage on the web" copy: no QR / address / purchase link. */
-function ManageOnWeb({
-  payment,
-  premium,
-}: {
-  readonly payment: PaymentIdentity;
-  readonly premium: boolean;
-}): React.JSX.Element {
-  return (
-    <>
-      <Text style={styles.section}>{premium ? 'How to add more time' : 'How to upgrade'}</Text>
-      <View style={styles.steps}>
-        <Step n={1} text={`Open ${UPGRADE_URL} in any browser — on this phone or a computer.`} />
-        <Step
-          n={2}
-          text="Open Upgrade. The gateway, exact FLUX amount and pay-to address are prefilled there (with a QR)."
-        />
-        <Step n={3} text="Pay with FLUX from any wallet — scan the QR or copy the address." />
-        <Step
-          n={4}
-          text="This device unlocks automatically within ~1 minute. Nothing to enter here."
-        />
-      </View>
-
-      <View style={styles.field}>
-        <Text style={styles.fieldLabel}>This device’s reference · tap &amp; hold to copy</Text>
-        <Text style={[styles.fieldValue, styles.fieldMono]} selectable>
-          {payment.memo}
-        </Text>
-        <Text style={styles.fieldHint}>Matches this phone to your payment on the site.</Text>
-      </View>
-
-      <View style={styles.tip}>
-        <Text style={styles.tipText}>
-          <Text style={styles.tipLead}>Prepay ahead: </Text>
-          on the site you can pay a multiple of the price to add several months at once — they stack
-          up to 24 months, so you can top up any time.
-        </Text>
-      </View>
-
-      <Text style={styles.note}>
-        Payment is verified on the Flux blockchain and tied to this device’s key — we never see who
-        you are, and there’s no account to create.
       </Text>
     </>
   );
@@ -365,7 +302,6 @@ const styles = StyleSheet.create({
   },
   fieldValue: { color: color.ink, fontSize: 14, fontWeight: '600' },
   fieldMono: { fontFamily: font.mono, fontSize: 12.5, fontWeight: '400' },
-  fieldHint: { color: color.inkFaint, fontSize: 11.5, lineHeight: 16 },
   section: {
     color: color.inkFaint,
     fontSize: 11,

@@ -49,6 +49,15 @@ function App(): React.JSX.Element {
     void saveDisclosureAck();
   };
 
+  // If the purchase flag drops while the user is ON the upgrade screen (remote
+  // flip reaching a foregrounded app), snap back to Connect — the route must
+  // never outlive the flag that makes it legal to show.
+  useEffect(() => {
+    if (route === 'upgrade' && !flags.inAppUpgrade) {
+      setRoute('connect');
+    }
+  }, [route, flags.inAppUpgrade]);
+
   // Android hardware back: from any sub-screen, return to Connect instead of
   // closing the app; on Connect, fall through to the default (exit).
   useEffect(() => {
@@ -124,12 +133,11 @@ function App(): React.JSX.Element {
               favorites={vpn.favorites}
               onToggleFavorite={(code) => void vpn.toggleFavorite(code)}
             />
-          ) : route === 'upgrade' ? (
+          ) : route === 'upgrade' && flags.inAppUpgrade ? (
             <UpgradeScreen
               tier={vpn.tier}
               paidUntil={vpn.paidUntil}
               payment={vpn.payment}
-              inAppUpgrade={flags.inAppUpgrade}
               onClose={() => setRoute('connect')}
             />
           ) : route === 'privacy' ? (
@@ -138,14 +146,14 @@ function App(): React.JSX.Element {
             <SettingsScreen
               vpn={vpn}
               onClose={() => setRoute('connect')}
-              onOpenUpgrade={() => setRoute('upgrade')}
+              onOpenUpgrade={flags.inAppUpgrade ? () => setRoute('upgrade') : undefined}
               onOpenPrivacy={() => setRoute('privacy')}
             />
           ) : (
             <ConnectScreen
               vpn={vpn}
               onOpenCountries={() => setRoute('countries')}
-              onOpenUpgrade={() => setRoute('upgrade')}
+              onOpenUpgrade={flags.inAppUpgrade ? () => setRoute('upgrade') : undefined}
               onOpenEntry={() => setRoute('entry')}
               onOpenExit={() => setRoute('exit')}
               onOpenSettings={() => setRoute('settings')}

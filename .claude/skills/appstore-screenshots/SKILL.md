@@ -54,9 +54,9 @@ Raws must show real UI with no dev chrome (metro banner, dev menu, inspector)
 
    | Raw | View + state |
    |-----|--------------|
-   | `connect.png` | ConnectScreen, connected (single-hop), city + the honest "Free · 100 KB/s" line visible |
+   | `connect.png` | ConnectScreen, connected (single-hop) — physical device needed; simulator fallback is the "TAP TO CONNECT" state |
    | `countries.png` | CountryPickerScreen, sorted country list, latency dots visible |
-   | `tier.png` | SettingsScreen, free tier — "Limited to 100 KB/s — tap to upgrade" row visible |
+   | `privacy.png` | DisclosureScreen ("What data we collect") — replaced the old Settings/tier frame after Apple's 2.3.7 rejection ("free" in screenshot copy = price reference) |
    | `multihop.png` | ConnectScreen, multi-hop route-style selector open, tradeoff copy visible |
 
    Frame 5 (`brand`) needs no raw — it renders from `assets/brand-glyph.png`

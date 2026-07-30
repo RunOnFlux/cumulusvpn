@@ -3,20 +3,32 @@
  *
  * Fetched at launch from the internal dashboard's KV-backed endpoint, so a
  * feature can be flipped on/off per platform from the dashboard
- * (dashboard.cumulusvpn.com/admin) WITHOUT an app update — e.g. keep the in-app
- * crypto-pay upgrade off on iOS for App Store review. If the fetch fails for ANY
- * reason, every flag defaults to OFF — the safe, store-compliant state (upgrade
- * falls back to "manage on the web"). The endpoint returns the same JSON shape
- * as the repo's flags.json (the documented default / KV seed).
+ * (dashboard.cumulusvpn.com/admin) WITHOUT an app update. If the fetch fails
+ * for ANY reason, every flag defaults to OFF — the safe, store-compliant state
+ * (no purchase UI anywhere). The endpoint returns the same JSON shape as the
+ * repo's flags.json (the documented default / KV seed).
  */
 import { Platform } from 'react-native';
 
 const FLAGS_URL = 'https://dashboard.cumulusvpn.com/api/flags';
 
+/**
+ * Platforms whose builds are allowed to show purchase UI AT ALL. iOS is
+ * excluded at build level, not just by the remote flag: every iOS build goes
+ * through the App Store, where any purchase/upsell surface violates guideline
+ * 3.1.1 outside the US storefront — and flipping behavior on remotely after
+ * review is itself a violation. Keeping iOS out of this set means a KV
+ * misconfiguration can never resurface the UI there. Android stays remote-
+ * controlled because direct-APK (off-store) builds legitimately use the flow.
+ */
+const PURCHASE_UI_PLATFORMS: ReadonlySet<string> = new Set(['android']);
+
 export interface Flags {
   /**
-   * In-app FLUX upgrade (QR + wallet deep-link + pay-to details). When OFF, the
-   * upgrade screen shows the store-compliant "upgrade on the web" copy instead.
+   * In-app FLUX upgrade (QR + wallet deep-link + pay-to details). When OFF —
+   * the default, and always the case on iOS — the app shows NO purchase UI at
+   * all: the tier is displayed as a plain status fact and nothing in the app
+   * offers, prices, or points to a way to buy.
    */
   readonly inAppUpgrade: boolean;
 }
@@ -38,7 +50,9 @@ function platformFlag(json: unknown, key: string, os: string): boolean {
 
 /** Resolve the flags a parsed JSON doc grants for `os`. Unknown shape → all OFF. */
 export function resolveFlags(json: unknown, os: string): Flags {
-  return { inAppUpgrade: platformFlag(json, 'inAppUpgrade', os) };
+  return {
+    inAppUpgrade: PURCHASE_UI_PLATFORMS.has(os) && platformFlag(json, 'inAppUpgrade', os),
+  };
 }
 
 /** Fetch the remote flags; on any failure/timeout, return DEFAULT_FLAGS (all off). */

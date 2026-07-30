@@ -58,14 +58,19 @@ HOW TO TEST (no credentials needed)
 4. The "tier" line shows Free. Multi-hop is an optional toggle in settings (off by default).
 No account, no test user, and no payment are required to fully exercise the app.
 
+CRYPTO FEATURES (Guideline 2.1)
+The app contains NO cryptocurrency features of any kind: no wallet, no exchange, no trading,
+no mining, no token, and it performs no cryptocurrency transactions. It is a WireGuard VPN
+client built on Apple's Network Extension framework.
+
 PAYMENTS / IN-APP PURCHASE (Guideline 3.1.1)
-This build contains NO in-app purchase and NO purchase UI. The app is "manage-on-web": premium
-speed is optional and is purchased on our website (cumulusvpn.com) using FLUX cryptocurrency from
-the user's own external wallet. The app only DISPLAYS the current tier (a neutral status fact
-returned by the server) and, for free users, a non-interactive line of text: "Upgrade at
-cumulusvpn.com". There is no tappable link out to purchase and no "Buy" button anywhere in the
-iOS build, consistent with 3.1.1(a) and 3.1.3. We are not using 3.1.5(b) crypto-exchange
-provisions; we simply do not sell anything inside the app.
+This build contains NO in-app purchase, NO purchase UI, and NO references to purchasing:
+there is no upgrade screen, no price, no upsell text, and no link or instructions pointing to
+any external purchase mechanism. The app is fully functional for free — every feature
+(connect, country selection, multi-hop, kill switch) works without any purchase. The only
+tier-related element is a small non-interactive status chip showing the plan the server
+reports for this device's key. Nothing in the app or its metadata offers, prices, or directs
+users to buy anything.
 
 PRIVACY
 No account, no email, no logs. The public key shown/used is a routing token, not personal data.
@@ -87,9 +92,9 @@ Reviewer questions: info@cumulusvpn.com
 |---|---|---|
 | 5.4 (VPN) | Org account, NEVPNManager, no data sale, available only where legal | Org account; WireGuardKit over NEVPNManager; no data collected/sold; regional availability list excludes prohibited markets (see below). |
 | 5.4 | Explain what user data is collected and how used | "Data Not Collected"; explained in review notes + privacy policy. |
-| 3.1.1(a) | Digital goods/functionality must use IAP | No IAP and no purchase UI in-app; premium sold on web with FLUX. App only shows tier status. |
-| 3.1.3 | No steering to external purchase inside iOS app | No tappable external purchase link; only a plain text mention of the website. |
-| 3.1.5(b) | Crypto apps may facilitate exchange but not sell own goods | We do NOT rely on this; the app performs no crypto transaction and sells nothing in-app. |
+| 3.1.1(a) | Digital goods/functionality must use IAP | Nothing is sold in or via the app: no IAP, no purchase UI, no prices, no upgrade path shown. App only shows tier status. |
+| 3.1.3 | No steering to external purchase inside iOS app | No external purchase link, instructions, or mention anywhere in the app or metadata. |
+| 3.1.5(b) | Crypto apps may facilitate exchange but not sell own goods | We do NOT rely on this; the app has no crypto features and performs no crypto transactions. |
 | 2.1 (completeness) | App must be testable | Fully testable with no account/credentials; steps above. |
 | 4.0 / 4.2 | Not a thin/wrapper app | First-party native client with real UI, tunnel, discovery, failover, multi-hop. |
 | 2.5.1 | Public APIs only | Official Network Extension APIs; no private APIs. |
