@@ -18,11 +18,17 @@ compositor and re-run against the raws.
 
 ## Frames
 
+Re-captured 2026-07-30 from a Release build on the **iPad Pro 13-inch (M4) /
+iOS 26.5 Simulator** after the 1.0.2 (15) rejection: the app no longer shows
+any purchase UI (no upsell line, no "tap to upgrade"), and the old `03-tier`
+frame was replaced by the privacy disclosure (Apple 2.3.7 counts "free" in
+screenshots as a price reference).
+
 | File | Screen |
 |------|--------|
-| `01-connect.png`   | Connect — disconnected, nearest gateway + free-tier line |
+| `01-connect.png`   | Connect — disconnected, nearest gateway |
 | `02-countries.png` | Choose location — country list with live latency |
-| `03-tier.png`      | Settings — free tier, Privacy & support, about |
+| `03-privacy.png`   | "Before you connect" data disclosure |
 | `04-multihop.png`  | Connect — multi-hop route-style selector |
 
 Same disconnected-hero caveat as iPhone: packet-tunnel extensions do not run on

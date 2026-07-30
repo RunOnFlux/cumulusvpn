@@ -12,6 +12,7 @@
   "scripts": {
     "build": "yarn workspaces foreach -Apt run build",
     "build:web": "yarn workspace @cumulusvpn/core run build && yarn workspace @cumulusvpn/web run build",
+    "build:landing": "node clients/landing/build.mjs",
     "typecheck": "yarn workspaces foreach -Apt run typecheck",
     "test": "yarn workspaces foreach -Apt run test",
     "lint": "yarn workspaces foreach -Apt run lint",
@@ -19,7 +20,7 @@
     "format:check": "prettier --check \"*.{json,md}\" \".github/**/*.{yml,yaml,md}\"",
     "format:check:workspaces": "yarn workspaces foreach -Apt run format:check",
     "check": "yarn format:check && yarn format:check:workspaces && yarn lint && yarn typecheck && yarn test",
-    "deploy:landing": "npx wrangler deploy --config clients/landing/wrangler.jsonc"
+    "deploy:landing": "node clients/landing/build.mjs --check && npx wrangler deploy --config clients/landing/wrangler.jsonc"
   },
   "devDependencies": {
     "prettier": "3.9.5"

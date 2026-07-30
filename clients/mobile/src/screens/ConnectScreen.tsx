@@ -25,7 +25,12 @@ import { color, font, radius, space } from '../theme/tokens';
 interface Props {
   readonly vpn: VpnModel & VpnActions;
   readonly onOpenCountries: () => void;
-  readonly onOpenUpgrade: () => void;
+  /**
+   * Open the in-app upgrade flow. Absent when the `inAppUpgrade` flag is off
+   * (always on iOS): the tier pill is then a plain status chip and no upsell
+   * line renders — the app must show no purchase surface at all (3.1.1).
+   */
+  readonly onOpenUpgrade?: (() => void) | undefined;
   /** Open the picker to choose the multi-hop entry country. */
   readonly onOpenEntry: () => void;
   /** Open the picker to choose the multi-hop exit country. */
@@ -87,14 +92,18 @@ export function ConnectScreen({
       <View style={styles.top}>
         <Text style={styles.brand}>CumulusVPN</Text>
         <View style={styles.topRight}>
-          <Pressable
-            onPress={onOpenUpgrade}
-            accessibilityRole="button"
-            accessibilityLabel={vpn.tier === 'premium' ? 'View your plan' : 'Upgrade to Premium'}
-            hitSlop={8}
-          >
+          {onOpenUpgrade ? (
+            <Pressable
+              onPress={onOpenUpgrade}
+              accessibilityRole="button"
+              accessibilityLabel={vpn.tier === 'premium' ? 'View your plan' : 'Upgrade to Premium'}
+              hitSlop={8}
+            >
+              <TierPill tier={vpn.tier} />
+            </Pressable>
+          ) : (
             <TierPill tier={vpn.tier} />
-          </Pressable>
+          )}
           <Pressable onPress={onOpenSettings} accessibilityRole="button" hitSlop={10}>
             <Text style={styles.gear}>⚙</Text>
           </Pressable>
@@ -226,8 +235,8 @@ export function ConnectScreen({
         onOpenSettings={() => void vpn.openVpnSettings()}
       />
 
-      {/* Free-tier upsell line — store-compliant, no purchase UI (docs/05). */}
-      {vpn.tier === 'free' ? <UpgradeLine onPress={onOpenUpgrade} /> : null}
+      {/* Free-tier upsell line — only when the in-app purchase flow exists. */}
+      {vpn.tier === 'free' && onOpenUpgrade ? <UpgradeLine onPress={onOpenUpgrade} /> : null}
 
       <Pressable
         style={[

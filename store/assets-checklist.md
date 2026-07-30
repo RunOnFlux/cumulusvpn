@@ -68,11 +68,16 @@ the largest and let Apple downscale. Provide iPad only if the binary ships iPad 
 | 10" tablet (optional) | up to 3840px, e.g. **1600×2560** | up to 8 | **[todo]** |
 
 ### Suggested screenshot storyboard (both stores, 5 frames)
-1. Connected hero — big connect button, country flag, "Connected · Frankfurt".
+1. Connect hero — big connect button, country flag.
 2. Country picker with live latency dots.
-3. Tier line — "Free · 100 KB/s" (honest, no purchase UI on mobile).
+3. Privacy disclosure — "What data we collect" screen.
 4. Multi-hop toggle screen with the honest tradeoff copy.
 5. "No account. No logs. Powered by Flux." brand/value frame.
+
+⚠️ 2.3.7 (learned from the 1.0.2 (15) rejection): screenshot marketing copy
+must contain **no price references — including the word "free"**. The old
+frame 3 ("FREE TIER / Free to use. Honest limits.") was rejected for exactly
+this. Price info belongs in the app description only.
 
 ## 4. Other listing graphics
 | Asset | Store | Requirement | Status |

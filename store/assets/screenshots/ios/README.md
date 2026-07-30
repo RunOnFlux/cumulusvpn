@@ -2,6 +2,14 @@
 
 **These are real iOS captures and are cleared for upload to App Store Connect.**
 
+**Re-captured 2026-07-30** (Release build, iPhone 16 Pro Max / iOS 26.5
+Simulator) after the 1.0.2 (15) rejection: the app now shows no purchase UI
+(no "Go Premium" upsell line, no tappable tier pill), frame 3 changed from
+Settings/"FREE TIER" to the privacy disclosure with copy "PRIVACY / What we
+collect: nothing." (2.3.7: "free" in screenshot copy is a price reference),
+and `01-connect` is currently the truthful "TAP TO CONNECT" simulator state —
+re-shoot on a physical iPhone for a connected hero (see below).
+
 Captured 2026-07-22 from a **Release** build running on the **iOS 18.6 Simulator
 (iPhone 16 Pro Max)**, seated in the official Apple iPhone bezel by
 `.claude/skills/appstore-screenshots/compositor.py`. Raws live in `../raw/ios/`.

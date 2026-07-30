@@ -21,14 +21,14 @@ Private VPN. No account.
 ```
 Alternate (22): `No-account private VPN`
 
-## Promotional Text (max 170, editable anytime without review) — 162 chars
+## Promotional Text (max 170, editable anytime without review) — 149 chars
 ```
-No sign-up, no email, no logs. Generate a key, tap connect. Free tier forever, upgrade with FLUX. Multi-hop so no single server sees who you are and where you go.
+No sign-up, no email, no logs. Generate a key, tap connect. Multi-hop routing means no single server ever sees both who you are and where you go.
 ```
 
-## Keywords (max 100, comma-separated, no spaces) — 89 chars
+## Keywords (max 100, comma-separated, no spaces) — 82 chars
 ```
-vpn,wireguard,privacy,no log,decentralized,flux,secure,tunnel,anonymous,crypto,wifi,proxy
+vpn,wireguard,privacy,no log,decentralized,flux,secure,tunnel,anonymous,wifi,proxy
 ```
 Rationale: the app name and subtitle already carry "CumulusVPN / private / account", so keywords
 avoid repeating them (Apple indexes name+subtitle+keywords together). No competitor brand names
@@ -86,8 +86,7 @@ Wi-Fi, hotels, airports, and untrusted networks. Fast handshakes, automatic reco
 gateway failover keep you online.
 
 FREE TIER FOREVER
-Every install includes a genuinely free tier — no trial, no card, no account. Upgrade to
-premium for higher speeds whenever you want.
+Every install includes a genuinely free tier — no trial, no card, no account.
 
 RUN ON A DECENTRALIZED NETWORK
 CumulusVPN servers run as apps on the Flux decentralized cloud, hosted in commercial
@@ -103,11 +102,6 @@ HONEST ABOUT WHAT A VPN CAN AND CANNOT DO
 CumulusVPN protects you from local-network snooping, ISP logging, and geo-restrictions. It is
 not anonymity software like Tor, and we say so plainly. No overselling.
 
-PREMIUM IS MANAGED ON THE WEB
-Premium speed is purchased with FLUX cryptocurrency from your own wallet on our website — the
-app itself never asks you for money and contains no purchase screen. Once your key is upgraded,
-your phone unlocks premium automatically.
-
 Built by the Flux team. Powered by Flux Cloud. Privacy that is structural, not a slogan.
 
 WireGuard is a registered trademark of Jason A. Donenfeld.
@@ -117,7 +111,7 @@ WireGuard is a registered trademark of Jason A. Donenfeld.
 ```
 First public release of CumulusVPN.
 - One-tap WireGuard connection, no account required
-- Free tier included, premium via FLUX on the web
+- Free tier included
 - Server picker with live latency
 - Optional multi-hop for maximum privacy
 - Zero activity logs, RAM-only server state

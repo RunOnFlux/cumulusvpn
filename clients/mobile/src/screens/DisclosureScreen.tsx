@@ -90,10 +90,10 @@ export function DisclosureScreen({ onAccept, onClose }: Props): React.JSX.Elemen
         />
 
         <Group
-          title="Premium"
+          title="Your plan"
           points={[
-            'Premium is purchased on the web with FLUX cryptocurrency, not inside this app.',
-            'Entitlement is checked using your public key alone — no personal or payment details are stored.',
+            'Nothing is sold inside this app, and it never asks you for money.',
+            'Your plan is checked using your public key alone — no personal or payment details are stored.',
           ]}
         />
 

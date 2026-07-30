@@ -10,8 +10,12 @@ screens:
     raw_filename: countries.png
     layout: hero
     order: 2
-  - key: tier
-    raw_filename: tier.png
+  # Was `tier` ("FREE TIER / Free to use. Honest limits." over the Settings
+  # plan row) — replaced 2026-07-30 after Apple's 2.3.7 rejection: "free" in
+  # screenshot copy counts as a price reference. The privacy disclosure screen
+  # carries the strongest claim we can show instead.
+  - key: privacy
+    raw_filename: privacy.png
     layout: hero
     order: 3
   - key: multihop

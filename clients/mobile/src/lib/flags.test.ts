@@ -12,6 +12,14 @@ describe('resolveFlags', () => {
     expect(resolveFlags(doc, 'web').inAppUpgrade).toBe(false);
   });
 
+  it('can NEVER be enabled on iOS, even when the remote doc says true', () => {
+    // Build-level kill switch: App Store builds must not grow purchase UI from
+    // a remote flip (guideline 3.1.1 + post-review behavior change).
+    expect(resolveFlags({ inAppUpgrade: { android: true, ios: true } }, 'ios').inAppUpgrade).toBe(
+      false,
+    );
+  });
+
   it('is OFF for a malformed / empty doc', () => {
     expect(resolveFlags(null, 'android').inAppUpgrade).toBe(false);
     expect(resolveFlags({}, 'android').inAppUpgrade).toBe(false);

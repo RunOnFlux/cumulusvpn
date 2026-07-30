@@ -98,7 +98,9 @@
   activity/traffic/DNS logs; no account/email/phone; no third-party analytics or tracking SDKs;
   keypair generated on-device with the private key never leaving it; what a gateway necessarily
   sees (IP + encrypted packets, not retained, operated by independent Flux node operators);
-  premium bought on the web with entitlement checked by public key alone. Acknowledgement
+  plan entitlement checked by public key alone, nothing sold inside the app (reworded
+  2026-07-30 — the old copy said "premium is purchased on the web with FLUX", which is 3.1.1
+  steering on the very first screen a reviewer sees). Acknowledgement
   persists via `DISCLOSURE_VERSION` in `state/storage.ts` — **bump it to re-prompt** on a
   material policy change. Re-openable from Settings → "What data we collect".
   Verified: `tsc` clean, `eslint` clean, 29/29 tests pass.
@@ -110,29 +112,30 @@
 
 ## 4. In-app purchase / crypto (3.1.1)
 
-- [x] ✅ **FLUX crypto pay is OFF on iOS** — live flag `inAppUpgrade.ios = false` in the
-  dashboard KV (verified 2026-07-22; `https://dashboard.cumulusvpn.com/api/flags` →
-  `{"android":false,"ios":false}`), so `UpgradeScreen` renders the "manage on web" copy — no
-  QR/wallet/address. Required: 3.1.1 *literally names* "QR codes, cryptocurrencies and
-  cryptocurrency wallets" as prohibited unlock mechanisms. ⚠️ This is a **runtime remote flag,
-  not a build-time lock** — keep it `false` for any build under or past review (enabling a
-  payment path post-review is a 2.3.1 behavior-change violation). A build-time hard-off gate
-  for store variants was deferred.
-- [ ] ⚠️ **Metadata external-purchase language.** The `listing.md` description ("PREMIUM IS
-  MANAGED ON THE WEB … purchased with FLUX cryptocurrency … on our website") is external-
-  purchase steering. The US storefront now permits external links, but **non-US anti-steering
-  still applies to metadata**. → Keep it descriptive with **no URL/CTA/button**; safest to
-  minimize the "buy on our website" phrasing outside the US storefront.
-- [ ] ❓ **How does a user get premium on iOS? (3.1.3(b)).** If web-bought premium is *honored*
-  on iOS but not *sellable* in-app, non-US reviewers can flag it. Lowest-risk options:
-  (a) add an Apple auto-renewing IAP for premium, or (b) ship iOS free-tier-only with no
-  upgrade UI at all. Decide before submission.
+- [x] ✅ **Purchase UI is hard-OFF on iOS at build level** (resolved 2026-07-30 after the
+  1.0.2 (15) rejection under 3.1.1). `resolveFlags` in `clients/mobile/src/lib/flags.ts` only
+  honors `inAppUpgrade` for platforms in `PURCHASE_UI_PLATFORMS` (= android only), so a remote
+  KV flip can NEVER enable purchase UI on iOS. When the flag is off the app now shows **no
+  purchase surface at all**: no upgrade route (`App.tsx`), no upsell line / tappable tier pill
+  (`ConnectScreen`), a non-interactive plan status row (`SettingsScreen`), and the former
+  "manage on the web" copy (steps + URL + FLUX price) is deleted from `UpgradeScreen` — the
+  1.0.2 rejection showed Apple treats that copy as external-purchase steering even without a
+  tappable link. Live KV flag stays `false` for both platforms as a second layer.
+- [x] ✅ **Metadata external-purchase language removed** (2026-07-30): `listing.md` no longer
+  contains "PREMIUM IS MANAGED ON THE WEB", "upgrade with FLUX", or the `crypto` keyword; the
+  description mentions the free tier only (price info in the description is permitted per
+  2.3.7), with no premium-purchase or website-payment references.
+- [x] ✅ **Premium on iOS (3.1.3(b))**: resolved as "no purchase surface" — premium is never
+  offered, priced, or referenced in the iOS app or metadata; a device whose key already has
+  premium entitlement simply runs at full speed (neutral status chip). If we later want to
+  SELL premium to iOS users, that requires Apple IAP (or a US-storefront-gated external link).
 - [x] ✅ Account deletion (5.1.1(v)) — **N/A**, the app has no accounts (key-based identity).
 
 ## 5. App Store Connect content
 
 - [x] ✅ Listing copy ready (`store/app-store/listing.md`): name (10), subtitle (24), promo
-  (162), keywords (89), description (<4000) — all within limits.
+  (149), keywords (82), description (<4000) — all within limits. Revised 2026-07-30 to drop
+  all purchase/price steering (3.1.1) after the 1.0.2 rejection.
 - [ ] ⬜ **Age rating — redo under the new system.** The new questionnaire (4+/9+/13+/16+/18+)
   is now mandatory (deadline Jan 31 2026 has passed). The repo's `app-review.md §4` predates
   it. Answer honestly; "unrestricted web access = yes" for a VPN may push the rating up — do

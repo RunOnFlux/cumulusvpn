@@ -24,7 +24,12 @@ const SUPPORT_URL = 'https://cumulusvpn.com/support';
 interface Props {
   readonly vpn: VpnModel & VpnActions;
   readonly onClose: () => void;
-  readonly onOpenUpgrade: () => void;
+  /**
+   * Open the in-app upgrade flow. Absent when the `inAppUpgrade` flag is off
+   * (always on iOS): the plan row is then a plain, non-interactive status —
+   * no "tap to upgrade", no navigation (3.1.1: no purchase surface).
+   */
+  readonly onOpenUpgrade?: (() => void) | undefined;
   /** Re-open the 5.4 data disclosure (also shown as a first-run gate). */
   readonly onOpenPrivacy: () => void;
 }
@@ -53,28 +58,36 @@ export function SettingsScreen({
 
       <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
         <Text style={styles.section}>Plan</Text>
-        <Pressable
-          style={styles.planRow}
-          onPress={onOpenUpgrade}
-          accessibilityRole="button"
-          accessibilityLabel={premium ? 'Manage your Premium plan' : 'Upgrade to Premium'}
-        >
-          <View style={styles.rowMeta}>
-            <View style={styles.planTop}>
-              <TierPill tier={vpn.tier} />
+        {onOpenUpgrade ? (
+          <Pressable
+            style={styles.planRow}
+            onPress={onOpenUpgrade}
+            accessibilityRole="button"
+            accessibilityLabel={premium ? 'Manage your Premium plan' : 'Upgrade to Premium'}
+          >
+            <View style={styles.rowMeta}>
+              <View style={styles.planTop}>
+                <TierPill tier={vpn.tier} />
+              </View>
+              <Text style={styles.rowSub}>
+                {premium ? planStatus(expiry) : 'Limited to 100 KB/s — tap to upgrade'}
+              </Text>
             </View>
-            <Text style={styles.rowSub}>
-              {premium
-                ? expiry
-                  ? `Active until ${expiry.date} · ${expiry.daysLeft} ${
-                      expiry.daysLeft === 1 ? 'day' : 'days'
-                    } left`
-                  : 'Full speed on every gateway'
-                : 'Limited to 100 KB/s — tap to upgrade'}
-            </Text>
+            <Text style={styles.chev}>›</Text>
+          </Pressable>
+        ) : (
+          /* No purchase flow in this build: the plan is a plain status fact. */
+          <View style={styles.planRow}>
+            <View style={styles.rowMeta}>
+              <View style={styles.planTop}>
+                <TierPill tier={vpn.tier} />
+              </View>
+              <Text style={styles.rowSub}>
+                {premium ? planStatus(expiry) : 'Limited to 100 KB/s'}
+              </Text>
+            </View>
           </View>
-          <Text style={styles.chev}>›</Text>
-        </Pressable>
+        )}
 
         <Text style={styles.section}>Connection</Text>
         <ToggleRow
@@ -174,6 +187,15 @@ export function SettingsScreen({
       </ScrollView>
     </View>
   );
+}
+
+/** Premium status line: expiry when known, else the generic full-speed fact. */
+function planStatus(expiry: ReturnType<typeof formatExpiry>): string {
+  return expiry
+    ? `Active until ${expiry.date} · ${expiry.daysLeft} ${
+        expiry.daysLeft === 1 ? 'day' : 'days'
+      } left`
+    : 'Full speed on every gateway';
 }
 
 function ToggleRow({
