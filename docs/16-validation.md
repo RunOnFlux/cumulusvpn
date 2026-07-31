@@ -354,8 +354,12 @@ must still connect. That is the entire reason the TLS tier exists.
 - **`register.sh` is 2/5 steps** — sign/broadcast/pay are TODO echoes.
 - **No signature verification tool** for `X-CVPN-Signature`.
 - **`e2eclient` leaks a peer slot per run** (fresh keypair each time, and there
-  is no deregister endpoint or peer reaper). Repeatedly validating a production
-  node walks it toward `CVPN_MAX_PEERS_FREE=400`; a container restart clears it.
+  is no deregister endpoint). Repeatedly validating a production node walks it
+  toward `CVPN_MAX_PEERS_FREE=400`. Since 0.2.0 the peer table **persists across
+  restarts**, so bouncing the container no longer clears the leak — the hourly
+  reaper (`reapIdlePeers`) drops a free peer only after **30 days** with no
+  handshake. Check the headroom with `/v1/info` (`capacity`) rather than
+  assuming a restart reset it.
 - **No throughput/rate-limit harness** — nothing measures the free 100 KB/s cap.
 - **No multi-hop validation path** — `e2eclient` talks to one gateway only.
 - **Private-IP test targets fail opaquely.** The SSRF guard blocks

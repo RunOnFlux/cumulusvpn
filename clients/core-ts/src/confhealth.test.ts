@@ -13,7 +13,7 @@ function infoFor(serverPubKey: string): InfoResponse {
     city: 'Frankfurt',
     load: 0.1,
     capacity: 100,
-    version: '0.2.1',
+    version: '0.2.0',
     min_client_version: '0.1.0',
     server_pubkey: serverPubKey,
     sign_pubkey: signer.publicKeyB64,
