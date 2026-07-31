@@ -9,9 +9,13 @@ screens:
   countries:
     label: "COUNTRIES"
     headline: "Pick a country.\nSee the latency."
-  privacy:
-    label: "PRIVACY"
-    headline: "What we collect:\nnothing."
+  # NO PRICE REFERENCES HERE — not "free", not a number, not "trial". Apple
+  # cited 2.3.7 against this frame's previous copy ("FREE TIER / Free to use.
+  # Honest limits.") in the 1.0.2 (15) rejection. "Limits" describes the speed
+  # cap, which is a product fact, not a price.
+  tier:
+    label: "HONEST LIMITS"
+    headline: "Every limit,\nstated up front."
   multihop:
     label: "MULTI-HOP"
     headline: "Two hops when\none isn't enough."

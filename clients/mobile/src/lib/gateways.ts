@@ -9,6 +9,7 @@
 import { discoverGateways, pingGateway } from '@cumulusvpn/core';
 import type { GatewayInfo } from '@cumulusvpn/core';
 import { bundledSpecs, seedNodeIps } from './directory';
+import { SCREENSHOT_MODE, demoLatency } from './screenshot';
 
 /** Latency band that drives the coloured dot in the picker (mockup g/y/r). */
 export type LatencyBand = 'good' | 'ok' | 'slow';
@@ -273,6 +274,13 @@ function sortByNearest(rows: Country[]): Country[] {
  * the dot and order the list.
  */
 export async function measureLatency(gw: GatewayInfo): Promise<number | null> {
+  // Store-capture builds only (CVPN_SCREENSHOT=1): report the latency a client
+  // near this node would measure, so the ratings don't depend on where the
+  // capture machine sits. Compiled out of every normal build — see
+  // ./screenshot.ts for the constraints this data has to satisfy.
+  if (SCREENSHOT_MODE) {
+    return demoLatency(gw);
+  }
   // A 2-sample active ping (median RTT) — steadier than a single request, and
   // the same primitive the picker's on-demand re-test uses.
   const { rttMs } = await pingGateway(gw.controlUrl, { samples: 2 });

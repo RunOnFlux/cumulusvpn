@@ -53,6 +53,7 @@ import {
 } from '../lib/gateways';
 import { solvePowFast } from '../lib/pow';
 import { bundledDirectory } from '../lib/directory';
+import { SCREENSHOT_MODE, demoSession } from '../lib/screenshot';
 import {
   loadActiveRoute,
   loadAutoConnect,
@@ -468,6 +469,12 @@ export function useVpn(): VpnModel & VpnActions {
 
   // ---- native tunnel status stream ---------------------------------------
   useEffect(() => {
+    // A screenshot build never starts a real tunnel, so the only events it can
+    // receive are the extension's own 'disconnected' — which would knock the
+    // demo session straight back out of 'connected'. Compiled out normally.
+    if (SCREENSHOT_MODE) {
+      return undefined;
+    }
     const sub = onTunnelStatus((s) => {
       setStatus(s);
       // While a connect is sweeping the transport chain, each failed attempt is
@@ -526,6 +533,11 @@ export function useVpn(): VpnModel & VpnActions {
   // counters never move without an explicit poll. Sample every 1.5s and derive
   // down/up throughput from the deltas.
   useEffect(() => {
+    // Screenshot builds hold a fixed throughput; polling the (absent) native
+    // module would immediately zero it. Compiled out of normal builds.
+    if (SCREENSHOT_MODE) {
+      return undefined;
+    }
     if (state !== 'connected') {
       lastSampleRef.current = null;
       setSpeed({ down: 0, up: 0 });
@@ -570,6 +582,11 @@ export function useVpn(): VpnModel & VpnActions {
   // times out, so the Ping stat always read "—". This is the user's effective
   // latency via the VPN, which is the more useful number anyway.
   useEffect(() => {
+    // As above: the demo session's ping is fixed, and there is no tunnel to
+    // measure through. Compiled out of normal builds.
+    if (SCREENSHOT_MODE) {
+      return undefined;
+    }
     if (state !== 'connected') {
       setPingMs(null);
       return undefined;
@@ -714,6 +731,26 @@ export function useVpn(): VpnModel & VpnActions {
   // ---- actions ------------------------------------------------------------
   const connect = useCallback(async (): Promise<void> => {
     if (!keypair) {
+      return;
+    }
+    // Store-capture builds only (CVPN_SCREENSHOT=1). Enter the connected state
+    // without touching the native module: iOS packet-tunnel extensions do not
+    // run on the Simulator, so the real path can never succeed there and the
+    // connected hero frame would be uncapturable without a physical device.
+    // Compiled out of every normal build — see src/lib/screenshot.ts.
+    if (SCREENSHOT_MODE) {
+      // Match what the picker row promises. On Automatic it reads
+      // "Nearest: <locations[0]>", so connecting the demo session to anything
+      // else would make the finished frame look like a bug.
+      const demoHop = selected ?? locations[0] ?? null;
+      const demo = demoSession(demoHop ? routeEndpoint(demoHop.best) : null);
+      setActiveEntry(demo.entry);
+      setActiveExit(null);
+      setConnectedSince(demo.connectedSince);
+      setSpeed({ ...demo.speed });
+      setPingMs(demo.pingMs);
+      setError(null);
+      setState('connected');
       return;
     }
     // Re-entrancy + cancellation: bumping the generation cancels any sweep still
@@ -948,6 +985,18 @@ export function useVpn(): VpnModel & VpnActions {
   ]);
 
   const disconnect = useCallback(async (): Promise<void> => {
+    // Screenshot builds: there is no native tunnel to stop, so just drop the
+    // demo session. Lets a capture session toggle between the connected and
+    // disconnected heroes. Compiled out of normal builds.
+    if (SCREENSHOT_MODE) {
+      setState('disconnected');
+      setActiveEntry(null);
+      setActiveExit(null);
+      setConnectedSince(null);
+      setSpeed({ down: 0, up: 0 });
+      setPingMs(null);
+      return;
+    }
     // Cancel any in-flight transport sweep FIRST, so it can't misread this
     // teardown as a failed transport and immediately reconnect.
     connectGenRef.current += 1;

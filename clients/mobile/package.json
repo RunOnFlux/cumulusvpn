@@ -2,7 +2,7 @@
   "name": "@cumulusvpn/mobile",
   "version": "1.0.3",
   "private": true,
-  "description": "CumulusVPN mobile client — React Native (iOS + Android). Connect-only store-compliant build; shares @cumulusvpn/core for discovery, enrollment, status and payment-code logic.",
+  "description": "CumulusVPN mobile client \u2014 React Native (iOS + Android). Connect-only store-compliant build; shares @cumulusvpn/core for discovery, enrollment, status and payment-code logic.",
   "license": "MIT",
   "scripts": {
     "start": "react-native start",
@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "jest"
+    "test": "jest",
+    "verify:no-demo-data": "node scripts/verify-no-demo-data.mjs"
   },
   "dependencies": {
     "@cumulusvpn/core": "file:../core-ts",
