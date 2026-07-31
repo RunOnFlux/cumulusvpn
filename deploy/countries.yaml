@@ -38,18 +38,15 @@ defaults:
   # fall back to awg. Set false to make 443 free-for-all.
   tlsPremium: true
   # PUBLIC GHCR image (auto-built), no repoauth.
-  # Gateway 0.2.0 (git tag v0.2.0) — the first release carrying the three
+  # Pinned by IMMUTABLE DIGEST, not by tag: a spec is paid for on-chain, and a
+  # mutable tag could be repointed under it after the fact. This digest is gateway
+  # 0.2.0 (git tag v0.2.0, commit bca3a73) — the release carrying the three
   # transports AND the persistent peer table, so an issued web .conf survives a
-  # container restart. 0.2.0 is the single release for all of that work: the tag
-  # was re-cut over the whole branch while nothing was deployed yet.
-  #
-  # REPIN BEFORE REGISTERING. A spec is paid for on-chain and a mutable tag could
-  # be repointed under it afterwards, so the registered value must be an IMMUTABLE
-  # DIGEST, not this tag. Once .github/workflows/gateway-image.yml has published,
-  # read the digest back and swap it in (docs/16 Stage B):
-  #   docker buildx imagetools inspect ghcr.io/runonflux/cumulusvpn-gateway:0.2.0
-  # Note CI strips the leading "v", so tag v0.2.0 -> image :0.2.0, never :v0.2.0.
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.2.0'
+  # container restart.
+  # To move it: cut a tag, let .github/workflows/gateway-image.yml publish, then
+  # read the digest back from the registry (docs/16 Stage B). Note CI strips the
+  # leading "v", so tag v0.2.0 -> image :0.2.0, never :v0.2.0.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway@sha256:60d72070bc927f1733245763aed54815c4da9495e8e8ec12c1809d740135b5e5'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:
