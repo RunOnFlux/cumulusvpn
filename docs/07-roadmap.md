@@ -46,6 +46,15 @@ Payment-key privacy indirection → blind-signature vouchers (Mullvad-level unli
 WebSocket fallback transport, country-level specs where demand concentrates,
 IAP/Play Billing as fiat rail, multi-chain payment bridge.
 
+## Split tunneling (`docs/17`) — phased across M5/M6 and beyond
+App/domain/IP inclusion-exclusion rules. No gateway or API change, so it rides the client
+milestones rather than blocking them. Phase 0 (shared model + route math) and Phase 1 (IP/CIDR
+rules on all five clients, ~2 weeks) are cheap and can land with M5/M6; Android per-app rules are a
+~1-week follow-on; domain rules and desktop per-app rules (macOS/Windows especially) are separate
+post-launch projects. iOS per-app rules are permanently out of scope — Apple restricts them to
+MDM-managed devices. The kill-switch interaction and the CI leak-test matrix in `docs/17` §11 are
+the parts that must not be skipped.
+
 ## Adopted from the competitive-plan review (docs review, 2026-07-16)
 - **Multi-hop mode (`docs/11`) — BUILDING NOW** as an opt-in "ultimate privacy" feature: nested
   client-side onion (entry + exit), one payment covers both hops, no gateway protocol change.

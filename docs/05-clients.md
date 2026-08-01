@@ -118,6 +118,10 @@ wallet transfer in the user's own wallet.
   indirection in 04 enables N tunnel keys per one payment identity.)
 - **Privacy defaults**: DNS through the tunnel to the gateway's DoH resolver; no analytics,
   opt-in crash reports only.
+- **Split tunneling** (app / domain / IP inclusion-exclusion rules, opt-in, off by default):
+  full design and per-platform build plan in `docs/17-split-tunneling.md`. Client-side only — no
+  gateway or API change. Per-app rules are native on Android, a per-OS project on desktop, and
+  **impossible on iOS** (Apple restricts `NEAppRule` to MDM-managed apps).
 
 ## Effort estimate
 
