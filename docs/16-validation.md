@@ -349,6 +349,47 @@ must still connect. That is the entire reason the TLS tier exists.
 
 ---
 
+## Stage G — Split tunneling (docs/17)
+
+**[NOT AUTOMATED — physical hardware, same constraints as Stage F.]** Runs
+entirely client-side: no gateway or spec change is involved, so this stage
+needs only a working gateway from Stage D and a premium key (split tunneling is
+premium-gated at activation; a free key must yield a full-tunnel session with
+the "premium required" notice, which is itself row V17's cousin and worth one
+manual check).
+
+Every row runs on every platform that claims support for that rule kind
+(docs/17 §2 — per-app is Android-only until desktop app rules ship; web is
+CIDR + LAN bypass only). "Sees real IP" / "sees gateway IP" checks use any
+IP-echo site; "egresses physically" is confirmed with `tcpdump`/Wireshark on
+the physical interface (desktop) or the router (mobile).
+
+| # | Scenario | Expected |
+|---|---|---|
+| V1 | Mode `off` | Config and routes **byte-identical** to pre-feature output. Regression gate — covered by unit tests (core `wgconfig`/`multihop`, Kotlin `SplitRoutesTest`); spot-check one generated `.conf` anyway. |
+| V2 | `exclude` + app rule (Android) | Excluded app sees real IP; every other app sees gateway IP. |
+| V3 | `include` + app rule (Android) | Only listed app sees gateway IP; all others see real IP. |
+| V4 | `exclude` + CIDR | `curl` to an address in the prefix egresses physically; everything else tunnels. |
+| V5 | LAN bypass on | LAN host (printer/NAS) reachable; no route to LAN when off. |
+| V6 | Kill switch + any bypass rule | Bypassed traffic **works**; all other non-tunnel traffic blocked. Assert BOTH halves. |
+| V7 | Kill switch + tunnel down | Bypassed traffic still works; everything else blocked. |
+| V8 | IPv6 | No v6 leak in `exclude` mode; v6 rules honoured where declared (Android nested tun swaps the `::/0` blackhole for the compiled v6 list — verify an excluded v6 prefix actually bypasses). |
+| V9–V10 | DNS / domain rules | **Deferred with the domain-rule engine** (docs/17 open question 1) — not testable, nothing shipped. |
+| V11 | Rule change while connected | Applied on the next reconnect ("applies on next connect" is the shipped behaviour); no stuck half-state. |
+| V12 | Gateway failover with rules active | Rules recompiled against the new endpoint; a rule containing the new endpoint is dropped (traffic tunnels); kill switch re-engaged with fresh bypass holes. |
+| V13 | Multi-hop + rules | Exit-hop routes correct; entry/exit pins intact (`<exitIp>/32` outer, entry bypass). |
+| V14 | Uninstalled app in rule list | No crash on connect (service skips it); rule pruned next time the app picker opens. |
+| V15 | Corrupt policy on disk | Falls back to full tunnel (`off`), never a partial policy. Covered by unit tests; corrupt the stored JSON by hand once per storage backend. |
+| V16 | Complement-route vectors | TS and Kotlin agree with `clients/core-ts/src/__fixtures__/split-routes.json` — **automated** (`yarn test` in core-ts, `gradlew :app:testDebugUnitTest`). iOS/desktop consume pre-computed lists and have no port to diverge. |
+| V17 | Premium lapse with rules active | Effective mode falls to `off` (full tunnel); stored policy untouched; reactivates on re-payment; connect-screen indicator disappears. |
+
+**PASS** — V1, V15, V16 green in CI; V4–V8 clean on desktop + one mobile
+platform; V2/V3/V14 clean on Android; V6/V7 asserted in both directions.
+V1, V6, V7, V8 and V15 belong in the CI leak-test suite committed to in
+`docs/07-roadmap.md` before public launch.
+
+---
+
 ## Known gaps
 
 - **`register.sh` is 2/5 steps** — sign/broadcast/pay are TODO echoes.

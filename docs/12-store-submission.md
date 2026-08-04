@@ -212,6 +212,21 @@ In https://play.google.com/console → Create app (Name **CumulusVPN**, App, Fre
 Play reviews VPN apps against the VpnService/VPN policy and cross-checks Data safety vs the
 privacy policy vs an automated traffic scan — keep all three consistent (they are, by design).
 
+**Split tunneling (docs/17 §10)** — once builds carrying it enter review:
+- **App visibility:** the app queries launchable apps for the split-tunneling picker via a
+  `<queries>` element (MAIN/LAUNCHER intent) in the manifest — deliberately **not**
+  `QUERY_ALL_PACKAGES`, which carries a sensitive-permission declaration form and its own review.
+  If a reviewer asks why the app can see other packages, that element is the complete answer.
+- **VpnService declaration:** update `store/play/vpnservice-declaration.md` to describe split
+  tunneling as a **user-controlled** feature: per-app/per-IP exclusions are configured explicitly
+  by the user, off by default, premium-gated, and the rule list never leaves the device. Play
+  requires that redirecting (or exempting) other apps' traffic is disclosed and consented — the
+  explicit opt-in UI with its permanent warning banner is that consent.
+- **Apple:** nothing new to declare. Per-app rules are impossible on iOS (docs/17 D4 —
+  `NEAppRule` is MDM-only) and the iOS build ships an explanatory sentence instead of a
+  non-functional Apps control, which is the compliant form. Split-by-IP adds no purchase surface
+  and no data flow, so no guideline beyond the existing VPN review is engaged.
+
 ---
 
 ## Part G — Per-market availability (shared, both stores)

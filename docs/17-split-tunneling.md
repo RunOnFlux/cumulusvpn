@@ -28,7 +28,7 @@ by application, by domain, and by IP/CIDR**, across every client we ship.
 | D4 | Per-app rules on iOS | **Not shipping — impossible** | Apple restricts `NEAppRule` to MDM-managed per-app VPN. No consumer App Store VPN can do it. §4.5. |
 | D5 | Domain rules status | **Best-effort, never a security boundary** | DNS-learned routing has structural holes (§6.6). The UI must say so. |
 | D6 | Rule authority | **`clients/core-ts`** | One policy model, one CIDR algorithm, four enforcement backends. §3. |
-| D7 | Free or premium | **Open — see §13** | Product decision, not an engineering one. |
+| D7 | Free or premium | **Premium-only** | Power-user feature as a paid hook; free tier keeps full-tunnel VPN untouched. Gating mechanics in §7.6. |
 
 ---
 
@@ -506,6 +506,28 @@ user state; the compiled output is session state. Never cache the latter across 
 Unchanged. Bypassed traffic uses the physical path MTU, which is strictly larger than the tunnel's —
 no new PMTU concerns.
 
+### 7.6 Premium gating (D7)
+
+Split tunneling is **premium-only**. Entitlement is the existing one — `GET /v1/status/{pubkey}`
+returns `tier`, keyed to the WireGuard public key; no new server surface, consistent with D1.
+
+- **Gate at activation, not at storage.** Rules can be authored and saved on any tier; setting
+  `mode` to anything but `off` requires `tier: premium`. A free user sees the full screen with an
+  upsell instead of the mode selector — the feature sells itself better visible than hidden.
+- **Lapse behaviour.** If `paid_until` expires (checked at connect time and on the periodic status
+  refresh), the client sets the *effective* mode to `off` — full tunnel — while leaving the stored
+  policy intact. Fail toward *more* protection, never toward a stale bypass. On re-payment the
+  stored policy reactivates as-is. Surface it as a non-blocking notice ("Split tunneling paused —
+  premium expired"), not a modal.
+- **Offline grace.** When `/v1/status` is unreachable, honour the last known entitlement (the
+  gateway enforces the real tier server-side anyway; the client gate is UX, not security).
+- **Enforcement honesty.** The gate is client-side by necessity — the feature is client-side (D1)
+  and the client is open source, so a determined free user can build it out. That is acceptable:
+  premium's hard enforcement remains bandwidth at the gateway; this gate is a product boundary,
+  not a security one.
+- The web client's `.conf` generator applies the same gate before emitting a non-default
+  `AllowedIPs` set.
+
 ---
 
 ## 8. UX specification
@@ -551,6 +573,12 @@ Split tunneling                                        [ Off | Exclude | Only th
   toggle. Sorted by name; recently-used first is a nice-to-have.
 - Rule changes while connected: apply immediately where the OS allows, otherwise auto-reconnect with
   a toast ("Reconnecting to apply changes"). Never leave rules staged invisibly.
+  - **Shipped as "applies on next connect" instead** (v1 decision): no platform we ship can
+    re-scope a live tun in place, and the mobile Settings screen already uses the
+    locked-while-connected pattern for Stealth and Node diversity — a third behaviour for split
+    rules would be less predictable, not more. The editor says so explicitly ("Rules apply the
+    next time you connect"), which satisfies the real requirement — never staged invisibly.
+    Auto-reconnect remains a candidate polish once rule edits prove frequent enough to earn it.
 - Every unsupported combination (iOS kill switch + IP rules, §4.5) is explained inline at the point
   of conflict, not in a general help page.
 
@@ -587,8 +615,9 @@ Add a short paragraph to the public threat-model page when this ships.
 
 ## 11. Validation
 
-Written to be folded into `docs/16-validation.md` as a new stage. Every row runs on every platform
-that claims support for that rule kind.
+**Folded into `docs/16-validation.md` as Stage G** — that copy is the live runbook (with per-row
+automation status); this table remains the design reference. Every row runs on every platform that
+claims support for that rule kind.
 
 | # | Scenario | Expected |
 |---|---|---|
@@ -608,6 +637,7 @@ that claims support for that rule kind.
 | V14 | Uninstalled app in rule list | No crash; rule pruned. |
 | V15 | Corrupt policy on disk | Falls back to full tunnel (`off`), never to a partial policy. |
 | V16 | Complement-route vectors | TS, Kotlin, Swift and Rust all agree with the fixture. §5. |
+| V17 | Premium lapse with rules active | Effective mode falls to `off` (full tunnel); stored policy untouched; reactivates on re-payment. §7.6. |
 
 V1, V6, V7, V8 and V15 belong in the **CI leak-test suite** already committed to in
 `docs/07-roadmap.md` ("leak-test suite in CI ... before public launch"). They are cheap to automate
@@ -618,6 +648,11 @@ and they are exactly the failures that matter.
 ## 12. Build plan
 
 Ordered by value per unit of risk. Each phase is independently shippable.
+
+> **Status:** Phases 0–2 are **code-complete** (core model + vectors; CIDR/LAN enforcement on all
+> five clients incl. kill-switch `LeakPolicy`; Android app rules + picker; settings UI, premium
+> gate and connected-state indicators). Outstanding before ship: the Stage G on-device runs in
+> `docs/16-validation.md`. Phases 3–4 remain deferred per §13.
 
 ### Phase 0 — Model and math (3–5 days)
 - `clients/core-ts/src/split.ts`: types, `compileSplitPolicy`, `complementRoutes`, normalization.
@@ -663,18 +698,17 @@ iOS per-app rules (D4).
 
 ## 13. Open questions
 
-1. **Free or premium?** (D7) Split tunneling is a power-user feature and a plausible paid hook, but
-   gating it makes the free tier feel crippled in a way the speed cap does not. Leaning free —
-   the paid tier should be about *more VPN*, not *less friction* — but it is a product call.
-2. **Ship domain rules at all in v1?** Given §6.3, an argument exists for app + CIDR only, and for
+1. **Ship domain rules at all in v1?** Given §6.3, an argument exists for app + CIDR only, and for
    telling users plainly why domain rules are not offered. Cheaper and more honest; also less
    competitive on a feature-comparison table.
-3. **Does `include` mode ship at the same time as `exclude`?** It is nearly free in the model and on
+2. **Does `include` mode ship at the same time as `exclude`?** It is nearly free in the model and on
    Android, but it inverts the safety story (default unprotected) and doubles the UX-copy surface.
-4. **Windows: buy, borrow, or build?** Licensing an existing split-tunnel driver may beat 6–10 weeks
+3. **Windows: buy, borrow, or build?** Licensing an existing split-tunnel driver may beat 6–10 weeks
    plus an EV certificate and permanent AV maintenance.
-5. **macOS mechanism** — pf+GID vs `NETransparentProxyProvider`. Decide after the spike in §4.3;
+4. **macOS mechanism** — pf+GID vs `NETransparentProxyProvider`. Decide after the spike in §4.3;
    this is the largest estimate uncertainty in the document.
+
+Resolved: free-vs-premium (D7, §7.6) — premium-only.
 
 ---
 
