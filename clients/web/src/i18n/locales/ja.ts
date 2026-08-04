@@ -87,6 +87,32 @@ export const ja: Catalog = {
     'Zelcore / SSP Wallet で開きます。支払いは Flux のブロックチェーン上で検証され — あなたが誰かを私たちが知ることはありません。メッセージが支払いをあなたの鍵に結びつけます。メッセージなしで送ると、資金は届いてもロックは解除されません。',
   upgrade_back: '← 接続に戻る',
 
+  split_summary_title: '上級者向け: スプリットトンネリング',
+  split_tier_pill: 'プレミアム · オプトイン',
+  split_lede:
+    'どの宛先が VPN を通るかを選べます。生成される設定はルールを WireGuard の AllowedIPs として表現するため、標準の WireGuard アプリで動作します — IP 範囲とローカルネットワークのバイパスのみ（アプリ単位のルールには当社のネイティブアプリが必要です）。',
+  split_mode_aria: 'スプリットトンネリングのモード',
+  split_mode_off: 'オフ',
+  split_mode_exclude: 'リストを除外',
+  split_mode_include: 'これらのみ',
+  split_warn_exclude:
+    '除外されたトラフィックは保護されずにデバイスを離れ、あなたの実際の IP アドレスが見えます。',
+  split_warn_include:
+    'リストされた宛先だけが保護されます — それ以外はすべて実際の IP アドレスが見えます。',
+  split_lan_label: 'ローカルネットワークへのアクセスを許可（プリンター、NAS、キャスト）',
+  split_cidr_placeholder: '例: 192.168.0.0/16 または 203.0.113.7',
+  split_cidr_aria: 'IP アドレスまたは CIDR 範囲',
+  split_add: '追加',
+  split_input_invalid: '有効な IP アドレスまたは CIDR 範囲ではありません。',
+  split_rules_empty:
+    'IP ルールはまだありません — 上で範囲を追加するか、ローカルネットワークアクセスだけを使ってください。',
+  split_remove_aria: 'ルール {value} を削除',
+  split_next_note: 'ルールは、このページで次に生成する設定に適用されます。',
+  split_premium_required:
+    'スプリットトンネリングはプレミアム機能です。代わりにフルトンネルの設定が生成されました — ルールを適用するにはアップグレードしてください。',
+  split_applied:
+    'スプリットトンネリングを適用しました — この設定はルールが許可するものだけをルーティングします。',
+
   multihop_summary_title: '上級者向け：マルチホップ（設定 2 件）',
   multihop_tier_pill: 'プレミアム · 任意',
   multihop_lede:

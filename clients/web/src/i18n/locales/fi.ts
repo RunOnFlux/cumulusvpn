@@ -87,6 +87,31 @@ export const fi: Catalog = {
     'Avautuu Zelcoressa / SSP Walletissa. Maksu vahvistetaan Fluxin lohkoketjussa — emme koskaan näe, kuka olet. Viesti sitoo maksun avaimeesi; jos lähetät ilman sitä, varat saapuvat mutta mitään ei avaudu.',
   upgrade_back: '← Takaisin Yhdistä-sivulle',
 
+  split_summary_title: 'Lisäasetukset: jaettu tunnelointi',
+  split_tier_pill: 'PREMIUM · VALINNAINEN',
+  split_lede:
+    'Valitse, mitkä kohteet käyttävät VPN:ää. Luotu konfiguraatio ilmaisee säännöt WireGuardin AllowedIPs-muodossa, joten se toimii tavallisen WireGuard-sovelluksen kanssa — vain IP-alueet ja lähiverkon ohitus (sovelluskohtaiset säännöt vaativat natiivisovelluksemme).',
+  split_mode_aria: 'Jaetun tunneloinnin tila',
+  split_mode_off: 'Pois',
+  split_mode_exclude: 'Sulje listatut pois',
+  split_mode_include: 'Vain nämä',
+  split_warn_exclude:
+    'Poissuljettu liikenne lähtee laitteeltasi suojaamattomana ja paljastaa oikean IP-osoitteesi.',
+  split_warn_include:
+    'Vain listatut kohteet on suojattu — kaikki muu paljastaa oikean IP-osoitteesi.',
+  split_lan_label: 'Salli pääsy lähiverkkoon (tulostimet, NAS, suoratoisto)',
+  split_cidr_placeholder: 'esim. 192.168.0.0/16 tai 203.0.113.7',
+  split_cidr_aria: 'IP-osoite tai CIDR-alue',
+  split_add: 'Lisää',
+  split_input_invalid: 'Ei kelvollinen IP-osoite tai CIDR-alue.',
+  split_rules_empty: 'Ei vielä IP-sääntöjä — lisää alue yllä tai käytä pelkkää lähiverkkoyhteyttä.',
+  split_remove_aria: 'Poista sääntö {value}',
+  split_next_note: 'Säännöt koskevat seuraavaa tällä sivulla luotavaa konfiguraatiota.',
+  split_premium_required:
+    'Jaettu tunnelointi on premium-ominaisuus. Sen sijaan luotiin täyden tunnelin konfiguraatio — päivitä ottaaksesi sääntösi käyttöön.',
+  split_applied:
+    'Jaettu tunnelointi käytössä — tämä konfiguraatio reitittää vain sen, minkä sääntösi sallivat.',
+
   multihop_summary_title: 'Lisäasetukset: multi-hop (kaksi asetustiedostoa)',
   multihop_tier_pill: 'PREMIUM · VALINNAINEN',
   multihop_lede:

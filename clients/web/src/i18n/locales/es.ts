@@ -87,6 +87,32 @@ export const es: Catalog = {
     'Se abre en Zelcore / SSP Wallet. El pago se verifica en la blockchain de Flux — nunca vemos quién eres. El mensaje vincula el pago con tu clave; enviarlo sin él hace que los fondos lleguen pero nada se desbloquee.',
   upgrade_back: '← Volver a Conectar',
 
+  split_summary_title: 'Avanzado: split tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Elige qué destinos usan la VPN. La configuración generada expresa las reglas como AllowedIPs de WireGuard, así que funciona con la app estándar de WireGuard — solo rangos IP y omisión de la red local (las reglas por app requieren nuestras apps nativas).',
+  split_mode_aria: 'Modo de split tunneling',
+  split_mode_off: 'Desactivado',
+  split_mode_exclude: 'Excluir la lista',
+  split_mode_include: 'Solo estos',
+  split_warn_exclude:
+    'El tráfico excluido sale de tu dispositivo sin protección y muestra tu dirección IP real.',
+  split_warn_include:
+    'Solo los destinos listados están protegidos — todo lo demás muestra tu dirección IP real.',
+  split_lan_label: 'Permitir acceso a la red local (impresoras, NAS, casting)',
+  split_cidr_placeholder: 'p. ej. 192.168.0.0/16 o 203.0.113.7',
+  split_cidr_aria: 'Dirección IP o rango CIDR',
+  split_add: 'Añadir',
+  split_input_invalid: 'No es una dirección IP ni un rango CIDR válido.',
+  split_rules_empty:
+    'Aún no hay reglas IP — añade un rango arriba, o usa simplemente el acceso a la red local.',
+  split_remove_aria: 'Eliminar la regla {value}',
+  split_next_note: 'Las reglas se aplican a la próxima configuración que generes en esta página.',
+  split_premium_required:
+    'El split tunneling es una función premium. Se generó una configuración de túnel completo en su lugar — mejora tu plan para aplicar tus reglas.',
+  split_applied:
+    'Split tunneling aplicado — esta configuración solo enruta lo que tus reglas permiten.',
+
   multihop_summary_title: 'Avanzado: multi-hop (dos configuraciones)',
   multihop_tier_pill: 'PREMIUM · OPCIONAL',
   multihop_lede:

@@ -87,6 +87,30 @@ export const th: Catalog = {
     'เปิดใน Zelcore / SSP Wallet การชำระเงินจะถูกตรวจสอบบนบล็อกเชนของ Flux — เราไม่มีทางรู้เลยว่าคุณเป็นใคร ข้อความคือสิ่งที่ผูกการชำระเงินเข้ากับคีย์ของคุณ หากส่งโดยไม่มีข้อความ เงินจะมาถึงแต่จะไม่มีอะไรถูกปลดล็อก',
   upgrade_back: '← กลับไปที่เชื่อมต่อ',
 
+  split_summary_title: 'ขั้นสูง: split tunneling',
+  split_tier_pill: 'พรีเมียม · ตัวเลือก',
+  split_lede:
+    'เลือกว่าปลายทางใดใช้ VPN คอนฟิกที่สร้างขึ้นแสดงกฎเป็น AllowedIPs ของ WireGuard จึงใช้ได้กับแอป WireGuard มาตรฐาน — รองรับเฉพาะช่วง IP และการข้ามเครือข่ายท้องถิ่น (กฎรายแอปต้องใช้แอปเนทีฟของเรา)',
+  split_mode_aria: 'โหมด split tunneling',
+  split_mode_off: 'ปิด',
+  split_mode_exclude: 'ยกเว้นรายการ',
+  split_mode_include: 'เฉพาะรายการนี้',
+  split_warn_exclude:
+    'ทราฟฟิกที่ยกเว้นจะออกจากอุปกรณ์ของคุณโดยไม่มีการป้องกันและเผยที่อยู่ IP จริงของคุณ',
+  split_warn_include:
+    'เฉพาะปลายทางในรายการเท่านั้นที่ได้รับการป้องกัน — อย่างอื่นทั้งหมดเผยที่อยู่ IP จริงของคุณ',
+  split_lan_label: 'อนุญาตการเข้าถึงเครือข่ายท้องถิ่น (เครื่องพิมพ์, NAS, แคสต์)',
+  split_cidr_placeholder: 'เช่น 192.168.0.0/16 หรือ 203.0.113.7',
+  split_cidr_aria: 'ที่อยู่ IP หรือช่วง CIDR',
+  split_add: 'เพิ่ม',
+  split_input_invalid: 'ไม่ใช่ที่อยู่ IP หรือช่วง CIDR ที่ถูกต้อง',
+  split_rules_empty: 'ยังไม่มีกฎ IP — เพิ่มช่วงด้านบน หรือใช้เพียงการเข้าถึงเครือข่ายท้องถิ่น',
+  split_remove_aria: 'ลบกฎ {value}',
+  split_next_note: 'กฎจะมีผลกับคอนฟิกถัดไปที่คุณสร้างในหน้านี้',
+  split_premium_required:
+    'Split tunneling เป็นฟีเจอร์พรีเมียม ระบบสร้างคอนฟิกอุโมงค์เต็มแทน — อัปเกรดเพื่อใช้กฎของคุณ',
+  split_applied: 'ใช้ split tunneling แล้ว — คอนฟิกนี้กำหนดเส้นทางเฉพาะที่กฎของคุณอนุญาต',
+
   multihop_summary_title: 'ขั้นสูง: multi-hop (config สองชุด)',
   multihop_tier_pill: 'พรีเมียม · เลือกเปิดใช้เอง',
   multihop_lede:

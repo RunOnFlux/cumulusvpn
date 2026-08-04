@@ -92,6 +92,32 @@ export const pl: Catalog = {
     'Otwiera się w Zelcore / SSP Wallet. Płatność jest weryfikowana na blockchainie Flux — nigdy nie widzimy, kim jesteś. Wiadomość wiąże płatność z twoim kluczem; wysłanie bez niej oznacza, że środki dotrą, ale nic się nie odblokuje.',
   upgrade_back: '← Wróć do Połącz',
 
+  split_summary_title: 'Zaawansowane: split tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Wybierz, które miejsca docelowe korzystają z VPN. Wygenerowana konfiguracja wyraża reguły jako AllowedIPs WireGuard, więc działa ze standardową aplikacją WireGuard — tylko zakresy IP i pomijanie sieci lokalnej (reguły per aplikacja wymagają naszych aplikacji natywnych).',
+  split_mode_aria: 'Tryb split tunnelingu',
+  split_mode_off: 'Wyłączony',
+  split_mode_exclude: 'Wyklucz z listy',
+  split_mode_include: 'Tylko te',
+  split_warn_exclude:
+    'Wykluczony ruch opuszcza twoje urządzenie bez ochrony i ujawnia twój prawdziwy adres IP.',
+  split_warn_include:
+    'Chronione są tylko wymienione miejsca docelowe — cała reszta ujawnia twój prawdziwy adres IP.',
+  split_lan_label: 'Zezwól na dostęp do sieci lokalnej (drukarki, NAS, przesyłanie)',
+  split_cidr_placeholder: 'np. 192.168.0.0/16 lub 203.0.113.7',
+  split_cidr_aria: 'Adres IP lub zakres CIDR',
+  split_add: 'Dodaj',
+  split_input_invalid: 'Nieprawidłowy adres IP lub zakres CIDR.',
+  split_rules_empty:
+    'Brak reguł IP — dodaj zakres powyżej albo po prostu użyj dostępu do sieci lokalnej.',
+  split_remove_aria: 'Usuń regułę {value}',
+  split_next_note: 'Reguły obowiązują dla następnej konfiguracji wygenerowanej na tej stronie.',
+  split_premium_required:
+    'Split tunneling to funkcja premium. Zamiast tego wygenerowano konfigurację pełnego tunelu — przejdź na premium, aby zastosować swoje reguły.',
+  split_applied:
+    'Split tunneling zastosowany — ta konfiguracja kieruje tylko to, na co pozwalają twoje reguły.',
+
   multihop_summary_title: 'Zaawansowane: multi-hop (dwie konfiguracje)',
   multihop_tier_pill: 'PREMIUM · OPCJONALNIE',
   multihop_lede:

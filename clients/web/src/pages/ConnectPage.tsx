@@ -1,16 +1,26 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ApiError, buildWgConfig, checkIssuedConfig, enroll, paymentMemo } from '@cumulusvpn/core';
-import type { ConfHealth, EnrollResponse, Keypair } from '@cumulusvpn/core';
+import {
+  ApiError,
+  buildWgConfig,
+  checkIssuedConfig,
+  compileSplitPolicy,
+  enroll,
+  paymentMemo,
+  status,
+} from '@cumulusvpn/core';
+import type { CompiledSplit, ConfHealth, EnrollResponse, Keypair } from '@cumulusvpn/core';
 import type { CountryOption } from '../lib/gateways';
 import type { DiscoveryState } from '../hooks/useDiscovery';
 import { useI18n } from '../hooks/useLocale';
 import { downloadText } from '../lib/download';
 import { proxiedFetch } from '../lib/gatewayFetch';
 import { loadIssuedConfig, saveIssuedConfig } from '../lib/issuedConfig';
+import { loadSplitPolicy } from '../lib/splitPolicy';
 import { CountryPicker } from '../components/CountryPicker';
 import { CopyField } from '../components/CopyField';
 import { MultihopSection } from '../components/MultihopSection';
 import { Qr } from '../components/Qr';
+import { SplitSection } from '../components/SplitSection';
 
 interface ConnectPageProps {
   readonly keypair: Keypair;
@@ -23,6 +33,8 @@ interface ConfigResult {
   readonly enroll: EnrollResponse;
   readonly config: string;
   readonly cc: string;
+  /** Whether the stored split policy made it into this config, and if not, why. */
+  readonly split: 'none' | 'applied' | 'premium-required';
 }
 
 type ConnectError =
@@ -111,14 +123,41 @@ export function ConnectPage({
         signPubKey: gw.sign_pubkey,
         fetchImpl: proxiedFetch,
       });
+      // Split tunneling (docs/17 §4.6): a .conf can only express inclusion, so
+      // compile with the complement pre-computed. Recompiled per generation
+      // against THIS gateway's IP so a rule containing it is dropped (§7.4).
+      // Premium-only (§7.6): the gate is checked against the issuing gateway;
+      // unreachable status or free tier → full tunnel (toward protection).
+      const compiled = compileSplitPolicy(loadSplitPolicy(), {
+        platform: 'linux', // irrelevant on web: a .conf carries no app rules
+        supportsExcludeRoute: false,
+        endpointIps: [gw.ip],
+      });
+      let split: CompiledSplit | undefined;
+      let splitState: ConfigResult['split'] = 'none';
+      if (!compiled.isNoop) {
+        const tier = await status(gw.ip, keypair.publicKey, {
+          signPubKey: gw.sign_pubkey,
+          fetchImpl: proxiedFetch,
+        })
+          .then((s) => s.tier)
+          .catch(() => 'free' as const);
+        if (tier === 'premium') {
+          split = compiled;
+          splitState = 'applied';
+        } else {
+          splitState = 'premium-required';
+        }
+      }
       const config = buildWgConfig({
         privateKey: keypair.privateKey,
         assignedIp: data.assigned_ip,
         dns: data.dns,
         serverPubKey: data.server_pubkey,
         endpoint: data.endpoint,
+        ...(split ? { split } : {}),
       });
-      setResult({ enroll: data, config, cc: selected.cc });
+      setResult({ enroll: data, config, cc: selected.cc, split: splitState });
       // Remember which gateway issued this, so a later visit can check it.
       saveIssuedConfig({
         ip: gw.ip,
@@ -261,6 +300,12 @@ export function ConnectPage({
 
             {result ? (
               <div className="config-out">
+                {result.split === 'premium-required' ? (
+                  <div className="banner warn">{t('split_premium_required')}</div>
+                ) : null}
+                {result.split === 'applied' ? (
+                  <div className="banner info">{t('split_applied')}</div>
+                ) : null}
                 <div className="conf-row">
                   <div className="conf-wrap">
                     <div className="conf-bar">
@@ -322,6 +367,8 @@ export function ConnectPage({
             ) : null}
           </section>
         </div>
+
+        <SplitSection />
 
         <MultihopSection keypair={keypair} discovery={discovery} />
 

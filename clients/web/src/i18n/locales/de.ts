@@ -87,6 +87,32 @@ export const de: Catalog = {
     'Öffnet sich in Zelcore / SSP Wallet. Die Zahlung wird auf der Flux-Blockchain verifiziert — wir sehen nie, wer du bist. Die Nachricht verknüpft die Zahlung mit deinem Schlüssel; sendest du sie ohne diese, kommt das Geld an, aber nichts wird freigeschaltet.',
   upgrade_back: '← Zurück zu Verbinden',
 
+  split_summary_title: 'Erweitert: Split-Tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Wähle, welche Ziele das VPN nutzen. Die erzeugte Konfiguration drückt Regeln als WireGuard-AllowedIPs aus und funktioniert daher mit der Standard-WireGuard-App — nur IP-Bereiche und LAN-Umgehung (Regeln pro App brauchen unsere nativen Apps).',
+  split_mode_aria: 'Split-Tunneling-Modus',
+  split_mode_off: 'Aus',
+  split_mode_exclude: 'Liste ausschließen',
+  split_mode_include: 'Nur diese',
+  split_warn_exclude:
+    'Ausgeschlossener Datenverkehr verlässt dein Gerät ungeschützt und zeigt deine echte IP-Adresse.',
+  split_warn_include:
+    'Nur die aufgeführten Ziele sind geschützt — alles andere zeigt deine echte IP-Adresse.',
+  split_lan_label: 'Zugriff aufs lokale Netzwerk erlauben (Drucker, NAS, Casting)',
+  split_cidr_placeholder: 'z. B. 192.168.0.0/16 oder 203.0.113.7',
+  split_cidr_aria: 'IP-Adresse oder CIDR-Bereich',
+  split_add: 'Hinzufügen',
+  split_input_invalid: 'Keine gültige IP-Adresse und kein gültiger CIDR-Bereich.',
+  split_rules_empty:
+    'Noch keine IP-Regeln — füge oben einen Bereich hinzu oder nutze einfach den LAN-Zugriff.',
+  split_remove_aria: 'Regel {value} entfernen',
+  split_next_note: 'Regeln gelten für die nächste Konfiguration, die du auf dieser Seite erzeugst.',
+  split_premium_required:
+    'Split-Tunneling ist eine Premium-Funktion. Stattdessen wurde eine Voll-Tunnel-Konfiguration erzeugt — upgrade, um deine Regeln anzuwenden.',
+  split_applied:
+    'Split-Tunneling angewendet — diese Konfiguration routet nur, was deine Regeln erlauben.',
+
   multihop_summary_title: 'Erweitert: Multi-Hop (zwei Konfigurationen)',
   multihop_tier_pill: 'PREMIUM · OPT-IN',
   multihop_lede:

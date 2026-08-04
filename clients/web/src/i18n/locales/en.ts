@@ -93,6 +93,30 @@ export const en = {
     'Opens in Zelcore / SSP Wallet. Payment is verified on the Flux blockchain — we never see who you are. The message ties the payment to your key; sending without it means funds arrive but nothing unlocks.',
   upgrade_back: '← Back to Connect',
 
+  split_summary_title: 'Advanced: split tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Choose which destinations use the VPN. The generated config expresses rules as WireGuard AllowedIPs, so they work with the stock WireGuard app — IP ranges and local-network bypass only (per-app rules need our native apps).',
+  split_mode_aria: 'Split tunneling mode',
+  split_mode_off: 'Off',
+  split_mode_exclude: 'Exclude listed',
+  split_mode_include: 'Only these',
+  split_warn_exclude:
+    'Excluded traffic leaves your device unprotected and shows your real IP address.',
+  split_warn_include:
+    'Only the listed destinations are protected — everything else shows your real IP address.',
+  split_lan_label: 'Allow local network access (printers, NAS, casting)',
+  split_cidr_placeholder: 'e.g. 192.168.0.0/16 or 203.0.113.7',
+  split_cidr_aria: 'IP address or CIDR range',
+  split_add: 'Add',
+  split_input_invalid: 'Not a valid IP address or CIDR range.',
+  split_rules_empty: 'No IP rules yet — add a range above, or just use local network access.',
+  split_remove_aria: 'Remove rule {value}',
+  split_next_note: 'Rules apply to the next config you generate on this page.',
+  split_premium_required:
+    'Split tunneling is a premium feature. A full-tunnel config was generated instead — upgrade to apply your rules.',
+  split_applied: 'Split tunneling applied — this config routes only what your rules allow.',
+
   multihop_summary_title: 'Advanced: multi-hop (two configs)',
   multihop_tier_pill: 'PREMIUM · OPT-IN',
   multihop_lede:

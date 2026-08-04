@@ -87,6 +87,32 @@ export const nb: Catalog = {
     'Åpnes i Zelcore / SSP Wallet. Betalingen verifiseres på Flux-blokkjeden — vi ser aldri hvem du er. Meldingen knytter betalingen til nøkkelen din; sender du uten den, kommer pengene frem, men ingenting låses opp.',
   upgrade_back: '← Tilbake til Koble til',
 
+  split_summary_title: 'Avansert: split tunneling',
+  split_tier_pill: 'PREMIUM · VALGFRITT',
+  split_lede:
+    'Velg hvilke destinasjoner som bruker VPN-en. Den genererte konfigurasjonen uttrykker regler som WireGuard AllowedIPs og fungerer derfor med standard WireGuard-appen — kun IP-områder og omgåelse av lokalnett (regler per app krever våre native apper).',
+  split_mode_aria: 'Split tunneling-modus',
+  split_mode_off: 'Av',
+  split_mode_exclude: 'Utelukk listen',
+  split_mode_include: 'Bare disse',
+  split_warn_exclude:
+    'Utelukket trafikk forlater enheten din ubeskyttet og viser den ekte IP-adressen din.',
+  split_warn_include:
+    'Bare de oppførte destinasjonene er beskyttet — alt annet viser den ekte IP-adressen din.',
+  split_lan_label: 'Tillat tilgang til lokalnett (skrivere, NAS, casting)',
+  split_cidr_placeholder: 'f.eks. 192.168.0.0/16 eller 203.0.113.7',
+  split_cidr_aria: 'IP-adresse eller CIDR-område',
+  split_add: 'Legg til',
+  split_input_invalid: 'Ikke en gyldig IP-adresse eller et gyldig CIDR-område.',
+  split_rules_empty:
+    'Ingen IP-regler ennå — legg til et område ovenfor, eller bruk bare lokalnett-tilgang.',
+  split_remove_aria: 'Fjern regelen {value}',
+  split_next_note: 'Reglene gjelder neste konfigurasjon du genererer på denne siden.',
+  split_premium_required:
+    'Split tunneling er en premium-funksjon. En full-tunnel-konfigurasjon ble generert i stedet — oppgrader for å bruke reglene dine.',
+  split_applied:
+    'Split tunneling brukt — denne konfigurasjonen ruter bare det reglene dine tillater.',
+
   multihop_summary_title: 'Avansert: multi-hop (to konfigurasjoner)',
   multihop_tier_pill: 'PREMIUM · VALGFRITT',
   multihop_lede:

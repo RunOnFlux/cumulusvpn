@@ -87,6 +87,32 @@ export const tr: Catalog = {
     'Zelcore / SSP Wallet içinde açılır. Ödeme, Flux blok zincirinde doğrulanır — kim olduğunu asla görmeyiz. Mesaj, ödemeyi anahtarına bağlar; mesaj olmadan göndermek, paranın ulaşıp hiçbir şeyin açılmaması anlamına gelir.',
   upgrade_back: '← Bağlan’a dön',
 
+  split_summary_title: 'Gelişmiş: split tunneling',
+  split_tier_pill: 'PREMIUM · İSTEĞE BAĞLI',
+  split_lede:
+    'Hangi hedeflerin VPN’i kullanacağını seç. Üretilen yapılandırma kuralları WireGuard AllowedIPs olarak ifade eder, bu yüzden standart WireGuard uygulamasıyla çalışır — yalnızca IP aralıkları ve yerel ağ atlaması (uygulama başına kurallar native uygulamalarımızı gerektirir).',
+  split_mode_aria: 'Split tunneling modu',
+  split_mode_off: 'Kapalı',
+  split_mode_exclude: 'Listeyi hariç tut',
+  split_mode_include: 'Yalnızca bunlar',
+  split_warn_exclude:
+    'Hariç tutulan trafik cihazından korumasız çıkar ve gerçek IP adresini gösterir.',
+  split_warn_include:
+    'Yalnızca listelenen hedefler korunur — geri kalan her şey gerçek IP adresini gösterir.',
+  split_lan_label: 'Yerel ağ erişimine izin ver (yazıcılar, NAS, yayın)',
+  split_cidr_placeholder: 'örn. 192.168.0.0/16 veya 203.0.113.7',
+  split_cidr_aria: 'IP adresi veya CIDR aralığı',
+  split_add: 'Ekle',
+  split_input_invalid: 'Geçerli bir IP adresi veya CIDR aralığı değil.',
+  split_rules_empty:
+    'Henüz IP kuralı yok — yukarıya bir aralık ekle ya da sadece yerel ağ erişimini kullan.',
+  split_remove_aria: '{value} kuralını kaldır',
+  split_next_note: 'Kurallar bu sayfada üreteceğin bir sonraki yapılandırmaya uygulanır.',
+  split_premium_required:
+    'Split tunneling bir premium özelliktir. Bunun yerine tam tünel yapılandırması üretildi — kurallarını uygulamak için premium’a geç.',
+  split_applied:
+    'Split tunneling uygulandı — bu yapılandırma yalnızca kurallarının izin verdiğini yönlendirir.',
+
   multihop_summary_title: 'Gelişmiş: multi-hop (iki yapılandırma)',
   multihop_tier_pill: 'PREMIUM · İSTEĞE BAĞLI',
   multihop_lede:

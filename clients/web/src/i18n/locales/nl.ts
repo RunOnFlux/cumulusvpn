@@ -87,6 +87,32 @@ export const nl: Catalog = {
     'Opent in Zelcore / SSP Wallet. Betaling wordt geverifieerd op de Flux-blockchain — wij zien nooit wie je bent. Het bericht koppelt de betaling aan je sleutel; versturen zonder bericht betekent dat het geld aankomt maar niets wordt ontgrendeld.',
   upgrade_back: '← Terug naar Verbinden',
 
+  split_summary_title: 'Geavanceerd: split tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Kies welke bestemmingen de VPN gebruiken. De gegenereerde configuratie drukt regels uit als WireGuard-AllowedIPs en werkt dus met de standaard WireGuard-app — alleen IP-reeksen en het omzeilen van het lokale netwerk (regels per app vereisen onze native apps).',
+  split_mode_aria: 'Split-tunnelingmodus',
+  split_mode_off: 'Uit',
+  split_mode_exclude: 'Lijst uitsluiten',
+  split_mode_include: 'Alleen deze',
+  split_warn_exclude:
+    'Uitgesloten verkeer verlaat je apparaat onbeschermd en toont je echte IP-adres.',
+  split_warn_include:
+    'Alleen de vermelde bestemmingen zijn beschermd — al het andere toont je echte IP-adres.',
+  split_lan_label: 'Toegang tot lokaal netwerk toestaan (printers, NAS, casten)',
+  split_cidr_placeholder: 'bijv. 192.168.0.0/16 of 203.0.113.7',
+  split_cidr_aria: 'IP-adres of CIDR-reeks',
+  split_add: 'Toevoegen',
+  split_input_invalid: 'Geen geldig IP-adres of CIDR-reeks.',
+  split_rules_empty:
+    'Nog geen IP-regels — voeg hierboven een reeks toe, of gebruik gewoon lokale netwerktoegang.',
+  split_remove_aria: 'Regel {value} verwijderen',
+  split_next_note: 'Regels gelden voor de volgende configuratie die je op deze pagina genereert.',
+  split_premium_required:
+    'Split tunneling is een premiumfunctie. In plaats daarvan is een full-tunnelconfiguratie gegenereerd — upgrade om je regels toe te passen.',
+  split_applied:
+    'Split tunneling toegepast — deze configuratie routeert alleen wat je regels toestaan.',
+
   multihop_summary_title: 'Geavanceerd: multi-hop (twee configuraties)',
   multihop_tier_pill: 'PREMIUM · OPT-IN',
   multihop_lede:

@@ -86,6 +86,27 @@ export const zh: Catalog = {
     '在 Zelcore / SSP Wallet 中打开。付款会在 Flux 区块链上验证——我们永远不知道你是谁。留言把付款与你的密钥绑定；不带留言发送意味着资金会到账，但不会解锁任何东西。',
   upgrade_back: '← 返回连接',
 
+  split_summary_title: '高级：分流隧道',
+  split_tier_pill: '高级版 · 可选',
+  split_lede:
+    '选择哪些目标走 VPN。生成的配置将规则表达为 WireGuard 的 AllowedIPs，因此可用于标准 WireGuard 应用 — 仅支持 IP 范围和本地网络绕行（按应用的规则需要我们的原生应用）。',
+  split_mode_aria: '分流隧道模式',
+  split_mode_off: '关闭',
+  split_mode_exclude: '排除所列',
+  split_mode_include: '仅这些',
+  split_warn_exclude: '被排除的流量将不受保护地离开你的设备，并暴露你的真实 IP 地址。',
+  split_warn_include: '仅列出的目标受保护 — 其他一切都会暴露你的真实 IP 地址。',
+  split_lan_label: '允许访问本地网络（打印机、NAS、投屏）',
+  split_cidr_placeholder: '例如 192.168.0.0/16 或 203.0.113.7',
+  split_cidr_aria: 'IP 地址或 CIDR 范围',
+  split_add: '添加',
+  split_input_invalid: '不是有效的 IP 地址或 CIDR 范围。',
+  split_rules_empty: '还没有 IP 规则 — 在上方添加一个范围，或只使用本地网络访问。',
+  split_remove_aria: '移除规则 {value}',
+  split_next_note: '规则将应用于你在此页面生成的下一个配置。',
+  split_premium_required: '分流隧道是高级版功能。已改为生成全隧道配置 — 升级以应用你的规则。',
+  split_applied: '已应用分流隧道 — 此配置仅路由你的规则所允许的流量。',
+
   multihop_summary_title: '进阶：多跳（两份配置）',
   multihop_tier_pill: '高级 · 可选启用',
   multihop_lede:

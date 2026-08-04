@@ -87,6 +87,33 @@ export const it: Catalog = {
     'Si apre in Zelcore / SSP Wallet. Il pagamento è verificato sulla blockchain di Flux — non vediamo mai chi sei. Il messaggio collega il pagamento alla tua chiave; inviarlo senza significa che i fondi arrivano ma nulla si sblocca.',
   upgrade_back: '← Torna a Connetti',
 
+  split_summary_title: 'Avanzato: split tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Scegli quali destinazioni usano la VPN. La configurazione generata esprime le regole come AllowedIPs di WireGuard, quindi funziona con l’app WireGuard standard — solo intervalli IP e bypass della rete locale (le regole per app richiedono le nostre app native).',
+  split_mode_aria: 'Modalità split tunneling',
+  split_mode_off: 'Disattivato',
+  split_mode_exclude: 'Escludi elencati',
+  split_mode_include: 'Solo questi',
+  split_warn_exclude:
+    'Il traffico escluso lascia il tuo dispositivo senza protezione e mostra il tuo vero indirizzo IP.',
+  split_warn_include:
+    'Solo le destinazioni elencate sono protette — tutto il resto mostra il tuo vero indirizzo IP.',
+  split_lan_label: 'Consenti accesso alla rete locale (stampanti, NAS, casting)',
+  split_cidr_placeholder: 'es. 192.168.0.0/16 o 203.0.113.7',
+  split_cidr_aria: 'Indirizzo IP o intervallo CIDR',
+  split_add: 'Aggiungi',
+  split_input_invalid: 'Indirizzo IP o intervallo CIDR non valido.',
+  split_rules_empty:
+    'Ancora nessuna regola IP — aggiungi un intervallo sopra, o usa semplicemente l’accesso alla rete locale.',
+  split_remove_aria: 'Rimuovi la regola {value}',
+  split_next_note:
+    'Le regole si applicano alla prossima configurazione che generi su questa pagina.',
+  split_premium_required:
+    'Lo split tunneling è una funzione premium. È stata generata una configurazione full-tunnel — passa a premium per applicare le tue regole.',
+  split_applied:
+    'Split tunneling applicato — questa configurazione instrada solo ciò che le tue regole consentono.',
+
   multihop_summary_title: 'Avanzato: multi-hop (due configurazioni)',
   multihop_tier_pill: 'PREMIUM · OPZIONALE',
   multihop_lede:

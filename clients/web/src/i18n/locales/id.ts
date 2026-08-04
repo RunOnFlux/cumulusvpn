@@ -87,6 +87,32 @@ export const id: Catalog = {
     'Terbuka di Zelcore / SSP Wallet. Pembayaran diverifikasi di blockchain Flux — kami tidak pernah tahu siapa Anda. Pesan mengaitkan pembayaran dengan kunci Anda; mengirim tanpa pesan berarti dana sampai tapi tidak ada yang terbuka.',
   upgrade_back: '← Kembali ke Hubungkan',
 
+  split_summary_title: 'Lanjutan: split tunneling',
+  split_tier_pill: 'PREMIUM · OPSIONAL',
+  split_lede:
+    'Pilih tujuan mana yang menggunakan VPN. Konfigurasi yang dihasilkan menyatakan aturan sebagai AllowedIPs WireGuard, sehingga berfungsi dengan aplikasi WireGuard standar — hanya rentang IP dan pengecualian jaringan lokal (aturan per aplikasi memerlukan aplikasi native kami).',
+  split_mode_aria: 'Mode split tunneling',
+  split_mode_off: 'Mati',
+  split_mode_exclude: 'Kecualikan daftar',
+  split_mode_include: 'Hanya ini',
+  split_warn_exclude:
+    'Lalu lintas yang dikecualikan keluar dari perangkat Anda tanpa perlindungan dan menampilkan alamat IP asli Anda.',
+  split_warn_include:
+    'Hanya tujuan yang terdaftar yang terlindungi — sisanya menampilkan alamat IP asli Anda.',
+  split_lan_label: 'Izinkan akses jaringan lokal (printer, NAS, casting)',
+  split_cidr_placeholder: 'mis. 192.168.0.0/16 atau 203.0.113.7',
+  split_cidr_aria: 'Alamat IP atau rentang CIDR',
+  split_add: 'Tambah',
+  split_input_invalid: 'Bukan alamat IP atau rentang CIDR yang valid.',
+  split_rules_empty:
+    'Belum ada aturan IP — tambahkan rentang di atas, atau cukup gunakan akses jaringan lokal.',
+  split_remove_aria: 'Hapus aturan {value}',
+  split_next_note: 'Aturan berlaku untuk konfigurasi berikutnya yang Anda hasilkan di halaman ini.',
+  split_premium_required:
+    'Split tunneling adalah fitur premium. Sebagai gantinya, konfigurasi full-tunnel dihasilkan — tingkatkan untuk menerapkan aturan Anda.',
+  split_applied:
+    'Split tunneling diterapkan — konfigurasi ini hanya merutekan yang diizinkan aturan Anda.',
+
   multihop_summary_title: 'Lanjutan: multi-hop (dua config)',
   multihop_tier_pill: 'PREMIUM · OPT-IN',
   multihop_lede:
