@@ -118,15 +118,32 @@ And `:latest` moves to whatever commit you tag (metadata-action's auto-latest
 fires even though `enable={{is_default_branch}}` is false for a tag ref), so tag
 a commit that is on `main` unless you intend `:latest` to point at unmerged code.
 
-Then pin it (ideally by immutable digest, as `countries.yaml:35-38` advises):
+The spec pins the **version tag, treated as mutable** (deliberate policy since
+2026-08-04 — see the comment block above `repotag:` in `countries.yaml` for the
+tradeoff; same release flow the `0.1.0` fleet used):
 
 ```yaml
 # deploy/countries.yaml
 repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.2.0'
 ```
 
-**PASS** — the image exists in GHCR and the tag matches `repotag`. Note the CI
-strips a leading `v`, so tag `v0.2.0` → image `:0.2.0`, **not** `:v0.2.0`.
+Consequence for THIS stage: shipping a fix to the fleet needs **no spec change**
+— move the git tag (delete + recreate `v0.2.0` on the new commit + push) and CI
+republishes `:0.2.0`; nodes pick it up when they next pull (soft redeploy /
+reinstall / migration — a plain restart may reuse the cached layer), so the
+fleet converges gradually. The `Version` string stays `0.2.0` across rebuilds,
+so distinguish builds by `/v1/info.build_commit` (git short-SHA). Only a
+breaking release (`v0.3.0`) requires editing `repotag` and re-registering.
+To see what the tag resolves to right now:
+
+```bash
+docker buildx imagetools inspect ghcr.io/runonflux/cumulusvpn-gateway:0.2.0
+```
+
+**PASS** — the image exists in GHCR, `:0.2.0` resolves to the build you just
+tagged, and `/v1/info.build_commit` on a redeployed node matches the commit.
+Note the CI strips a leading `v`, so tag `v0.2.0` → image `:0.2.0`, **not**
+`:v0.2.0`.
 
 ---
 
