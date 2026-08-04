@@ -35,6 +35,25 @@ export type {
   SelectedHops,
   MultihopConfig,
 } from './multihop.js';
+export {
+  EMPTY_POLICY,
+  LAN_BYPASS_CIDRS,
+  compileSplitPolicy,
+  complementRoutes,
+  normalizeSplitRule,
+  sanitizeSplitPolicy,
+} from './split.js';
+export type {
+  CompiledSplit,
+  CompileSplitContext,
+  DomainMatcher,
+  SplitMode,
+  SplitPlatform,
+  SplitPolicy,
+  SplitRule,
+  SplitRuleContext,
+  SplitRuleKind,
+} from './split.js';
 export { ApiError } from './http.js';
 export type { SignedResult } from './http.js';
 

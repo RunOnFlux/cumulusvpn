@@ -1,4 +1,5 @@
 import type { WgConfigParams } from './types.js';
+import type { CompiledSplit } from './split.js';
 
 // AmneziaWG obfuscation keys as they appear in a wg-quick [Interface] block
 // (capitalized), mapped from the lowercase keys the gateway advertises in
@@ -35,6 +36,27 @@ export function obfsInterfaceLines(obfs?: Readonly<Record<string, string>>): str
 }
 
 /**
+ * The `AllowedIPs` value for a compiled split policy, or the full-tunnel
+ * default. A `.conf` is inclusion-only, so callers must compile with
+ * `supportsExcludeRoute: false` — `tunnelRoutes` then already holds the
+ * complement (exclude mode) or the inclusion list (include mode).
+ *
+ * An active include-mode policy with an empty route list falls back to the
+ * full tunnel: failing toward MORE protection, never toward an interface that
+ * silently carries nothing. (The UI should prevent that state from being
+ * saved; this is the belt to its suspenders.)
+ *
+ * Shared with `buildMultihopConfig` (the inner/exit hop's `AllowedIPs`) — not
+ * part of the public API.
+ */
+export function allowedIpsFor(split?: CompiledSplit): string {
+  if (!split || split.isNoop || split.tunnelRoutes.length === 0) {
+    return '0.0.0.0/0, ::/0';
+  }
+  return split.tunnelRoutes.join(', ');
+}
+
+/**
  * Render a ready-to-use WireGuard client configuration (`.conf` / `.ini`).
  *
  * The output matches the API contract exactly: a `/32` tunnel address, the
@@ -47,24 +69,43 @@ export function obfsInterfaceLines(obfs?: Readonly<Record<string, string>>): str
  * (`Jc`/`Jmin`/…/`H4`) are appended — otherwise the output is byte-identical to
  * the vanilla config, so nothing changes for the default path.
  *
+ * When `params.split` is set (a {@link CompiledSplit} compiled with
+ * `supportsExcludeRoute: false`, since a `.conf` can only express inclusion),
+ * its `tunnelRoutes` replace the default `AllowedIPs`. A noop split — or none —
+ * keeps the output byte-identical to before (validation gate V1).
+ *
  * @param params - Client private key, assigned IP, DNS, server key, endpoint,
- *   and optionally the obfuscation profile.
+ *   and optionally the obfuscation profile and compiled split policy.
  * @returns The complete WireGuard configuration text.
  */
 export function buildWgConfig(params: WgConfigParams): string {
-  const { privateKey, assignedIp, dns, serverPubKey, endpoint, obfs } = params;
+  const { privateKey, assignedIp, dns, serverPubKey, endpoint, obfs, split } = params;
+  // Android app rules (docs/17 §4.1): `com.wireguard.config.Interface` parses
+  // these two keys and applies them to the VpnService builder, so the vanilla
+  // GoBackend path gets per-app split for free. The compiler only populates
+  // the app lists for the platform it compiled for, so a desktop/web config
+  // never carries them (and the desktop/iOS parsers ignore unknown keys).
+  const appLines = [
+    ...(split && split.appsIncluded.length > 0
+      ? [`IncludedApplications = ${split.appsIncluded.join(', ')}`]
+      : []),
+    ...(split && split.appsExcluded.length > 0
+      ? [`ExcludedApplications = ${split.appsExcluded.join(', ')}`]
+      : []),
+  ];
   const iface = [
     '[Interface]',
     `PrivateKey = ${privateKey}`,
     `Address = ${assignedIp}/32`,
     `DNS = ${dns}`,
+    ...appLines,
     ...obfsInterfaceLines(obfs),
   ];
   const peer = [
     '[Peer]',
     `PublicKey = ${serverPubKey}`,
     `Endpoint = ${endpoint}`,
-    'AllowedIPs = 0.0.0.0/0, ::/0',
+    `AllowedIPs = ${allowedIpsFor(split)}`,
     'PersistentKeepalive = 25',
   ];
   return `${iface.join('\n')}\n\n${peer.join('\n')}\n`;

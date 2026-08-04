@@ -6,6 +6,7 @@
  * (see `docs/10-api-contract.md`). Do not rename them — they are parsed
  * directly from JSON and any divergence silently breaks interop.
  */
+import type { CompiledSplit } from './split.js';
 
 /** Fixed control-API port (HTTP, signed bodies). */
 export const CONTROL_PORT = 51821;
@@ -196,4 +197,11 @@ export interface WgConfigParams {
    * vanilla and `wg-tls` transports. Use {@link obfsForTransport} to derive it.
    */
   readonly obfs?: Readonly<Record<string, string>>;
+  /**
+   * Compiled split-tunneling policy (docs/17). A `.conf` can only express
+   * inclusion, so compile with `supportsExcludeRoute: false`; the compiled
+   * `tunnelRoutes` then replace the default `AllowedIPs`. Absent or noop
+   * keeps the config byte-identical to the full-tunnel output.
+   */
+  readonly split?: CompiledSplit;
 }

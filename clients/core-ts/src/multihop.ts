@@ -20,8 +20,9 @@
  */
 import { WG_PORT } from './types.js';
 import type { EnrollResponse, GatewayInfo, Transport } from './types.js';
-import { obfsInterfaceLines } from './wgconfig.js';
+import { allowedIpsFor, obfsInterfaceLines } from './wgconfig.js';
 import { applyTransportToEndpoint, obfsForTransport } from './transport.js';
+import type { CompiledSplit } from './split.js';
 
 /**
  * How the tunnel path is routed.
@@ -243,10 +244,18 @@ export function selectHops(
  * (exit) hop stays vanilla. Omit it (or pass a vanilla `wg` transport) for a
  * fully vanilla multi-hop — the output is then byte-identical to before.
  *
+ * Split tunneling (docs/17 §7.2): rules apply to the INNER (exit) hop — that is
+ * where the default route lives. Pass a `split` compiled with
+ * `supportsExcludeRoute: false` and the inner `.conf`'s `AllowedIPs` becomes the
+ * compiled `tunnelRoutes`; the outer hop's `<exitIp>/32` pin is untouched. The
+ * compile step must have been given both hop IPs as `endpointIps` so no rule
+ * can shadow either pin. Absent or noop keeps the output byte-identical.
+ *
  * @param args.privateKey - Client WireGuard private key (base64), used on both.
  * @param args.entry - Enrollment of key `K` at the ENTRY gateway.
  * @param args.exit - Enrollment of key `K` at the EXIT gateway.
  * @param args.entryTransport - ENTRY hop transport (an `awg` profile obfuscates it).
+ * @param args.split - Compiled split policy for the exit hop's `AllowedIPs`.
  * @returns The `outer`/`inner` `.conf` strings, `entryEndpoint`, `exitEndpoint`, `innerMtu`.
  */
 export function buildMultihopConfig(args: {
@@ -254,8 +263,9 @@ export function buildMultihopConfig(args: {
   entry: EnrollResponse;
   exit: EnrollResponse;
   entryTransport?: Transport;
+  split?: CompiledSplit;
 }): MultihopConfig {
-  const { privateKey, entry, exit, entryTransport } = args;
+  const { privateKey, entry, exit, entryTransport, split } = args;
   const exitIp = stripEndpointPort(exit.endpoint);
   const exitEndpoint = `${exitIp}:${WG_PORT}`;
 
@@ -282,18 +292,35 @@ export function buildMultihopConfig(args: {
   ];
   const outer = `${outerIface.join('\n')}\n\n${outerPeer.join('\n')}\n`;
 
-  const inner = `[Interface]
-PrivateKey = ${privateKey}
-Address = ${exit.assigned_ip}/32
-DNS = ${exit.dns}
-MTU = ${INNER_MTU}
-
-[Peer]
-PublicKey = ${exit.server_pubkey}
-Endpoint = ${exit.endpoint}
-AllowedIPs = 0.0.0.0/0, ::/0
-PersistentKeepalive = 25
-`;
+  // Android per-app rules (docs/17 §4.1) ride the INNER config's [Interface]
+  // like the single-hop path: the official Config parser reads these keys and
+  // the controller forwards them to the nested service. The compiler only
+  // populates the app lists for the platform it compiled for, so a desktop
+  // inner config never carries them. Empty → byte-identical output.
+  const appLines = [
+    ...(split && split.appsIncluded.length > 0
+      ? [`IncludedApplications = ${split.appsIncluded.join(', ')}`]
+      : []),
+    ...(split && split.appsExcluded.length > 0
+      ? [`ExcludedApplications = ${split.appsExcluded.join(', ')}`]
+      : []),
+  ];
+  const innerIface = [
+    '[Interface]',
+    `PrivateKey = ${privateKey}`,
+    `Address = ${exit.assigned_ip}/32`,
+    `DNS = ${exit.dns}`,
+    `MTU = ${INNER_MTU}`,
+    ...appLines,
+  ];
+  const innerPeer = [
+    '[Peer]',
+    `PublicKey = ${exit.server_pubkey}`,
+    `Endpoint = ${exit.endpoint}`,
+    `AllowedIPs = ${allowedIpsFor(split)}`,
+    'PersistentKeepalive = 25',
+  ];
+  const inner = `${innerIface.join('\n')}\n\n${innerPeer.join('\n')}\n`;
 
   return { outer, inner, entryEndpoint, exitEndpoint, innerMtu: INNER_MTU };
 }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildMultihopConfig, selectHops } from './multihop.js';
+import { EMPTY_POLICY, compileSplitPolicy } from './split.js';
 import type { EnrollResponse, GatewayInfo } from './types.js';
 
 function gateway(overrides: Partial<GatewayInfo>): GatewayInfo {
@@ -112,6 +113,35 @@ describe('buildMultihopConfig', () => {
     // The INNER (exit) hop stays vanilla — obfuscation is entry-only.
     expect(cfg.inner).not.toMatch(/\bJc =/);
     expect(cfg.inner).toContain('Endpoint = 5.6.7.8:51820');
+  });
+
+  it('split rules land on the INNER config; a noop split is byte-identical', () => {
+    const base = { privateKey: 'K', entry, exit };
+    const split = compileSplitPolicy(
+      {
+        ...EMPTY_POLICY,
+        mode: 'exclude',
+        rules: [
+          { kind: 'cidr', value: '10.0.0.0/8', enabled: true },
+          { kind: 'app', value: 'com.android.chrome', platform: 'android', enabled: true },
+        ],
+      },
+      { platform: 'android', supportsExcludeRoute: false },
+    );
+    const cfg = buildMultihopConfig({ ...base, split });
+    // Inner (exit) hop carries the compiled routes + Android app keys (§7.2);
+    // the outer keeps its <exitIp>/32 pin untouched.
+    expect(cfg.inner).toContain('AllowedIPs = 0.0.0.0/5,');
+    expect(cfg.inner).toContain('ExcludedApplications = com.android.chrome');
+    expect(cfg.inner.indexOf('ExcludedApplications')).toBeLessThan(cfg.inner.indexOf('[Peer]'));
+    expect(cfg.outer).toContain('AllowedIPs = 5.6.7.8/32');
+    expect(cfg.outer).not.toContain('Applications');
+
+    const noop = compileSplitPolicy(EMPTY_POLICY, {
+      platform: 'android',
+      supportsExcludeRoute: false,
+    });
+    expect(buildMultihopConfig({ ...base, split: noop })).toStrictEqual(buildMultihopConfig(base));
   });
 });
 
