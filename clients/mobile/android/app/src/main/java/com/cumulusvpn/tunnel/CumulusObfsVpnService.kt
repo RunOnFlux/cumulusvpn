@@ -88,23 +88,52 @@ class CumulusObfsVpnService : VpnService() {
         val tlsRelay = intent.getStringExtra(EXTRA_TLS_RELAY)
         val tlsSni = intent.getStringExtra(EXTRA_TLS_SNI)
 
+        // Split tunneling (docs/17): compiled tunnel-route CSVs from the config's
+        // AllowedIPs; absent => classic full tunnel.
+        val routes4 = intent.getStringExtra(EXTRA_ROUTES4)
+        val routes6 = intent.getStringExtra(EXTRA_ROUTES6)
+
         val builder = Builder()
             .setSession("CumulusVPN")
             .addAddress(serverAssigned, 32)
             .addDnsServer(dns)
             .setMtu(1420)
             .setBlocking(true)
-        // Route everything EXCEPT the gateway IP into the tun, so the device's one
-        // real socket to the gateway bypasses the VPN (no loop). Reuses the
-        // multi-hop service's route arithmetic.
-        for ((net, prefix) in CumulusMultihopVpnService.routesExcluding(serverIp)) {
+        // Per-app rules (docs/17 §4.1) — kernel-enforced by the tun scoping.
+        CumulusMultihopVpnService.applyAppRules(
+            builder,
+            intent.getStringExtra(EXTRA_APPS_INCLUDED),
+            intent.getStringExtra(EXTRA_APPS_EXCLUDED),
+        )
+        // Route the tunnel-route set (everything, or the split policy's routes)
+        // EXCEPT the gateway IP into the tun, so the device's one real socket to
+        // the gateway bypasses the VPN (no loop). Reuses the multi-hop service's
+        // route arithmetic.
+        val tunRoutes =
+            if (routes4.isNullOrBlank()) {
+                CumulusMultihopVpnService.routesExcluding(serverIp)
+            } else {
+                CumulusMultihopVpnService.subtractHost(
+                    CumulusMultihopVpnService.parseRoutesCsv(routes4),
+                    serverIp,
+                )
+            }
+        for ((net, prefix) in tunRoutes) {
             builder.addRoute(net, prefix)
         }
-        // Blackhole IPv6 into the tun so v6 can't leak past the VPN.
+        // Blackhole IPv6 into the tun so v6 can't leak past the VPN — unless a
+        // split policy supplies explicit v6 tunnel routes, in which case excluded
+        // v6 prefixes really do bypass instead of being dropped.
         try {
-            builder.addRoute("::", 0)
+            if (routes6.isNullOrBlank()) {
+                builder.addRoute("::", 0)
+            } else {
+                for ((net, prefix) in CumulusMultihopVpnService.parseRoutes6Csv(routes6)) {
+                    builder.addRoute(net, prefix)
+                }
+            }
         } catch (t: Throwable) {
-            Log.w(TAG, "could not add IPv6 blackhole route", t)
+            Log.w(TAG, "could not add IPv6 route(s)", t)
         }
 
         val pfd = builder.establish()
@@ -250,6 +279,15 @@ class CumulusObfsVpnService : VpnService() {
         // present. Both present → the WG device is bridged over TLS.
         const val EXTRA_TLS_RELAY = "tlsRelay"
         const val EXTRA_TLS_SNI = "tlsSni"
+
+        // Split tunneling (docs/17): compiled tunnel-route CSVs from the config's
+        // AllowedIPs. Absent/blank => classic full tunnel.
+        const val EXTRA_ROUTES4 = "routes4"
+        const val EXTRA_ROUTES6 = "routes6"
+
+        // Per-app rules (docs/17 §4.1): comma-separated package names.
+        const val EXTRA_APPS_INCLUDED = "appsIncluded"
+        const val EXTRA_APPS_EXCLUDED = "appsExcluded"
 
         @Volatile
         private var activeHandle: Long = 0

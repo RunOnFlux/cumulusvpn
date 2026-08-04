@@ -77,6 +77,12 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
+    // JVM unit tests hit android.util.Log from the route parsers; return
+    // defaults instead of throwing so pure-logic tests can run off-device.
+    testOptions {
+        unitTests.returnDefaultValues = true
+    }
+
     namespace "com.cumulusvpn"
     defaultConfig {
         applicationId "com.cumulusvpn.app"
@@ -141,4 +147,10 @@ dependencies {
     } else {
         implementation jscFlavor
     }
+
+    // JVM unit tests: the split-tunneling route arithmetic is validated against
+    // the shared cross-language vector file (docs/17 §5) — divergence from
+    // clients/core-ts/src/__fixtures__/split-routes.json is a build failure.
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }

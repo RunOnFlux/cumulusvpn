@@ -67,9 +67,16 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         // One WireGuard header of headroom (MTU 1420); assigned addr + DNS +
         // default route. iOS excludes the provider's own UDP socket from the tun,
         // so no excludedRoutes are needed for the single real socket.
+        //
+        // Split tunneling (docs/17): a non-default AllowedIPs (core's compiled
+        // split policy, the pre-computed complement / inclusion list) becomes the
+        // includedRoutes set — only those prefixes enter the tun. The classic
+        // full-tunnel config keeps this path byte-identical. v4 only, matching
+        // the existing v4-only settings; the kill switch (`includeAllNetworks`)
+        // disregards route carve-outs, so the app layer never combines the two.
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: serverIp)
         let ipv4 = NEIPv4Settings(addresses: [assigned], subnetMasks: ["255.255.255.255"])
-        ipv4.includedRoutes = [NEIPv4Route.default()]
+        ipv4.includedRoutes = Self.includedV4Routes(allowedIps: conf.allowedIps)
         settings.ipv4Settings = ipv4
         settings.mtu = 1420
         if let dns = conf.dns {
@@ -186,9 +193,14 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         // Exit-assigned address, exit DNS, MTU 1340 (two stacked WG headers).
         // Route everything into the tun EXCEPT the entry IP, so the outer device's
         // one real socket to the entry bypasses the tun (no loop).
+        //
+        // Split tunneling (docs/17 §7.2): the INNER (exit) config's AllowedIPs
+        // carries the compiled tunnel routes; non-default → includedRoutes. The
+        // compile step rejects rules containing either hop IP, so the entry-pin
+        // exclusion below can never be shadowed.
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: entryIp)
         let ipv4 = NEIPv4Settings(addresses: [exitAssigned], subnetMasks: ["255.255.255.255"])
-        ipv4.includedRoutes = [NEIPv4Route.default()]
+        ipv4.includedRoutes = Self.includedV4Routes(allowedIps: inner.allowedIps)
         ipv4.excludedRoutes = [NEIPv4Route(destinationAddress: entryIp, subnetMask: "255.255.255.255")]
         settings.ipv4Settings = ipv4
         settings.mtu = 1340
@@ -295,6 +307,31 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         return proto?.providerConfiguration?[key] as? String
     }
 
+    /// The tun's IPv4 includedRoutes for a config's AllowedIPs list: the classic
+    /// default route when the list is the full tunnel (or empty/absent — fail
+    /// toward MORE protection), otherwise one route per v4 prefix. v6 entries
+    /// are ignored (the extension programs v4-only settings today).
+    static func includedV4Routes(allowedIps: [String]) -> [NEIPv4Route] {
+        let v4 = allowedIps.filter { !$0.contains(":") }
+        let isFullTunnel = v4.isEmpty || v4.contains("0.0.0.0/0")
+        if isFullTunnel { return [NEIPv4Route.default()] }
+        let routes = v4.compactMap(ipv4Route(_:))
+        // A list that parses to nothing must not leave the tun carrying nothing.
+        return routes.isEmpty ? [NEIPv4Route.default()] : routes
+    }
+
+    /// "a.b.c.d/n" (or a bare address = /32) → NEIPv4Route, nil when malformed.
+    private static func ipv4Route(_ cidr: String) -> NEIPv4Route? {
+        let parts = cidr.split(separator: "/")
+        guard let addr = parts.first.map(String.init), !addr.isEmpty else { return nil }
+        let prefix = parts.count > 1 ? Int(parts[1]) ?? -1 : 32
+        guard (0...32).contains(prefix), inet_addr(addr) != INADDR_NONE || addr == "255.255.255.255"
+        else { return nil }
+        let maskBits: UInt32 = prefix == 0 ? 0 : ~UInt32(0) << (32 - prefix)
+        let mask = [24, 16, 8, 0].map { String((maskBits >> $0) & 0xFF) }.joined(separator: ".")
+        return NEIPv4Route(destinationAddress: addr, subnetMask: mask)
+    }
+
     enum TunnelError: Error {
         case missingConfig
         case invalidConfig
@@ -314,6 +351,7 @@ private struct WgQuick {
     let endpointPort: Int // [Peer] Endpoint port (0 if absent → engine default 51820)
     let obfs: String // AmneziaWG [Interface] params as device-level UAPI ("" = vanilla)
     let tlsSni: String? // wg-tls: present → bridge over TLS (the `CVPN_TLS_SNI` sentinel)
+    let allowedIps: [String] // [Peer] AllowedIPs entries, trimmed ("0.0.0.0/0", …)
 
     // AmneziaWG [Interface] keys (lowercased), emitted as UAPI in this order.
     private static let obfsKeys = ["jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4"]
@@ -325,6 +363,7 @@ private struct WgQuick {
         var dns: String?
         var endpoint: String?
         var sni: String?
+        var allowed: [String] = []
         var obfsVals: [String: String] = [:]
         for raw in text.split(whereSeparator: { $0 == "\n" || $0 == "\r" }) {
             let line = raw.trimmingCharacters(in: .whitespaces)
@@ -343,6 +382,11 @@ private struct WgQuick {
                     String($0).trimmingCharacters(in: .whitespaces)
                 }
             case "endpoint": endpoint = val
+            case "allowedips":
+                // Split tunneling: the compiled route list ("0.0.0.0/5, 8.0.0.0/7, …").
+                allowed = val.split(separator: ",").map {
+                    String($0).trimmingCharacters(in: .whitespaces)
+                }
             case "jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4":
                 obfsVals[key] = val
             // wg-tls sentinel injected by the client (useVpn) — signals that the
@@ -359,6 +403,7 @@ private struct WgQuick {
         address = addr
         self.dns = dns
         tlsSni = sni
+        allowedIps = allowed
         // Split "ip:port" (our gateways are IPv4 literals); keep both parts.
         if let endpoint, let colon = endpoint.lastIndex(of: ":") {
             endpointHost = String(endpoint[..<colon])

@@ -131,6 +131,9 @@ export function ConnectScreen({
               Exit {vpn.activeExit.city} · {vpn.activeExit.ip}
             </Text>
             <Text style={styles.ip}>{elapsed ? `Protected · ${elapsed}` : 'Protected'}</Text>
+            {/* docs/17 §8: with split rules active, the user must never be
+                unsure whether they are fully protected — say so persistently. */}
+            {vpn.splitActive && <Text style={styles.splitOn}>Split tunneling on</Text>}
           </View>
         ) : connected && vpn.activeEntry ? (
           /* Single-hop: the entry gateway is also the egress. */
@@ -141,6 +144,9 @@ export function ConnectScreen({
               {vpn.activeEntry.city} · {vpn.activeEntry.ip}
             </Text>
             <Text style={styles.ip}>{elapsed ? `Protected · ${elapsed}` : 'Protected'}</Text>
+            {/* docs/17 §8: with split rules active, the user must never be
+                unsure whether they are fully protected — say so persistently. */}
+            {vpn.splitActive && <Text style={styles.splitOn}>Split tunneling on</Text>}
           </View>
         ) : (
           <View style={styles.loc}>
@@ -532,6 +538,7 @@ const styles = StyleSheet.create({
   flag: { fontSize: 30, lineHeight: 34 },
   country: { fontSize: 21, fontWeight: '700', color: color.ink, marginTop: space.xs },
   ip: { fontFamily: font.mono, fontSize: 11.5, color: color.inkDim, marginTop: 3 },
+  splitOn: { fontFamily: font.mono, fontSize: 11.5, color: color.amber, marginTop: 3 },
   notConnected: { fontSize: 16, color: color.inkMuted },
   statRow: { flexDirection: 'row', gap: 10, alignSelf: 'stretch', marginTop: space.xs },
   dataLine: {

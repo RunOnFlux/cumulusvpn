@@ -226,6 +226,9 @@ object CumulusTunnelController {
         var endpoint = ""
         var address = ""
         var dns = "1.1.1.1"
+        var allowedIps = ""
+        var appsIncluded = ""
+        var appsExcluded = ""
         for (raw in wgQuickConfig.lines()) {
             val line = raw.trim()
             val eq = line.indexOf('=')
@@ -238,6 +241,9 @@ object CumulusTunnelController {
                 "Endpoint" -> endpoint = value
                 "Address" -> address = value.substringBefore(',').substringBefore('/').trim()
                 "DNS" -> dns = value.substringBefore(',').trim()
+                "AllowedIPs" -> allowedIps = value
+                "IncludedApplications" -> appsIncluded = value
+                "ExcludedApplications" -> appsExcluded = value
             }
         }
         val serverIp = endpoint.substringBeforeLast(':', endpoint)
@@ -259,6 +265,21 @@ object CumulusTunnelController {
             if (tlsSni != null) {
                 putExtra(CumulusObfsVpnService.EXTRA_TLS_RELAY, endpoint)
                 putExtra(CumulusObfsVpnService.EXTRA_TLS_SNI, tlsSni)
+            }
+            // Split tunneling: a non-default AllowedIPs (from core's compiled
+            // split policy) becomes the tun route set. The default full-tunnel
+            // value is deliberately NOT passed, keeping that path byte-identical.
+            if (allowedIps.isNotEmpty() && !isFullTunnel(allowedIps)) {
+                putExtra(CumulusObfsVpnService.EXTRA_ROUTES4, allowedIps)
+                putExtra(CumulusObfsVpnService.EXTRA_ROUTES6, allowedIps)
+            }
+            // Per-app rules (docs/17 §4.1) — the same keys the vanilla path's
+            // official Config parser applies; the wgnest service does it manually.
+            if (appsIncluded.isNotEmpty()) {
+                putExtra(CumulusObfsVpnService.EXTRA_APPS_INCLUDED, appsIncluded)
+            }
+            if (appsExcluded.isNotEmpty()) {
+                putExtra(CumulusObfsVpnService.EXTRA_APPS_EXCLUDED, appsExcluded)
             }
         }
         obfsActive = true
@@ -325,6 +346,23 @@ object CumulusTunnelController {
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_IP, exitIp)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_ASSIGNED, exitAssigned)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_DNS, exitDns)
+                // Split tunneling: the inner (exit) config's AllowedIPs carries
+                // the compiled tunnel routes (docs/17 §7.2). Default => absent.
+                val innerAllowed = exitPeer.allowedIps.joinToString(", ") { it.toString() }
+                if (innerAllowed.isNotEmpty() && !isFullTunnel(innerAllowed)) {
+                    putExtra(CumulusMultihopVpnService.EXTRA_ROUTES4, innerAllowed)
+                    putExtra(CumulusMultihopVpnService.EXTRA_ROUTES6, innerAllowed)
+                }
+                // Per-app rules (docs/17 §4.1), parsed by the official Config
+                // parser from the inner config's [Interface] app keys.
+                val included = inner.`interface`.includedApplications.joinToString(",")
+                val excluded = inner.`interface`.excludedApplications.joinToString(",")
+                if (included.isNotEmpty()) {
+                    putExtra(CumulusMultihopVpnService.EXTRA_APPS_INCLUDED, included)
+                }
+                if (excluded.isNotEmpty()) {
+                    putExtra(CumulusMultihopVpnService.EXTRA_APPS_EXCLUDED, excluded)
+                }
             }
             multihopActive = true
             obfsActive = false // reciprocal: a multihop switch must not leave the obfs flag stale
@@ -398,6 +436,12 @@ object CumulusTunnelController {
             Stats(0, 0, 0)
         }
     }
+
+    /** True when an AllowedIPs value is the classic full tunnel (only default
+     *  routes), i.e. no split policy is in effect. */
+    private fun isFullTunnel(allowedIps: String): Boolean =
+        allowedIps.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            .all { it == "0.0.0.0/0" || it == "::/0" }
 
     private fun parse(wgQuickConfig: String): Config =
         Config.parse(BufferedReader(StringReader(wgQuickConfig)))

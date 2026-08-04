@@ -16,6 +16,7 @@ import {
   applyTransportToEndpoint,
   buildMultihopConfig,
   buildWgConfig,
+  compileSplitPolicy,
   enroll,
   generateKeypair,
   hasPremiumTransport,
@@ -28,6 +29,7 @@ import {
   status as fetchStatus,
 } from '@cumulusvpn/core';
 import type {
+  CompiledSplit,
   EnrollResponse,
   GatewayInfo,
   Keypair,
@@ -65,6 +67,7 @@ import {
   loadKillSwitch,
   loadNodeDiversity,
   loadRouteStyle,
+  loadSplitPolicy,
   loadTransportMode,
   loadSelectedCountry,
   saveActiveRoute,
@@ -80,6 +83,37 @@ import {
   saveTransportMode,
   saveSelectedCountry,
 } from './storage';
+
+/**
+ * Compile the stored split-tunneling policy for THIS session
+ * (docs/17-split-tunneling.md), or undefined for the byte-identical full
+ * tunnel. Recompiled per (re)connect against the fresh endpoint IPs — the
+ * compiled output is session state, never cached across reconnects (§7.4).
+ *
+ * Compiled with `supportsExcludeRoute: false` on both mobile platforms so the
+ * whole policy rides the config's `AllowedIPs` (the pre-computed complement) —
+ * one uniform mechanism for GoBackend, wgnest and the iOS provider.
+ *
+ * Gates, both failing toward MORE protection:
+ * - Premium-only (§7.6): non-premium → full tunnel; policy stays stored.
+ * - iOS kill switch (`includeAllNetworks`) disregards route exclusions
+ *   (§4.5), so with it on the split is dropped rather than half-applied.
+ */
+async function splitForSession(
+  tier: Tier,
+  killSwitch: boolean,
+  endpointIps: readonly string[],
+): Promise<CompiledSplit | undefined> {
+  if (tier !== 'premium' || (killSwitch && Platform.OS === 'ios')) {
+    return undefined;
+  }
+  const compiled = compileSplitPolicy(await loadSplitPolicy(), {
+    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    supportsExcludeRoute: false,
+    endpointIps,
+  });
+  return compiled.isNoop ? undefined : compiled;
+}
 
 /** True for any route style that stacks two hops (multi-hop is off by default). */
 export function isMultihop(style: RouteStyle): boolean {
@@ -150,6 +184,8 @@ export interface VpnModel {
   readonly autoConnect: boolean;
   /** Unix-ms when the active session connected, or null when not connected. */
   readonly connectedSince: number | null;
+  /** True when the live session has split-tunneling rules applied (docs/17). */
+  readonly splitActive: boolean;
   /**
    * The actual entry hop of the live route (country + gateway IP). Reflects what
    * `selectHops` really chose — NOT the picker selection — so the connected
@@ -245,6 +281,11 @@ export function useVpn(): VpnModel & VpnActions {
   const autoConnectedRef = useRef(false);
   // Unix-ms when the current session connected, for the session timer.
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
+  // True when the LIVE session was built with split-tunneling rules applied —
+  // drives the persistent connect-screen indicator (docs/17 §8: a user must
+  // never be unsure whether they are fully protected). Session truth, not the
+  // stored policy: a tier lapse or kill-switch conflict makes them differ.
+  const [splitActive, setSplitActive] = useState(false);
   // The route actually established (from selectHops), for an honest connected
   // display. activeExit is null for single-hop.
   const [activeEntry, setActiveEntry] = useState<RouteEndpoint | null>(null);
@@ -490,6 +531,7 @@ export function useVpn(): VpnModel & VpnActions {
         setConnectedSince((prev) => prev ?? Date.now());
       } else if (s.state === 'disconnected' || s.state === 'error') {
         setConnectedSince(null);
+        setSplitActive(false);
       }
     });
     return () => sub.remove();
@@ -806,6 +848,7 @@ export function useVpn(): VpnModel & VpnActions {
         // it still reaches 'connected' via native status events, which means the
         // suppression gate must come off BEFORE those events arrive.
         connectingRef.current = false;
+        setSplitActive(hops.splitApplied);
         const entryEp = routeEndpoint(hops.entry);
         const exitEp = routeEndpoint(hops.exit);
         setActiveEntry(entryEp);
@@ -879,6 +922,10 @@ export function useVpn(): VpnModel & VpnActions {
       setActiveEntry(entryEp);
       setActiveExit(null);
 
+      // Split tunneling: one compile for the whole chain — every attempt dials
+      // the same gateway IP (only the port differs per transport).
+      const split = await splitForSession(gwTier, killSwitch, [gw.ip]);
+
       for (let i = 0; i < chain.length; i += 1) {
         // The user hit Disconnect (or a newer connect started) — stop. Without
         // this the sweep would read their teardown as "this transport failed"
@@ -898,6 +945,7 @@ export function useVpn(): VpnModel & VpnActions {
           serverPubKey: resp.server_pubkey,
           endpoint,
           ...(obfs ? { obfs } : {}),
+          ...(split ? { split } : {}),
         });
         // wg-tls: the native extension bridges the WG device over TLS to the
         // gateway relay (the config Endpoint, now gateway:tlsPort). We can't pass
@@ -936,6 +984,7 @@ export function useVpn(): VpnModel & VpnActions {
         if (probe === 'up') {
           connectingRef.current = false;
           setState('connected');
+          setSplitActive(split !== undefined);
           // The native 'connected' event is suppressed during a sweep, so the
           // session timer has to be started here or it never starts at all.
           setConnectedSince((prev) => prev ?? Date.now());
@@ -993,6 +1042,7 @@ export function useVpn(): VpnModel & VpnActions {
       setActiveEntry(null);
       setActiveExit(null);
       setConnectedSince(null);
+      setSplitActive(false);
       setSpeed({ down: 0, up: 0 });
       setPingMs(null);
       return;
@@ -1131,6 +1181,7 @@ export function useVpn(): VpnModel & VpnActions {
     nodeDiversity,
     autoConnect,
     connectedSince,
+    splitActive,
     activeEntry,
     activeExit,
     speed,
@@ -1290,7 +1341,7 @@ async function connectMultihop(args: {
   setEnrollment: (r: EnrollResponse) => void;
   killSwitch: boolean;
   requireDistinctSubnet: boolean;
-}): Promise<{ entry: GatewayInfo; exit: GatewayInfo }> {
+}): Promise<{ entry: GatewayInfo; exit: GatewayInfo; splitApplied: boolean }> {
   const {
     keypair,
     routeStyle,
@@ -1365,14 +1416,19 @@ async function connectMultihop(args: {
   gatewayIpRef.current = hops.entry.ip;
   setEnrollment(entryEnroll);
 
+  // Split tunneling: rules apply to the exit hop (§7.2). Both hop IPs go into
+  // the endpoint guard so no rule can shadow either pin.
+  const split = await splitForSession(tier, killSwitch, [hops.entry.ip, hops.exit.ip]);
+
   const mh = buildMultihopConfig({
     privateKey: keypair.privateKey,
     entry: entryEnroll,
     exit: exitEnroll,
     ...(entryTransport ? { entryTransport } : {}),
+    ...(split ? { split } : {}),
   });
 
   const label = `${hops.entry.country} → ${hops.exit.country}`;
   await CumulusTunnel.startMultihop(mh.outer, mh.inner, label, killSwitch);
-  return { entry: hops.entry, exit: hops.exit };
+  return { entry: hops.entry, exit: hops.exit, splitApplied: split !== undefined };
 }

@@ -11,7 +11,15 @@
  * every launch), but a production build should move it to the hardware-backed
  * Keychain / Keystore (`react-native-keychain`) and keep only a reference here.
  */
-import type { GatewayInfo, Keypair, RouteStyle, TransportMode } from '@cumulusvpn/core';
+import {
+  EMPTY_POLICY,
+  sanitizeSplitPolicy,
+  type GatewayInfo,
+  type Keypair,
+  type RouteStyle,
+  type SplitPolicy,
+  type TransportMode,
+} from '@cumulusvpn/core';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { RouteEndpoint } from '../lib/gateways';
 
@@ -30,7 +38,31 @@ const K = {
   fleet: 'cvpn:fleet',
   activeRoute: 'cvpn:activeRoute',
   disclosure: 'cvpn:disclosureAck',
+  splitPolicy: 'cvpn:splitPolicy',
 } as const;
+
+/**
+ * Load the split-tunneling policy. Anything absent, corrupt or from a future
+ * schema collapses to EMPTY_POLICY — full tunnel, never a partially-applied
+ * policy (docs/17 §3.4). The rule list is sensitive (it fingerprints what the
+ * user runs): it stays on-device and must never enter logs or support bundles.
+ */
+export async function loadSplitPolicy(): Promise<SplitPolicy> {
+  const raw = await AsyncStorage.getItem(K.splitPolicy);
+  if (!raw) {
+    return EMPTY_POLICY;
+  }
+  try {
+    return sanitizeSplitPolicy(JSON.parse(raw));
+  } catch {
+    return EMPTY_POLICY;
+  }
+}
+
+/** Persist the split-tunneling policy (device-local only, by design). */
+export async function saveSplitPolicy(policy: SplitPolicy): Promise<void> {
+  await AsyncStorage.setItem(K.splitPolicy, JSON.stringify(policy));
+}
 
 /** The route of the live tunnel, persisted so a force-quit + relaunch can still
  *  show where it's connected (exit is null for single-hop). */

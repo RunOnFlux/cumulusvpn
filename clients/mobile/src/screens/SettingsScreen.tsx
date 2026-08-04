@@ -6,6 +6,7 @@ import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-na
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
 import { PoweredByFlux } from '../components/PoweredByFlux';
+import { SplitTunnelingSection } from '../components/SplitTunnelingSection';
 import { TierPill } from '../components/TierPill';
 import { Toggle } from '../components/Toggle';
 import { formatExpiry } from './UpgradeScreen';
@@ -133,6 +134,11 @@ export function SettingsScreen({
           disabled={locked}
           onValueChange={(v) => void vpn.setNodeDiversity(v)}
         />
+
+        {/* Split tunneling (docs/17) — premium, applied when a tunnel is built,
+            like the transport/routing toggles above. */}
+        <Text style={styles.section}>Split tunneling</Text>
+        <SplitTunnelingSection tier={vpn.tier} killSwitch={vpn.killSwitch} locked={locked} />
 
         <Text style={styles.section}>Privacy &amp; support</Text>
         <Pressable
