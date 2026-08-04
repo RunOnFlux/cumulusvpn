@@ -53,6 +53,18 @@ export interface ConnectArgs {
     readonly serverAddr: string;
     readonly sni: string;
   };
+  /**
+   * Split tunneling (docs/17): compiled route lists from core-ts
+   * `compileSplitPolicy` — `bypassRoutes` for exclude-direction policies
+   * (egress on the physical path, punched through the kill switch),
+   * `tunnelRoutes` for include mode (only these enter the tunnel; the default
+   * route stays physical). Absent/empty = full tunnel, byte-identical to
+   * pre-feature behaviour.
+   */
+  readonly split?: {
+    readonly bypassRoutes: readonly string[];
+    readonly tunnelRoutes: readonly string[];
+  };
 }
 
 /**
@@ -82,6 +94,11 @@ export interface MultihopConnectArgs {
   readonly assignedIp: string;
   /** Engage the leak-protection kill switch (firewall rules) for this session. */
   readonly killSwitch: boolean;
+  /** Split tunneling — see `ConnectArgs.split`. Applies to the exit device. */
+  readonly split?: {
+    readonly bypassRoutes: readonly string[];
+    readonly tunnelRoutes: readonly string[];
+  };
 }
 
 const DOWN: TunnelStatus = {
@@ -160,6 +177,8 @@ export async function connect(args: ConnectArgs): Promise<TunnelStatus> {
     // absent → the native side takes the plain UDP path.
     tlsServerAddr: args.tls?.serverAddr ?? null,
     tlsSni: args.tls?.sni ?? null,
+    bypassRoutes: args.split?.bypassRoutes ?? null,
+    tunnelRoutes: args.split?.tunnelRoutes ?? null,
   });
 }
 
@@ -182,6 +201,8 @@ export async function connectMultihop(args: MultihopConnectArgs): Promise<Tunnel
     innerMtu: args.innerMtu,
     assignedIp: args.assignedIp,
     killSwitch: args.killSwitch,
+    bypassRoutes: args.split?.bypassRoutes ?? null,
+    tunnelRoutes: args.split?.tunnelRoutes ?? null,
   });
 }
 

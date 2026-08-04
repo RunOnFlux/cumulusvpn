@@ -42,6 +42,8 @@ export interface ConnectionModel {
   readonly selected: CountryOption | null;
   readonly tunnel: TunnelStatus;
   readonly entitlement: Entitlement | null;
+  /** True when the live session has split-tunneling rules applied (docs/17 §8). */
+  readonly splitActive: boolean;
   readonly error: string | null;
   readonly select: (code: string) => void;
   readonly connect: () => void;
@@ -116,6 +118,10 @@ export function useConnection(): ConnectionModel {
   const [selected, setSelected] = useState<CountryOption | null>(null);
   const [tunnel, setTunnel] = useState<TunnelStatus>(DOWN);
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
+  // Session truth for the split-tunneling indicator (docs/17 §8) — set from
+  // the establish result, not the stored policy (a tier lapse or kill-switch
+  // conflict makes them differ), and cleared with the session.
+  const [splitActive, setSplitActive] = useState(false);
   // Tier for TRANSPORT SELECTION, mirrored into a ref so `connect` can read it
   // without taking `entitlement` as a dependency — that would re-create
   // `connect` on every poll, and the auto-reconnect effect depends on it (its
@@ -313,6 +319,7 @@ export function useConnection(): ConnectionModel {
             tierRef.current,
           );
           setTunnel(result.tunnel);
+          setSplitActive(result.splitApplied);
           setPhase('connected');
           // Poll the ACTUAL exit gateway's key (same-country auto-picks the exit
           // within the entry country, so exit.signPubKey — the picked row's key —
@@ -330,6 +337,7 @@ export function useConnection(): ConnectionModel {
             sweep.signal,
           );
           setTunnel(result.tunnel);
+          setSplitActive(result.splitApplied);
           setPhase('connected');
           await refreshEntitlement(result.gatewayIp, entry.signPubKey);
         }
@@ -364,6 +372,7 @@ export function useConnection(): ConnectionModel {
       } catch (err) {
         setError(messageOf(err));
       } finally {
+        setSplitActive(false);
         setPhase('idle');
       }
     })();
@@ -437,6 +446,7 @@ export function useConnection(): ConnectionModel {
     selected,
     tunnel,
     entitlement,
+    splitActive,
     error,
     select,
     connect,

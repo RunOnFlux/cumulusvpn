@@ -33,9 +33,9 @@
 //! persists — the intended behaviour for a kill switch, but the helper owns
 //! un-blocking).
 
-use std::process::Command;
 #[cfg(unix)]
 use std::io::Write;
+use std::process::Command;
 #[cfg(unix)]
 use std::process::Stdio;
 
@@ -104,32 +104,86 @@ pub fn detect_backend() -> Backend {
     }
 }
 
-/// Engage the kill switch: permit only loopback, the tunnel, and the exact
-/// `endpoint` we're about to hand to wireguard-go; drop everything else.
-/// Idempotent — re-engaging replaces the rule set.
+/// What the kill switch must allow while blocking everything else
+/// (docs/17-split-tunneling.md §7.1).
 ///
-/// `interface` is the *logical* label (the real tun name isn't known yet — see
-/// the module docs); the rules match the tun by prefix (Linux/Windows) or ignore
-/// it and block on the physical (macOS).
-pub fn engage(
-    backend: Backend,
-    endpoint: &str,
-    interface: &str,
-    proto: Proto,
-) -> Result<(), TunnelError> {
-    let _ = interface;
-    let (endpoint_ip, endpoint_port) = split_endpoint(endpoint);
+/// Split tunneling and the kill switch compose here: every user exclusion must
+/// punch a matching hole or split tunneling silently does nothing while
+/// appearing configured — the failure mode that fails in the "user thinks it
+/// works" direction. `bypass_cidrs` comes from the compiled split policy
+/// (core-ts `CompiledSplit.bypassRoutes`), already merged and canonical.
+///
+/// Include mode ("only these through the VPN") is incompatible with the kill
+/// switch by construction — its default is direct egress, which is exactly what
+/// the switch blocks. The UI enforces that mutual exclusion; this layer only
+/// ever sees exclude-direction bypass prefixes.
+#[derive(Debug, Clone)]
+pub struct LeakPolicy<'a> {
+    /// `<ip>:<port>` the WireGuard sidecar will dial (gateway or TLS relay).
+    pub endpoint: &'a str,
+    /// Logical tunnel interface label (see module docs on naming).
+    pub interface: &'a str,
+    /// UDP for vanilla/awg, TCP for the wg-tls relay connection.
+    pub proto: Proto,
+    /// Prefixes allowed to egress on the physical interface (user exclusions +
+    /// LAN bypass, from the compiled split policy). Empty → classic behaviour.
+    pub bypass_cidrs: &'a [String],
+    /// Platform app identities allowed to egress directly, where the backend
+    /// can express it (pf group, nft cgroup, WFP app id). Unused until desktop
+    /// app rules ship (docs/17 §12 Phase 4); kept in the signature so that
+    /// phase does not need another breaking change here.
+    pub bypass_apps: &'a [String],
+}
+
+/// A prefix is interpolated into firewall rule text, so it must never carry
+/// anything but address characters — same defense-in-depth as the port parse.
+fn is_safe_cidr(cidr: &str) -> bool {
+    !cidr.is_empty()
+        && cidr
+            .bytes()
+            .all(|b| b.is_ascii_hexdigit() || b == b'.' || b == b':' || b == b'/')
+}
+
+/// Engage the kill switch: permit loopback, the tunnel, the exact endpoint
+/// we're about to hand to wireguard-go, and the policy's bypass prefixes; drop
+/// everything else. Idempotent — re-engaging replaces the rule set.
+///
+/// `policy.interface` is the *logical* label (the real tun name isn't known yet
+/// — see the module docs); the rules match the tun by prefix (Linux/Windows) or
+/// ignore it and block on the physical (macOS).
+pub fn engage(backend: Backend, policy: &LeakPolicy<'_>) -> Result<(), TunnelError> {
+    let _ = policy.interface;
+    let _ = policy.bypass_apps; // Phase 4 (desktop app rules)
+    if !policy.bypass_cidrs.iter().all(|c| is_safe_cidr(c)) {
+        return Err(TunnelError::KillSwitch("invalid bypass prefix"));
+    }
+    let (endpoint_ip, endpoint_port) = split_endpoint(policy.endpoint);
     match backend {
         #[cfg(target_os = "macos")]
-        Backend::MacosPf => engage_macos(endpoint_ip, endpoint_port, proto),
+        Backend::MacosPf => engage_macos(
+            endpoint_ip,
+            endpoint_port,
+            policy.proto,
+            policy.bypass_cidrs,
+        ),
         #[cfg(target_os = "linux")]
-        Backend::LinuxNftables => engage_linux(endpoint_ip, endpoint_port, proto),
+        Backend::LinuxNftables => engage_linux(
+            endpoint_ip,
+            endpoint_port,
+            policy.proto,
+            policy.bypass_cidrs,
+        ),
         #[cfg(target_os = "windows")]
-        Backend::WindowsWfp => engage_windows(endpoint_ip, endpoint_port, proto),
+        Backend::WindowsWfp => engage_windows(
+            endpoint_ip,
+            endpoint_port,
+            policy.proto,
+            policy.bypass_cidrs,
+        ),
         // A backend that isn't native to this build: seam.
         #[allow(unreachable_patterns)]
         _ => {
-            let _ = (endpoint_ip, endpoint_port, proto);
+            let _ = (endpoint_ip, endpoint_port);
             Ok(())
         }
     }
@@ -172,23 +226,37 @@ fn split_endpoint(endpoint: &str) -> (&str, &str) {
 /// Strip a trailing `:port` from an `ip:port` endpoint (our gateways are IPv4, so
 /// a single rsplit is safe). Returns the input unchanged if there is no port.
 fn strip_port(endpoint: &str) -> &str {
-    endpoint.rsplit_once(':').map(|(host, _)| host).unwrap_or(endpoint)
+    endpoint
+        .rsplit_once(':')
+        .map(|(host, _)| host)
+        .unwrap_or(endpoint)
 }
 
 // ---- macOS (pf) ------------------------------------------------------------
 
 #[cfg(target_os = "macos")]
-fn engage_macos(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<(), TunnelError> {
+fn engage_macos(
+    endpoint_ip: &str,
+    endpoint_port: &str,
+    proto: Proto,
+    bypass_cidrs: &[String],
+) -> Result<(), TunnelError> {
     let phys = default_interface().ok_or(TunnelError::KillSwitch("no default interface"))?;
     let proto_s = proto.pf_nft();
 
-    // Our anchor: pass loopback + the WireGuard endpoint out the physical, block
-    // every other plaintext egress on the physical. Tunnel traffic (out the tun)
-    // is never on the physical, so it flows untouched. `proto` is udp for
-    // vanilla/awg, tcp for the wg-tls relay connection.
+    // Our anchor: pass loopback + the WireGuard endpoint out the physical, plus
+    // every split-tunneling bypass prefix (all protocols — a bypassed
+    // destination is fully direct), then block every other plaintext egress on
+    // the physical. Tunnel traffic (out the tun) is never on the physical, so
+    // it flows untouched. `proto` is udp for vanilla/awg, tcp for wg-tls.
+    let bypass_rules: String = bypass_cidrs
+        .iter()
+        .map(|cidr| format!("pass out quick on {phys} to {cidr} keep state\n"))
+        .collect();
     let anchor_rules = format!(
         "pass quick on lo0 all\n\
          pass out quick on {phys} proto {proto_s} to {endpoint_ip} port {endpoint_port} keep state\n\
+         {bypass_rules}\
          block drop out on {phys} all\n"
     );
     run_stdin(
@@ -209,7 +277,12 @@ fn engage_macos(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<
          load anchor \"com.apple\" from \"/etc/pf.anchors/com.apple\"\n\
          anchor \"{ANCHOR}\"\n"
     );
-    run_stdin("pfctl", &["-f", "-"], &main_rules, "failed to load kill-switch ruleset")?;
+    run_stdin(
+        "pfctl",
+        &["-f", "-"],
+        &main_rules,
+        "failed to load kill-switch ruleset",
+    )?;
 
     // Enable pf (harmless if already enabled).
     run_best_effort("pfctl", &["-e"]);
@@ -220,15 +293,18 @@ fn engage_macos(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<
 fn disengage_macos() {
     run_best_effort("pfctl", &["-a", ANCHOR, "-F", "all"]); // flush our anchor
     run_best_effort("pfctl", &["-f", "/etc/pf.conf"]); // restore the default ruleset
-    // Leave pf enabled per /etc/pf.conf; do not force-disable (the system may
-    // rely on it).
+                                                       // Leave pf enabled per /etc/pf.conf; do not force-disable (the system may
+                                                       // rely on it).
 }
 
 /// The physical default-route interface (e.g. `en0`), so we can scope the block
 /// to the real leak path. Parses `route -n get default`.
 #[cfg(target_os = "macos")]
 fn default_interface() -> Option<String> {
-    let out = Command::new("route").args(["-n", "get", "default"]).output().ok()?;
+    let out = Command::new("route")
+        .args(["-n", "get", "default"])
+        .output()
+        .ok()?;
     let text = String::from_utf8_lossy(&out.stdout);
     for line in text.lines() {
         if let Some(rest) = line.trim().strip_prefix("interface:") {
@@ -241,8 +317,22 @@ fn default_interface() -> Option<String> {
 // ---- Linux (nftables) ------------------------------------------------------
 
 #[cfg(target_os = "linux")]
-fn engage_linux(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<(), TunnelError> {
+fn engage_linux(
+    endpoint_ip: &str,
+    endpoint_port: &str,
+    proto: Proto,
+    bypass_cidrs: &[String],
+) -> Result<(), TunnelError> {
     let proto_s = proto.pf_nft();
+    // Split-tunneling bypass prefixes: allowed out on any interface, any
+    // protocol — the routing table (not the firewall) decides where they go.
+    let bypass_rules: String = bypass_cidrs
+        .iter()
+        .map(|cidr| {
+            let family = if cidr.contains(':') { "ip6" } else { "ip" };
+            format!("\t\t{family} daddr {cidr} accept\n")
+        })
+        .collect();
     // A dedicated inet table with a default-drop output chain: allow loopback,
     // the tunnel devices (cvpn* — logical names on Linux), and the WireGuard
     // endpoint handshake/data (the endpoint rule matches every packet to the
@@ -261,12 +351,18 @@ fn engage_linux(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<
          \t\toifname \"lo\" accept\n\
          \t\toifname \"cvpn*\" accept\n\
          \t\tip daddr {endpoint_ip} {proto_s} dport {endpoint_port} accept\n\
+         {bypass_rules}\
          \t}}\n\
          }}\n"
     );
     // Replace any prior instance.
     run_best_effort("nft", &["delete", "table", "inet", TABLE]);
-    run_stdin("nft", &["-f", "-"], &table, "failed to load nftables kill switch")
+    run_stdin(
+        "nft",
+        &["-f", "-"],
+        &table,
+        "failed to load nftables kill switch",
+    )
 }
 
 #[cfg(target_os = "linux")]
@@ -277,14 +373,23 @@ fn disengage_linux() {
 // ---- Windows (Windows Firewall / NetSecurity) ------------------------------
 
 #[cfg(target_os = "windows")]
-fn engage_windows(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Result<(), TunnelError> {
+fn engage_windows(
+    endpoint_ip: &str,
+    endpoint_port: &str,
+    proto: Proto,
+    bypass_cidrs: &[String],
+) -> Result<(), TunnelError> {
     let proto_s = proto.win();
     // Clear any stale rules from a previous run, then add our allow rules BEFORE
     // flipping the default policy to block — so there's never a window where the
     // block is active without the exceptions in place.
     run_best_effort(
         "powershell",
-        &["-NoProfile", "-Command", &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue")],
+        &[
+            "-NoProfile",
+            "-Command",
+            &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
+        ],
     );
 
     // Allow the WireGuard endpoint handshake out (loopback is exempt from Windows
@@ -302,18 +407,40 @@ fn engage_windows(endpoint_ip: &str, endpoint_port: &str, proto: Proto) -> Resul
     // cvpn-exit (multi-hop). -InterfaceAlias accepts a wildcard.
     run(
         "powershell",
-        &["-NoProfile", "-Command", &format!(
+        &[
+            "-NoProfile",
+            "-Command",
+            &format!(
             "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — tunnel' -Group '{GROUP}' \
              -Direction Outbound -Action Allow -InterfaceAlias 'cvpn*' | Out-Null"
-        )],
+        ),
+        ],
         "failed to add tunnel allow rule",
     )?;
+
+    // Split-tunneling bypass prefixes (one rule for the whole set — Windows
+    // Firewall accepts a CIDR list in -RemoteAddress).
+    if !bypass_cidrs.is_empty() {
+        let list = bypass_cidrs.join(",");
+        run(
+            "powershell",
+            &["-NoProfile", "-Command", &format!(
+                "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — split bypass' -Group '{GROUP}' \
+                 -Direction Outbound -Action Allow -RemoteAddress {list} | Out-Null"
+            )],
+            "failed to add split bypass rule",
+        )?;
+    }
 
     // Block everything else outbound by default; the allow rules above take
     // precedence over the default block.
     run(
         "powershell",
-        &["-NoProfile", "-Command", "Set-NetFirewallProfile -All -DefaultOutboundAction Block"],
+        &[
+            "-NoProfile",
+            "-Command",
+            "Set-NetFirewallProfile -All -DefaultOutboundAction Block",
+        ],
         "failed to set block policy",
     )?;
     Ok(())
@@ -325,11 +452,19 @@ fn disengage_windows() {
     // our rules.
     run_best_effort(
         "powershell",
-        &["-NoProfile", "-Command", "Set-NetFirewallProfile -All -DefaultOutboundAction Allow"],
+        &[
+            "-NoProfile",
+            "-Command",
+            "Set-NetFirewallProfile -All -DefaultOutboundAction Allow",
+        ],
     );
     run_best_effort(
         "powershell",
-        &["-NoProfile", "-Command", &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue")],
+        &[
+            "-NoProfile",
+            "-Command",
+            &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
+        ],
     );
 }
 
@@ -351,7 +486,9 @@ fn run_stdin(
         .spawn()
         .map_err(|_| TunnelError::KillSwitch(err))?;
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(stdin_data.as_bytes()).map_err(|_| TunnelError::KillSwitch(err))?;
+        stdin
+            .write_all(stdin_data.as_bytes())
+            .map_err(|_| TunnelError::KillSwitch(err))?;
     }
     match child.wait() {
         Ok(status) if status.success() => Ok(()),
@@ -375,7 +512,20 @@ fn run_best_effort(program: &str, args: &[&str]) {
 
 #[cfg(test)]
 mod tests {
-    use super::{split_endpoint, DEFAULT_WG_PORT};
+    use super::{is_safe_cidr, split_endpoint, DEFAULT_WG_PORT};
+
+    #[test]
+    fn bypass_prefixes_must_be_pure_address_text() {
+        // These are interpolated into firewall rule text — anything but address
+        // characters must be rejected before it gets near a rule.
+        assert!(is_safe_cidr("10.0.0.0/8"));
+        assert!(is_safe_cidr("fe80::/10"));
+        assert!(is_safe_cidr("2001:db8::1/128"));
+        assert!(!is_safe_cidr(""));
+        assert!(!is_safe_cidr("10.0.0.0/8 pass all"));
+        assert!(!is_safe_cidr("10.0.0.0/8\nblock"));
+        assert!(!is_safe_cidr("$(reboot)"));
+    }
 
     #[test]
     fn parses_ipv4_host_and_port() {
@@ -393,7 +543,10 @@ mod tests {
         // A non-numeric port must never reach a firewall rule; fall back to the
         // default and drop the bad token from the host.
         assert_eq!(split_endpoint("1.2.3.4:evil"), ("1.2.3.4", DEFAULT_WG_PORT));
-        assert_eq!(split_endpoint("1.2.3.4:80 drop"), ("1.2.3.4", DEFAULT_WG_PORT));
+        assert_eq!(
+            split_endpoint("1.2.3.4:80 drop"),
+            ("1.2.3.4", DEFAULT_WG_PORT)
+        );
         assert_eq!(split_endpoint("1.2.3.4:"), ("1.2.3.4", DEFAULT_WG_PORT));
     }
 }

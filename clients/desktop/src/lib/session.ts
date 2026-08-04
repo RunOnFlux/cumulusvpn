@@ -10,6 +10,7 @@ import {
   applyTransportToEndpoint,
   buildMultihopConfig,
   buildWgConfig,
+  compileSplitPolicy,
   discoverGateways,
   enroll,
   hasPremiumTransport,
@@ -24,6 +25,7 @@ import type {
   GatewayInfo,
   Keypair,
   RouteStyle,
+  SplitPlatform,
   StatusResponse,
   Tier,
   Transport,
@@ -31,6 +33,7 @@ import type {
 } from '@cumulusvpn/core';
 import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
+import { loadSplitPolicy } from './storage.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
 
@@ -94,6 +97,9 @@ export interface EstablishResult {
   /** The transport that actually completed a handshake — not necessarily the
    *  first choice, since `establish` falls through the chain on failure. */
   readonly transport: Transport;
+  /** True when split-tunneling rules were applied to this session (docs/17) —
+   *  drives the persistent connected-state indicator (§8). */
+  readonly splitApplied: boolean;
 }
 
 /**
@@ -115,6 +121,8 @@ export interface MultihopResult {
   readonly entryEnroll: EnrollResponse;
   readonly exitEnroll: EnrollResponse;
   readonly tunnel: TunnelStatus;
+  /** True when split-tunneling rules were applied to this session (docs/17). */
+  readonly splitApplied: boolean;
 }
 
 /** Least-loaded gateway per country → a stable, de-duplicated country list. */
@@ -358,6 +366,50 @@ function isTransportLevelFailure(err: unknown): boolean {
   return String(err instanceof Error ? err.message : err).includes('tls bridge');
 }
 
+/** The `SplitPlatform` of this desktop build, for app-rule filtering. */
+function desktopPlatform(): SplitPlatform {
+  const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
+  if (ua.includes('Mac')) {
+    return 'macos';
+  }
+  if (ua.includes('Win')) {
+    return 'windows';
+  }
+  return 'linux';
+}
+
+/**
+ * Compile the stored split-tunneling policy for THIS session
+ * (docs/17-split-tunneling.md), or undefined for the byte-identical full
+ * tunnel. Recompiled on every (re)connect against the fresh endpoint IPs —
+ * the compiled output is session state, never cached across reconnects (§7.4).
+ *
+ * Gates applied here, both failing toward MORE protection:
+ * - Premium-only (§7.6): a non-premium tier gets the full tunnel; the stored
+ *   policy stays intact and reactivates on re-payment.
+ * - Include mode + kill switch are mutually exclusive (include's default is
+ *   direct egress — exactly what the switch blocks). The UI enforces this;
+ *   here the kill switch wins.
+ */
+function splitForSession(
+  gwTier: Tier,
+  killSwitch: boolean,
+  endpointIps: readonly string[],
+): { bypassRoutes: readonly string[]; tunnelRoutes: readonly string[] } | undefined {
+  if (gwTier !== 'premium') {
+    return undefined;
+  }
+  const compiled = compileSplitPolicy(loadSplitPolicy(), {
+    platform: desktopPlatform(),
+    supportsExcludeRoute: true,
+    endpointIps,
+  });
+  if (compiled.isNoop || (killSwitch && compiled.tunnelRoutes.length > 0)) {
+    return undefined;
+  }
+  return { bypassRoutes: compiled.bypassRoutes, tunnelRoutes: compiled.tunnelRoutes };
+}
+
 /**
  * Enroll the device key at the country's gateway, render the WireGuard config
  * with the core contract builder, and hand it to the native sidecar to bring
@@ -403,6 +455,10 @@ export async function establish(
   // both waste a PoW and trip that limit mid-fallback.
   const enrollOpts = enrollOptsFor(country, fetchImpl);
   const reply = await enrollOrMock(country.gatewayIp, keypair.publicKey, enrollOpts);
+
+  // Split tunneling: one compile for the whole chain — every attempt dials the
+  // same gateway IP (only the port differs per transport).
+  const split = splitForSession(gwTier, killSwitch, [country.gatewayIp]);
 
   let lastError: Error | null = null;
   for (let i = 0; i < chain.length; i += 1) {
@@ -453,6 +509,7 @@ export async function establish(
         assignedIp: reply.assigned_ip,
         killSwitch,
         ...(tls ? { tls } : {}),
+        ...(split ? { split } : {}),
       });
     } catch (err) {
       // Distinguish "this transport doesn't work here" from "this machine can't
@@ -473,7 +530,13 @@ export async function establish(
       throw new Error('connect cancelled');
     }
     if (up) {
-      return { gatewayIp: country.gatewayIp, enroll: reply, tunnel: up, transport };
+      return {
+        gatewayIp: country.gatewayIp,
+        enroll: reply,
+        tunnel: up,
+        transport,
+        splitApplied: split !== undefined,
+      };
     }
     lastError = new Error(`${transport.type}: no handshake`);
   }
@@ -582,6 +645,11 @@ export async function establishMultihop(
     ...(entryTransport ? { entryTransport } : {}),
   });
 
+  // Split tunneling: rules apply to the exit device (§7.2). Both hop IPs go
+  // into the endpoint guard so no rule can shadow either pin. Multi-hop is
+  // premium already, but the gate still re-checks the cached tier.
+  const split = splitForSession(tier, killSwitch, [hops.entry.ip, hops.exit.ip]);
+
   const tunnelStatus = await tunnel.connectMultihop({
     entryCountry: hops.entry.country,
     exitCountry: hops.exit.country,
@@ -594,6 +662,7 @@ export async function establishMultihop(
     innerMtu: cfg.innerMtu,
     assignedIp: exitReply.assigned_ip,
     killSwitch,
+    ...(split ? { split } : {}),
   });
 
   return {
@@ -603,6 +672,7 @@ export async function establishMultihop(
     entryEnroll: entryReply,
     exitEnroll: exitReply,
     tunnel: tunnelStatus,
+    splitApplied: split !== undefined,
   };
 }
 

@@ -369,7 +369,9 @@ impl Sidecar {
         let uapi_path = uapi_socket_path(&real);
         while !uapi_path.exists() {
             if let Ok(Some(_status)) = child.try_wait() {
-                return Err(TunnelError::Sidecar("wireguard-go exited before its UAPI socket appeared"));
+                return Err(TunnelError::Sidecar(
+                    "wireguard-go exited before its UAPI socket appeared",
+                ));
             }
             if Instant::now() > deadline {
                 let _ = child.kill();
