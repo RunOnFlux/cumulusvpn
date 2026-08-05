@@ -67,7 +67,33 @@ func env(k, def string) string {
 
 // genKeypair returns (privB64, pubB64) for a fresh clamped Curve25519 key —
 // identical clamping to WireGuard's own key generation.
+//
+// Set CVPN_PRIV to a base64 private key to reuse a FIXED identity instead. That
+// is what makes the premium half of the Stage E gate testable (docs/16): an
+// entitlement is bought against one key's payment code, so a run that mints a
+// throwaway key can only ever be a free peer. It also stops repeated runs from
+// leaking a peer slot each time (docs/16 "Known gaps").
 func genKeypair() (string, string) {
+	if fixed := os.Getenv("CVPN_PRIV"); fixed != "" {
+		raw, err := base64.StdEncoding.DecodeString(fixed)
+		if err != nil || len(raw) != 32 {
+			fmt.Println("CVPN_PRIV must be a base64 32-byte key")
+			os.Exit(1)
+		}
+		var priv [32]byte
+		copy(priv[:], raw)
+		// Clamp defensively: a key generated elsewhere may not be clamped, and
+		// an unclamped scalar yields a different public key than the wallet /
+		// app derived — i.e. a payment code that never matches.
+		priv[0] &= 248
+		priv[31] &= 127
+		priv[31] |= 64
+		pub, err := curve25519.X25519(priv[:], curve25519.Basepoint)
+		if err != nil {
+			panic(err)
+		}
+		return base64.StdEncoding.EncodeToString(priv[:]), base64.StdEncoding.EncodeToString(pub)
+	}
 	var priv [32]byte
 	if _, err := rand.Read(priv[:]); err != nil {
 		panic(err)
