@@ -81,6 +81,12 @@ chain-anchored source of truth all gateways share).
 | `CVPN_EGRESS_ALLOW_PORTS` | no | (all) | Comma list; empty = allow-all minus SMTP |
 | `CVPN_KEY_FILE` | no | `/data/server.key` | Server WG key persistence |
 | `CVPN_BIND` | no | `:51821` | Override control-API bind addr (dev) |
+| `CVPN_OBFS_ENABLE` | no | `false` | AmneziaWG (`awg`) listener on 51821/udp — the free UDP side of the API port |
+| `CVPN_TLS_ENABLE` | no | `false` | WireGuard-over-TLS (`wg-tls`) relay — looks like HTTPS, beats UDP-blocking |
+| `CVPN_TLS_PORT` | no | `51820` | TCP port for the TLS relay; `443` on a stealth-group node |
+| `CVPN_TLS_SNI` | no | — | SNI / self-signed cert CN (camouflage only; never verified) |
+| `CVPN_TLS_PREMIUM` | no | `false` | Reserve `wg-tls` for paying users (intended for the scarce 443 tier). The relay then fronts a premium-only WG device on the container-internal port 51822 — **never list 51822 in a Flux spec**, or clients bypass the relay |
+| `CVPN_ALLOW_PRIVATE_EGRESS` | no | `false` | Allow forwarding to private/loopback destinations (dev/test only; off = SSRF guard) |
 | `FLUX_NODE_HOST_IP` | injected | — | Host node public IP (endpoint + daemon API) |
 | `FLUX_APP_NAME` | injected | — | Flux app name (spec self-watch) |
 

@@ -55,6 +55,14 @@ export const vi: Catalog = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Tải .conf',
+  connect_conf_note:
+    'Gắn với máy chủ này. Nếu máy chủ khởi động lại hoặc đổi chỗ, WireGuard vẫn hiển thị đường hầm là đã kết nối trong khi không có gì đi qua — hãy quay lại đây và tạo .conf mới.',
+  connect_conf_regenerate: 'Tạo .conf mới',
+  connect_conf_stale:
+    'Máy chủ đã cấp cấu hình gần nhất của bạn cho {country} đã bị thay thế — cấu hình đó không thể kết nối nữa. Hãy tạo cấu hình mới bên dưới.',
+  connect_conf_unsure:
+    'Không liên hệ được máy chủ đã cấp cấu hình gần nhất của bạn cho {country}. Có thể máy chủ tạm ngưng hoặc đã biến mất — nếu đường hầm không truyền dữ liệu, hãy tạo cấu hình mới bên dưới.',
+  connect_conf_checking: 'Đang kiểm tra cấu hình gần nhất của bạn…',
   connect_upgrade_cta: 'Nâng cấp lên tốc độ tối đa →',
   connect_identity_title: 'Danh tính của thiết bị này',
   connect_regenerate: 'Tạo lại khóa',
@@ -78,6 +86,32 @@ export const vi: Catalog = {
   upgrade_privacy_note:
     'Mở trong Zelcore / SSP Wallet. Khoản thanh toán được xác minh trên blockchain của Flux — chúng tôi không bao giờ biết bạn là ai. Tin nhắn gắn khoản thanh toán với khóa của bạn; gửi mà không kèm tin nhắn nghĩa là tiền vẫn đến nhưng không có gì được mở khóa.',
   upgrade_back: '← Quay lại Kết nối',
+
+  split_summary_title: 'Nâng cao: split tunneling',
+  split_tier_pill: 'PREMIUM · TÙY CHỌN',
+  split_lede:
+    'Chọn những đích nào đi qua VPN. Cấu hình được tạo thể hiện quy tắc dưới dạng AllowedIPs của WireGuard, nên hoạt động với ứng dụng WireGuard tiêu chuẩn — chỉ hỗ trợ dải IP và bỏ qua mạng cục bộ (quy tắc theo ứng dụng cần các ứng dụng native của chúng tôi).',
+  split_mode_aria: 'Chế độ split tunneling',
+  split_mode_off: 'Tắt',
+  split_mode_exclude: 'Loại trừ danh sách',
+  split_mode_include: 'Chỉ những mục này',
+  split_warn_exclude:
+    'Lưu lượng bị loại trừ rời thiết bị của bạn mà không được bảo vệ và lộ địa chỉ IP thật của bạn.',
+  split_warn_include:
+    'Chỉ các đích trong danh sách được bảo vệ — mọi thứ khác lộ địa chỉ IP thật của bạn.',
+  split_lan_label: 'Cho phép truy cập mạng cục bộ (máy in, NAS, truyền phát)',
+  split_cidr_placeholder: 'vd. 192.168.0.0/16 hoặc 203.0.113.7',
+  split_cidr_aria: 'Địa chỉ IP hoặc dải CIDR',
+  split_add: 'Thêm',
+  split_input_invalid: 'Không phải địa chỉ IP hoặc dải CIDR hợp lệ.',
+  split_rules_empty:
+    'Chưa có quy tắc IP — thêm một dải ở trên, hoặc chỉ dùng truy cập mạng cục bộ.',
+  split_remove_aria: 'Xóa quy tắc {value}',
+  split_next_note: 'Quy tắc áp dụng cho cấu hình tiếp theo bạn tạo trên trang này.',
+  split_premium_required:
+    'Split tunneling là tính năng premium. Thay vào đó, một cấu hình đường hầm đầy đủ đã được tạo — nâng cấp để áp dụng quy tắc của bạn.',
+  split_applied:
+    'Đã áp dụng split tunneling — cấu hình này chỉ định tuyến những gì quy tắc của bạn cho phép.',
 
   multihop_summary_title: 'Nâng cao: multi-hop (hai cấu hình)',
   multihop_tier_pill: 'CAO CẤP · TÙY CHỌN',

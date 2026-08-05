@@ -148,6 +148,21 @@ export interface CumulusTunnelModule {
    * `solvePoW` (see `lib/pow.ts`).
    */
   solvePow?(publicKeyB64: string, bits: number): Promise<string>;
+
+  /**
+   * List user-launchable apps for the split-tunneling picker (docs/17 §4.1):
+   * label + package name, sorted by label. **Android only** — on iOS per-app
+   * VPN is restricted to MDM-managed devices (docs/17 D4), so the method is
+   * absent and the UI states that plainly instead. Optional: also absent on
+   * older Android native builds.
+   */
+  listInstalledApps?(): Promise<readonly InstalledApp[]>;
+}
+
+/** One row of {@link CumulusTunnelModule.listInstalledApps}. */
+export interface InstalledApp {
+  readonly packageName: string;
+  readonly label: string;
 }
 
 const LINKING_ERROR =

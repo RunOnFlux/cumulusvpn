@@ -55,6 +55,14 @@ export const fr: Catalog = {
   connect_stat_endpoint: 'Point de terminaison',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Télécharger le .conf',
+  connect_conf_note:
+    'Liée à ce serveur. S’il redémarre ou change, WireGuard affichera toujours le tunnel comme connecté alors que plus rien ne passe — revenez ici et générez un nouveau .conf.',
+  connect_conf_regenerate: 'Générer un nouveau .conf',
+  connect_conf_stale:
+    'Le serveur qui a émis votre dernière configuration pour {country} a été remplacé — cette configuration ne peut plus se connecter. Générez-en une nouvelle ci-dessous.',
+  connect_conf_unsure:
+    'Impossible de joindre le serveur qui a émis votre dernière configuration pour {country}. Il est peut-être temporairement hors service, ou définitivement parti — si votre tunnel ne fait plus passer de trafic, générez une nouvelle configuration ci-dessous.',
+  connect_conf_checking: 'Vérification de votre dernière configuration…',
   connect_upgrade_cta: 'Passer en premium pour la pleine vitesse →',
   connect_identity_title: 'Identité de cet appareil',
   connect_regenerate: 'Régénérer la clé',
@@ -78,6 +86,32 @@ export const fr: Catalog = {
   upgrade_privacy_note:
     "S'ouvre dans Zelcore / SSP Wallet. Le paiement est vérifié sur la blockchain Flux — nous ne voyons jamais qui vous êtes. Le message relie le paiement à votre clé ; l'envoyer sans lui fait arriver les fonds, mais rien ne se débloque.",
   upgrade_back: '← Retour à Connexion',
+
+  split_summary_title: 'Avancé : split tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Choisissez quelles destinations passent par le VPN. La configuration générée exprime les règles en AllowedIPs WireGuard et fonctionne donc avec l’application WireGuard standard — plages IP et contournement du réseau local uniquement (les règles par application nécessitent nos applications natives).',
+  split_mode_aria: 'Mode de split tunneling',
+  split_mode_off: 'Désactivé',
+  split_mode_exclude: 'Exclure la liste',
+  split_mode_include: 'Uniquement celles-ci',
+  split_warn_exclude:
+    'Le trafic exclu quitte votre appareil sans protection et révèle votre véritable adresse IP.',
+  split_warn_include:
+    'Seules les destinations listées sont protégées — tout le reste révèle votre véritable adresse IP.',
+  split_lan_label: 'Autoriser l’accès au réseau local (imprimantes, NAS, diffusion)',
+  split_cidr_placeholder: 'ex. 192.168.0.0/16 ou 203.0.113.7',
+  split_cidr_aria: 'Adresse IP ou plage CIDR',
+  split_add: 'Ajouter',
+  split_input_invalid: 'Adresse IP ou plage CIDR invalide.',
+  split_rules_empty:
+    'Aucune règle IP pour l’instant — ajoutez une plage ci-dessus, ou utilisez simplement l’accès au réseau local.',
+  split_remove_aria: 'Supprimer la règle {value}',
+  split_next_note: 'Les règles s’appliquent à la prochaine configuration générée sur cette page.',
+  split_premium_required:
+    'Le split tunneling est une fonction premium. Une configuration full-tunnel a été générée à la place — passez en premium pour appliquer vos règles.',
+  split_applied:
+    'Split tunneling appliqué — cette configuration ne route que ce que vos règles autorisent.',
 
   multihop_summary_title: 'Avancé : multi-hop (deux configurations)',
   multihop_tier_pill: 'PREMIUM · OPTIONNEL',

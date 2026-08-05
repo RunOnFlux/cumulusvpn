@@ -1,6 +1,7 @@
 package wg
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -15,18 +16,36 @@ import (
 
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
 	"github.com/runonflux/cumulusvpn-gateway/internal/netstack"
+	"github.com/runonflux/cumulusvpn-gateway/internal/tlsrelay"
 
+	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/device"
 	"golang.org/x/crypto/curve25519"
-	"golang.zx2c4.com/wireguard/conn"
-	"golang.zx2c4.com/wireguard/device"
 )
 
 // TestTunnelDataPlaneEndToEnd is the guard for the crux of the product: a real
 // WireGuard tunnel must actually carry traffic to the internet through the
-// gVisor exit forwarder. It stands up an in-process gateway (WG device + netstack
-// forwarder) and a client (userspace WG via netstack), does a real handshake over
-// UDP loopback, and fetches an HTTP server through the tunnel — asserting the
-// bytes round-trip.
+// gVisor exit forwarder.
+func TestTunnelDataPlaneEndToEnd(t *testing.T) {
+	runTunnelDataPlaneE2E(t, nil)
+}
+
+// TestObfuscatedTunnelDataPlaneEndToEnd is the same guard for the AmneziaWG
+// obfuscated transport: the gateway device and the client both apply the
+// matching DefaultObfsParams (junk packets + reshaped headers), the handshake
+// completes, and real traffic round-trips. Proves the obfuscated listener
+// carries traffic — not merely that it builds — and that obfuscation is
+// symmetric (both ends must agree on the profile).
+func TestObfuscatedTunnelDataPlaneEndToEnd(t *testing.T) {
+	p := DefaultObfsParams
+	runTunnelDataPlaneE2E(t, &p)
+}
+
+// runTunnelDataPlaneE2E stands up an in-process gateway (WG device + netstack
+// forwarder) and a client (userspace WG via netstack), does a real handshake
+// over UDP loopback, and fetches an HTTP server through the tunnel — asserting
+// the bytes round-trip. obfs==nil is vanilla WireGuard; non-nil applies the
+// AmneziaWG obfuscation profile on BOTH the gateway device and the client.
 //
 // This specifically pins the netstack stack.Options{HandleLocal:false} decision:
 // with HandleLocal=true, promiscuous-mode exit routing makes gVisor drop every
@@ -34,7 +53,7 @@ import (
 // future re-vendor of internal/netstack that reintroduces HandleLocal:true (the
 // upstream wireguard-go default) would fail here instead of silently shipping a
 // gateway that enrolls clients but tunnels nothing.
-func TestTunnelDataPlaneEndToEnd(t *testing.T) {
+func runTunnelDataPlaneE2E(t *testing.T, obfs *ObfsParams) {
 	// Origin server the client will reach *through* the tunnel. It must NOT be on
 	// 127.0.0.0/8: the gateway netstack deliberately drops loopback destinations
 	// (IsV4LoopbackAddress -> InvalidDestinationAddressesReceived), which stops a
@@ -55,15 +74,22 @@ func TestTunnelDataPlaneEndToEnd(t *testing.T) {
 	origin.Start()
 	defer origin.Close()
 
-	// --- gateway ---
+	// --- gateway (vanilla or obfuscated, same server identity path) ---
 	port := freeUDPPort(t)
-	gw, err := New(port, t.TempDir()+"/srv.key")
+	key := t.TempDir() + "/srv.key"
+	var gw *Device
+	if obfs != nil {
+		gw, err = NewObfuscated(port, key, *obfs)
+	} else {
+		gw, err = New(port, key)
+	}
 	if err != nil {
 		t.Fatalf("gateway New: %v", err)
 	}
 	t.Cleanup(gw.Close)
 
 	fwd := NewForwarder(gw, limiter.New(100, 50), nil, true)
+	fwd.SetAllowPrivateEgress(true) // e2e origin binds a LAN (private) IP
 	if err := fwd.Start(); err != nil {
 		t.Fatalf("forwarder Start: %v", err)
 	}
@@ -87,9 +113,17 @@ func TestTunnelDataPlaneEndToEnd(t *testing.T) {
 	}
 	cdev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelError, "c "))
 	t.Cleanup(cdev.Close)
-	cfg := fmt.Sprintf(
-		"private_key=%s\npublic_key=%s\nendpoint=127.0.0.1:%d\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=1\n",
-		hexKey(t, cpriv), hexKey(t, gw.PublicKey()), port,
+	// Interface section first (private key + any obfuscation profile), THEN the
+	// peer: obfs params are device-level UAPI keys, so they must precede the
+	// public_key= line that opens the peer section (same order the real client's
+	// [Interface] block produces).
+	cfg := fmt.Sprintf("private_key=%s\n", hexKey(t, cpriv))
+	if obfs != nil {
+		cfg += obfs.UAPI() // client must apply the SAME obfuscation profile as the gateway
+	}
+	cfg += fmt.Sprintf(
+		"public_key=%s\nendpoint=127.0.0.1:%d\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=1\n",
+		hexKey(t, gw.PublicKey()), port,
 	)
 	if err := cdev.IpcSet(cfg); err != nil {
 		t.Fatalf("client IpcSet: %v", err)
@@ -99,16 +133,22 @@ func TestTunnelDataPlaneEndToEnd(t *testing.T) {
 	}
 
 	// --- fetch the origin through the tunnel ---
+	fetchThroughTunnel(t, tnet, origin.URL, want)
+}
+
+// fetchThroughTunnel GETs url over the client's netstack transport and asserts
+// the body, retrying briefly to absorb WG handshake latency (first packets may
+// drop while the handshake completes).
+func fetchThroughTunnel(t *testing.T, tnet *netstack.Net, url, want string) {
+	t.Helper()
 	hc := &http.Client{
 		Timeout:   15 * time.Second,
 		Transport: &http.Transport{DialContext: tnet.DialContext},
 	}
-	// Retry briefly to absorb WG handshake latency (first packets may drop while
-	// the handshake completes).
 	deadline := time.Now().Add(15 * time.Second)
 	var lastErr error
 	for time.Now().Before(deadline) {
-		resp, err := hc.Get(origin.URL)
+		resp, err := hc.Get(url)
 		if err != nil {
 			lastErr = err
 			time.Sleep(250 * time.Millisecond)
@@ -125,6 +165,90 @@ func TestTunnelDataPlaneEndToEnd(t *testing.T) {
 		return // success
 	}
 	t.Fatalf("tunnel never carried traffic within deadline: %v", lastErr)
+}
+
+// TestTLSTunnelDataPlaneEndToEnd proves the WG-over-TLS transport: the client
+// tunnels its WireGuard through a TLS ClientBridge to the gateway's TLS relay
+// (self-signed cert, unverified — camouflage only) and real traffic round-trips.
+// The inner WireGuard handshake still authenticates end to end, so the TLS
+// layer's lack of verification costs no security.
+func TestTLSTunnelDataPlaneEndToEnd(t *testing.T) {
+	hip := hostIP(t)
+	const want = "hello-through-the-tunnel"
+	ln, err := net.Listen("tcp", net.JoinHostPort(hip, "0"))
+	if err != nil {
+		t.Skipf("cannot listen on host IP %s: %v", hip, err)
+	}
+	origin := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = io.WriteString(w, want)
+	}))
+	origin.Listener.Close()
+	origin.Listener = ln
+	origin.Start()
+	defer origin.Close()
+
+	// --- gateway: WG device + forwarder ---
+	port := freeUDPPort(t)
+	gw, err := New(port, t.TempDir()+"/srv.key")
+	if err != nil {
+		t.Fatalf("gateway New: %v", err)
+	}
+	t.Cleanup(gw.Close)
+	fwd := NewForwarder(gw, limiter.New(100, 50), nil, true)
+	fwd.SetAllowPrivateEgress(true) // e2e origin binds a LAN (private) IP
+	if err := fwd.Start(); err != nil {
+		t.Fatalf("forwarder Start: %v", err)
+	}
+
+	// --- TLS relay in front of the WG device (bind first, then serve) ---
+	cert, err := tlsrelay.SelfSignedCert("example.test")
+	if err != nil {
+		t.Fatalf("SelfSignedCert: %v", err)
+	}
+	tlsLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("tls listen: %v", err)
+	}
+	tlsAddr := tlsLn.Addr().String()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() { _ = tlsrelay.NewRelay(port, cert).Serve(ctx, tlsLn) }()
+
+	// --- client WG-over-TLS bridge; the WG device dials its local UDP addr ---
+	bridge, err := tlsrelay.DialClientBridge(tlsAddr, "example.test")
+	if err != nil {
+		t.Fatalf("DialClientBridge: %v", err)
+	}
+	defer bridge.Close()
+
+	cpriv, cpub := genTestKeypair(t)
+	clientIP := netip.MustParseAddr("10.8.0.2")
+	if err := gw.AddPeer(cpub, clientIP); err != nil {
+		t.Fatalf("AddPeer: %v", err)
+	}
+
+	tun, tnet, err := netstack.CreateNetTUN(
+		[]netip.Addr{clientIP},
+		[]netip.Addr{netip.MustParseAddr(GatewayIP)},
+		MTU,
+	)
+	if err != nil {
+		t.Fatalf("client CreateNetTUN: %v", err)
+	}
+	cdev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelError, "c "))
+	t.Cleanup(cdev.Close)
+	cfg := fmt.Sprintf(
+		"private_key=%s\npublic_key=%s\nendpoint=%s\nallowed_ip=0.0.0.0/0\npersistent_keepalive_interval=1\n",
+		hexKey(t, cpriv), hexKey(t, gw.PublicKey()), bridge.LocalEndpoint(),
+	)
+	if err := cdev.IpcSet(cfg); err != nil {
+		t.Fatalf("client IpcSet: %v", err)
+	}
+	if err := cdev.Up(); err != nil {
+		t.Fatalf("client Up: %v", err)
+	}
+
+	fetchThroughTunnel(t, tnet, origin.URL, want)
 }
 
 // hostIP returns the machine's primary non-loopback IPv4 address (the source IP

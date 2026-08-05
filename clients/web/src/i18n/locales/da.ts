@@ -55,6 +55,14 @@ export const da: Catalog = {
   connect_stat_endpoint: 'Endpoint',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Download .conf',
+  connect_conf_note:
+    'Bundet til denne server. Hvis den genstarter eller flytter, viser WireGuard stadig tunnelen som forbundet, mens intet kommer igennem — kom tilbage og generér en ny .conf.',
+  connect_conf_regenerate: 'Generér en ny .conf',
+  connect_conf_stale:
+    'Serveren, der udstedte din seneste konfiguration til {country}, er udskiftet — den konfiguration kan ikke længere forbinde. Generér en ny nedenfor.',
+  connect_conf_unsure:
+    'Kunne ikke nå serveren, der udstedte din seneste konfiguration til {country}. Den kan være midlertidigt nede eller helt væk — hvis din tunnel ikke sender trafik igennem, så generér en ny konfiguration nedenfor.',
+  connect_conf_checking: 'Kontrollerer din seneste konfiguration…',
   connect_upgrade_cta: 'Opgradér til fuld hastighed →',
   connect_identity_title: 'Denne enheds identitet',
   connect_regenerate: 'Generér ny nøgle',
@@ -78,6 +86,32 @@ export const da: Catalog = {
   upgrade_privacy_note:
     'Åbner i Zelcore / SSP Wallet. Betalingen verificeres på Flux-blockchainen — vi ser aldrig, hvem du er. Beskeden knytter betalingen til din nøgle; sender du uden den, ankommer pengene, men intet låses op.',
   upgrade_back: '← Tilbage til Forbind',
+
+  split_summary_title: 'Avanceret: split tunneling',
+  split_tier_pill: 'PREMIUM · TILVALG',
+  split_lede:
+    'Vælg hvilke destinationer der bruger VPN’en. Den genererede konfiguration udtrykker regler som WireGuard AllowedIPs og virker derfor med standard-WireGuard-appen — kun IP-områder og omgåelse af lokalnetværk (regler pr. app kræver vores native apps).',
+  split_mode_aria: 'Split tunneling-tilstand',
+  split_mode_off: 'Fra',
+  split_mode_exclude: 'Udeluk listen',
+  split_mode_include: 'Kun disse',
+  split_warn_exclude:
+    'Udelukket trafik forlader din enhed ubeskyttet og viser din rigtige IP-adresse.',
+  split_warn_include:
+    'Kun de anførte destinationer er beskyttet — alt andet viser din rigtige IP-adresse.',
+  split_lan_label: 'Tillad adgang til lokalnetværk (printere, NAS, casting)',
+  split_cidr_placeholder: 'f.eks. 192.168.0.0/16 eller 203.0.113.7',
+  split_cidr_aria: 'IP-adresse eller CIDR-område',
+  split_add: 'Tilføj',
+  split_input_invalid: 'Ikke en gyldig IP-adresse eller et gyldigt CIDR-område.',
+  split_rules_empty:
+    'Ingen IP-regler endnu — tilføj et område ovenfor, eller brug blot lokalnetværksadgang.',
+  split_remove_aria: 'Fjern reglen {value}',
+  split_next_note: 'Regler gælder for den næste konfiguration, du genererer på denne side.',
+  split_premium_required:
+    'Split tunneling er en premium-funktion. Der blev i stedet genereret en fuld-tunnel-konfiguration — opgrader for at anvende dine regler.',
+  split_applied:
+    'Split tunneling anvendt — denne konfiguration router kun det, dine regler tillader.',
 
   multihop_summary_title: 'Avanceret: multi-hop (to konfigurationer)',
   multihop_tier_pill: 'PREMIUM · TILVALG',

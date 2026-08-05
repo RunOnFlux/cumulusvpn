@@ -8,10 +8,10 @@
 
 pub mod killswitch;
 pub mod routing;
+pub mod tlsbridge;
 pub mod wggo;
 
 use std::sync::Mutex;
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 use thiserror::Error;
@@ -40,6 +40,25 @@ fn strip_endpoint_port(endpoint: &str) -> &str {
     e
 }
 
+/// Compiled split-tunneling routes for one session (docs/17-split-tunneling.md).
+///
+/// Produced by core-ts `compileSplitPolicy` in the frontend (the policy model
+/// and CIDR arithmetic live there — this side only ever sees primitives) and
+/// recompiled on every (re)connect against the fresh endpoint. At most one of
+/// the two lists is non-empty: `bypass_routes` for exclude-direction policies,
+/// `tunnel_routes` for include mode.
+#[derive(Debug, Clone, Default)]
+pub struct SplitParams {
+    /// Prefixes that MUST egress on the physical path (exclude mode + LAN
+    /// bypass). Installed as more-specific routes and punched through the kill
+    /// switch as `LeakPolicy.bypass_cidrs`.
+    pub bypass_routes: Vec<String>,
+    /// Include mode: ONLY these prefixes are routed into the tunnel; the
+    /// default route stays physical. Incompatible with the kill switch (the UI
+    /// enforces that); when non-empty the split-default install is skipped.
+    pub tunnel_routes: Vec<String>,
+}
+
 /// Parameters for [`TunnelManager::connect_multihop`]: the two nested WireGuard
 /// configs from core-ts `buildMultihopConfig` plus the routing facts.
 #[derive(Debug, Clone)]
@@ -62,6 +81,22 @@ pub struct MultihopParams<'a> {
     pub assigned_ip: &'a str,
     /// Whether to engage the leak-protection kill switch for this session.
     pub kill_switch: bool,
+    /// Compiled split-tunneling routes; `None`/empty = full tunnel. Applies to
+    /// the inner (exit) device — that is where the default route lives (§7.2).
+    pub split: Option<&'a SplitParams>,
+}
+
+/// Parameters for the `wg-tls` transport on [`TunnelManager::connect`]. When
+/// present, the WG device is pointed at a local UDP<->TLS bridge instead of
+/// dialing the gateway directly, so the tunnel rides a TLS/TCP session that
+/// survives UDP-blocking (see [`tlsbridge`]).
+#[derive(Debug, Clone)]
+pub struct TlsParams {
+    /// `<gatewayIp>:<tlsPort>` — the TLS relay to bridge to (TCP).
+    pub server_addr: String,
+    /// SNI / cert name to present. Camouflage only (not verified), but a
+    /// plausible value blends in.
+    pub sni: String,
 }
 
 /// Anything that can go wrong bringing a tunnel up or down.
@@ -116,8 +151,15 @@ struct Inner {
     /// The inner (exit) wireguard-go device for a multi-hop session; `None` for
     /// single-hop. When present, `sidecar` is the outer (entry) device.
     exit_sidecar: Option<Sidecar>,
+    /// The UDP<->TLS bridge for a `wg-tls` session; `None` for vanilla/awg. Kept
+    /// alive for the session's lifetime and torn down on replace/disconnect.
+    bridge: Option<tlsbridge::ClientBridge>,
     /// Exit gateway IP whose host route we installed, for teardown cleanup.
     exit_ip: Option<String>,
+    /// Split-tunneling bypass routes we installed, for teardown cleanup.
+    /// (Include-mode tunnel routes are interface-scoped and die with the
+    /// device, so they need no tracking.)
+    bypass_routes: Vec<String>,
     backend: Backend,
     /// Last stats we successfully polled, so a transient UAPI hiccup doesn't
     /// zero the counters in the UI.
@@ -163,7 +205,9 @@ impl TunnelManager {
                 error: None,
                 sidecar: None,
                 exit_sidecar: None,
+                bridge: None,
                 exit_ip: None,
+                bypass_routes: Vec::new(),
                 backend: killswitch::detect_backend(),
                 rx_bytes: 0,
                 tx_bytes: 0,
@@ -183,30 +227,101 @@ impl TunnelManager {
         endpoint: &str,
         assigned_ip: &str,
         kill_switch: bool,
+        tls: Option<TlsParams>,
+        split: Option<&SplitParams>,
     ) -> Result<TunnelStatus, TunnelError> {
-        let config = WgConfig::parse(wg_config)?;
+        let mut config = WgConfig::parse(wg_config)?;
+        // wg-tls rides a TLS/TCP session; vanilla/awg dial the gateway over UDP.
+        // The kill switch + endpoint bypass are scoped to `endpoint` (the real
+        // gateway address) either way — for wg-tls that's the TLS relay's TCP
+        // port, and the WG device's own socket is loopback to the local bridge.
+        let proto = if tls.is_some() {
+            killswitch::Proto::Tcp
+        } else {
+            killswitch::Proto::Udp
+        };
 
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
 
         // Replace any existing tunnel first (including a prior multi-hop pair).
+        // This path is reachable via auto-reconnect/failover WITHOUT an
+        // intervening disconnect(), so it must fully clear the previous session's
+        // leak-protection state, not just its sidecars.
         if let Some(old) = inner.sidecar.take() {
             let _ = old.kill();
         }
         if let Some(old_exit) = inner.exit_sidecar.take() {
             let _ = old_exit.kill();
         }
+        if let Some(mut old_bridge) = inner.bridge.take() {
+            old_bridge.shutdown();
+        }
         if let Some(old_exit_ip) = inner.exit_ip.take() {
             let _ = routing::clear_multihop_routes(&old_exit_ip);
         }
+        // Remove the previous endpoint's /32 bypass route before we overwrite
+        // inner.endpoint — otherwise each reconnect strands it, and a stale route
+        // to a former gateway IP can later blackhole traffic to that IP.
+        if let Some(old_endpoint) = inner.endpoint.take() {
+            routing::remove_endpoint_bypass(strip_endpoint_port(&old_endpoint));
+        }
+        // Split-tunneling state is SESSION state (§7.4): drop the previous
+        // session's bypass routes before this one installs its own.
+        let old_bypass = std::mem::take(&mut inner.bypass_routes);
+        routing::remove_bypass_routes(&old_bypass);
+        let split_bypass: &[String] = split.map(|s| s.bypass_routes.as_slice()).unwrap_or(&[]);
+        let split_tunnel: &[String] = split.map(|s| s.tunnel_routes.as_slice()).unwrap_or(&[]);
         inner.state = TunnelState::Connecting;
         inner.country = Some(country.to_string());
         inner.endpoint = Some(endpoint.to_string());
         inner.error = None;
 
+        // Leak protection. engage REPLACES any prior ruleset atomically (no open
+        // window), so re-engaging on reconnect is safe. But when THIS session has
+        // the kill switch OFF, we must tear down any ruleset a prior session left
+        // engaged — otherwise the user's "off" is ignored AND the stale allow-rule
+        // (pinned to the old endpoint) drops this tunnel's handshake.
+        //
+        // Every split bypass prefix is punched through as `bypass_cidrs` —
+        // without the matching hole, split tunneling would silently do nothing
+        // while appearing configured (docs/17 §7.1).
         if kill_switch {
-            killswitch::engage(inner.backend, endpoint, IFACE)
-                .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+            killswitch::engage(
+                inner.backend,
+                &killswitch::LeakPolicy {
+                    endpoint,
+                    interface: IFACE,
+                    proto,
+                    bypass_cidrs: split_bypass,
+                    bypass_apps: &[],
+                },
+            )
+            .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        } else {
+            let _ = killswitch::disengage(inner.backend);
         }
+
+        // wg-tls: stand up the UDP<->TLS bridge to the gateway relay and point the
+        // WG device at its LOCAL udp endpoint. The bridge's TLS connection is made
+        // now, before the default route flips to the tunnel, and kept on the
+        // physical by the endpoint bypass below. `bridge` drops (shutting the TLS
+        // connection) on any error return before it's stored in `inner`.
+        let bridge = if let Some(tls) = tls.as_ref() {
+            match tlsbridge::ClientBridge::connect(&tls.server_addr, &tls.sni) {
+                Ok(b) => {
+                    config.endpoint = b.local_endpoint();
+                    Some(b)
+                }
+                Err(e) => {
+                    let _ = killswitch::disengage(inner.backend);
+                    inner.state = TunnelState::Error;
+                    inner.error = Some(e.to_string());
+                    return Err(e);
+                }
+            }
+        } else {
+            None
+        };
 
         let sidecar = match Sidecar::spawn(IFACE) {
             Ok(s) => s,
@@ -236,7 +351,19 @@ impl TunnelManager {
             inner.error = Some(e.to_string());
             return Err(e);
         }
-        if let Err(e) = routing::add_default_route(&sidecar.interface) {
+        // Include mode routes ONLY the listed prefixes into the tunnel (the
+        // default stays physical); otherwise install the split-default pair
+        // and, in exclude mode, the more-specific bypass routes that win over
+        // it. Bypass routes are installed after the default flip so there is no
+        // window where excluded traffic tunnels — wrong direction of surprise.
+        let route_result = if !split_tunnel.is_empty() {
+            routing::add_tunnel_routes(split_tunnel, &sidecar.interface)
+        } else {
+            routing::add_default_route(&sidecar.interface)
+                .and_then(|()| routing::add_bypass_routes(split_bypass))
+        };
+        if let Err(e) = route_result {
+            routing::remove_bypass_routes(split_bypass);
             routing::remove_endpoint_bypass(&endpoint_ip);
             let _ = sidecar.kill();
             let _ = killswitch::disengage(inner.backend);
@@ -244,11 +371,19 @@ impl TunnelManager {
             inner.error = Some(e.to_string());
             return Err(e);
         }
+        inner.bypass_routes = split_bypass.to_vec();
 
         inner.sidecar = Some(sidecar);
+        inner.bridge = bridge; // keep the wg-tls bridge alive for the session
         inner.assigned_ip = Some(assigned_ip.to_string());
         inner.state = TunnelState::Up;
-        inner.last_handshake = Some(now_unix());
+        // NOT a handshake: the interface is configured, but no WireGuard
+        // handshake has happened yet. Seeding a timestamp here would make a
+        // never-connecting tunnel indistinguishable from a live one — status()
+        // only ever replaces this with a real UAPI value, so a placeholder can
+        // never be cleared. Leaving it None makes `lastHandshake != null` an
+        // authoritative "the peer answered" signal for the frontend.
+        inner.last_handshake = None;
         inner.rx_bytes = 0;
         inner.tx_bytes = 0;
 
@@ -265,7 +400,10 @@ impl TunnelManager {
     /// outer interface (so only the inner tunnel's UDP to the exit traverses the
     /// entry), and the default route → the inner interface. Any failure tears
     /// down everything set up so far, so we never leave a half-open pair.
-    pub fn connect_multihop(&self, params: &MultihopParams<'_>) -> Result<TunnelStatus, TunnelError> {
+    pub fn connect_multihop(
+        &self,
+        params: &MultihopParams<'_>,
+    ) -> Result<TunnelStatus, TunnelError> {
         // Parse both nested configs before touching any state. The outer config
         // legitimately carries no DNS; the inner sets the exit's DNS + 1340 MTU.
         let outer_cfg = WgConfig::parse(params.outer)?;
@@ -276,15 +414,34 @@ impl TunnelManager {
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
 
         // Replace any existing tunnel (single-hop or a prior multi-hop pair).
+        // Reachable via reconnect without a disconnect(), so clear the previous
+        // session's leak-protection state fully (see connect()).
         if let Some(old) = inner.sidecar.take() {
             let _ = old.kill();
         }
         if let Some(old_exit) = inner.exit_sidecar.take() {
             let _ = old_exit.kill();
         }
+        if let Some(mut old_bridge) = inner.bridge.take() {
+            old_bridge.shutdown();
+        }
         if let Some(old_exit_ip) = inner.exit_ip.take() {
             let _ = routing::clear_multihop_routes(&old_exit_ip);
         }
+        if let Some(old_endpoint) = inner.endpoint.take() {
+            routing::remove_endpoint_bypass(strip_endpoint_port(&old_endpoint));
+        }
+        // Drop the previous session's split bypass routes (session state, §7.4).
+        let old_bypass = std::mem::take(&mut inner.bypass_routes);
+        routing::remove_bypass_routes(&old_bypass);
+        let split_bypass: &[String] = params
+            .split
+            .map(|s| s.bypass_routes.as_slice())
+            .unwrap_or(&[]);
+        let split_tunnel: &[String] = params
+            .split
+            .map(|s| s.tunnel_routes.as_slice())
+            .unwrap_or(&[]);
 
         inner.state = TunnelState::Connecting;
         // Surface the exit country as the effective location; the entry endpoint
@@ -294,10 +451,26 @@ impl TunnelManager {
         inner.error = None;
 
         // Kill switch allow-lists the entry endpoint only — the exit is reached
-        // *through* the entry tunnel, never directly from the host.
+        // *through* the entry tunnel, never directly from the host. Multi-hop is
+        // vanilla UDP today (Stealth+multi-hop isn't wired), so proto is Udp. Off
+        // → tear down any ruleset a prior session left engaged (see connect()).
+        // Split bypass prefixes are punched through here too — the compile step
+        // already rejects prefixes containing the entry/exit endpoints, so the
+        // bypass can never shadow the entry allowance (§7.2).
         if params.kill_switch {
-            killswitch::engage(inner.backend, params.entry_endpoint, IFACE_ENTRY)
-                .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+            killswitch::engage(
+                inner.backend,
+                &killswitch::LeakPolicy {
+                    endpoint: params.entry_endpoint,
+                    interface: IFACE_ENTRY,
+                    proto: killswitch::Proto::Udp,
+                    bypass_cidrs: split_bypass,
+                    bypass_apps: &[],
+                },
+            )
+            .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
+        } else {
+            let _ = killswitch::disengage(inner.backend);
         }
 
         // Helper: unwind everything set up so far on any failure.
@@ -339,7 +512,13 @@ impl TunnelManager {
             Err(e) => return fail(&mut inner, Some(entry_sidecar), None, false, e),
         };
         if let Err(e) = exit_sidecar.configure(&inner_cfg) {
-            return fail(&mut inner, Some(entry_sidecar), Some(exit_sidecar), false, e);
+            return fail(
+                &mut inner,
+                Some(entry_sidecar),
+                Some(exit_sidecar),
+                false,
+                e,
+            );
         }
 
         // Routes. Use the *real* kernel-assigned device names (utunN on macOS),
@@ -351,15 +530,38 @@ impl TunnelManager {
         // Pin the entry endpoint to the physical gateway so the outer tunnel's
         // own UDP escapes (same bypass as single-hop, on the entry endpoint).
         if let Err(e) = routing::add_endpoint_bypass(&entry_ip) {
-            return fail(&mut inner, Some(entry_sidecar), Some(exit_sidecar), false, e);
+            return fail(
+                &mut inner,
+                Some(entry_sidecar),
+                Some(exit_sidecar),
+                false,
+                e,
+            );
         }
         // Pin the exit endpoint through the entry tunnel, then default via exit.
         if let Err(e) = routing::add_host_route(&exit_ip, &entry_if) {
-            return fail(&mut inner, Some(entry_sidecar), Some(exit_sidecar), false, e);
+            return fail(
+                &mut inner,
+                Some(entry_sidecar),
+                Some(exit_sidecar),
+                false,
+                e,
+            );
         }
-        if let Err(e) = routing::add_default_route(&exit_if) {
+        // Split rules apply to the inner (exit) device — that is where the
+        // default route lives (§7.2). Include mode: only the listed prefixes
+        // via the exit device; otherwise split-default + bypass routes.
+        let route_result = if !split_tunnel.is_empty() {
+            routing::add_tunnel_routes(split_tunnel, &exit_if)
+        } else {
+            routing::add_default_route(&exit_if)
+                .and_then(|()| routing::add_bypass_routes(split_bypass))
+        };
+        if let Err(e) = route_result {
+            routing::remove_bypass_routes(split_bypass);
             return fail(&mut inner, Some(entry_sidecar), Some(exit_sidecar), true, e);
         }
+        inner.bypass_routes = split_bypass.to_vec();
         // The inner interface MTU (params.inner_mtu, 1340) is applied to the
         // exit device by `configure` from the inner `.conf`'s MTU line — wrong
         // MTU is the classic multi-hop stall. `inner_mtu` is the same value
@@ -372,7 +574,7 @@ impl TunnelManager {
         inner.exit_ip = Some(exit_ip);
         inner.assigned_ip = Some(params.assigned_ip.to_string());
         inner.state = TunnelState::Up;
-        inner.last_handshake = Some(now_unix());
+        inner.last_handshake = None; // see connect(): only a real UAPI value counts
         inner.rx_bytes = 0;
         inner.tx_bytes = 0;
 
@@ -424,6 +626,14 @@ impl TunnelManager {
         if let Some(ep) = inner.endpoint.as_deref() {
             routing::remove_endpoint_bypass(strip_endpoint_port(ep));
         }
+        // Remove split-tunneling bypass routes (include-mode tunnel routes are
+        // interface-scoped and died with the sidecar above).
+        let old_bypass = std::mem::take(&mut inner.bypass_routes);
+        routing::remove_bypass_routes(&old_bypass);
+        // Shut the wg-tls bridge (if any) down before we drop it below.
+        if let Some(mut bridge) = inner.bridge.take() {
+            bridge.shutdown();
+        }
         let _ = killswitch::disengage(inner.backend);
         let backend = inner.backend;
         *inner = Inner {
@@ -434,7 +644,9 @@ impl TunnelManager {
             error: None,
             sidecar: None,
             exit_sidecar: None,
+            bridge: None,
             exit_ip: None,
+            bypass_routes: Vec::new(),
             backend,
             rx_bytes: 0,
             tx_bytes: 0,
@@ -442,11 +654,4 @@ impl TunnelManager {
         };
         Ok(inner.snapshot())
     }
-}
-
-fn now_unix() -> i64 {
-    SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0)
 }

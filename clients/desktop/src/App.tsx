@@ -67,6 +67,9 @@ export function App(): JSX.Element {
       />
 
       {connected && conn.connectedSince && <SessionTimer since={conn.connectedSince} />}
+      {/* docs/17 §8: with split rules active, the user must never be unsure
+          whether they are fully protected — say so persistently. */}
+      {connected && conn.splitActive && <div className="split-on">Split tunneling on</div>}
 
       <button
         className="loc-btn"
@@ -135,7 +138,11 @@ export function App(): JSX.Element {
         <button
           className="btn-primary"
           onClick={conn.connect}
-          disabled={!selected || conn.phase === 'loading' || (conn.multihop && !conn.exit)}
+          disabled={
+            !selected ||
+            conn.phase === 'loading' ||
+            (conn.multihop && conn.routeStyle === 'multihop-cross-jurisdiction' && !conn.exit)
+          }
         >
           {conn.phase === 'loading'
             ? 'Loading…'
@@ -161,8 +168,11 @@ export function App(): JSX.Element {
         <Settings
           autoConnect={conn.autoConnect}
           killSwitch={conn.killSwitch}
+          stealth={conn.transportMode === 'stealth'}
+          tier={conn.entitlement?.tier ?? 'free'}
           onAutoConnect={conn.setAutoConnect}
           onKillSwitch={conn.setKillSwitch}
+          onStealth={(v) => conn.setTransportMode(v ? 'stealth' : 'auto')}
           onClose={() => setShowSettings(false)}
         />
       )}

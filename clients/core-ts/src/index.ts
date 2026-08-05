@@ -26,6 +26,8 @@ export { gatewayQuality } from './quality.js';
 export type { GatewayQuality, QualityTone } from './quality.js';
 export { pingGateway } from './probe.js';
 export type { PingResult } from './probe.js';
+export { checkIssuedConfig } from './confhealth.js';
+export type { ConfHealth, IssuedConfigRef } from './confhealth.js';
 export type {
   RouteStyle,
   Hop,
@@ -33,14 +35,44 @@ export type {
   SelectedHops,
   MultihopConfig,
 } from './multihop.js';
+export {
+  EMPTY_POLICY,
+  LAN_BYPASS_CIDRS,
+  compileSplitPolicy,
+  complementRoutes,
+  normalizeSplitRule,
+  sanitizeSplitPolicy,
+} from './split.js';
+export type {
+  CompiledSplit,
+  CompileSplitContext,
+  DomainMatcher,
+  SplitMode,
+  SplitPlatform,
+  SplitPolicy,
+  SplitRule,
+  SplitRuleContext,
+  SplitRuleKind,
+} from './split.js';
 export { ApiError } from './http.js';
 export type { SignedResult } from './http.js';
 
 export { CONTROL_PORT, WG_PORT, POW_BITS, MEMO_PREFIX } from './types.js';
+export {
+  selectTransport,
+  requireTransport,
+  transportFallbackChain,
+  applyTransportToEndpoint,
+  obfsForTransport,
+  hasPremiumTransport,
+  IMPLEMENTED_TRANSPORTS,
+} from './transport.js';
+export type { TransportMode } from './transport.js';
 export type {
   Keypair,
   ApiEnvelope,
   ApiErrorData,
+  Transport,
   InfoResponse,
   EnrollResponse,
   Tier,

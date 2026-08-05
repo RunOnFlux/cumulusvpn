@@ -58,6 +58,10 @@ object CumulusTunnelController {
     @Volatile
     private var multihopActive: Boolean = false
 
+    /** True while the active tunnel is the obfuscated single-hop wgnest service. */
+    @Volatile
+    private var obfsActive: Boolean = false
+
     /** The active tunnel handle, if any. Named [TUNNEL_NAME]. */
     private val tunnel =
         object : Tunnel {
@@ -93,14 +97,203 @@ object CumulusTunnelController {
     fun startTunnel(context: Context, wgQuickConfig: String) {
         setState(STATE_CONNECTING)
         try {
-            val config = parse(wgQuickConfig)
-            backend(context).setState(tunnel, Tunnel.State.UP, config)
-            setState(STATE_CONNECTED)
+            val tlsSni = extractTlsSni(wgQuickConfig)
+            val obfs = extractObfsUapi(wgQuickConfig)
+            if (tlsSni != null) {
+                // wg-tls single-hop: the wgnest device bridged over TLS. Runs in
+                // the same wgnest service as awg (the official Config parser would
+                // also reject the CVPN_TLS_SNI sentinel line). No [Interface] obfs.
+                startObfsSingleHop(context, wgQuickConfig, "", tlsSni)
+            } else if (obfs.isNotEmpty()) {
+                // Obfuscated (AmneziaWG) single-hop runs in the wgnest service —
+                // the official Config parser can't represent the awg params.
+                // Vanilla single-hop stays on GoBackend, unchanged.
+                startObfsSingleHop(context, wgQuickConfig, obfs, null)
+            } else {
+                // Vanilla single-hop on GoBackend. Reset the obfs/multihop flags:
+                // a prior obfs or multi-hop tunnel may have set them, and a connect
+                // without a clean disconnect would otherwise leave stop/statistics
+                // routing to the wrong (nested/wgnest) backend.
+                obfsActive = false
+                multihopActive = false
+                val config = parse(wgQuickConfig)
+                backend(context).setState(tunnel, Tunnel.State.UP, config)
+                setState(STATE_CONNECTED)
+            }
         } catch (t: Throwable) {
             Log.e(TAG, "startTunnel failed", t)
+            obfsActive = false
             setState(STATE_ERROR)
             throw t
         }
+    }
+
+    /** The AmneziaWG [Interface] keys, capitalized as in the wg-quick `.conf`. */
+    private val obfsKeys =
+        listOf("Jc", "Jmin", "Jmax", "S1", "S2", "H1", "H2", "H3", "H4")
+
+    /**
+     * Scan a `.conf` for AmneziaWG `[Interface]` params and render them as the
+     * device-level UAPI lines (`jc=…\n…`), in a fixed order. Empty when the
+     * config carries none — i.e. it is a vanilla or wg-tls transport.
+     */
+    private fun extractObfsUapi(conf: String): String {
+        val vals = HashMap<String, String>()
+        for (raw in conf.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            val key = line.substring(0, eq).trim()
+            if (key in obfsKeys) {
+                vals[key.lowercase()] = line.substring(eq + 1).trim()
+            }
+        }
+        if (vals.isEmpty()) return ""
+        return extractObfsUapiOrdered(vals)
+    }
+
+    /** Extract the `CVPN_TLS_SNI` sentinel (wg-tls transport), or null. Injected by
+     *  the client (useVpn) since the fixed startTunnel bridge can't carry separate
+     *  fields; namespaced so it can't collide with a real wg-quick key. */
+    private fun extractTlsSni(conf: String): String? {
+        for (raw in conf.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            if (line.substring(0, eq).trim().equals("CVPN_TLS_SNI", ignoreCase = true)) {
+                return line.substring(eq + 1).trim()
+            }
+        }
+        return null
+    }
+
+    private fun extractObfsUapiOrdered(vals: HashMap<String, String>): String {
+        return listOf("jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4")
+            .mapNotNull { k -> vals[k]?.let { "$k=$it" } }
+            .joinToString("\n", postfix = "\n")
+    }
+
+    /** The wgnest fields extracted manually from a wg-quick config. */
+    private data class WgFields(
+        val priv: String,
+        val peerPub: String,
+        val endpointHost: String,
+        val endpointPort: Int,
+        val address: String,
+    )
+
+    /**
+     * Manually parse the fields wgnest needs from a wg-quick config. Used for a
+     * multi-hop OUTER (entry) config, which in Stealth mode carries AmneziaWG
+     * `[Interface]` keys the official [Config] parser rejects.
+     */
+    private fun parseWgFields(conf: String): WgFields {
+        var priv = ""
+        var pub = ""
+        var endpoint = ""
+        var address = ""
+        for (raw in conf.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            val key = line.substring(0, eq).trim()
+            val value = line.substring(eq + 1).trim()
+            when (key) {
+                "PrivateKey" -> priv = value
+                "PublicKey" -> pub = value
+                "Endpoint" -> endpoint = value
+                "Address" -> address = value.substringBefore(',').substringBefore('/').trim()
+            }
+        }
+        val host = endpoint.substringBeforeLast(':', endpoint)
+        val port = endpoint.substringAfterLast(':', "").toIntOrNull() ?: 0
+        return WgFields(priv, pub, host, port, address)
+    }
+
+    /**
+     * Hand an obfuscated single-hop config to [CumulusObfsVpnService]. We parse
+     * the fields manually (the official [Config] parser rejects awg keys) and
+     * pass them as Intent extras, mirroring [startMultihop].
+     */
+    private fun startObfsSingleHop(
+        context: Context,
+        wgQuickConfig: String,
+        obfs: String,
+        tlsSni: String?,
+    ) {
+        var priv = ""
+        var pub = ""
+        var endpoint = ""
+        var address = ""
+        var dns = "1.1.1.1"
+        var allowedIps = ""
+        var appsIncluded = ""
+        var appsExcluded = ""
+        for (raw in wgQuickConfig.lines()) {
+            val line = raw.trim()
+            val eq = line.indexOf('=')
+            if (eq < 0) continue
+            val key = line.substring(0, eq).trim()
+            val value = line.substring(eq + 1).trim()
+            when (key) {
+                "PrivateKey" -> priv = value
+                "PublicKey" -> pub = value
+                "Endpoint" -> endpoint = value
+                "Address" -> address = value.substringBefore(',').substringBefore('/').trim()
+                "DNS" -> dns = value.substringBefore(',').trim()
+                "AllowedIPs" -> allowedIps = value
+                "IncludedApplications" -> appsIncluded = value
+                "ExcludedApplications" -> appsExcluded = value
+            }
+        }
+        val serverIp = endpoint.substringBeforeLast(':', endpoint)
+        val port = endpoint.substringAfterLast(':', "").toIntOrNull() ?: 0
+        Log.i(TAG, "startObfsSingleHop: server=$serverIp:$port tls=${tlsSni != null} (stealth)")
+
+        val intent = Intent(context, CumulusObfsVpnService::class.java).apply {
+            action = CumulusObfsVpnService.ACTION_START
+            putExtra(CumulusObfsVpnService.EXTRA_CLIENT_PRIV, priv)
+            putExtra(CumulusObfsVpnService.EXTRA_SERVER_PUB, pub)
+            putExtra(CumulusObfsVpnService.EXTRA_SERVER_IP, serverIp)
+            putExtra(CumulusObfsVpnService.EXTRA_SERVER_ASSIGNED, address)
+            putExtra(CumulusObfsVpnService.EXTRA_PORT, port)
+            putExtra(CumulusObfsVpnService.EXTRA_OBFS, obfs)
+            putExtra(CumulusObfsVpnService.EXTRA_DNS, dns)
+            // wg-tls: bridge the WG device over TLS to the gateway relay (the
+            // config Endpoint, gateway:tlsPort). The service excludes the gateway
+            // IP from the tun so the TLS socket bypasses it.
+            if (tlsSni != null) {
+                putExtra(CumulusObfsVpnService.EXTRA_TLS_RELAY, endpoint)
+                putExtra(CumulusObfsVpnService.EXTRA_TLS_SNI, tlsSni)
+            }
+            // Split tunneling: a non-default AllowedIPs (from core's compiled
+            // split policy) becomes the tun route set. The default full-tunnel
+            // value is deliberately NOT passed, keeping that path byte-identical.
+            if (allowedIps.isNotEmpty() && !isFullTunnel(allowedIps)) {
+                putExtra(CumulusObfsVpnService.EXTRA_ROUTES4, allowedIps)
+                putExtra(CumulusObfsVpnService.EXTRA_ROUTES6, allowedIps)
+            }
+            // Per-app rules (docs/17 §4.1) — the same keys the vanilla path's
+            // official Config parser applies; the wgnest service does it manually.
+            if (appsIncluded.isNotEmpty()) {
+                putExtra(CumulusObfsVpnService.EXTRA_APPS_INCLUDED, appsIncluded)
+            }
+            if (appsExcluded.isNotEmpty()) {
+                putExtra(CumulusObfsVpnService.EXTRA_APPS_EXCLUDED, appsExcluded)
+            }
+        }
+        obfsActive = true
+        multihopActive = false // reciprocal: an obfs→multihop switch must not leave this stale
+        context.startService(intent)
+        // State advances to CONNECTED/ERROR asynchronously via onObfsState.
+    }
+
+    /** Called by [CumulusObfsVpnService] as the obfuscated tunnel changes state. */
+    fun onObfsState(state: String) {
+        if (state == STATE_DISCONNECTED || state == STATE_ERROR) {
+            obfsActive = false
+        }
+        setState(state)
     }
 
     /**
@@ -123,33 +316,56 @@ object CumulusTunnelController {
     fun startMultihop(context: Context, outerConfig: String, innerConfig: String) {
         setState(STATE_CONNECTING)
         try {
-            val outer = parse(outerConfig) // wg-entry: AllowedIPs = <exitIp>/32, MTU 1420
-            val inner = parse(innerConfig) // wg-exit:  AllowedIPs = 0.0.0.0/0, MTU 1340
+            // The OUTER (entry) config may carry AmneziaWG [Interface] params in
+            // Stealth mode, which the official Config parser rejects — so parse its
+            // fields manually. The INNER (exit) hop is always vanilla.
+            val entryObfs = extractObfsUapi(outerConfig)
+            val entry = parseWgFields(outerConfig)
+            val inner = parse(innerConfig) // wg-exit: AllowedIPs = 0.0.0.0/0, MTU 1340
 
-            val entryPeer = outer.peers.first()
             val exitPeer = inner.peers.first()
-            // The client key K is shared by both hops (one payment, two devices).
-            val clientPriv = outer.`interface`.keyPair.privateKey.toBase64()
-            val entryAssigned = outer.`interface`.addresses.first().address.hostAddress
+            val clientPriv = entry.priv
+            val entryAssigned = entry.address
             val exitAssigned = inner.`interface`.addresses.first().address.hostAddress
-            val entryIp = entryPeer.endpoint.get().host
+            val entryIp = entry.endpointHost
+            val entryPort = entry.endpointPort // 51821 for an obfuscated (awg) entry
             val exitIp = exitPeer.endpoint.get().host
             val exitDns = inner.`interface`.dnsServers.firstOrNull()?.hostAddress ?: "1.1.1.1"
 
-            Log.i(TAG, "startMultihop: entry=$entryIp exit=$exitIp (nested)")
+            Log.i(TAG, "startMultihop: entry=$entryIp:$entryPort exit=$exitIp stealth=${entryObfs.isNotEmpty()}")
 
             val intent = Intent(context, CumulusMultihopVpnService::class.java).apply {
                 action = CumulusMultihopVpnService.ACTION_START
                 putExtra(CumulusMultihopVpnService.EXTRA_CLIENT_PRIV, clientPriv)
-                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_PUB, entryPeer.publicKey.toBase64())
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_PUB, entry.peerPub)
                 putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_IP, entryIp)
                 putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_ASSIGNED, entryAssigned)
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_PORT, entryPort)
+                putExtra(CumulusMultihopVpnService.EXTRA_ENTRY_OBFS, entryObfs)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_PUB, exitPeer.publicKey.toBase64())
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_IP, exitIp)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_ASSIGNED, exitAssigned)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_DNS, exitDns)
+                // Split tunneling: the inner (exit) config's AllowedIPs carries
+                // the compiled tunnel routes (docs/17 §7.2). Default => absent.
+                val innerAllowed = exitPeer.allowedIps.joinToString(", ") { it.toString() }
+                if (innerAllowed.isNotEmpty() && !isFullTunnel(innerAllowed)) {
+                    putExtra(CumulusMultihopVpnService.EXTRA_ROUTES4, innerAllowed)
+                    putExtra(CumulusMultihopVpnService.EXTRA_ROUTES6, innerAllowed)
+                }
+                // Per-app rules (docs/17 §4.1), parsed by the official Config
+                // parser from the inner config's [Interface] app keys.
+                val included = inner.`interface`.includedApplications.joinToString(",")
+                val excluded = inner.`interface`.excludedApplications.joinToString(",")
+                if (included.isNotEmpty()) {
+                    putExtra(CumulusMultihopVpnService.EXTRA_APPS_INCLUDED, included)
+                }
+                if (excluded.isNotEmpty()) {
+                    putExtra(CumulusMultihopVpnService.EXTRA_APPS_EXCLUDED, excluded)
+                }
             }
             multihopActive = true
+            obfsActive = false // reciprocal: a multihop switch must not leave the obfs flag stale
             // Connect is always user-initiated (app in foreground), so a plain
             // startService is allowed; the established tun keeps the service alive.
             context.startService(intent)
@@ -174,7 +390,13 @@ object CumulusTunnelController {
     fun stopTunnel(context: Context) {
         setState(STATE_DISCONNECTING)
         try {
-            if (multihopActive) {
+            if (obfsActive) {
+                val intent = Intent(context, CumulusObfsVpnService::class.java).apply {
+                    action = CumulusObfsVpnService.ACTION_STOP
+                }
+                context.startService(intent)
+                // onObfsState(DISCONNECTED) fires from the service's teardown.
+            } else if (multihopActive) {
                 val intent = Intent(context, CumulusMultihopVpnService::class.java).apply {
                     action = CumulusMultihopVpnService.ACTION_STOP
                 }
@@ -200,6 +422,9 @@ object CumulusTunnelController {
      * are stable (multi-hop reports a real handshake time from the Go core).
      */
     fun statistics(context: Context): Stats {
+        if (obfsActive) {
+            return CumulusObfsVpnService.statistics()
+        }
         if (multihopActive) {
             return CumulusMultihopVpnService.statistics()
         }
@@ -211,6 +436,12 @@ object CumulusTunnelController {
             Stats(0, 0, 0)
         }
     }
+
+    /** True when an AllowedIPs value is the classic full tunnel (only default
+     *  routes), i.e. no split policy is in effect. */
+    private fun isFullTunnel(allowedIps: String): Boolean =
+        allowedIps.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+            .all { it == "0.0.0.0/0" || it == "::/0" }
 
     private fun parse(wgQuickConfig: String): Config =
         Config.parse(BufferedReader(StringReader(wgQuickConfig)))

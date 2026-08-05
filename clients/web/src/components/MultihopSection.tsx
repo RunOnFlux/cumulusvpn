@@ -274,6 +274,12 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                 </div>
               </div>
 
+              {/* Same staleness caveat as the single-hop .conf, and doubled: a
+                  multi-hop pair pins TWO gateways, so either one restarting or
+                  moving breaks the chain. Reuse the single-hop copy rather than
+                  inventing a second wording for the same fact. */}
+              <p className="muted-text">{t('connect_conf_note')}</p>
+
               <div className="banner info mh-note">
                 {rich(
                   'multihop_note',

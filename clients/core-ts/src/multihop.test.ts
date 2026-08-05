@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildMultihopConfig, selectHops } from './multihop.js';
+import { EMPTY_POLICY, compileSplitPolicy } from './split.js';
 import type { EnrollResponse, GatewayInfo } from './types.js';
 
 function gateway(overrides: Partial<GatewayInfo>): GatewayInfo {
@@ -82,6 +83,65 @@ describe('buildMultihopConfig', () => {
   it('derives exitEndpoint as <exitIp>:51820 from the exit endpoint', () => {
     const cfg = buildMultihopConfig({ privateKey: 'K', entry, exit });
     expect(cfg.exitEndpoint).toBe('5.6.7.8:51820');
+    expect(cfg.entryEndpoint).toBe('9.9.9.9:51820'); // vanilla entry
+  });
+
+  it('vanilla (no entryTransport) leaves the outer free of obfuscation', () => {
+    const { outer } = buildMultihopConfig({ privateKey: 'K', entry, exit });
+    expect(outer).not.toMatch(/\bJc =|\bH1 =|\bS1 =/);
+  });
+
+  it('Stealth: an awg entryTransport obfuscates the OUTER hop and dials the awg port', () => {
+    const cfg = buildMultihopConfig({
+      privateKey: 'K',
+      entry,
+      exit,
+      entryTransport: {
+        type: 'awg',
+        port: 51821,
+        params: { jc: '4', jmin: '40', jmax: '70', s1: '86', s2: '120', h1: '1148746654' },
+      },
+    });
+    // Outer [Interface] carries the awg params (before the [Peer]).
+    expect(cfg.outer).toContain('Jc = 4');
+    expect(cfg.outer).toContain('Jmin = 40');
+    expect(cfg.outer).toContain('H1 = 1148746654');
+    expect(cfg.outer.indexOf('Jc = 4')).toBeLessThan(cfg.outer.indexOf('[Peer]'));
+    // Outer dials the entry's awg port; entryEndpoint reflects it.
+    expect(cfg.outer).toContain('Endpoint = 9.9.9.9:51821');
+    expect(cfg.entryEndpoint).toBe('9.9.9.9:51821');
+    // The INNER (exit) hop stays vanilla — obfuscation is entry-only.
+    expect(cfg.inner).not.toMatch(/\bJc =/);
+    expect(cfg.inner).toContain('Endpoint = 5.6.7.8:51820');
+  });
+
+  it('split rules land on the INNER config; a noop split is byte-identical', () => {
+    const base = { privateKey: 'K', entry, exit };
+    const split = compileSplitPolicy(
+      {
+        ...EMPTY_POLICY,
+        mode: 'exclude',
+        rules: [
+          { kind: 'cidr', value: '10.0.0.0/8', enabled: true },
+          { kind: 'app', value: 'com.android.chrome', platform: 'android', enabled: true },
+        ],
+      },
+      { platform: 'android', supportsExcludeRoute: false },
+    );
+    const cfg = buildMultihopConfig({ ...base, split });
+    // Inner (exit) hop carries the compiled routes + Android app keys (§7.2);
+    // the outer keeps its <exitIp>/32 pin untouched.
+    expect(cfg.inner).toContain('AllowedIPs = 0.0.0.0/5,');
+    expect(cfg.inner).toContain('ExcludedApplications = com.android.chrome');
+    expect(cfg.inner.indexOf('ExcludedApplications')).toBeLessThan(cfg.inner.indexOf('[Peer]'));
+    expect(cfg.outer).toContain('AllowedIPs = 5.6.7.8/32');
+    expect(cfg.outer).not.toContain('Applications');
+
+    const noop = compileSplitPolicy(EMPTY_POLICY, {
+      platform: 'android',
+      supportsExcludeRoute: false,
+    });
+    expect(buildMultihopConfig({ ...base, split: noop })).toStrictEqual(buildMultihopConfig(base));
   });
 });
 
@@ -140,4 +200,64 @@ describe('selectHops', () => {
     const { entry } = selectHops([a, b], 'single');
     expect(entry.country).toBe('CA');
   });
+
+  describe('requireDistinctSubnet', () => {
+    it('off (default) allows an exit on the same /24', () => {
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const b = gateway({ ip: '1.0.0.2', country: 'US', load: 0.5 });
+      const { entry, exit } = selectHops([a, b], 'multihop-same-country');
+      expect(entry.ip).toBe('1.0.0.1');
+      expect(exit?.ip).toBe('1.0.0.2'); // same /24 accepted when the flag is off
+    });
+
+    it('picks an exit on a different /24 when required', () => {
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const sameSubnet = gateway({ ip: '1.0.0.2', country: 'US', load: 0.2 });
+      const diffSubnet = gateway({ ip: '2.0.0.9', country: 'US', load: 0.9 });
+      const { entry, exit } = selectHops([a, sameSubnet, diffSubnet], 'multihop-same-country', {
+        requireDistinctSubnet: true,
+      });
+      expect(entry.ip).toBe('1.0.0.1');
+      // sameSubnet is excluded despite lower load; only diffSubnet qualifies.
+      expect(exit?.ip).toBe('2.0.0.9');
+    });
+
+    it('throws when every same-country exit shares the entry subnet', () => {
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const b = gateway({ ip: '1.0.0.2', country: 'US', load: 0.5 });
+      expect(() =>
+        selectHops([a, b], 'multihop-same-country', { requireDistinctSubnet: true }),
+      ).toThrow(/distinct subnet/);
+    });
+
+    it('falls back to a later entry candidate to find a distinct-subnet pair', () => {
+      // The two least-loaded nodes (a, b) are both US and share one /24, so the
+      // US country has no distinct-subnet same-country pair. DE does (c, d on
+      // different /24s) — same-country selection must skip past the US entries
+      // to build the DE→DE pair rather than throwing.
+      const a = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
+      const b = gateway({ ip: '1.0.0.2', country: 'US', load: 0.2 });
+      const c = gateway({ ip: '3.0.0.1', country: 'DE', load: 0.3 });
+      const d = gateway({ ip: '4.0.0.1', country: 'DE', load: 0.4 });
+      const { entry, exit } = selectHops([a, b, c, d], 'multihop-same-country', {
+        requireDistinctSubnet: true,
+      });
+      expect(entry.ip).toBe('3.0.0.1');
+      expect(exit?.ip).toBe('4.0.0.1');
+    });
+
+    it('still enforces cross-country exits with the flag on', () => {
+      const { entry, exit } = selectHops([us1, us2, de1], 'multihop-cross-jurisdiction', {
+        requireDistinctSubnet: true,
+      });
+      expect(entry.country).toBe('US');
+      expect(exit?.country).toBe('DE');
+      expect(subnet(exit?.ip)).not.toBe(subnet(entry.ip));
+    });
+  });
 });
+
+/** First three octets of an IPv4 address, for asserting distinct /24s. */
+function subnet(ip: string | undefined): string {
+  return (ip ?? '').split('.').slice(0, 3).join('.');
+}

@@ -7,11 +7,12 @@
  * keychain (macOS Keychain / Windows Credential Manager / libsecret) via a
  * Tauri command, never in the webview's storage.
  */
-import { generateKeypair } from '@cumulusvpn/core';
-import type { Keypair } from '@cumulusvpn/core';
+import { EMPTY_POLICY, generateKeypair, sanitizeSplitPolicy } from '@cumulusvpn/core';
+import type { Keypair, SplitPolicy } from '@cumulusvpn/core';
 
 const KEYPAIR_KEY = 'cvpn.keypair.v1';
 const COUNTRY_KEY = 'cvpn.country.v1';
+const SPLIT_KEY = 'cvpn.split.v1';
 
 function safeGet(key: string): string | null {
   try {
@@ -60,4 +61,27 @@ export function loadSelectedCountry(): string | null {
 /** Persist the user's selected country code. */
 export function saveSelectedCountry(code: string): void {
   safeSet(COUNTRY_KEY, code);
+}
+
+/**
+ * Load the split-tunneling policy. Anything absent, corrupt or from a future
+ * schema collapses to EMPTY_POLICY — full tunnel, never a partially-applied
+ * policy (docs/17 §3.4). The rule list is sensitive (it fingerprints what the
+ * user runs): it stays on-device and must never enter logs or support bundles.
+ */
+export function loadSplitPolicy(): SplitPolicy {
+  const raw = safeGet(SPLIT_KEY);
+  if (!raw) {
+    return EMPTY_POLICY;
+  }
+  try {
+    return sanitizeSplitPolicy(JSON.parse(raw));
+  } catch {
+    return EMPTY_POLICY;
+  }
+}
+
+/** Persist the split-tunneling policy (device-local only, by design). */
+export function saveSplitPolicy(policy: SplitPolicy): void {
+  safeSet(SPLIT_KEY, JSON.stringify(policy));
 }

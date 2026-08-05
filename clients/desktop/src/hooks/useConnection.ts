@@ -4,10 +4,11 @@
  * live polling of native tunnel status + chain entitlement.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { Keypair, Tier } from '@cumulusvpn/core';
+import type { GatewayInfo, Keypair, Tier, TransportMode } from '@cumulusvpn/core';
+// (Tier is used for both the displayed entitlement and transport gating.)
 import { loadOrCreateKeypair, loadSelectedCountry, saveSelectedCountry } from '../lib/storage.js';
 import {
-  discoverCountries,
+  discoverFleetAndCountries,
   establish,
   establishMultihop,
   fetchEntitlement,
@@ -41,6 +42,8 @@ export interface ConnectionModel {
   readonly selected: CountryOption | null;
   readonly tunnel: TunnelStatus;
   readonly entitlement: Entitlement | null;
+  /** True when the live session has split-tunneling rules applied (docs/17 §8). */
+  readonly splitActive: boolean;
   readonly error: string | null;
   readonly select: (code: string) => void;
   readonly connect: () => void;
@@ -62,6 +65,9 @@ export interface ConnectionModel {
   // ---- kill switch (leak protection) -------------------------------------
   /** Whether to engage the kill switch when connecting (persisted; default on). */
   readonly killSwitch: boolean;
+  /** Transport mode: 'auto' (fastest) or 'stealth' (obfuscated); persisted. */
+  readonly transportMode: TransportMode;
+  readonly setTransportMode: (mode: TransportMode) => void;
   /** Toggle the kill switch; applies on the next connect. */
   readonly setKillSwitch: (on: boolean) => void;
   /** Auto-connect on launch once discovery settles (persisted; default off). */
@@ -105,14 +111,35 @@ export function useConnection(): ConnectionModel {
 
   const [phase, setPhase] = useState<Phase>('loading');
   const [countries, setCountries] = useState<readonly CountryOption[]>([]);
+  // The full discovered fleet (several gateways per country), kept for multi-hop
+  // hop selection — the collapsed `countries` list can't supply a distinct
+  // second in-country gateway for a same-country route.
+  const fleetRef = useRef<readonly GatewayInfo[]>([]);
   const [selected, setSelected] = useState<CountryOption | null>(null);
   const [tunnel, setTunnel] = useState<TunnelStatus>(DOWN);
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
+  // Session truth for the split-tunneling indicator (docs/17 §8) — set from
+  // the establish result, not the stored policy (a tier lapse or kill-switch
+  // conflict makes them differ), and cleared with the session.
+  const [splitActive, setSplitActive] = useState(false);
+  // Tier for TRANSPORT SELECTION, mirrored into a ref so `connect` can read it
+  // without taking `entitlement` as a dependency — that would re-create
+  // `connect` on every poll, and the auto-reconnect effect depends on it (its
+  // cleanup would clear the pending retry timer).
+  const tierRef = useRef<Tier>('free');
+  // Cancels an in-flight transport sweep. Without it, a Disconnect landing
+  // mid-sweep looks exactly like "this transport failed", and the loop would
+  // re-engage the kill switch and rebuild the tunnel the user just cancelled.
+  const sweepRef = useRef<AbortController | null>(null);
   const [error, setError] = useState<string | null>(null);
   // Multi-hop is OFF by default; Balanced (same country) is the default style.
   const [multihop, setMultihopState] = useState(false);
   const [routeStyle, setRouteStyleState] = useState<MultihopStyle>('multihop-same-country');
   const [exit, setExit] = useState<CountryOption | null>(null);
+  // Transport mode: 'auto' (fastest) or 'stealth' (obfuscated); persisted.
+  const [transportMode, setTransportModeState] = useState<TransportMode>(() =>
+    localStorage.getItem('cvpn.transportMode') === 'stealth' ? 'stealth' : 'auto',
+  );
   // Kill switch defaults ON (leak protection by default); persisted in localStorage.
   const [killSwitch, setKillSwitchState] = useState(
     () => localStorage.getItem('cvpn.killSwitch') !== '0',
@@ -134,10 +161,11 @@ export function useConnection(): ConnectionModel {
     let alive = true;
     void (async () => {
       try {
-        const list = await discoverCountries();
+        const { countries: list, fleet } = await discoverFleetAndCountries();
         if (!alive) {
           return;
         }
+        fleetRef.current = fleet;
         setCountries(list);
         const remembered = loadSelectedCountry();
         const pick = list.find((c) => c.code === remembered) ?? list[0] ?? null;
@@ -163,7 +191,9 @@ export function useConnection(): ConnectionModel {
   // the quality ratings). Keeps the current selection.
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      setCountries(await discoverCountries());
+      const { countries: list, fleet } = await discoverFleetAndCountries();
+      fleetRef.current = fleet;
+      setCountries(list);
     } catch (err) {
       setError(messageOf(err));
     }
@@ -193,6 +223,11 @@ export function useConnection(): ConnectionModel {
   const setMultihop = useCallback((on: boolean) => setMultihopState(on), []);
   const setRouteStyle = useCallback((style: MultihopStyle) => setRouteStyleState(style), []);
 
+  const setTransportMode = useCallback((mode: TransportMode) => {
+    setTransportModeState(mode);
+    localStorage.setItem('cvpn.transportMode', mode);
+  }, []);
+
   const setKillSwitch = useCallback((on: boolean) => {
     setKillSwitchState(on);
     localStorage.setItem('cvpn.killSwitch', on ? '1' : '0');
@@ -221,36 +256,88 @@ export function useConnection(): ConnectionModel {
           paidUntil: ent.paid_until,
           bytesUsed: ent.bytes_used,
         });
+        tierRef.current = ent.tier;
       } catch {
-        setEntitlement(null);
+        // Preserve the last known entitlement: the tier now drives transport
+        // selection, so treating one flaky poll as a downgrade would silently
+        // demote a paying user's stealth transport mid-session.
+        setEntitlement((prev) => prev);
       }
     },
     [keypair],
   );
+
+  // Populate the tier badge before the first connect — entitlement is otherwise
+  // only fetched once a tunnel is up, so a fresh launch would always read
+  // "free". This is a DISPLAY hint and a cheap hot cache; it is deliberately not
+  // what decides a premium-gated transport, because it can't be relied on (it is
+  // fire-and-forget, so an auto-connect can race it, and it targets one node
+  // that may not be the one dialled). That decision is made in `establish`,
+  // against the gateway that actually enforces the gate.
+  useEffect(() => {
+    const first = countries[0];
+    if (!first || !first.signPubKey) {
+      return;
+    }
+    void refreshEntitlement(first.gatewayIp, first.signPubKey);
+  }, [countries, refreshEntitlement]);
 
   const connect = useCallback(() => {
     const entry = selected;
     if (!entry || phase === 'connecting') {
       return;
     }
-    if (multihop && !exit) {
-      setError('Pick an exit location for multi-hop.');
+    // Only cross-jurisdiction needs an explicit exit pick; Balanced (same-country)
+    // auto-selects a second gateway in the entry country and ignores any pick.
+    if (multihop && routeStyle === 'multihop-cross-jurisdiction' && !exit) {
+      setError('Pick an exit location for cross-jurisdiction multi-hop.');
       return;
     }
     setError(null);
     setPhase('connecting');
+    // Abort any sweep still running (double-click, or a reconnect racing a
+    // manual connect) so two sweeps can't interleave against one TunnelManager.
+    sweepRef.current?.abort();
+    const sweep = new AbortController();
+    sweepRef.current = sweep;
     setTunnel((t) => ({ ...t, state: 'connecting', country: entry.code }));
     void (async () => {
       try {
-        if (multihop && exit) {
+        if (multihop) {
           // Same key K enrolls at both hops (one payment); exit meters egress.
-          const result = await establishMultihop(entry, exit, routeStyle, keypair, killSwitch);
+          // Same-country ignores the exit pick (auto-chosen in the entry country),
+          // so pass a non-null placeholder; cross-jurisdiction required a pick.
+          const exitArg = exit ?? entry;
+          const result = await establishMultihop(
+            fleetRef.current,
+            entry,
+            exitArg,
+            routeStyle,
+            keypair,
+            killSwitch,
+            transportMode,
+            tierRef.current,
+          );
           setTunnel(result.tunnel);
+          setSplitActive(result.splitApplied);
           setPhase('connected');
-          await refreshEntitlement(result.exitGatewayIp, exit.signPubKey);
+          // Poll the ACTUAL exit gateway's key (same-country auto-picks the exit
+          // within the entry country, so exit.signPubKey — the picked row's key —
+          // would fail verification against the real exit gateway).
+          await refreshEntitlement(result.exitGatewayIp, result.exitSignPubKey);
         } else {
-          const result = await establish(entry, keypair, killSwitch);
+          const result = await establish(
+            entry,
+            keypair,
+            killSwitch,
+            transportMode,
+            tierRef.current,
+            undefined,
+            undefined,
+            sweep.signal,
+          );
           setTunnel(result.tunnel);
+          setSplitActive(result.splitApplied);
           setPhase('connected');
           await refreshEntitlement(result.gatewayIp, entry.signPubKey);
         }
@@ -260,9 +347,23 @@ export function useConnection(): ConnectionModel {
         setPhase('error');
       }
     })();
-  }, [selected, exit, multihop, routeStyle, phase, keypair, killSwitch, refreshEntitlement]);
+  }, [
+    selected,
+    exit,
+    multihop,
+    routeStyle,
+    phase,
+    keypair,
+    killSwitch,
+    transportMode,
+    refreshEntitlement,
+  ]);
 
   const disconnect = useCallback(() => {
+    // Cancel the sweep FIRST so it cannot misread this teardown as a failed
+    // transport and immediately reconnect.
+    sweepRef.current?.abort();
+    sweepRef.current = null;
     wasConnectedRef.current = false;
     void (async () => {
       try {
@@ -271,6 +372,7 @@ export function useConnection(): ConnectionModel {
       } catch (err) {
         setError(messageOf(err));
       } finally {
+        setSplitActive(false);
         setPhase('idle');
       }
     })();
@@ -294,7 +396,12 @@ export function useConnection(): ConnectionModel {
     if (phase === 'error' && wasConnectedRef.current) {
       wasConnectedRef.current = false;
       setConnectedSince(null);
-      const id = setTimeout(() => connect(), 3000);
+      // 5s, not 3: a reconnect re-runs the whole transport sweep, which starts
+      // with a fresh enrollment, and the gateway rate-limits enroll to one per
+      // source IP per 2s. Too eager a retry can collide with the enroll that the
+      // failed attempt just made and fail on the rate limit rather than the
+      // actual condition. Still one-shot — wasConnectedRef is cleared above.
+      const id = setTimeout(() => connect(), 5000);
       return () => clearTimeout(id);
     }
     return undefined;
@@ -339,6 +446,7 @@ export function useConnection(): ConnectionModel {
     selected,
     tunnel,
     entitlement,
+    splitActive,
     error,
     select,
     connect,
@@ -351,6 +459,8 @@ export function useConnection(): ConnectionModel {
     selectExit,
     killSwitch,
     setKillSwitch,
+    transportMode,
+    setTransportMode,
     autoConnect,
     setAutoConnect,
     connectedSince,

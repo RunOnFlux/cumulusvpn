@@ -17,7 +17,10 @@ test('generate.mjs (open, default) expands countries.yaml into 12 beta v8 OPEN s
 
     const onchainDir = join(sb, 'specs', 'onchain');
     const onchain = readdirSync(onchainDir).filter((f) => f.startsWith('cumulus'));
-    assert.equal(onchain.length, 12, 'exactly 12 beta on-chain specs');
+    const standard = onchain.filter((f) => !f.startsWith('cumulusvpntls'));
+    const stealth = onchain.filter((f) => f.startsWith('cumulusvpntls'));
+    assert.equal(standard.length, 12, 'exactly 12 standard beta on-chain specs');
+    assert.equal(stealth.length, 1, 'the DE 443-stealth group (cumulusvpntlsde)');
 
     for (const f of onchain) {
       const spec = JSON.parse(readFileSync(join(onchainDir, f), 'utf8'));
@@ -44,6 +47,52 @@ test('generate.mjs (open, default) expands countries.yaml into 12 beta v8 OPEN s
         );
       }
     }
+
+    // Standard specs advertise awg + wg-tls on the FREE protocol sides (no 443,
+    // no explicit TLS port → the relay rides 51820/tcp).
+    const de = JSON.parse(readFileSync(join(onchainDir, 'cumulusvpnde.json'), 'utf8'));
+    const deEnv = de.compose[0].environmentParameters;
+    assert.ok(deEnv.includes('CVPN_OBFS_ENABLE=1'), 'standard advertises awg');
+    assert.ok(deEnv.includes('CVPN_TLS_ENABLE=1'), 'standard advertises wg-tls');
+    assert.ok(
+      !deEnv.some((e) => e.startsWith('CVPN_TLS_PORT=')),
+      'standard uses the default TLS port (51820/tcp) — no 443',
+    );
+    assert.deepEqual(de.compose[0].ports, [51820, 51821], 'standard keeps 2 ports (no 443)');
+
+    // The 443 STEALTH group lists 443 and runs the TLS relay there.
+    const tlsDe = JSON.parse(readFileSync(join(onchainDir, 'cumulusvpntlsde.json'), 'utf8'));
+    assert.deepEqual(tlsDe.compose[0].ports, [51820, 51821, 443], 'stealth group lists 443');
+    const tlsEnv = tlsDe.compose[0].environmentParameters;
+    assert.ok(
+      tlsEnv.includes('CVPN_TLS_ENABLE=1') && tlsEnv.includes('CVPN_TLS_PORT=443'),
+      'stealth group runs the TLS relay on 443',
+    );
+    assert.equal(tlsDe.geolocation[0], 'acEU_DE', 'stealth group stays in its country');
+
+    // The stealth group is sized INDEPENDENTLY of the country's standard count.
+    // They used to share one number, so flagging a country stealth silently
+    // doubled its paid footprint — onto 443, a surcharged sub-1024 port — which
+    // is the opposite of the "bounded strategic footprint" the group exists for.
+    assert.ok(
+      tlsDe.instances < de.instances,
+      `stealth group (${tlsDe.instances}) must not inherit the standard count (${de.instances})`,
+    );
+
+    // The scarce 443 tier is premium-gated; the standard group's free-side
+    // wg-tls is NOT (gating it would cost free users stealth for no saving).
+    assert.ok(tlsEnv.includes('CVPN_TLS_PREMIUM=1'), '443 stealth tier is premium-gated');
+    assert.ok(!deEnv.includes('CVPN_TLS_PREMIUM=1'), 'standard wg-tls stays open to everyone');
+
+    // The gateway's premium WG device is container-internal: publishing 51822
+    // would let clients bypass the TLS relay and defeat the gate.
+    for (const f of onchain) {
+      const spec = JSON.parse(readFileSync(join(onchainDir, f), 'utf8'));
+      for (const comp of spec.compose) {
+        assert.ok(!comp.ports.includes(51822), `${f}: 51822 must never be published`);
+        assert.ok(!comp.containerPorts.includes(51822), `${f}: 51822 must never be published`);
+      }
+    }
   } finally {
     cleanup(sb);
   }
@@ -68,8 +117,9 @@ test('generate.mjs --variant datacenter emits 12 on-chain + 12 plain enterprise 
     const plainDir = join(sb, 'specs', 'plain');
     const onchain = readdirSync(onchainDir).filter((f) => f.startsWith('cumulus'));
     const plain = readdirSync(plainDir).filter((f) => f.startsWith('cumulus'));
-    assert.equal(onchain.length, 12, 'exactly 12 beta on-chain specs');
-    assert.equal(plain.length, 12, 'exactly 12 beta plain specs');
+    // 12 standard + 1 DE 443-stealth group = 13, in both onchain and plain.
+    assert.equal(onchain.length, 13, '12 standard + 1 stealth on-chain specs');
+    assert.equal(plain.length, 13, '12 standard + 1 stealth plain specs');
 
     for (const f of onchain) {
       const spec = JSON.parse(readFileSync(join(onchainDir, f), 'utf8'));

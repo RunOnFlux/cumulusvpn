@@ -88,11 +88,42 @@ Response `data`:
 {
   "country": "DE", "region": "HE", "city": "Frankfurt",
   "load": 0.12, "capacity": 1988,
-  "version": "0.1.0-poc", "min_client_version": "0.1.0",
-  "build_commit": "<short git sha, optional>",
-  "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>"
+  "version": "0.2.0", "min_client_version": "0.1.0",
+  "build_commit": "<full git sha, optional>",
+  "peers_persisted": true,
+  "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>",
+  "transports": [{ "type": "wg", "port": 51820 }]
 }
 ```
+
+**`transports`** — the DPI-resistance negotiation array (docs/15-transports.md): the
+transports this gateway can serve, each `{ "type", "port", "params"? }`. `type` is a
+stable slug (`"wg"` = vanilla WireGuard; later `"awg"` = AmneziaWG, `"wg-tls"` =
+WireGuard-over-TLS); `port` is where that transport listens; optional `params`
+carries transport-specific knobs (e.g. AmneziaWG obfuscation values), absent for
+`wg`. A client dials the best transport it *implements* that the gateway advertises,
+and ignores types it doesn't. Backward compatibility: a **pre-negotiation (0.1.0)
+gateway omits the field entirely** — clients then assume vanilla WireGuard on `51820`,
+so old gateways and old apps keep interoperating with no flag-day. The array rides the
+signed body, so it is covered by the `X-CVPN-Signature` with no separate signing.
+
+**`peers_persisted`** — whether enrollments on this gateway survive a restart. `false`
+means the node reverted to holding the peer table only in memory (an unwritable `/data`,
+or a peer cache it could not read and so declined to overwrite), so every peer it
+registers is lost at the next restart. Nothing else distinguishes such a node from
+outside: it keeps enrolling clients and advertising capacity. It matters most for a
+statically-issued `.conf`, which cannot re-enroll. **Absent** on gateways older than the
+persistence release — treat missing as *unknown*, never as `false`.
+
+**Reserved param — `params.tier`.** `"premium"` marks a transport as entitled-users-only
+(the scarce 443 stealth tier). `/v1/info` is unauthenticated, so the gateway advertises
+it to everyone and *enforces* separately: that listener fronts a WireGuard device whose
+peer set holds only paid keys, so a free client can reach it but never completes the
+inner handshake. Clients must therefore **skip** a `tier: "premium"` transport unless
+`/v1/status` reports `premium`, falling back to the next-best transport (e.g. `awg`)
+rather than dialling one they can't finish. Any other value — or an absent `params.tier` —
+is ungated; unknown values fail **open**, so an old client still works against a gateway
+that later introduces further tiers.
 
 ## Discovery (no server of ours)
 

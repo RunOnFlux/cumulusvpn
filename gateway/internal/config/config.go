@@ -16,10 +16,25 @@ import (
 // Fixed ports. These are host-mapped 1:1 by the Flux app spec, so they are
 // constants of the protocol rather than tunables.
 const (
-	// WGListenPort is the WireGuard UDP listen port.
+	// WGListenPort is the vanilla WireGuard UDP listen port.
 	WGListenPort = 51820
 	// APIPort is the control API (enroll/status/info) TCP port.
 	APIPort = 51821
+	// WGObfsPort is the obfuscated (AmneziaWG) WireGuard UDP listen port. It
+	// rides the UDP side of the already-listed API port (51821 is TCP for the
+	// API, UDP for obfs), so the DPI-resistant transport costs no extra Flux
+	// port (docs/15-transports.md). Enabled by CVPN_OBFS_ENABLE.
+	WGObfsPort = APIPort
+	// WGTLSPremiumPort is the WireGuard UDP port of the PREMIUM-ONLY device that
+	// the TLS relay fronts when CVPN_TLS_PREMIUM is set (docs/15-transports.md).
+	//
+	// It is deliberately NOT listed in any Flux app spec `ports[]`, so FluxOS
+	// never publishes it and it is unreachable from the internet — the only way
+	// in is through the TLS relay, which is exactly what makes the gate
+	// enforceable. (wireguard-go binds 0.0.0.0 inside the container's netns; that
+	// is fine, since WireGuard still authenticates by key. NEVER add 51822 to a
+	// spec's ports[] — that would publish it and bypass the relay entirely.)
+	WGTLSPremiumPort = 51822
 )
 
 // Config is the fully resolved gateway configuration.
@@ -66,6 +81,13 @@ type Config struct {
 	// CVPN_GATEWAY_FLEET_ALLOW=false to disable (also disables multi-hop entry).
 	GatewayFleetAllow bool
 
+	// AllowPrivateEgress, when true, lets the forwarder reach private/loopback/
+	// link-local destinations. Default FALSE — the SSRF guard, so an enrolled
+	// client can't pivot through the exit into the node's own network or cloud
+	// metadata. Set CVPN_ALLOW_PRIVATE_EGRESS=true only for a deliberately
+	// private-network deployment.
+	AllowPrivateEgress bool
+
 	// NodeHostIP is the public IP of the Flux node hosting this container
 	// (FLUX_NODE_HOST_IP, injected by FluxOS). Used for daemon API calls.
 	NodeHostIP string
@@ -76,24 +98,72 @@ type Config struct {
 	// restarts keep the same identity. Loss is survivable (clients
 	// re-enroll via discovery) but churny.
 	KeyFile string
+
+	// PeerCacheFile is where the peer table (pubkey -> assigned tunnel IP) is
+	// persisted so enrollments survive a restart. Without it a restart silently
+	// de-registers every client: the apps recover by re-enrolling on connect,
+	// but a static WireGuard .conf issued by the web client cannot, so its user
+	// is left with a tunnel that reports connected and never handshakes. Loss is
+	// survivable in the same way KeyFile loss is.
+	PeerCacheFile string
+
+	// ObfsEnable turns on the DPI-resistant AmneziaWG listener on WGObfsPort
+	// (docs/15-transports.md). Off by default; when off the gateway serves only
+	// vanilla WireGuard and does not advertise the obfuscated transport, so a
+	// 0.2.0 image with obfs disabled behaves exactly like 0.1.0. Set via
+	// CVPN_OBFS_ENABLE.
+	ObfsEnable bool
+
+	// TLSEnable turns on the WG-over-TLS "stealth" listener (transport wg-tls,
+	// docs/15-transports.md): WireGuard tunnelled inside an ordinary-looking TLS
+	// session so it survives both the WG fingerprint and UDP/port blocking. Off
+	// by default. Set via CVPN_TLS_ENABLE.
+	TLSEnable bool
+	// TLSPort is the TCP port the TLS relay listens on. Default WGListenPort
+	// (the free TCP side of the WG UDP port → no extra Flux port); set to 443 on
+	// a stealth-subset node for HTTPS camouflage. Set via CVPN_TLS_PORT.
+	TLSPort int
+	// TLSSNI is the server name the client presents / the self-signed cert CN.
+	// Cosmetic (the cert is camouflage only), but a plausible value blends in.
+	// Set via CVPN_TLS_SNI.
+	TLSSNI string
+	// TLSPremium reserves the wg-tls transport for PAYING users — intended for
+	// the scarce/expensive 443 stealth spec group (docs/15-transports.md M4).
+	//
+	// When true the relay fronts a dedicated WireGuard device on
+	// WGTLSPremiumPort whose peer set contains only premium keys, so a free user
+	// can complete TLS but never the inner WireGuard handshake. The transport is
+	// still advertised to everyone (/v1/info is unauthenticated) but tagged
+	// `params.tier=premium` so clients skip it rather than fail. Default FALSE:
+	// the standard group's wg-tls rides the free TCP side of 51820 and stays open
+	// to everyone, so turning this on fleet-wide would take stealth away from
+	// free users. Set via CVPN_TLS_PREMIUM.
+	TLSPremium bool
 }
 
 // Load reads configuration from the environment, applying documented defaults
 // and validating required values.
 func Load() (*Config, error) {
 	cfg := &Config{
-		PriceFlux:         envFloat("CVPN_PRICE_FLUX", 0),
-		PaymentAddress:    os.Getenv("CVPN_PAYMENT_ADDRESS"),
-		DirectoryPubKey:   os.Getenv("CVPN_DIRECTORY_PUBKEY"),
-		FreeRateKBps:      envInt("CVPN_FREE_RATE_KBPS", 100),
-		PremiumRateMbps:   envInt("CVPN_PREMIUM_RATE_MBPS", 50),
-		MaxPeersFree:      envInt("CVPN_MAX_PEERS_FREE", 500),
-		MaxPeersTotal:     envInt("CVPN_MAX_PEERS_TOTAL", 2000),
-		CapacityMbps:      envInt("CVPN_CAPACITY_MBPS", 1000),
-		NodeHostIP:        os.Getenv("FLUX_NODE_HOST_IP"),
-		AppName:           os.Getenv("FLUX_APP_NAME"),
-		KeyFile:           envStr("CVPN_KEY_FILE", "/data/server.key"),
-		GatewayFleetAllow: envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
+		PriceFlux:          envFloat("CVPN_PRICE_FLUX", 0),
+		PaymentAddress:     os.Getenv("CVPN_PAYMENT_ADDRESS"),
+		DirectoryPubKey:    os.Getenv("CVPN_DIRECTORY_PUBKEY"),
+		FreeRateKBps:       envInt("CVPN_FREE_RATE_KBPS", 100),
+		PremiumRateMbps:    envInt("CVPN_PREMIUM_RATE_MBPS", 50),
+		MaxPeersFree:       envInt("CVPN_MAX_PEERS_FREE", 500),
+		MaxPeersTotal:      envInt("CVPN_MAX_PEERS_TOTAL", 2000),
+		CapacityMbps:       envInt("CVPN_CAPACITY_MBPS", 1000),
+		NodeHostIP:         os.Getenv("FLUX_NODE_HOST_IP"),
+		AppName:            os.Getenv("FLUX_APP_NAME"),
+		KeyFile:            envStr("CVPN_KEY_FILE", "/data/server.key"),
+		PeerCacheFile:      envStr("CVPN_PEER_CACHE_FILE", "/data/peers.cache"),
+		GatewayFleetAllow:  envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
+		AllowPrivateEgress: envBool("CVPN_ALLOW_PRIVATE_EGRESS", false),
+		ObfsEnable:         envBool("CVPN_OBFS_ENABLE", false),
+		TLSEnable:          envBool("CVPN_TLS_ENABLE", false),
+		TLSPort:            envInt("CVPN_TLS_PORT", WGListenPort),
+		TLSSNI:             os.Getenv("CVPN_TLS_SNI"),
+		TLSPremium:         envBool("CVPN_TLS_PREMIUM", false),
 	}
 
 	if v := os.Getenv("CVPN_EGRESS_ALLOW_PORTS"); v != "" {

@@ -68,6 +68,14 @@ export const ar: Catalog = {
   connect_stat_endpoint: 'نقطة النهاية',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'تنزيل .conf',
+  connect_conf_note:
+    'مرتبط بهذا الخادم. إذا أُعيد تشغيله أو تغيّر، سيظل WireGuard يعرض النفق متصلاً دون أن يمر أي شيء — عد إلى هنا وأنشئ ملف ‎.conf‎ جديدًا.',
+  connect_conf_regenerate: 'إنشاء ملف ‎.conf‎ جديد',
+  connect_conf_stale:
+    'تم استبدال الخادم الذي أصدر إعدادك الأخير لـ {country} — لم يعد بإمكان ذلك الإعداد الاتصال. أنشئ إعدادًا جديدًا أدناه.',
+  connect_conf_unsure:
+    'تعذّر الوصول إلى الخادم الذي أصدر إعدادك الأخير لـ {country}. قد يكون متوقفًا مؤقتًا أو زال نهائيًا — إذا كان النفق لا يمرر أي بيانات، فأنشئ إعدادًا جديدًا أدناه.',
+  connect_conf_checking: 'جارٍ فحص إعدادك الأخير…',
   connect_upgrade_cta: 'الترقية إلى السرعة الكاملة ←',
   connect_identity_title: 'هوية هذا الجهاز',
   connect_regenerate: 'إعادة إنشاء المفتاح',
@@ -91,6 +99,30 @@ export const ar: Catalog = {
   upgrade_privacy_note:
     'يفتح في Zelcore / SSP Wallet. يُتحقَّق من الدفعة على سلسلة كتل Flux — لا نرى أبدًا من أنت. تربط الرسالة الدفعة بمفتاحك؛ الإرسال بدونها يعني وصول الأموال دون أن يُطلَق شيء.',
   upgrade_back: '→ العودة إلى الاتصال',
+
+  split_summary_title: 'متقدم: تقسيم النفق',
+  split_tier_pill: 'بريميوم · اختياري',
+  split_lede:
+    'اختر الوجهات التي تمر عبر VPN. تعبّر التهيئة المولَّدة عن القواعد كـ AllowedIPs في WireGuard، لذا تعمل مع تطبيق WireGuard القياسي — نطاقات IP وتجاوز الشبكة المحلية فقط (قواعد التطبيقات تتطلب تطبيقاتنا الأصلية).',
+  split_mode_aria: 'وضع تقسيم النفق',
+  split_mode_off: 'إيقاف',
+  split_mode_exclude: 'استبعاد المُدرجة',
+  split_mode_include: 'هذه فقط',
+  split_warn_exclude:
+    'حركة المرور المستبعدة تغادر جهازك دون حماية وتُظهر عنوان IP الحقيقي الخاص بك.',
+  split_warn_include: 'الوجهات المُدرجة فقط محمية — كل ما عداها يُظهر عنوان IP الحقيقي الخاص بك.',
+  split_lan_label: 'السماح بالوصول إلى الشبكة المحلية (طابعات، NAS، بث)',
+  split_cidr_placeholder: 'مثل 192.168.0.0/16 أو 203.0.113.7',
+  split_cidr_aria: 'عنوان IP أو نطاق CIDR',
+  split_add: 'إضافة',
+  split_input_invalid: 'عنوان IP أو نطاق CIDR غير صالح.',
+  split_rules_empty:
+    'لا توجد قواعد IP بعد — أضف نطاقًا أعلاه، أو استخدم الوصول إلى الشبكة المحلية فقط.',
+  split_remove_aria: 'إزالة القاعدة {value}',
+  split_next_note: 'تنطبق القواعد على التهيئة التالية التي تولّدها في هذه الصفحة.',
+  split_premium_required:
+    'تقسيم النفق ميزة بريميوم. تم توليد تهيئة نفق كامل بدلًا من ذلك — قم بالترقية لتطبيق قواعدك.',
+  split_applied: 'تم تطبيق تقسيم النفق — هذه التهيئة توجّه فقط ما تسمح به قواعدك.',
 
   multihop_summary_title: 'متقدم: تعدد القفزات (إعدادان)',
   multihop_tier_pill: 'مميز · اختياري',

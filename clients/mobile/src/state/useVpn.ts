@@ -11,17 +11,32 @@
  *   config → hand to native tunnel → poll status for tier.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import {
+  applyTransportToEndpoint,
   buildMultihopConfig,
   buildWgConfig,
+  compileSplitPolicy,
   enroll,
   generateKeypair,
+  hasPremiumTransport,
+  obfsForTransport,
   paymentCode,
   paymentMemo,
+  requireTransport,
   selectHops,
+  transportFallbackChain,
   status as fetchStatus,
 } from '@cumulusvpn/core';
-import type { EnrollResponse, GatewayInfo, Keypair, RouteStyle, Tier } from '@cumulusvpn/core';
+import type {
+  CompiledSplit,
+  EnrollResponse,
+  GatewayInfo,
+  Keypair,
+  RouteStyle,
+  Tier,
+  TransportMode,
+} from '@cumulusvpn/core';
 import {
   CumulusTunnel,
   onTunnelStatus,
@@ -40,6 +55,7 @@ import {
 } from '../lib/gateways';
 import { solvePowFast } from '../lib/pow';
 import { bundledDirectory } from '../lib/directory';
+import { SCREENSHOT_MODE, demoSession } from '../lib/screenshot';
 import {
   loadActiveRoute,
   loadAutoConnect,
@@ -49,7 +65,10 @@ import {
   loadFleet,
   loadKeypair,
   loadKillSwitch,
+  loadNodeDiversity,
   loadRouteStyle,
+  loadSplitPolicy,
+  loadTransportMode,
   loadSelectedCountry,
   saveActiveRoute,
   saveAutoConnect,
@@ -59,14 +78,62 @@ import {
   saveFleet,
   saveKeypair,
   saveKillSwitch,
+  saveNodeDiversity,
   saveRouteStyle,
+  saveTransportMode,
   saveSelectedCountry,
 } from './storage';
+
+/**
+ * Compile the stored split-tunneling policy for THIS session
+ * (docs/17-split-tunneling.md), or undefined for the byte-identical full
+ * tunnel. Recompiled per (re)connect against the fresh endpoint IPs — the
+ * compiled output is session state, never cached across reconnects (§7.4).
+ *
+ * Compiled with `supportsExcludeRoute: false` on both mobile platforms so the
+ * whole policy rides the config's `AllowedIPs` (the pre-computed complement) —
+ * one uniform mechanism for GoBackend, wgnest and the iOS provider.
+ *
+ * Gates, both failing toward MORE protection:
+ * - Premium-only (§7.6): non-premium → full tunnel; policy stays stored.
+ * - iOS kill switch (`includeAllNetworks`) disregards route exclusions
+ *   (§4.5), so with it on the split is dropped rather than half-applied.
+ */
+async function splitForSession(
+  tier: Tier,
+  killSwitch: boolean,
+  endpointIps: readonly string[],
+): Promise<CompiledSplit | undefined> {
+  if (tier !== 'premium' || (killSwitch && Platform.OS === 'ios')) {
+    return undefined;
+  }
+  const compiled = compileSplitPolicy(await loadSplitPolicy(), {
+    platform: Platform.OS === 'ios' ? 'ios' : 'android',
+    supportsExcludeRoute: false,
+    endpointIps,
+  });
+  return compiled.isNoop ? undefined : compiled;
+}
 
 /** True for any route style that stacks two hops (multi-hop is off by default). */
 export function isMultihop(style: RouteStyle): boolean {
   return style !== 'single';
 }
+
+/**
+ * Transport slugs THIS platform's native tunnel can actually dial. Both iOS and
+ * Android run the amneziawg-go engine via wgnest for obfuscated single-hop
+ * (iOS: the packet-tunnel extension; Android: CumulusObfsVpnService, while
+ * vanilla single-hop stays on the stock GoBackend), so both can do `awg`.
+ * `wg-tls` rides a native UDP<->TLS bridge (iOS: WgTlsBridge in the packet-tunnel
+ * extension; Android: WgTlsBridge in CumulusObfsVpnService), so both can do it
+ * too. Passed to core `requireTransport` so a mode only picks a transport this
+ * build can bring up.
+ */
+const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> =
+  Platform.OS === 'ios' || Platform.OS === 'android'
+    ? new Set(['wg', 'awg', 'wg-tls'])
+    : new Set(['wg']);
 
 /** Everything the UI renders from. */
 export interface VpnModel {
@@ -92,6 +159,12 @@ export interface VpnModel {
    * styles opt into the nested-onion path from `docs/11-multihop.md`.
    */
   readonly routeStyle: RouteStyle;
+  /**
+   * Transport mode (DPI resistance). `'auto'` (default) prefers the fastest that
+   * connects; `'stealth'` picks an obfuscated transport (AmneziaWG / WG-over-TLS)
+   * where the gateway advertises one and this build implements it. Persisted.
+   */
+  readonly transportMode: TransportMode;
   /** Convenience flag: true for any `multihop-*` style. */
   readonly multihop: boolean;
   /** Chosen multi-hop entry country, or null to auto-pick the nearest healthy. */
@@ -100,10 +173,19 @@ export interface VpnModel {
   readonly exit: Country | null;
   /** Kill switch: block all non-tunnel traffic while connected (persisted). */
   readonly killSwitch: boolean;
+  /**
+   * Multi-hop node diversity: require the entry and exit gateways to sit on
+   * different subnets, so a route can't be built from two co-located nodes.
+   * Off by default; a small fleet may make a diverse route impossible, in which
+   * case a multi-hop connect fails with a clear message (persisted).
+   */
+  readonly nodeDiversity: boolean;
   /** Auto-connect on app launch once discovery completes (persisted). */
   readonly autoConnect: boolean;
   /** Unix-ms when the active session connected, or null when not connected. */
   readonly connectedSince: number | null;
+  /** True when the live session has split-tunneling rules applied (docs/17). */
+  readonly splitActive: boolean;
   /**
    * The actual entry hop of the live route (country + gateway IP). Reflects what
    * `selectHops` really chose — NOT the picker selection — so the connected
@@ -144,12 +226,16 @@ export interface VpnActions {
   refresh(): Promise<void>;
   /** Switch route style (Fast vs the two multi-hop styles); persisted. */
   setRouteStyle(style: RouteStyle): Promise<void>;
+  /** Switch transport mode (Auto vs Stealth); persisted. Applies on next connect. */
+  setTransportMode(mode: TransportMode): Promise<void>;
   /** Pick the multi-hop entry country (`null` = auto-pick nearest); persisted. */
   selectEntryCountry(code: string | null): Promise<void>;
   /** Pick the multi-hop exit country (`null` = auto-pick); persisted. */
   selectExitCountry(code: string | null): Promise<void>;
   /** Toggle the kill switch (persisted). Applies on the next connect. */
   setKillSwitch(enabled: boolean): Promise<void>;
+  /** Toggle multi-hop node diversity (persisted). Applies on the next connect. */
+  setNodeDiversity(enabled: boolean): Promise<void>;
   /** Toggle auto-connect on launch (persisted). */
   setAutoConnect(enabled: boolean): Promise<void>;
   /** Pin/unpin a country as a favorite (persisted). */
@@ -181,9 +267,11 @@ export function useVpn(): VpnModel & VpnActions {
   const [error, setError] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<EnrollResponse | null>(null);
   const [routeStyle, setRouteStyleState] = useState<RouteStyle>('single');
+  const [transportMode, setTransportModeState] = useState<TransportMode>('auto');
   const [entryCode, setEntryCode] = useState<string | null>(null);
   const [exitCode, setExitCode] = useState<string | null>(null);
   const [killSwitch, setKillSwitchState] = useState(false);
+  const [nodeDiversity, setNodeDiversityState] = useState(false);
   const [autoConnect, setAutoConnectState] = useState(false);
   const [favorites, setFavorites] = useState<readonly string[]>([]);
   // Mirror of `favorites` for toggleFavorite to read the current value without a
@@ -193,6 +281,11 @@ export function useVpn(): VpnModel & VpnActions {
   const autoConnectedRef = useRef(false);
   // Unix-ms when the current session connected, for the session timer.
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
+  // True when the LIVE session was built with split-tunneling rules applied —
+  // drives the persistent connect-screen indicator (docs/17 §8: a user must
+  // never be unsure whether they are fully protected). Session truth, not the
+  // stored policy: a tier lapse or kill-switch conflict makes them differ.
+  const [splitActive, setSplitActive] = useState(false);
   // The route actually established (from selectHops), for an honest connected
   // display. activeExit is null for single-hop.
   const [activeEntry, setActiveEntry] = useState<RouteEndpoint | null>(null);
@@ -218,6 +311,21 @@ export function useVpn(): VpnModel & VpnActions {
   // re-dialling the dead one. Entries expire; a manual disconnect clears them.
   const avoidRef = useRef<Map<string, number>>(new Map());
   const AVOID_MS = 90_000;
+  // Entitlement tier for TRANSPORT SELECTION (premium-gated transports). Held in
+  // a ref, not read from the `tier` state: putting tier in connect's dep array
+  // would give `connect` a new identity on every 30s poll, and the
+  // auto-reconnect effect depends on `connect` — its cleanup would clear the
+  // pending retry timer, silently starving a drop of its reconnect.
+  const tierRef = useRef<Tier>('free');
+  // True while connect() is walking the transport chain. Suppresses native status
+  // events for attempts we are ourselves tearing down (see the status effect).
+  const connectingRef = useRef(false);
+  // Monotonic connect generation. A sweep captures this on entry and re-checks it
+  // before every attempt; disconnect() (and any newer connect) bumps it, which
+  // CANCELS the in-flight sweep. Without this, a user tapping Disconnect mid-sweep
+  // looks identical to "this transport failed" — the loop would tear their
+  // teardown down and bring the tunnel straight back up.
+  const connectGenRef = useRef(0);
 
   /** Mark a gateway IP as recently-failed so failover skips it for a while. */
   const avoidGateway = useCallback((ip: string | null): void => {
@@ -366,9 +474,11 @@ export function useVpn(): VpnModel & VpnActions {
         setKeypair(restored);
         setSelectedCode(await loadSelectedCountry());
         setRouteStyleState(await loadRouteStyle());
+        setTransportModeState(await loadTransportMode());
         setEntryCode(await loadEntryCountry());
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
+        setNodeDiversityState(await loadNodeDiversity());
         setAutoConnectState(await loadAutoConnect());
         favoritesRef.current = await loadFavorites();
         setFavorites(favoritesRef.current);
@@ -400,13 +510,28 @@ export function useVpn(): VpnModel & VpnActions {
 
   // ---- native tunnel status stream ---------------------------------------
   useEffect(() => {
+    // A screenshot build never starts a real tunnel, so the only events it can
+    // receive are the extension's own 'disconnected' — which would knock the
+    // demo session straight back out of 'connected'. Compiled out normally.
+    if (SCREENSHOT_MODE) {
+      return undefined;
+    }
     const sub = onTunnelStatus((s) => {
       setStatus(s);
+      // While a connect is sweeping the transport chain, each failed attempt is
+      // torn down — which emits 'disconnected'/'error' events for a tunnel we are
+      // deliberately replacing. Honouring them would flash the UI to
+      // disconnected mid-sweep and let the auto-reconnect effect fire on top of
+      // an in-flight connect. Keep showing 'connecting' until the sweep decides.
+      if (connectingRef.current) {
+        return;
+      }
       setState(s.state);
       if (s.state === 'connected') {
         setConnectedSince((prev) => prev ?? Date.now());
       } else if (s.state === 'disconnected' || s.state === 'error') {
         setConnectedSince(null);
+        setSplitActive(false);
       }
     });
     return () => sub.remove();
@@ -450,6 +575,11 @@ export function useVpn(): VpnModel & VpnActions {
   // counters never move without an explicit poll. Sample every 1.5s and derive
   // down/up throughput from the deltas.
   useEffect(() => {
+    // Screenshot builds hold a fixed throughput; polling the (absent) native
+    // module would immediately zero it. Compiled out of normal builds.
+    if (SCREENSHOT_MODE) {
+      return undefined;
+    }
     if (state !== 'connected') {
       lastSampleRef.current = null;
       setSpeed({ down: 0, up: 0 });
@@ -494,6 +624,11 @@ export function useVpn(): VpnModel & VpnActions {
   // times out, so the Ping stat always read "—". This is the user's effective
   // latency via the VPN, which is the more useful number anyway.
   useEffect(() => {
+    // As above: the demo session's ping is fixed, and there is no tunnel to
+    // measure through. Compiled out of normal builds.
+    if (SCREENSHOT_MODE) {
+      return undefined;
+    }
     if (state !== 'connected') {
       setPingMs(null);
       return undefined;
@@ -532,19 +667,36 @@ export function useVpn(): VpnModel & VpnActions {
   }, [state]);
 
   // ---- connect watchdog: never hang on "connecting" forever --------------
-  // The enroll network step is bounded by core's fetch timeout, but a config
-  // that never completes the WireGuard handshake would otherwise leave the UI
-  // stuck. If we're still connecting after a generous window (multi-hop enrolls
-  // twice + handshakes twice), fail cleanly and tear down.
+  // The enroll network step is bounded by core's fetch timeout, and each
+  // transport attempt is bounded by its own handshake probe — but a native call
+  // that never returns at all (e.g. an iOS TLS connection stuck in .waiting)
+  // would still leave the UI stuck. This is the outer backstop.
+  //
+  // The budget must exceed the worst-case sweep, or it would kill a connect that
+  // was still legitimately working through the chain: a 3-transport chain costs
+  // 3 probes plus 2 teardowns, on top of enrollment.
   useEffect(() => {
     if (state !== 'connecting') {
       return;
     }
+    // Must strictly EXCEED the worst-case sweep, or the backstop would tear down
+    // a connect that is still legitimately working through the chain. Per
+    // attempt: the probe budget, its settle grace, and a teardown wait; plus
+    // enrollment (PoW + two round trips) up front, doubled for multi-hop.
+    const maxChain = IMPLEMENTED_TRANSPORTS.size;
+    const perAttempt = PROBE_MS + PROBE_SETTLE_MS + TEARDOWN_MS;
+    const budget = Math.max(40_000, 15_000 + maxChain * perAttempt);
     const id = setTimeout(() => {
+      // Cancel the sweep before tearing anything down. Otherwise stopTunnel()
+      // below makes the in-flight probe report a dead tunnel, the loop reads that
+      // as "this transport failed", walks the rest of the chain against a tunnel
+      // the watchdog already killed, and finally blacklists a healthy gateway.
+      connectGenRef.current += 1;
+      connectingRef.current = false;
       setState('error');
       setError('Connection timed out. Try another location.');
       void CumulusTunnel.stopTunnel().catch(() => undefined);
-    }, 40_000);
+    }, budget);
     return () => clearTimeout(id);
   }, [state]);
 
@@ -584,7 +736,17 @@ export function useVpn(): VpnModel & VpnActions {
         return;
       }
       const results = await Promise.all(
-        sample.map((g) => fetchStatus(g.ip, pubkey).catch(() => null)),
+        // Pin each gateway's signing key, as enroll does — this binds /v1/status
+        // to the key learned at discovery (defeating a later key swap). It is
+        // NOT a defence against a node lying about its own tier: that key comes
+        // from the node's own /v1/info, so it signs its own answer. This polled
+        // tier is for display only; a gated transport is decided against the
+        // gateway being dialled (see resolveGatewayTier).
+        sample.map((g) =>
+          fetchStatus(g.ip, pubkey, g.sign_pubkey ? { signPubKey: g.sign_pubkey } : {}).catch(
+            () => null,
+          ),
+        ),
       );
       if (!alive) {
         return;
@@ -592,9 +754,11 @@ export function useVpn(): VpnModel & VpnActions {
       const premiumResult = results.find((r) => r?.tier === 'premium');
       if (premiumResult) {
         setTier('premium');
+        tierRef.current = 'premium';
         setPaidUntil(premiumResult.paid_until);
       } else if (results.some((r) => r)) {
         setTier('free');
+        tierRef.current = 'free';
         setPaidUntil(null);
       }
     };
@@ -611,9 +775,40 @@ export function useVpn(): VpnModel & VpnActions {
     if (!keypair) {
       return;
     }
+    // Store-capture builds only (CVPN_SCREENSHOT=1). Enter the connected state
+    // without touching the native module: iOS packet-tunnel extensions do not
+    // run on the Simulator, so the real path can never succeed there and the
+    // connected hero frame would be uncapturable without a physical device.
+    // Compiled out of every normal build — see src/lib/screenshot.ts.
+    if (SCREENSHOT_MODE) {
+      // Match what the picker row promises. On Automatic it reads
+      // "Nearest: <locations[0]>", so connecting the demo session to anything
+      // else would make the finished frame look like a bug.
+      const demoHop = selected ?? locations[0] ?? null;
+      const demo = demoSession(demoHop ? routeEndpoint(demoHop.best) : null);
+      setActiveEntry(demo.entry);
+      setActiveExit(null);
+      setConnectedSince(demo.connectedSince);
+      setSpeed({ ...demo.speed });
+      setPingMs(demo.pingMs);
+      setError(null);
+      setState('connected');
+      return;
+    }
+    // Re-entrancy + cancellation: bumping the generation cancels any sweep still
+    // in flight (a double-tap, or a reconnect racing a manual connect), so two
+    // sweeps can never interleave start/teardown against the same tunnel.
+    connectGenRef.current += 1;
+    const myGen = connectGenRef.current;
+    const cancelled = () => connectGenRef.current !== myGen;
+
     wantConnectedRef.current = true;
     setError(null);
     setState('connecting');
+    // Suppress native status events for attempts this sweep tears down itself,
+    // and make sure a prior session can't trigger auto-reconnect mid-connect.
+    connectingRef.current = true;
+    wasConnectedRef.current = false;
     try {
       // Android/iOS require explicit VPN consent before a tunnel can be created;
       // without it the native backend throws (Android: GoBackend BackendException).
@@ -639,13 +834,21 @@ export function useVpn(): VpnModel & VpnActions {
         const hops = await connectMultihop({
           keypair,
           routeStyle,
+          transportMode,
+          tier: tierRef.current,
           gateways: availableGateways(),
           entryCountry: entryCode ?? autoEntry ?? null,
           exitCountry: exitCode,
           gatewayIpRef,
           setEnrollment,
           killSwitch,
+          requireDistinctSubnet: nodeDiversity,
         });
+        // Multi-hop has a single entry transport, so there is no chain to walk —
+        // it still reaches 'connected' via native status events, which means the
+        // suppression gate must come off BEFORE those events arrive.
+        connectingRef.current = false;
+        setSplitActive(hops.splitApplied);
         const entryEp = routeEndpoint(hops.entry);
         const exitEp = routeEndpoint(hops.exit);
         setActiveEntry(entryEp);
@@ -667,35 +870,152 @@ export function useVpn(): VpnModel & VpnActions {
       // Failover-aware: skip any node that just dropped/failed us.
       const gw = pickGateway(target);
       gatewayIpRef.current = gw.ip;
+
+      // Transport negotiation (docs/15-transports.md): pick the transport this
+      // gateway advertises for the current mode BEFORE enrolling. `requireTransport`
+      // THROWS rather than falling back to vanilla, so Stealth never silently
+      // downgrades to fingerprintable plain WireGuard — Auto still resolves to
+      // :51820 (vanilla is its floor). Doing it before enroll means a
+      // Stealth-on-vanilla request fails fast without spending a PoW/enrollment
+      // or marking the gateway bad (it's not a node failure). `obfs` is set only
+      // for `awg`.
+      // Entitlement is chain-derived and each gateway evaluates it on its own
+      // schedule, so the fleet-wide polled tier can disagree with the node that
+      // actually enforces the gate — and guessing wrong doesn't error, it hangs
+      // (TLS connects, the inner handshake never does). When THIS gateway gates
+      // a transport, ask THIS gateway. One request, only on the gated path;
+      // failure leaves the conservative cached value.
+      const gwTier = await resolveGatewayTier(gw, keypair.publicKey, tierRef.current);
+      // Take the WHOLE ordered chain, not just the best entry: a tunnel coming up
+      // is not the same as it working, so we may need the next one. The chain is
+      // already filtered by mode, this build's capabilities and entitlement —
+      // which is what makes fallback safe, since it can only walk within the
+      // mode's own preference list (Stealth can never fall back to plain WG).
+      const chain = transportFallbackChain(
+        gw.transports,
+        transportMode,
+        IMPLEMENTED_TRANSPORTS,
+        gwTier,
+      );
+      if (chain.length === 0) {
+        // Throws the precise mode/tier-aware message (Premium-only vs no
+        // DPI-resistant transport) — one source of truth for that copy.
+        requireTransport(gw.transports, transportMode, IMPLEMENTED_TRANSPORTS, gwTier);
+      }
+
+      // ONE enrollment for the whole chain: it's transport-agnostic, and the
+      // gateway rate-limits enroll to one per source IP per 2s, so re-enrolling
+      // per attempt would trip that limit mid-fallback. A failure here IS a node
+      // failure, so it's the only part that marks the gateway bad.
+      let resp;
       try {
-        const resp = await enroll(gw.ip, keypair.publicKey, {
+        resp = await enroll(gw.ip, keypair.publicKey, {
           signPubKey: gw.sign_pubkey,
           powSolver: solvePowFast,
         });
-        setEnrollment(resp);
-        const entryEp = routeEndpoint(gw);
-        setActiveEntry(entryEp);
-        setActiveExit(null);
+      } catch (e) {
+        avoidGateway(gw.ip);
+        throw e;
+      }
+      setEnrollment(resp);
+      const entryEp = routeEndpoint(gw);
+      setActiveEntry(entryEp);
+      setActiveExit(null);
 
-        const wgConfig = buildWgConfig({
+      // Split tunneling: one compile for the whole chain — every attempt dials
+      // the same gateway IP (only the port differs per transport).
+      const split = await splitForSession(gwTier, killSwitch, [gw.ip]);
+
+      for (let i = 0; i < chain.length; i += 1) {
+        // The user hit Disconnect (or a newer connect started) — stop. Without
+        // this the sweep would read their teardown as "this transport failed"
+        // and immediately bring the tunnel back up against their wishes. No
+        // teardown needed here: this attempt has not started a tunnel yet.
+        if (cancelled()) {
+          return;
+        }
+        const transport = chain[i]!;
+        const endpoint = applyTransportToEndpoint(resp.endpoint, transport);
+        const obfs = obfsForTransport(transport);
+
+        let wgConfig = buildWgConfig({
           privateKey: keypair.privateKey,
           assignedIp: resp.assigned_ip,
           dns: resp.dns,
           serverPubKey: resp.server_pubkey,
-          endpoint: resp.endpoint,
+          endpoint,
+          ...(obfs ? { obfs } : {}),
+          ...(split ? { split } : {}),
         });
-        await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
-        // Persist the live route so a force-quit + relaunch can restore where
-        // we're connected (see the launch-reconciliation effect).
-        void saveActiveRoute({ entry: entryEp, exit: null });
-      } catch (e) {
-        // This node failed — avoid it so the reconnect/retry hops elsewhere.
-        avoidGateway(gw.ip);
-        throw e;
+        // wg-tls: the native extension bridges the WG device over TLS to the
+        // gateway relay (the config Endpoint, now gateway:tlsPort). We can't pass
+        // separate fields through the fixed startTunnel(config,name,killSwitch)
+        // bridge, so carry the SNI as a namespaced sentinel line the extension's
+        // WgQuick parser reads (it never reaches wgnest — the UAPI is built from
+        // the parsed fields). obfs stays absent (the TLS wrapper is the obfuscation).
+        if (transport.type === 'wg-tls') {
+          const sni = transport.params?.sni || gw.ip;
+          wgConfig += `\nCVPN_TLS_SNI = ${sni}\n`;
+        }
+
+        try {
+          await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
+        } catch {
+          // A native reject is a verdict on this transport, not the node — try
+          // the next one rather than failing the whole connect.
+          await teardownAttempt();
+          continue;
+        }
+
+        // startTunnel only means the OS started it; only a handshake proves the
+        // transport actually works here.
+        const probe = await probeHandshake();
+        // Re-check AFTER the probe: a Disconnect landing mid-probe makes the
+        // tunnel look dead, which is indistinguishable from a failed transport.
+        if (cancelled()) {
+          // This attempt's tunnel is LIVE. disconnect() and the watchdog stop it
+          // themselves, but a newer connect() only bumps the generation and may
+          // die before its own startTunnel (its enroll now runs inside this
+          // tunnel and can be blackholed). Abandoning it would leave a live VPN
+          // holding the default route with no in-app way to disconnect.
+          await teardownAttempt();
+          return;
+        }
+        if (probe === 'up') {
+          connectingRef.current = false;
+          setState('connected');
+          setSplitActive(split !== undefined);
+          // The native 'connected' event is suppressed during a sweep, so the
+          // session timer has to be started here or it never starts at all.
+          setConnectedSince((prev) => prev ?? Date.now());
+          // Persist the live route so a force-quit + relaunch can restore where
+          // we're connected (see the launch-reconciliation effect).
+          void saveActiveRoute({ entry: entryEp, exit: null });
+          return;
+        }
+        await teardownAttempt();
       }
+
+      // Every transport this node offers failed — now it IS the node.
+      avoidGateway(gw.ip);
+      connectingRef.current = false;
+      setState('error');
+      setError(
+        `Tried ${chain.map((t) => t.type).join(' → ')} — none connected. Try another location.`,
+      );
+      return;
     } catch (e) {
+      connectingRef.current = false;
       setState('error');
       setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      // Belt and braces: never leave native status events suppressed, or the UI
+      // would stop tracking the tunnel entirely. Only the CURRENT sweep may
+      // clear the gate — an older, cancelled sweep unwinding here would
+      // otherwise un-gate the newer sweep that is still running.
+      if (!cancelled()) {
+        connectingRef.current = false;
+      }
     }
   }, [
     keypair,
@@ -703,15 +1023,34 @@ export function useVpn(): VpnModel & VpnActions {
     locations,
     selectedCode,
     routeStyle,
+    transportMode,
     entryCode,
     exitCode,
     killSwitch,
+    nodeDiversity,
     pickGateway,
     avoidGateway,
     availableGateways,
   ]);
 
   const disconnect = useCallback(async (): Promise<void> => {
+    // Screenshot builds: there is no native tunnel to stop, so just drop the
+    // demo session. Lets a capture session toggle between the connected and
+    // disconnected heroes. Compiled out of normal builds.
+    if (SCREENSHOT_MODE) {
+      setState('disconnected');
+      setActiveEntry(null);
+      setActiveExit(null);
+      setConnectedSince(null);
+      setSplitActive(false);
+      setSpeed({ down: 0, up: 0 });
+      setPingMs(null);
+      return;
+    }
+    // Cancel any in-flight transport sweep FIRST, so it can't misread this
+    // teardown as a failed transport and immediately reconnect.
+    connectGenRef.current += 1;
+    connectingRef.current = false;
     wantConnectedRef.current = false;
     wasConnectedRef.current = false;
     setState('disconnecting');
@@ -778,6 +1117,11 @@ export function useVpn(): VpnModel & VpnActions {
     await saveRouteStyle(style);
   }, []);
 
+  const setTransportMode = useCallback(async (mode: TransportMode): Promise<void> => {
+    setTransportModeState(mode);
+    await saveTransportMode(mode);
+  }, []);
+
   const selectEntryCountry = useCallback(async (code: string | null): Promise<void> => {
     setEntryCode(code);
     await saveEntryCountry(code);
@@ -791,6 +1135,11 @@ export function useVpn(): VpnModel & VpnActions {
   const setKillSwitch = useCallback(async (enabled: boolean): Promise<void> => {
     setKillSwitchState(enabled);
     await saveKillSwitch(enabled);
+  }, []);
+
+  const setNodeDiversity = useCallback(async (enabled: boolean): Promise<void> => {
+    setNodeDiversityState(enabled);
+    await saveNodeDiversity(enabled);
   }, []);
 
   const setAutoConnect = useCallback(async (enabled: boolean): Promise<void> => {
@@ -824,12 +1173,15 @@ export function useVpn(): VpnModel & VpnActions {
     error,
     payment,
     routeStyle,
+    transportMode,
     multihop,
     entry,
     exit,
     killSwitch,
+    nodeDiversity,
     autoConnect,
     connectedSince,
+    splitActive,
     activeEntry,
     activeExit,
     speed,
@@ -840,13 +1192,133 @@ export function useVpn(): VpnModel & VpnActions {
     selectCountry,
     refresh,
     setRouteStyle,
+    setTransportMode,
     selectEntryCountry,
     selectExitCountry,
     setKillSwitch,
+    setNodeDiversity,
     setAutoConnect,
     toggleFavorite,
     openVpnSettings,
   };
+}
+
+/** Per-transport handshake budget before falling through to the next one.
+ *  wireguard-go retries a handshake initiation every ~5s, so this covers two. */
+const PROBE_MS = 9_000;
+const PROBE_INTERVAL_MS = 500;
+/** Grace period before a 'disconnected'/'error' sample is believed — the OS may
+ *  still be reporting the pre-start state (see probeHandshake). */
+const PROBE_SETTLE_MS = 3_000;
+/** Cap on waiting for a failed attempt to actually stop before the next starts. */
+const TEARDOWN_MS = 4_000;
+
+/**
+ * Wait for evidence the tunnel really came up, or report why not.
+ *
+ * `startTunnel` resolves once the OS has STARTED the tunnel — not when the
+ * WireGuard handshake completes — so it cannot distinguish a working transport
+ * from one a censor is dropping. Only the gateway answering proves it:
+ * `lastHandshake > 0` (authoritative) or `rxBytes > 0` (bytes came back).
+ * `txBytes` is deliberately ignored — handshake retries make it climb forever on
+ * a dead tunnel.
+ *
+ * `'gone'` means the native side already gave up, so there's no point burning
+ * the rest of the budget.
+ */
+async function probeHandshake(budgetMs = PROBE_MS): Promise<'up' | 'dead' | 'gone'> {
+  const started = Date.now();
+  const deadline = started + budgetMs;
+  // Whether we have ever seen the tunnel actually leave its initial state.
+  let sawLive = false;
+  for (;;) {
+    try {
+      const s = await CumulusTunnel.getStatus();
+      if (s.lastHandshake > 0 || s.rxBytes > 0) {
+        return 'up';
+      }
+      if (s.state === 'connecting' || s.state === 'connected' || s.state === 'reasserting') {
+        sawLive = true;
+      }
+      // A terminal sample only counts once the tunnel has actually started, or
+      // once the settle window has elapsed. On iOS `startTunnel` resolves as soon
+      // as startVPNTunnel() is called, but NEVPNConnection.status is updated
+      // asynchronously — so for the first tens of milliseconds it still reports
+      // the PREVIOUS state ('disconnected', or 'invalid' on the very first
+      // connect). Treating that as terminal would fail every transport in the
+      // chain within milliseconds and blacklist a perfectly healthy gateway.
+      const settled = sawLive || Date.now() - started > PROBE_SETTLE_MS;
+      if (settled && (s.state === 'error' || s.state === 'disconnected')) {
+        return 'gone';
+      }
+    } catch {
+      // Transient (iOS provider-message races) — keep polling until the deadline.
+    }
+    if (Date.now() >= deadline) {
+      return 'dead';
+    }
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, PROBE_INTERVAL_MS);
+    });
+  }
+}
+
+/**
+ * Stop a failed attempt and WAIT for it to actually be down before the next one
+ * starts. The wait is load-bearing on both platforms: iOS refuses to start a
+ * tunnel while the previous one is still `.disconnecting`, and on Android the
+ * next attempt re-enters the same VpnService, which would orphan the previous
+ * wgnest handle and its tun fd.
+ */
+async function teardownAttempt(): Promise<void> {
+  try {
+    await CumulusTunnel.stopTunnel();
+  } catch {
+    // Fall through to the poll — the tunnel may already be gone.
+  }
+  const deadline = Date.now() + TEARDOWN_MS;
+  while (Date.now() < deadline) {
+    try {
+      const s = await CumulusTunnel.getStatus();
+      if (s.state === 'disconnected' || s.state === 'error') {
+        return;
+      }
+    } catch {
+      return;
+    }
+    await new Promise<void>((resolve) => {
+      setTimeout(resolve, 250);
+    });
+  }
+}
+
+/**
+ * The entitlement tier to use when selecting a transport for `gw`, resolved
+ * against `gw` itself when it advertises a premium-gated transport.
+ *
+ * The gate is enforced per-gateway (the gated listener's peer set), but the
+ * cached tier is polled fleet-wide, so the two can disagree — a payment one node
+ * has seen and another hasn't, or simply a tier we never managed to poll. Acting
+ * on a wrong "premium" is the expensive direction: the TLS session connects and
+ * the inner WireGuard handshake then hangs until the connect watchdog fires,
+ * with no per-transport fallback. So when it matters, ask the node that decides.
+ * Returns `cached` unchanged when nothing here is gated, or when the probe fails
+ * (conservative: a weaker-but-working transport beats a dead one).
+ */
+async function resolveGatewayTier(gw: GatewayInfo, publicKey: string, cached: Tier): Promise<Tier> {
+  if (!hasPremiumTransport(gw.transports)) {
+    return cached;
+  }
+  try {
+    const s = await fetchStatus(
+      gw.ip,
+      publicKey,
+      gw.sign_pubkey ? { signPubKey: gw.sign_pubkey } : {},
+    );
+    return s.tier;
+  } catch {
+    return cached;
+  }
 }
 
 /**
@@ -859,33 +1331,71 @@ export function useVpn(): VpnModel & VpnActions {
 async function connectMultihop(args: {
   keypair: Keypair;
   routeStyle: RouteStyle;
+  transportMode: TransportMode;
+  /** Entitlement, for premium-gated transports on the entry hop. */
+  tier: Tier;
   gateways: readonly GatewayInfo[];
   entryCountry: string | null;
   exitCountry: string | null;
   gatewayIpRef: { current: string | null };
   setEnrollment: (r: EnrollResponse) => void;
   killSwitch: boolean;
-}): Promise<{ entry: GatewayInfo; exit: GatewayInfo }> {
+  requireDistinctSubnet: boolean;
+}): Promise<{ entry: GatewayInfo; exit: GatewayInfo; splitApplied: boolean }> {
   const {
     keypair,
     routeStyle,
+    transportMode,
+    tier,
     gateways,
     entryCountry,
     exitCountry,
     gatewayIpRef,
     setEnrollment,
     killSwitch,
+    requireDistinctSubnet,
   } = args;
 
   // core enforces entry !== exit and the per-style jurisdiction rule; a null
   // country means "auto-pick" (nearest healthy entry / well-connected exit).
-  const hops = selectHops(gateways, routeStyle, {
-    ...(entryCountry ? { entryCountry } : {}),
-    ...(exitCountry ? { exitCountry } : {}),
-  });
+  // With node diversity on, entry and exit must also differ by subnet — which a
+  // small fleet may not allow, so translate that failure into a clear message.
+  let hops;
+  try {
+    hops = selectHops(gateways, routeStyle, {
+      ...(entryCountry ? { entryCountry } : {}),
+      ...(exitCountry ? { exitCountry } : {}),
+      ...(requireDistinctSubnet ? { requireDistinctSubnet: true } : {}),
+    });
+  } catch (e) {
+    if (requireDistinctSubnet) {
+      // Name where the setting actually lives — it is no longer on this screen,
+      // so "turn off Node diversity" alone would send the user hunting.
+      throw new Error(
+        'No distinct-network route available. Turn off Node diversity in Settings, or pick different entry/exit countries.',
+      );
+    }
+    throw e;
+  }
   if (!hops.exit) {
     throw new Error('Multi-hop needs a distinct exit gateway');
   }
+
+  // Stealth obfuscates the ENTRY hop with AmneziaWG (the exit stays vanilla, so
+  // the local censor sees only an obfuscated entry handshake). wg-tls isn't wired
+  // for the multi-hop entry, so restrict to awg; if the entry gateway doesn't
+  // advertise awg, requireTransport THROWS rather than silently downgrading —
+  // resolved BEFORE enrolling so a refusal doesn't spend a PoW/enrollment.
+  const entryTransport =
+    transportMode === 'stealth'
+      ? requireTransport(
+          hops.entry.transports,
+          'stealth',
+          new Set(['awg']),
+          // Same rule as single-hop: the entry gateway enforces its own gate.
+          await resolveGatewayTier(hops.entry, keypair.publicKey, tier),
+        )
+      : undefined;
 
   // Enroll key K at both hops. Same key → premium at both automatically.
   // Run both concurrently: each solves an independent PoW, and the native
@@ -906,13 +1416,19 @@ async function connectMultihop(args: {
   gatewayIpRef.current = hops.entry.ip;
   setEnrollment(entryEnroll);
 
+  // Split tunneling: rules apply to the exit hop (§7.2). Both hop IPs go into
+  // the endpoint guard so no rule can shadow either pin.
+  const split = await splitForSession(tier, killSwitch, [hops.entry.ip, hops.exit.ip]);
+
   const mh = buildMultihopConfig({
     privateKey: keypair.privateKey,
     entry: entryEnroll,
     exit: exitEnroll,
+    ...(entryTransport ? { entryTransport } : {}),
+    ...(split ? { split } : {}),
   });
 
   const label = `${hops.entry.country} → ${hops.exit.country}`;
   await CumulusTunnel.startMultihop(mh.outer, mh.inner, label, killSwitch);
-  return { entry: hops.entry, exit: hops.exit };
+  return { entry: hops.entry, exit: hops.exit, splitApplied: split !== undefined };
 }

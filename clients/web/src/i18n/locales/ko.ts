@@ -54,6 +54,14 @@ export const ko: Catalog = {
   connect_stat_endpoint: '엔드포인트',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf 다운로드',
+  connect_conf_note:
+    '이 서버에 묶여 있습니다. 서버가 재시작되거나 옮겨지면 WireGuard는 계속 터널이 연결된 것으로 표시하지만 아무것도 통과하지 못합니다 — 여기로 돌아와 새 .conf를 생성하세요.',
+  connect_conf_regenerate: '새 .conf 생성',
+  connect_conf_stale:
+    '{country}용 마지막 설정을 발급한 서버가 교체되었습니다 — 그 설정으로는 더 이상 연결할 수 없습니다. 아래에서 새로 생성하세요.',
+  connect_conf_unsure:
+    '{country}용 마지막 설정을 발급한 서버에 연결하지 못했습니다. 일시적으로 중단되었거나 완전히 사라졌을 수 있습니다 — 터널로 트래픽이 흐르지 않는다면 아래에서 새 설정을 생성하세요.',
+  connect_conf_checking: '마지막 설정을 확인하는 중…',
   connect_upgrade_cta: '전체 속도로 업그레이드 →',
   connect_identity_title: '이 기기의 신원',
   connect_regenerate: '키 재생성',
@@ -77,6 +85,30 @@ export const ko: Catalog = {
   upgrade_privacy_note:
     'Zelcore / SSP Wallet에서 열립니다. 결제는 Flux 블록체인에서 검증되며 — 당신이 누구인지는 저희도 알 수 없습니다. 메시지가 결제를 당신의 키와 연결해 주며, 메시지 없이 보내면 자금은 도착하지만 아무것도 잠금 해제되지 않습니다.',
   upgrade_back: '← 연결로 돌아가기',
+
+  split_summary_title: '고급: 스플릿 터널링',
+  split_tier_pill: '프리미엄 · 선택',
+  split_lede:
+    '어떤 목적지가 VPN을 사용할지 선택하세요. 생성된 구성은 규칙을 WireGuard AllowedIPs로 표현하므로 표준 WireGuard 앱에서 작동합니다 — IP 범위와 로컬 네트워크 우회만 지원합니다(앱별 규칙은 네이티브 앱이 필요합니다).',
+  split_mode_aria: '스플릿 터널링 모드',
+  split_mode_off: '끄기',
+  split_mode_exclude: '목록 제외',
+  split_mode_include: '이것만',
+  split_warn_exclude: '제외된 트래픽은 보호 없이 기기를 떠나며 당신의 실제 IP 주소가 드러납니다.',
+  split_warn_include:
+    '나열된 목적지만 보호됩니다 — 나머지는 모두 당신의 실제 IP 주소가 드러납니다.',
+  split_lan_label: '로컬 네트워크 접근 허용 (프린터, NAS, 캐스팅)',
+  split_cidr_placeholder: '예: 192.168.0.0/16 또는 203.0.113.7',
+  split_cidr_aria: 'IP 주소 또는 CIDR 범위',
+  split_add: '추가',
+  split_input_invalid: '유효한 IP 주소 또는 CIDR 범위가 아닙니다.',
+  split_rules_empty:
+    '아직 IP 규칙이 없습니다 — 위에서 범위를 추가하거나 로컬 네트워크 접근만 사용하세요.',
+  split_remove_aria: '규칙 {value} 제거',
+  split_next_note: '규칙은 이 페이지에서 다음에 생성하는 구성에 적용됩니다.',
+  split_premium_required:
+    '스플릿 터널링은 프리미엄 기능입니다. 대신 전체 터널 구성이 생성되었습니다 — 규칙을 적용하려면 업그레이드하세요.',
+  split_applied: '스플릿 터널링 적용됨 — 이 구성은 규칙이 허용하는 것만 라우팅합니다.',
 
   multihop_summary_title: '고급: 멀티홉 (설정 2개)',
   multihop_tier_pill: '프리미엄 · 선택 사항',

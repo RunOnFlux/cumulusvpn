@@ -22,6 +22,12 @@ export const PRICE_USD_APPROX = '$0.99';
 // the payment code stays stable across the Connect and Upgrade pages.
 export const KEYPAIR_STORAGE_KEY = 'cvpn.keypair.v1';
 
+// localStorage key for the gateway behind the last issued .conf (ip + server
+// pubkey + country + issue time). Lets a return visit detect that the gateway
+// was replaced — the one failure a static .conf can neither survive nor report,
+// since the stock WireGuard client has no control channel.
+export const ISSUED_CONFIG_STORAGE_KEY = 'cvpn.issued.v1';
+
 // localStorage key for the theme override ('light' | 'dark'); absent = system.
 export const THEME_STORAGE_KEY = 'cvpn.theme';
 

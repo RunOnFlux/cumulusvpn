@@ -55,6 +55,14 @@ export const sw: Catalog = {
   connect_stat_endpoint: 'Kituo',
   connect_stat_dns: 'DNS',
   connect_download_conf: 'Pakua .conf',
+  connect_conf_note:
+    'Imefungwa kwa seva hii. Ikianzishwa upya au ikihama, WireGuard bado itaonyesha handaki kama limeunganishwa lakini hakuna kitakachopita — rudi hapa uunde .conf mpya.',
+  connect_conf_regenerate: 'Unda .conf mpya',
+  connect_conf_stale:
+    'Seva iliyotoa mipangilio yako ya mwisho ya {country} imebadilishwa — mipangilio hiyo haiwezi tena kuunganisha. Tengeneza mipya hapa chini.',
+  connect_conf_unsure:
+    'Haikuwezekana kuifikia seva iliyotoa mipangilio yako ya mwisho ya {country}. Huenda imezimwa kwa muda au imeondoka kabisa — kama handaki lako halipitishi data, tengeneza mipangilio mipya hapa chini.',
+  connect_conf_checking: 'Inakagua mipangilio yako ya mwisho…',
   connect_upgrade_cta: 'Boresha upate kasi kamili →',
   connect_identity_title: 'Utambulisho wa kifaa hiki',
   connect_regenerate: 'Tengeneza upya ufunguo',
@@ -78,6 +86,32 @@ export const sw: Catalog = {
   upgrade_privacy_note:
     'Inafungua kwenye Zelcore / SSP Wallet. Malipo yanathibitishwa kwenye mnyororo wa vizuizi wa Flux — hatuoni kamwe wewe ni nani. Ujumbe unaunganisha malipo na ufunguo wako; kutuma bila huo kunamaanisha fedha zinawasili lakini hakuna kinachofunguliwa.',
   upgrade_back: '← Rudi kwenye Unganisha',
+
+  split_summary_title: 'Kina: split tunneling',
+  split_tier_pill: 'PREMIUM · HIARI',
+  split_lede:
+    'Chagua ni maeneo gani yatumie VPN. Usanidi unaotengenezwa unaeleza sheria kama AllowedIPs za WireGuard, kwa hivyo unafanya kazi na programu ya kawaida ya WireGuard — safu za IP na kuruka mtandao wa karibu pekee (sheria za kila programu zinahitaji programu zetu asilia).',
+  split_mode_aria: 'Hali ya split tunneling',
+  split_mode_off: 'Zima',
+  split_mode_exclude: 'Ondoa vilivyoorodheshwa',
+  split_mode_include: 'Hivi pekee',
+  split_warn_exclude:
+    'Trafiki iliyoondolewa inaondoka kwenye kifaa chako bila ulinzi na inaonyesha anwani yako halisi ya IP.',
+  split_warn_include:
+    'Maeneo yaliyoorodheshwa pekee ndiyo yanalindwa — mengine yote yanaonyesha anwani yako halisi ya IP.',
+  split_lan_label: 'Ruhusu ufikiaji wa mtandao wa karibu (printa, NAS, casting)',
+  split_cidr_placeholder: 'mf. 192.168.0.0/16 au 203.0.113.7',
+  split_cidr_aria: 'Anwani ya IP au safu ya CIDR',
+  split_add: 'Ongeza',
+  split_input_invalid: 'Si anwani ya IP au safu ya CIDR halali.',
+  split_rules_empty:
+    'Hakuna sheria za IP bado — ongeza safu hapo juu, au tumia tu ufikiaji wa mtandao wa karibu.',
+  split_remove_aria: 'Ondoa sheria {value}',
+  split_next_note: 'Sheria zitatumika kwa usanidi utakaofuata kutengeneza kwenye ukurasa huu.',
+  split_premium_required:
+    'Split tunneling ni kipengele cha premium. Badala yake usanidi wa handaki kamili ulitengenezwa — pandisha daraja ili kutumia sheria zako.',
+  split_applied:
+    'Split tunneling imetumika — usanidi huu unaelekeza tu kile sheria zako zinaruhusu.',
 
   multihop_summary_title: 'Mavaidha ya juu: multi-hop (usanidi mbili)',
   multihop_tier_pill: 'PREMIUM · HIARI',

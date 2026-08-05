@@ -6,6 +6,7 @@
  * (see `docs/10-api-contract.md`). Do not rename them — they are parsed
  * directly from JSON and any divergence silently breaks interop.
  */
+import type { CompiledSplit } from './split.js';
 
 /** Fixed control-API port (HTTP, signed bodies). */
 export const CONTROL_PORT = 51821;
@@ -42,6 +43,20 @@ export interface ApiErrorData {
   readonly message: string;
 }
 
+/**
+ * One dialable transport a gateway advertises for DPI-resistance negotiation.
+ * `type` is a stable slug (`"wg"` = vanilla WireGuard; `"awg"` = AmneziaWG;
+ * `"wg-tls"` = WireGuard-over-TLS); `port` is where it listens; `params` carries
+ * transport-specific knobs (e.g. AmneziaWG obfuscation values), absent for `wg`.
+ * Clients ignore types they do not implement. Field names are snake-case-free
+ * here because they are nested inside the snake_case wire body verbatim.
+ */
+export interface Transport {
+  readonly type: string;
+  readonly port: number;
+  readonly params?: Readonly<Record<string, string>>;
+}
+
 /** `GET /v1/info` response `data`. */
 export interface InfoResponse {
   readonly country: string;
@@ -53,13 +68,24 @@ export interface InfoResponse {
   readonly capacity: number;
   readonly version: string;
   readonly min_client_version: string;
-  /** Short git commit the gateway image was built from (ldflags). Optional —
+  /** Full git commit the gateway image was built from (ldflags). Optional —
    *  older gateway images may omit it. */
   readonly build_commit?: string;
+  /** Whether enrollments on this gateway survive a restart. `false` means the
+   *  node is running without a durable peer table (unwritable `/data`, or a
+   *  cache it declined to overwrite), so every peer it registers — including any
+   *  issued web `.conf` — is lost at the next restart. ABSENT on gateways older
+   *  than the persistence release; absent is NOT the same as `false`, so treat
+   *  `undefined` as unknown rather than unhealthy. */
+  readonly peers_persisted?: boolean;
   /** Gateway WireGuard public key, base64. */
   readonly server_pubkey: string;
   /** Gateway Ed25519 signing public key, base64. */
   readonly sign_pubkey: string;
+  /** Transports this gateway can serve (DPI-resistance negotiation). ABSENT on
+   *  a pre-negotiation (0.1.0) gateway — the client then assumes vanilla WG on
+   *  {@link WG_PORT}. See `transport.ts`. */
+  readonly transports?: readonly Transport[];
 }
 
 /** `POST /v1/enroll` response `data`. */
@@ -164,4 +190,18 @@ export interface WgConfigParams {
   readonly serverPubKey: string;
   /** `<nodeIP>:51820`. */
   readonly endpoint: string;
+  /**
+   * AmneziaWG obfuscation params for an `awg` transport (the lowercase
+   * `jc`/`jmin`/…/`h4` map from `/v1/info` transports[].params). When present,
+   * {@link buildWgConfig} emits the matching `[Interface]` lines; absent for the
+   * vanilla and `wg-tls` transports. Use {@link obfsForTransport} to derive it.
+   */
+  readonly obfs?: Readonly<Record<string, string>>;
+  /**
+   * Compiled split-tunneling policy (docs/17). A `.conf` can only express
+   * inclusion, so compile with `supportsExcludeRoute: false`; the compiled
+   * `tunnelRoutes` then replace the default `AllowedIPs`. Absent or noop
+   * keeps the config byte-identical to the full-tunnel output.
+   */
+  readonly split?: CompiledSplit;
 }

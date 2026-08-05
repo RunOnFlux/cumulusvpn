@@ -43,8 +43,15 @@ if (!['open', 'datacenter'].includes(variant)) {
 
 // The gateway's runtime env. Every value is PUBLIC (the payment address is on-chain; the directory
 // pubkey is published in clients) — so the OPEN variant leaks nothing by inlining it on-chain.
-function gatewayEnv(defaults) {
-  return [
+//
+// DPI-resistant transports (docs/15-transports.md) are additive and ride the FREE protocol sides
+// of ports we already list, so they cost no extra Flux ports on the standard group:
+//   - CVPN_OBFS_ENABLE=1 → AmneziaWG (awg) on 51821/udp   (free UDP side of the API port)
+//   - CVPN_TLS_ENABLE=1  → WireGuard-over-TLS (wg-tls) on 51820/tcp (free TCP side of the WG port)
+// The 443 STEALTH group additionally sets CVPN_TLS_PORT=443 (opts.tlsPort) for censors that allow
+// only 443. A 0.1.0 gateway (or defaults.obfs/tls unset) advertises neither → behaves like today.
+function gatewayEnv(defaults, opts = {}) {
+  const env = [
     'CVPN_PRICE_FLUX=20',
     'CVPN_PAYMENT_ADDRESS=t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ',
     'CVPN_DIRECTORY_PUBKEY=1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=',
@@ -53,6 +60,20 @@ function gatewayEnv(defaults) {
     `CVPN_MAX_PEERS_FREE=${defaults.maxPeersFree ?? 400}`,
     `CVPN_MAX_PEERS_TOTAL=${defaults.maxPeersTotal ?? 1000}`,
   ];
+  if (defaults.obfs) env.push('CVPN_OBFS_ENABLE=1');
+  // wg-tls is on whenever the fleet default enables it OR this is the 443 stealth group.
+  if (defaults.tls || opts.tlsPort) {
+    env.push('CVPN_TLS_ENABLE=1');
+    if (defaults.tlsSni) env.push(`CVPN_TLS_SNI=${defaults.tlsSni}`);
+    if (opts.tlsPort) env.push(`CVPN_TLS_PORT=${opts.tlsPort}`);
+    // Reserve the SCARCE 443 stealth tier for paying users (docs/15). Only the
+    // 443 group is gated: the standard group's wg-tls rides the free TCP side of
+    // 51820, so gating it would take stealth away from free users for no saving.
+    // The gateway enforces this by keeping free keys out of that listener's
+    // peer set — clients just skip it and land on awg.
+    if (opts.tlsPort && defaults.tlsPremium) env.push('CVPN_TLS_PREMIUM=1');
+  }
+  return env;
 }
 
 const manifest = parseYaml(readFileSync(join(ROOT, 'countries.yaml'), 'utf8'));
@@ -66,16 +87,69 @@ let eligibleByCountry = null;
 if (doCheck) eligibleByCountry = await fetchEligibleNodeCounts();
 
 for (const c of wanted) {
-  const name = `cumulusvpn${c.cc}`;
   const instances = c.instances ?? defaults.instances;
+
+  // Every country gets the standard `cumulusvpn<cc>` group, which advertises the
+  // transports on the FREE protocol sides of its existing ports (no extra ports).
+  // A country flagged `stealth: true` ALSO gets a separate `cumulusvpntls<cc>`
+  // group that lists 443 and runs the TLS relay there — for censors that allow
+  // only 443. Keeping 443 in its own spec bounds that scarce/expensive port to a
+  // small strategic footprint instead of the whole fleet (docs/15 M4).
+  const groups = [
+    { name: `cumulusvpn${c.cc}`, ports: defaults.ports, tlsPort: undefined, instances },
+  ];
+  if (c.stealth) {
+    groups.push({
+      name: `cumulusvpntls${c.cc}`,
+      ports: c.stealthPorts ?? defaults.stealthPorts ?? [...defaults.ports, 443],
+      tlsPort: 443,
+      // Sized SEPARATELY from the standard group. They used to share a count,
+      // which silently doubled a country's paid footprint the moment it was
+      // flagged stealth — and doubled it onto 443, a sub-1024 port that costs
+      // extra. The 443 tier is a bounded strategic footprint by design (docs/15
+      // M4), so it should be raised deliberately, not inherited.
+      instances: c.stealthInstances ?? defaults.stealthInstances ?? instances,
+    });
+  }
+  for (const g of groups) emitSpec(c, g, g.instances);
+
+  let note = '';
+  if (eligibleByCountry) {
+    const cov = eligibleByCountry.get(c.cc.toUpperCase()) ?? {
+      total: 0,
+      static: 0,
+      staticDatacenter: 0,
+    };
+    // What the spec can actually land on: static nodes when staticip is demanded, any
+    // node otherwise (open variant); the datacenter variant additionally needs dataCenter.
+    const staticip = c.staticip ?? defaults.staticip ?? true;
+    const avail =
+      variant === 'datacenter' ? cov.staticDatacenter : staticip ? cov.static : cov.total;
+    const detail = `${cov.total} nodes, ${cov.static} static`;
+    if (avail < instances)
+      note = `  ⚠️  only ${avail} eligible (${detail}) < ${instances} instances — will under-fill`;
+    else note = `  (${avail} eligible; ${detail})`;
+  }
+  const stealthNote = c.stealth
+    ? `  (+tls stealth 443 ×${c.stealthInstances ?? defaults.stealthInstances ?? instances})`
+    : '';
+  console.log(`✓ cumulusvpn${c.cc}  ${c.geolocation}  instances=${instances}${stealthNote}${note}`);
+}
+
+// Build + write the on-chain (and, for the datacenter variant, plain) spec for one
+// group of a country. `g` is { name, ports, tlsPort } — tlsPort set only for the
+// 443 stealth group. Env is identical to the standard group plus CVPN_TLS_PORT.
+function emitSpec(c, g, instances) {
+  const name = g.name;
   const repotag = c.repotag ?? defaults.repotag;
   const cpu = c.cpu ?? defaults.cpu;
   const ram = c.ram ?? defaults.ram;
   const hdd = c.hdd ?? defaults.hdd;
-  const ports = defaults.ports;
+  const ports = g.ports;
   const domains = ports.map(() => '');
   const expire = c.expire ?? defaults.expire ?? 264000;
   const staticip = c.staticip ?? defaults.staticip ?? true;
+  const env = gatewayEnv(defaults, { tlsPort: g.tlsPort });
 
   if (variant === 'open') {
     // ---- OPEN v8 spec (DEPLOYABLE): public image + real env inline on-chain, no encryption.
@@ -93,7 +167,7 @@ for (const c of wanted) {
           ports,
           containerPorts: ports,
           domains,
-          environmentParameters: gatewayEnv(defaults),
+          environmentParameters: env,
           commands: [],
           containerData: '/data',
           cpu,
@@ -126,7 +200,7 @@ for (const c of wanted) {
           ports,
           containerPorts: ports,
           domains,
-          environmentParameters: gatewayEnv(defaults),
+          environmentParameters: env,
           commands: [],
           containerData: '/data',
           cpu,
@@ -169,24 +243,6 @@ for (const c of wanted) {
     writeFileSync(join(ROOT, 'specs', 'plain', `${name}.json`), JSON.stringify(plain, null, 2));
     writeFileSync(join(ROOT, 'specs', 'onchain', `${name}.json`), JSON.stringify(onchain, null, 2));
   }
-
-  let note = '';
-  if (eligibleByCountry) {
-    const cov = eligibleByCountry.get(c.cc.toUpperCase()) ?? {
-      total: 0,
-      static: 0,
-      staticDatacenter: 0,
-    };
-    // What the spec can actually land on: static nodes when staticip is demanded, any
-    // node otherwise (open variant); the datacenter variant additionally needs dataCenter.
-    const avail =
-      variant === 'datacenter' ? cov.staticDatacenter : staticip ? cov.static : cov.total;
-    const detail = `${cov.total} nodes, ${cov.static} static`;
-    if (avail < instances)
-      note = `  ⚠️  only ${avail} eligible (${detail}) < ${instances} instances — will under-fill`;
-    else note = `  (${avail} eligible; ${detail})`;
-  }
-  console.log(`✓ ${name}  ${c.geolocation}  instances=${instances}${note}`);
 }
 
 console.log(`\nGenerated ${wanted.length} "${variant}" specs for stage "${stage}".`);

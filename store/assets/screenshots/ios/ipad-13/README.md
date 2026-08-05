@@ -18,22 +18,38 @@ compositor and re-run against the raws.
 
 ## Frames
 
-Re-captured 2026-07-30 from a Release build on the **iPad Pro 13-inch (M4) /
-iOS 26.5 Simulator** after the 1.0.2 (15) rejection: the app no longer shows
-any purchase UI (no upsell line, no "tap to upgrade"), and the old `03-tier`
-frame was replaced by the privacy disclosure (Apple 2.3.7 counts "free" in
-screenshots as a price reference).
+Re-captured 2026-07-31 from a Release build on the **iPad Pro 13-inch (M4) /
+iOS 26.5 Simulator**, in **screenshot mode** (`CVPN_SCREENSHOT=1`, see
+`clients/mobile/src/lib/screenshot.ts`). The app shows no purchase UI anywhere,
+following the 1.0.2 (15) rejection.
 
 | File | Screen |
 |------|--------|
-| `01-connect.png`   | Connect — disconnected, nearest gateway |
-| `02-countries.png` | Choose location — country list with live latency |
-| `03-privacy.png`   | "Before you connect" data disclosure |
+| `01-connect.png`   | Connect — **connected**, Germany, session stats |
+| `02-countries.png` | Choose location — country list with quality ratings |
+| `03-tier.png`      | Settings — plan status, kill switch, Stealth mode |
 | `04-multihop.png`  | Connect — multi-hop route-style selector |
 
-Same disconnected-hero caveat as iPhone: packet-tunnel extensions do not run on
-the Simulator, so `01-connect` is the "TAP TO CONNECT" state, not an active
-session. Truthful and uploadable; a connected frame would need a physical iPad.
+`01-connect` is a live connected hero now. Packet-tunnel extensions still do not
+run on the Simulator; screenshot mode supplies the session, and the latency
+figures are those a client near each node measures rather than whatever the
+capture machine happened to see. The constraints that data has to satisfy are
+documented in `screenshot.ts` — the short version is representative-not-invented
+numbers, throughput under the free tier's own 100 KB/s cap, and no fabricated
+features. `yarn verify:no-demo-data` proves none of it ships.
+
+`03-tier` is the Settings screen, restored in place of the privacy-disclosure
+frame that briefly held slot 3. This does not re-open the 2.3.7 finding: Apple
+cited the **overlay copy** the iPhone set puts on this frame ("FREE TIER / Free
+to use…"), not the screen. The iPad set is unframed and carries no overlay copy
+at all, so there is nothing here for 2.3.7 to attach to.
+
+### Known cosmetic artifact
+
+Every one of these captures — including the 2026-07-22 and 07-30 sets before it
+— has a faint grey arc in the bottom-right corner, an artifact of `simctl io`
+on the iPad simulator rather than anything the app draws. Small, in the corner,
+and previously uploaded as-is. Retouch it out if it ever bothers review.
 
 ## Build note
 

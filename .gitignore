@@ -62,3 +62,7 @@ clients/mobile/ios/.xcode.env.local
 
 # Wrangler local dev state
 .wrangler/
+
+# Screenshot compositor virtualenv (Pillow/numpy/PyYAML; see
+# .claude/skills/appstore-screenshots). Its output/ is already ignored above.
+.claude/skills/appstore-screenshots/.venv/

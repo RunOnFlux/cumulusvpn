@@ -7,6 +7,17 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
+    <!-- Split tunneling app picker (docs/17 §4.1): make user-launchable apps
+         visible on Android 11+ WITHOUT QUERY_ALL_PACKAGES — that permission
+         carries a Play sensitive-permission review; this <queries> element
+         covers exactly what belongs in the picker and needs no declaration. -->
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
+    </queries>
+
     <application
       android:name=".MainApplication"
       android:label="@string/app_name"
@@ -63,6 +74,22 @@
         <property
           android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
           android:value="CumulusVPN multi-hop tunnel" />
+      </service>
+
+      <!-- Obfuscated (AmneziaWG) single-hop tunnel, Stealth mode. Runs in the
+           userspace wgnest core (same as multi-hop) rather than GoBackend, so it
+           needs its own VpnService declaration. -->
+      <service
+        android:name=".tunnel.CumulusObfsVpnService"
+        android:permission="android.permission.BIND_VPN_SERVICE"
+        android:foregroundServiceType="specialUse"
+        android:exported="false">
+        <intent-filter>
+          <action android:name="android.net.VpnService" />
+        </intent-filter>
+        <property
+          android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+          android:value="CumulusVPN obfuscated tunnel" />
       </service>
     </application>
 </manifest>

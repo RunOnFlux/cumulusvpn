@@ -1,7 +1,7 @@
 import { ed25519 } from '@noble/curves/ed25519.js';
 import { base64 } from '@scure/base';
 import { describe, expect, it } from 'vitest';
-import { directoryVerify, discoverGateways } from './discovery.js';
+import { directoryVerify, discoverGateways, specToCountryCode } from './discovery.js';
 import { jsonResponse, makeSignKeypair, signedResponse } from './testkit.js';
 import type { Directory, FetchImpl, InfoResponse } from './types.js';
 
@@ -21,6 +21,24 @@ function info(overrides: Partial<InfoResponse>): InfoResponse {
     ...overrides,
   };
 }
+
+describe('specToCountryCode', () => {
+  it('maps the standard spec name to its country', () => {
+    expect(specToCountryCode('cumulusvpnde')).toBe('DE');
+    expect(specToCountryCode('cumulusvpnus')).toBe('US');
+  });
+
+  it('strips the `tls` stealth infix so the 443 group maps to its country', () => {
+    expect(specToCountryCode('cumulusvpntlsde')).toBe('DE');
+    expect(specToCountryCode('cumulusvpntlsus')).toBe('US');
+  });
+
+  it('does not over-strip a country code that itself starts with "tl" (Timor-Leste)', () => {
+    // `tls` needs all three chars; `cumulusvpntl` is the standard TL spec.
+    expect(specToCountryCode('cumulusvpntl')).toBe('TL');
+    expect(specToCountryCode('cumulusvpntlstl')).toBe('TL');
+  });
+});
 
 describe('discoverGateways', () => {
   it('probes /v1/info, tags country from the SPEC (not the gateway), and sorts by country then load', async () => {

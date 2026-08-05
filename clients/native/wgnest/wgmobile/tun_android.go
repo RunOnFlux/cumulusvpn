@@ -2,7 +2,7 @@
 
 package wgmobile
 
-import "golang.zx2c4.com/wireguard/tun"
+import "github.com/amnezia-vpn/amneziawg-go/tun"
 
 // tunFromFD wraps the Android VpnService tun fd. CreateUnmonitoredTUNFromFD is
 // the canonical Android path (no netlink route monitoring, bare-IP framing) and

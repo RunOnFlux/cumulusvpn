@@ -19,7 +19,10 @@
  * v1.5 introduces distinct keys per hop to close that gap.
  */
 import { WG_PORT } from './types.js';
-import type { EnrollResponse, GatewayInfo } from './types.js';
+import type { EnrollResponse, GatewayInfo, Transport } from './types.js';
+import { allowedIpsFor, obfsInterfaceLines } from './wgconfig.js';
+import { applyTransportToEndpoint, obfsForTransport } from './transport.js';
+import type { CompiledSplit } from './split.js';
 
 /**
  * How the tunnel path is routed.
@@ -51,6 +54,20 @@ export interface SelectHopsOptions {
   readonly entryCountry?: string;
   /** Restrict the exit to this country. */
   readonly exitCountry?: string;
+  /**
+   * Require the entry and exit to sit on different subnets (IPv4 /24, IPv6 /48)
+   * — a co-location guard so a route can't be built from two gateways in the
+   * same rack. OFF by default; the UI exposes it as an opt-in toggle because a
+   * small fleet may not offer a distinct-subnet pair, in which case
+   * {@link selectHops} throws rather than silently returning a co-located route.
+   *
+   * This is the *subnet* leg of node diversity, and the only one enforceable
+   * from the client today: operator- and ASN-level separation need node
+   * metadata the gateway does not yet expose in `/v1/info`. Distinct subnets is
+   * a strong proxy — two different /24s are not the same rack — but it does not,
+   * on its own, prove two different operators.
+   */
+  readonly requireDistinctSubnet?: boolean;
 }
 
 /** The ordered hops chosen by {@link selectHops}. `exit` is absent for `'single'`. */
@@ -61,10 +78,14 @@ export interface SelectedHops {
 
 /** The two nested interface configs plus the routing facts a client needs. */
 export interface MultihopConfig {
-  /** wg-entry `.conf`: `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS. */
+  /** wg-entry `.conf`: `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS. Carries the
+   *  entry hop's AmneziaWG obfuscation `[Interface]` lines when Stealth is on. */
   readonly outer: string;
   /** wg-exit `.conf`: `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340, DNS = exit dns. */
   readonly inner: string;
+  /** The ENTRY hop's wire endpoint — `<entryIp>:51820` normally, or `<entryIp>:51821`
+   *  for an obfuscated (awg) entry. The native side allow-lists/routes on this. */
+  readonly entryEndpoint: string;
   /** `<exitIp>:51820` — must route via the outer interface. */
   readonly exitEndpoint: string;
   /** Inner interface MTU (leaves headroom for two WireGuard headers). */
@@ -87,6 +108,21 @@ function stripEndpointPort(endpoint: string): string {
     return trimmed.slice(0, trimmed.lastIndexOf(':'));
   }
   return trimmed;
+}
+
+/**
+ * Group key identifying a gateway's subnet for the distinct-subnet diversity
+ * rule: IPv4 collapses to its /24 (first three octets), IPv6 to its /48 (first
+ * three hextets, best-effort without full normalization). A malformed address
+ * falls back to itself, so it only ever collides with an identical string —
+ * never wrongly treating two distinct gateways as co-located.
+ */
+function subnetGroup(ip: string): string {
+  if (ip.includes(':')) {
+    return ip.split(':').slice(0, 3).join(':').toLowerCase();
+  }
+  const octets = ip.split('.');
+  return octets.length === 4 ? octets.slice(0, 3).join('.') : ip;
 }
 
 /**
@@ -117,12 +153,19 @@ function byLoadThenCountry(a: GatewayInfo, b: GatewayInfo): number {
  * `'multihop-cross-jurisdiction'` requires `entry.country !== exit.country`.
  * `'single'` returns just the entry (no exit).
  *
+ * With `opts.requireDistinctSubnet`, entry and exit must also fall in different
+ * subnets. To honor that without spuriously failing, the least-loaded entry is
+ * no longer fixed: entry candidates are tried in load order until one yields a
+ * valid exit. Without the flag, behavior is unchanged — the least-loaded entry
+ * is used and the call throws if it has no valid exit.
+ *
  * @param gateways - Discovered, verified gateways to choose from.
  * @param style - The desired {@link RouteStyle}.
- * @param opts - Optional explicit entry/exit country picks.
+ * @param opts - Optional explicit entry/exit country picks and diversity rule.
  * @returns The chosen `entry` and, for multi-hop styles, `exit`.
  * @throws {Error} If no gateway satisfies the constraints (empty fleet, no
- *   distinct exit, or no exit in the required jurisdiction).
+ *   distinct exit, no exit in the required jurisdiction, or — with
+ *   `requireDistinctSubnet` — no entry/exit pair on distinct subnets).
  */
 export function selectHops(
   gateways: readonly GatewayInfo[],
@@ -147,30 +190,42 @@ export function selectHops(
     return { entry };
   }
 
-  const exitPool = sorted.filter((g) => {
-    if (g.ip === entry.ip) {
-      return false; // enforce entry !== exit
-    }
-    if (opts.exitCountry && g.country !== opts.exitCountry) {
-      return false;
-    }
-    if (style === 'multihop-same-country') {
-      return g.country === entry.country;
-    }
-    // multihop-cross-jurisdiction
-    return g.country !== entry.country;
-  });
+  // The least-loaded valid exit for a given entry, or undefined if none.
+  const exitFor = (from: GatewayInfo): GatewayInfo | undefined =>
+    sorted.find((g) => {
+      if (g.ip === from.ip) {
+        return false; // enforce entry !== exit
+      }
+      if (opts.exitCountry && g.country !== opts.exitCountry) {
+        return false;
+      }
+      if (opts.requireDistinctSubnet && subnetGroup(g.ip) === subnetGroup(from.ip)) {
+        return false; // co-location guard: entry and exit must differ by subnet
+      }
+      if (style === 'multihop-same-country') {
+        return g.country === from.country;
+      }
+      // multihop-cross-jurisdiction
+      return g.country !== from.country;
+    });
 
-  const exit = exitPool[0];
-  if (!exit) {
-    const reason =
-      style === 'multihop-cross-jurisdiction'
-        ? `no distinct exit in a different country from entry "${entry.country}"`
-        : `no distinct exit in country "${entry.country}"`;
-    throw new Error(`selectHops: ${reason}`);
+  // Default: fixed least-loaded entry (behavior unchanged). With the distinct-
+  // subnet rule, walk entry candidates in load order so a satisfiable pair
+  // isn't missed just because the least-loaded node's subnet has no partner.
+  const entryCandidates = opts.requireDistinctSubnet ? entryPool : [entry];
+  for (const candidate of entryCandidates) {
+    const exit = exitFor(candidate);
+    if (exit) {
+      return { entry: candidate, exit };
+    }
   }
 
-  return { entry, exit };
+  const jurisdiction =
+    style === 'multihop-cross-jurisdiction'
+      ? `in a different country from entry "${entry.country}"`
+      : `in country "${entry.country}"`;
+  const subnetNote = opts.requireDistinctSubnet ? ' on a distinct subnet' : '';
+  throw new Error(`selectHops: no distinct exit ${jurisdiction}${subnetNote}`);
 }
 
 /**
@@ -182,44 +237,90 @@ export function selectHops(
  * exit traverse the entry; the inner interface routes all traffic and sets the
  * exit's DNS and the reduced 1340 MTU.
  *
+ * Stealth multi-hop obfuscates the ENTRY hop only (the local censor sees just the
+ * entry handshake; the inner exit hop travels encapsulated). Pass the entry
+ * gateway's chosen `entryTransport` (an `awg` transport) and the outer config
+ * gains its AmneziaWG `[Interface]` lines and points at the awg port; the inner
+ * (exit) hop stays vanilla. Omit it (or pass a vanilla `wg` transport) for a
+ * fully vanilla multi-hop — the output is then byte-identical to before.
+ *
+ * Split tunneling (docs/17 §7.2): rules apply to the INNER (exit) hop — that is
+ * where the default route lives. Pass a `split` compiled with
+ * `supportsExcludeRoute: false` and the inner `.conf`'s `AllowedIPs` becomes the
+ * compiled `tunnelRoutes`; the outer hop's `<exitIp>/32` pin is untouched. The
+ * compile step must have been given both hop IPs as `endpointIps` so no rule
+ * can shadow either pin. Absent or noop keeps the output byte-identical.
+ *
  * @param args.privateKey - Client WireGuard private key (base64), used on both.
  * @param args.entry - Enrollment of key `K` at the ENTRY gateway.
  * @param args.exit - Enrollment of key `K` at the EXIT gateway.
- * @returns The `outer`/`inner` `.conf` strings, `exitEndpoint`, and `innerMtu`.
+ * @param args.entryTransport - ENTRY hop transport (an `awg` profile obfuscates it).
+ * @param args.split - Compiled split policy for the exit hop's `AllowedIPs`.
+ * @returns The `outer`/`inner` `.conf` strings, `entryEndpoint`, `exitEndpoint`, `innerMtu`.
  */
 export function buildMultihopConfig(args: {
   privateKey: string;
   entry: EnrollResponse;
   exit: EnrollResponse;
+  entryTransport?: Transport;
+  split?: CompiledSplit;
 }): MultihopConfig {
-  const { privateKey, entry, exit } = args;
+  const { privateKey, entry, exit, entryTransport, split } = args;
   const exitIp = stripEndpointPort(exit.endpoint);
   const exitEndpoint = `${exitIp}:${WG_PORT}`;
 
-  const outer = `[Interface]
-PrivateKey = ${privateKey}
-Address = ${entry.assigned_ip}/32
-MTU = ${OUTER_MTU}
+  // Stealth: fold the entry hop's awg obfuscation into the outer [Interface] and
+  // point it at the transport's port (awg = 51821). Vanilla when absent.
+  const entryObfs = entryTransport ? obfsForTransport(entryTransport) : undefined;
+  const entryEndpoint = entryTransport
+    ? applyTransportToEndpoint(entry.endpoint, entryTransport)
+    : entry.endpoint;
 
-[Peer]
-PublicKey = ${entry.server_pubkey}
-Endpoint = ${entry.endpoint}
-AllowedIPs = ${exitIp}/32
-PersistentKeepalive = 25
-`;
+  const outerIface = [
+    '[Interface]',
+    `PrivateKey = ${privateKey}`,
+    `Address = ${entry.assigned_ip}/32`,
+    `MTU = ${OUTER_MTU}`,
+    ...obfsInterfaceLines(entryObfs),
+  ];
+  const outerPeer = [
+    '[Peer]',
+    `PublicKey = ${entry.server_pubkey}`,
+    `Endpoint = ${entryEndpoint}`,
+    `AllowedIPs = ${exitIp}/32`,
+    'PersistentKeepalive = 25',
+  ];
+  const outer = `${outerIface.join('\n')}\n\n${outerPeer.join('\n')}\n`;
 
-  const inner = `[Interface]
-PrivateKey = ${privateKey}
-Address = ${exit.assigned_ip}/32
-DNS = ${exit.dns}
-MTU = ${INNER_MTU}
+  // Android per-app rules (docs/17 §4.1) ride the INNER config's [Interface]
+  // like the single-hop path: the official Config parser reads these keys and
+  // the controller forwards them to the nested service. The compiler only
+  // populates the app lists for the platform it compiled for, so a desktop
+  // inner config never carries them. Empty → byte-identical output.
+  const appLines = [
+    ...(split && split.appsIncluded.length > 0
+      ? [`IncludedApplications = ${split.appsIncluded.join(', ')}`]
+      : []),
+    ...(split && split.appsExcluded.length > 0
+      ? [`ExcludedApplications = ${split.appsExcluded.join(', ')}`]
+      : []),
+  ];
+  const innerIface = [
+    '[Interface]',
+    `PrivateKey = ${privateKey}`,
+    `Address = ${exit.assigned_ip}/32`,
+    `DNS = ${exit.dns}`,
+    `MTU = ${INNER_MTU}`,
+    ...appLines,
+  ];
+  const innerPeer = [
+    '[Peer]',
+    `PublicKey = ${exit.server_pubkey}`,
+    `Endpoint = ${exit.endpoint}`,
+    `AllowedIPs = ${allowedIpsFor(split)}`,
+    'PersistentKeepalive = 25',
+  ];
+  const inner = `${innerIface.join('\n')}\n\n${innerPeer.join('\n')}\n`;
 
-[Peer]
-PublicKey = ${exit.server_pubkey}
-Endpoint = ${exit.endpoint}
-AllowedIPs = 0.0.0.0/0, ::/0
-PersistentKeepalive = 25
-`;
-
-  return { outer, inner, exitEndpoint, innerMtu: INNER_MTU };
+  return { outer, inner, entryEndpoint, exitEndpoint, innerMtu: INNER_MTU };
 }

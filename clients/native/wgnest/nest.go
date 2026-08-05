@@ -30,10 +30,10 @@ import (
 	"strconv"
 	"strings"
 
-	"golang.zx2c4.com/wireguard/conn"
-	"golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun"
-	"golang.zx2c4.com/wireguard/tun/netstack"
+	"github.com/amnezia-vpn/amneziawg-go/conn"
+	"github.com/amnezia-vpn/amneziawg-go/device"
+	"github.com/amnezia-vpn/amneziawg-go/tun"
+	"github.com/amnezia-vpn/amneziawg-go/tun/netstack"
 )
 
 const (
@@ -47,6 +47,22 @@ type Gateway struct {
 	PubKeyB64  string     // WireGuard server public key (base64)
 	IP         netip.Addr // gateway public IP
 	AssignedIP netip.Addr // this client's assigned 10.8.x.y at this gateway
+	// Port is the WG endpoint UDP port; 0 means the default 51820. The
+	// obfuscated (AmneziaWG) transport listens on a different port (51821).
+	Port int
+	// Obfs is the device-level AmneziaWG UAPI (jc=…\njmin=…\n…) applied to this
+	// hop's device before the peer. "" = vanilla WireGuard. For multi-hop only
+	// the ENTRY hop is obfuscated — the exit hop rides inside the outer tunnel,
+	// invisible to the local network, so it stays vanilla.
+	Obfs string
+}
+
+// port returns the endpoint port, defaulting to the standard WG port.
+func (g Gateway) port() int {
+	if g.Port == 0 {
+		return wgPort
+	}
+	return g.Port
 }
 
 // NestedTunnel owns the two stacked wireguard-go devices. Close() tears both
@@ -60,6 +76,17 @@ type NestedTunnel struct {
 // private key (base64), shared by both hops. `innerTun` is the tun the real
 // 0.0.0.0/0 traffic flows over (caller-owned). `logLevel` is a device.LogLevel*.
 func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLevel int) (*NestedTunnel, error) {
+	// The caller hands us ownership of innerTun. Until it is wrapped in the inner
+	// device (whose Close() then owns it), close it ourselves on any early error
+	// so a failed connect doesn't leak the caller's tun fd (on Android the fd is
+	// detached from the ParcelFileDescriptor and never reclaimed otherwise).
+	innerOwned := false
+	defer func() {
+		if !innerOwned {
+			_ = innerTun.Close()
+		}
+	}()
+
 	privHex, err := b64ToHex(clientPrivB64)
 	if err != nil {
 		return nil, fmt.Errorf("client key: %w", err)
@@ -84,9 +111,11 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 		return nil, fmt.Errorf("outer netstack: %w", err)
 	}
 	outer := device.NewDevice(outerTun, conn.NewDefaultBind(), device.NewLogger(logLevel, "outer "))
-	outerCfg := fmt.Sprintf(
-		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\nallowed_ip=%s/32\npersistent_keepalive_interval=15\n",
-		privHex, entryPubHex, entry.IP, wgPort, exit.IP,
+	// Obfuscation (if any) applies to the ENTRY hop only; the device-level obfs
+	// UAPI goes between private_key and the peer's public_key.
+	outerCfg := fmt.Sprintf("private_key=%s\n", privHex) + entry.Obfs + fmt.Sprintf(
+		"public_key=%s\nendpoint=%s:%d\nallowed_ip=%s/32\npersistent_keepalive_interval=15\n",
+		entryPubHex, entry.IP, entry.port(), exit.IP,
 	)
 	if err := outer.IpcSet(outerCfg); err != nil {
 		outer.Close()
@@ -101,6 +130,7 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 	// outer netstack to <exitIP>:51820, so its packets ride the outer tunnel. ----
 	exitEndpoint := netip.AddrPortFrom(exit.IP, wgPort)
 	inner := device.NewDevice(innerTun, newNetstackBind(outerNet, exitEndpoint), device.NewLogger(logLevel, "inner "))
+	innerOwned = true // inner.Close() now owns innerTun
 	innerCfg := fmt.Sprintf(
 		"private_key=%s\npublic_key=%s\nendpoint=%s\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
 		privHex, exitPubHex, exitEndpoint,
@@ -132,6 +162,15 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 // `gw.AssignedIP` is unused here. Reuses NestedTunnel (single device as `inner`,
 // `outer` nil) so Stats/Close work unchanged.
 func StartSingle(clientPrivB64 string, gw Gateway, t tun.Device, logLevel int) (*NestedTunnel, error) {
+	// The caller hands us ownership of t; close it on any error before the device
+	// wraps it, so a failed connect doesn't leak the caller's tun fd.
+	tOwned := false
+	defer func() {
+		if !tOwned {
+			_ = t.Close()
+		}
+	}()
+
 	privHex, err := b64ToHex(clientPrivB64)
 	if err != nil {
 		return nil, fmt.Errorf("client key: %w", err)
@@ -141,9 +180,11 @@ func StartSingle(clientPrivB64 string, gw Gateway, t tun.Device, logLevel int) (
 		return nil, fmt.Errorf("server key: %w", err)
 	}
 	dev := device.NewDevice(t, conn.NewDefaultBind(), device.NewLogger(logLevel, "wg "))
-	cfg := fmt.Sprintf(
-		"private_key=%s\npublic_key=%s\nendpoint=%s:%d\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
-		privHex, pubHex, gw.IP, wgPort,
+	tOwned = true // dev.Close() now owns t
+	// Device-level obfs UAPI (if any) sits between private_key and the peer.
+	cfg := fmt.Sprintf("private_key=%s\n", privHex) + gw.Obfs + fmt.Sprintf(
+		"public_key=%s\nendpoint=%s:%d\nallowed_ip=0.0.0.0/0\nallowed_ip=::/0\npersistent_keepalive_interval=15\n",
+		pubHex, gw.IP, gw.port(),
 	)
 	if err := dev.IpcSet(cfg); err != nil {
 		dev.Close()

@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/amnezia-vpn/amneziawg-go/device"
+	"github.com/amnezia-vpn/amneziawg-go/tun/netstack"
 	"golang.org/x/crypto/curve25519"
-	"golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/tun/netstack"
 
 	"github.com/runonflux/cumulusvpn-wgnest"
 )

@@ -10,12 +10,18 @@ screens:
     raw_filename: countries.png
     layout: hero
     order: 2
-  # Was `tier` ("FREE TIER / Free to use. Honest limits." over the Settings
-  # plan row) — replaced 2026-07-30 after Apple's 2.3.7 rejection: "free" in
-  # screenshot copy counts as a price reference. The privacy disclosure screen
-  # carries the strongest claim we can show instead.
-  - key: privacy
-    raw_filename: privacy.png
+  # The Settings frame, restored 2026-07-31. It reads far better than the
+  # privacy-disclosure frame it briefly replaced: one glance shows the plan
+  # status, the kill switch, Stealth mode and the privacy links together.
+  #
+  # It was pulled on 2026-07-30 for a real reason — Apple cited 2.3.7 against
+  # the OVERLAY copy on this frame ("FREE TIER / Free to use. Honest limits."),
+  # because "free" is a price reference. The frame itself was never the
+  # problem: the in-app "FREE · 100 KB/s" pill appears on the connect and
+  # multi-hop frames too and both passed review. So the screen comes back with
+  # price-free overlay copy — see config/locales/en.yaml, and keep it that way.
+  - key: tier
+    raw_filename: tier.png
     layout: hero
     order: 3
   - key: multihop

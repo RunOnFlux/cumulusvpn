@@ -3,9 +3,10 @@
 # geolocation uses FluxOS ac<CONTINENT>_<ISO-COUNTRY> format.
 # stage: beta | ga | scale  (generate/register only stages <= the --stage passed to generate.mjs)
 #
-# All specs are ENTERPRISE + datacenter: they deploy only to KYC'd ArcaneOS datacenter nodes
-# (not residential), the image/env are encrypted (hidden from the public marketplace), and the
-# private registry (repoauth) is enterprise-only. See ../docs/02-flux-deployment.md.
+# Specs are generated as the OPEN v8 variant (public image + env inlined on-chain, no
+# encryption) — encrypt.mjs is a stub, and an accidental enterprise registration
+# (cumulusvpntlsde, 2026-08-04) proved unfillable: empty public compose + no pinned nodes
+# = zero placements. Register OPEN. See ../docs/02-flux-deployment.md.
 
 owner: 196GJWyLxzAw3MirTT7Bqs2iGpUQio29GH # enterprise app-owner ZelID (must be on the enterprise whitelist)
 
@@ -17,52 +18,92 @@ defaults:
   staticip: true # stable WG endpoints
   datacenter: true # enterprise-only v8 flag → datacenter nodes, not homes
   ports: [51820, 51821] # WG (TCP+UDP auto) + control API
-  # PUBLIC GHCR image (auto-built), no repoauth. NOTE: the tag must be the form CI actually
-  # publishes — docker/metadata-action strips the leading "v", so git tag v0.1.0 -> image :0.1.0
-  # (NOT :v0.1.0). Before a real registration, pin the immutable digest here
-  # (…/cumulusvpn-gateway@sha256:…) so a paid spec can't be re-tagged out from under it.
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.1.0'
+  # DPI-resistant transports (docs/15) — additive, ride the FREE protocol sides of
+  # the ports above, so they cost NO extra Flux ports fleet-wide:
+  obfs: true # CVPN_OBFS_ENABLE → AmneziaWG (awg) on 51821/udp
+  tls: true # CVPN_TLS_ENABLE  → WireGuard-over-TLS (wg-tls) on 51820/tcp
+  tlsSni: www.bing.com # camouflage SNI for the self-signed relay cert (not verified)
+  # Ports for the separate 443 STEALTH group (cumulusvpntls<cc>), emitted only for
+  # countries flagged `stealth: true` — bounds the scarce 443 to a small footprint.
+  # NOTE: never add the gateway's internal premium WG port (51822) here — listing
+  # it would publish that device and let clients bypass the TLS relay entirely.
+  stealthPorts: [51820, 51821, 443]
+  # Instances for the 443 stealth group, INDEPENDENT of the country's standard
+  # count. 443 is a surcharged sub-1024 port and the group is a bounded pilot,
+  # so it must not inherit a large standard footprint. Raise per-country with
+  # `stealthInstances:` once clients ship a directory that lists the group.
+  stealthInstances: 3
+  # Reserve the 443 stealth tier for PAYING users (CVPN_TLS_PREMIUM). Applies only
+  # to the cumulusvpntls<cc> group; the standard group's wg-tls on 51820/tcp stays
+  # open to everyone since it costs no extra port. Free users in Stealth simply
+  # fall back to awg. Set false to make 443 free-for-all.
+  tlsPremium: true
+  # PUBLIC GHCR image (auto-built), no repoauth.
+  # Pinned to the VERSION TAG `0.2.0` (deliberate policy, 2026-08-04, was
+  # digest-pinned): the tag is treated as MUTABLE and rebuilt in place — the
+  # same release flow 0.1.0 used. To ship a fix to the fleet WITHOUT touching
+  # the on-chain specs: move the git tag (delete + recreate v0.2.0 on the new
+  # commit + push) and gateway-image.yml republishes :0.2.0. Nodes pick the new
+  # image up when they next pull (soft redeploy/reinstall/migration — a plain
+  # restart may reuse the cached layer), so the fleet rolls forward gradually.
+  # Because the Version string stays "0.2.0" across rebuilds, tell builds apart
+  # by `/v1/info.build_commit` (git short-SHA; the dashboard flags stale nodes).
+  # Accepted tradeoff vs the digest pin: whoever can push to GHCR (or CI) can
+  # change what the fleet runs without an on-chain act; the spec alone no longer
+  # proves which bytes a node is running. Verify what the tag resolves to with:
+  #   docker buildx imagetools inspect ghcr.io/runonflux/cumulusvpn-gateway:0.2.0
+  # A BREAKING gateway (0.3.0) is a NEW tag: edit this line + re-register the
+  # specs — the desired friction for major changes.
+  # Note CI strips the leading "v", so tag v0.2.0 -> image :0.2.0, never :v0.2.0.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.2.0'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:
   # --- Beta (12) --- instance counts tuned per expected demand; min 3 for failover
-  - { cc: us, geolocation: acNA_US, instances: 6, stage: beta }
-  - { cc: ca, geolocation: acNA_CA, instances: 3, stage: beta }
-  - { cc: de, geolocation: acEU_DE, instances: 5, stage: beta }
-  - { cc: nl, geolocation: acEU_NL, instances: 5, stage: beta }
-  - { cc: fr, geolocation: acEU_FR, instances: 4, stage: beta }
-  - { cc: gb, geolocation: acEU_GB, instances: 4, stage: beta }
-  - { cc: cz, geolocation: acEU_CZ, instances: 3, stage: beta }
-  - { cc: pl, geolocation: acEU_PL, instances: 3, stage: beta }
-  - { cc: sg, geolocation: acAS_SG, instances: 4, stage: beta }
-  - { cc: jp, geolocation: acAS_JP, instances: 4, stage: beta }
-  - { cc: au, geolocation: acOC_AU, instances: 3, stage: beta }
-  - { cc: br, geolocation: acSA_BR, instances: 3, stage: beta }
+  - { cc: us, geolocation: acNA_US, instances: 20, stage: beta }
+  - { cc: ca, geolocation: acNA_CA, instances: 6, stage: beta }
+  # DE is the 443-stealth pilot: also emits cumulusvpntlsde with a 443 TLS relay
+  # (docs/15 M4 — "DE pilot first"). Other countries add `stealth: true` as the
+  # premium 443 tier expands.
+  # 12, matching what is already live on chain: the 0.2.x rollout must change the
+  # image and env ONLY. Regenerating at 5 would quietly cut Germany by 7 nodes as
+  # a side effect, and the update-price credit floors at minPrice so the bill
+  # would not flag it. Scale deliberately, as its own change.
+  - { cc: de, geolocation: acEU_DE, instances: 12, stage: beta, stealth: true, stealthInstances: 6 }
+  - { cc: nl, geolocation: acEU_NL, instances: 8, stage: beta }
+  - { cc: fr, geolocation: acEU_FR, instances: 8, stage: beta }
+  - { cc: gb, geolocation: acEU_GB, instances: 8, stage: beta }
+  - { cc: cz, geolocation: acEU_CZ, instances: 6, stage: beta }
+  - { cc: pl, geolocation: acEU_PL, instances: 7, stage: beta }
+  - { cc: sg, geolocation: acAS_SG, instances: 10, stage: beta }
+  - { cc: jp, geolocation: acAS_JP, instances: 6, stage: beta }
+  - { cc: au, geolocation: acOC_AU, instances: 6, stage: beta }
+  - { cc: br, geolocation: acSA_BR, instances: 6, stage: beta }
   # --- GA additions (extend toward ~30) ---
   # Live-coverage notes below are from stats.runonflux.io fluxinfo geolocation, 2026-07-23
   # (static = static-IP nodes; the fleet default staticip:true only fills on those).
   # Countries with ZERO static nodes get staticip:false — the documented relaxation from
   # docs/08; their WG endpoints may re-IP, the signed directory tracks the move.
-  - { cc: es, geolocation: acEU_ES, stage: ga } # 40 static
-  - { cc: it, geolocation: acEU_IT, stage: ga } # only 3 static — expect under-fill
+  - { cc: es, geolocation: acEU_ES, instances: 7, stage: ga } # 40 static
+  - { cc: it, geolocation: acEU_IT, instances: 6, stage: ga } # only 3 static — expect under-fill
   - { cc: se, geolocation: acEU_SE, stage: ga }
   - { cc: ch, geolocation: acEU_CH, stage: ga }
-  - { cc: at, geolocation: acEU_AT, stage: ga }
-  - { cc: fi, geolocation: acEU_FI, stage: ga } # 812 static — deep pool
-  - { cc: mx, geolocation: acNA_MX, stage: ga, staticip: false } # 3 nodes, 0 static
+  - { cc: at, geolocation: acEU_AT, instances: 6, stage: ga }
+  - { cc: fi, geolocation: acEU_FI, instances: 15, stage: ga } # 812 static — deep pool
+  - { cc: mx, geolocation: acNA_MX, instances: 6, stage: ga, staticip: false } # 3 nodes, 0 static
   - { cc: kr, geolocation: acAS_KR, stage: ga }
   # in: ZERO Flux nodes live + CERT-In 2022 five-year logging mandate conflicts with
   # no-logs. BLOCKED — do not register until both resolve (or ship a virtual location).
-  - { cc: in, geolocation: acAS_IN, stage: ga }
-  - { cc: za, geolocation: acAF_ZA, stage: ga, staticip: false } # 22 nodes, 0 static
+  - { cc: in, geolocation: acAS_IN, instances: 10, stage: ga }
+  - { cc: za, geolocation: acAF_ZA, instances: 6, stage: ga, staticip: false } # 22 nodes, 0 static
   # --- Scale additions (2026-07) --- LEGAL REVIEW REQUIRED before registering ru/hk/ae:
   # ru: Roskomnadzor VPN registry/blocking regime + DPI throttling of WireGuard.
   # hk: post-NSL data-seizure exposure (major VPNs pulled physical HK servers).
   # ae: TDRA licensing regime; unlicensed VPN operation is legally exposed.
-  - { cc: ru, geolocation: acEU_RU, stage: scale } # 75 static DC nodes
-  - { cc: my, geolocation: acAS_MY, stage: scale, staticip: false } # 10 nodes, 0 static
-  - { cc: hk, geolocation: acAS_HK, stage: scale, staticip: false } # 9 nodes, 0 static
-  - { cc: ae, geolocation: acAS_AE, stage: scale, staticip: false } # 34 nodes, 0 static
+  - { cc: ru, geolocation: acEU_RU, instances: 10, stage: scale } # 75 static DC nodes
+  - { cc: my, geolocation: acAS_MY, instances: 6, stage: scale, staticip: false } # 10 nodes, 0 static
+  - { cc: hk, geolocation: acAS_HK, instances: 6, stage: scale, staticip: false } # 9 nodes, 0 static
+  - { cc: ae, geolocation: acAS_AE, instances: 6, stage: scale, staticip: false } # 34 nodes, 0 static
 
 
 # CRITICAL PRE-FLIGHT (generate.mjs enforces): enterprise/datacenter nodes are FEWER than the

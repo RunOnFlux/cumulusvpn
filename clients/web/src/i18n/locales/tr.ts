@@ -55,6 +55,14 @@ export const tr: Catalog = {
   connect_stat_endpoint: 'Uç nokta',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf indir',
+  connect_conf_note:
+    'Bu sunucuya bağlı. Sunucu yeniden başlar veya değişirse WireGuard tüneli hâlâ bağlı gösterir ama hiçbir şey geçmez — buraya dönüp yeni bir .conf oluşturun.',
+  connect_conf_regenerate: 'Yeni bir .conf oluştur',
+  connect_conf_stale:
+    '{country} için son yapılandırmanı veren sunucu değiştirildi — o yapılandırma artık bağlanamaz. Aşağıdan yenisini oluştur.',
+  connect_conf_unsure:
+    '{country} için son yapılandırmanı veren sunucuya ulaşılamadı. Geçici olarak kapalı ya da tamamen gitmiş olabilir — tünelin trafik geçirmiyorsa aşağıdan yeni bir yapılandırma oluştur.',
+  connect_conf_checking: 'Son yapılandırman kontrol ediliyor…',
   connect_upgrade_cta: 'Tam hız için yükselt →',
   connect_identity_title: 'Bu cihazın kimliği',
   connect_regenerate: 'Anahtarı yeniden oluştur',
@@ -78,6 +86,32 @@ export const tr: Catalog = {
   upgrade_privacy_note:
     'Zelcore / SSP Wallet içinde açılır. Ödeme, Flux blok zincirinde doğrulanır — kim olduğunu asla görmeyiz. Mesaj, ödemeyi anahtarına bağlar; mesaj olmadan göndermek, paranın ulaşıp hiçbir şeyin açılmaması anlamına gelir.',
   upgrade_back: '← Bağlan’a dön',
+
+  split_summary_title: 'Gelişmiş: split tunneling',
+  split_tier_pill: 'PREMIUM · İSTEĞE BAĞLI',
+  split_lede:
+    'Hangi hedeflerin VPN’i kullanacağını seç. Üretilen yapılandırma kuralları WireGuard AllowedIPs olarak ifade eder, bu yüzden standart WireGuard uygulamasıyla çalışır — yalnızca IP aralıkları ve yerel ağ atlaması (uygulama başına kurallar native uygulamalarımızı gerektirir).',
+  split_mode_aria: 'Split tunneling modu',
+  split_mode_off: 'Kapalı',
+  split_mode_exclude: 'Listeyi hariç tut',
+  split_mode_include: 'Yalnızca bunlar',
+  split_warn_exclude:
+    'Hariç tutulan trafik cihazından korumasız çıkar ve gerçek IP adresini gösterir.',
+  split_warn_include:
+    'Yalnızca listelenen hedefler korunur — geri kalan her şey gerçek IP adresini gösterir.',
+  split_lan_label: 'Yerel ağ erişimine izin ver (yazıcılar, NAS, yayın)',
+  split_cidr_placeholder: 'örn. 192.168.0.0/16 veya 203.0.113.7',
+  split_cidr_aria: 'IP adresi veya CIDR aralığı',
+  split_add: 'Ekle',
+  split_input_invalid: 'Geçerli bir IP adresi veya CIDR aralığı değil.',
+  split_rules_empty:
+    'Henüz IP kuralı yok — yukarıya bir aralık ekle ya da sadece yerel ağ erişimini kullan.',
+  split_remove_aria: '{value} kuralını kaldır',
+  split_next_note: 'Kurallar bu sayfada üreteceğin bir sonraki yapılandırmaya uygulanır.',
+  split_premium_required:
+    'Split tunneling bir premium özelliktir. Bunun yerine tam tünel yapılandırması üretildi — kurallarını uygulamak için premium’a geç.',
+  split_applied:
+    'Split tunneling uygulandı — bu yapılandırma yalnızca kurallarının izin verdiğini yönlendirir.',
 
   multihop_summary_title: 'Gelişmiş: multi-hop (iki yapılandırma)',
   multihop_tier_pill: 'PREMIUM · İSTEĞE BAĞLI',

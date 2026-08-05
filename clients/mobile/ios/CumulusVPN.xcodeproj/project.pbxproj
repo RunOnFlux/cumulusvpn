@@ -16,6 +16,7 @@
 		45BB38C0F494718F2CACE568 /* Wgnest.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 48A4B83E657702F2100C614E /* Wgnest.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		7F43D3B13C700C6BBF80B48A /* PacketTunnelProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */; };
+		FA11B00C0FF1CE00CAFEBABE /* WgTlsBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA11B00C0FF1CE00DEADBEEF /* WgTlsBridge.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
 		827599D74E554CDF8C98FB88 /* Wgnest.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 48A4B83E657702F2100C614E /* Wgnest.xcframework */; };
 		AA01CE0000000000000000C3 /* WireGuardKitC in Frameworks */ = {isa = PBXBuildFile; productRef = AA01CE0000000000000000B2 /* WireGuardKitC */; };
@@ -78,6 +79,7 @@
 		B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/NetworkExtension.framework; sourceTree = DEVELOPER_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PacketTunnelProvider.swift; sourceTree = "<group>"; };
+		FA11B00C0FF1CE00DEADBEEF /* WgTlsBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WgTlsBridge.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -191,6 +193,7 @@
 			isa = PBXGroup;
 			children = (
 				F60168D4481D3D0114E20FE1 /* PacketTunnelProvider.swift */,
+				FA11B00C0FF1CE00DEADBEEF /* WgTlsBridge.swift */,
 			);
 			path = CumulusTunnelExtension;
 			sourceTree = SOURCE_ROOT;
@@ -388,6 +391,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				7F43D3B13C700C6BBF80B48A /* PacketTunnelProvider.swift in Sources */,
+				FA11B00C0FF1CE00CAFEBABE /* WgTlsBridge.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -54,6 +54,14 @@ export const zh: Catalog = {
   connect_stat_endpoint: '端点',
   connect_stat_dns: 'DNS',
   connect_download_conf: '下载 .conf',
+  connect_conf_note:
+    '与该服务器绑定。若服务器重启或迁移，WireGuard 仍会显示隧道已连接，但没有任何流量通过——请回到此页重新生成 .conf。',
+  connect_conf_regenerate: '重新生成 .conf',
+  connect_conf_stale:
+    '为 {country} 签发你上一份配置的服务器已被替换——该配置无法再连接。请在下方重新生成。',
+  connect_conf_unsure:
+    '无法连接到为 {country} 签发你上一份配置的服务器。它可能暂时下线，也可能已永久消失——如果隧道没有流量通过，请在下方重新生成配置。',
+  connect_conf_checking: '正在检查你的上一份配置…',
   connect_upgrade_cta: '升级至全速 →',
   connect_identity_title: '此设备的身份',
   connect_regenerate: '重新生成密钥',
@@ -77,6 +85,27 @@ export const zh: Catalog = {
   upgrade_privacy_note:
     '在 Zelcore / SSP Wallet 中打开。付款会在 Flux 区块链上验证——我们永远不知道你是谁。留言把付款与你的密钥绑定；不带留言发送意味着资金会到账，但不会解锁任何东西。',
   upgrade_back: '← 返回连接',
+
+  split_summary_title: '高级：分流隧道',
+  split_tier_pill: '高级版 · 可选',
+  split_lede:
+    '选择哪些目标走 VPN。生成的配置将规则表达为 WireGuard 的 AllowedIPs，因此可用于标准 WireGuard 应用 — 仅支持 IP 范围和本地网络绕行（按应用的规则需要我们的原生应用）。',
+  split_mode_aria: '分流隧道模式',
+  split_mode_off: '关闭',
+  split_mode_exclude: '排除所列',
+  split_mode_include: '仅这些',
+  split_warn_exclude: '被排除的流量将不受保护地离开你的设备，并暴露你的真实 IP 地址。',
+  split_warn_include: '仅列出的目标受保护 — 其他一切都会暴露你的真实 IP 地址。',
+  split_lan_label: '允许访问本地网络（打印机、NAS、投屏）',
+  split_cidr_placeholder: '例如 192.168.0.0/16 或 203.0.113.7',
+  split_cidr_aria: 'IP 地址或 CIDR 范围',
+  split_add: '添加',
+  split_input_invalid: '不是有效的 IP 地址或 CIDR 范围。',
+  split_rules_empty: '还没有 IP 规则 — 在上方添加一个范围，或只使用本地网络访问。',
+  split_remove_aria: '移除规则 {value}',
+  split_next_note: '规则将应用于你在此页面生成的下一个配置。',
+  split_premium_required: '分流隧道是高级版功能。已改为生成全隧道配置 — 升级以应用你的规则。',
+  split_applied: '已应用分流隧道 — 此配置仅路由你的规则所允许的流量。',
 
   multihop_summary_title: '进阶：多跳（两份配置）',
   multihop_tier_pill: '高级 · 可选启用',

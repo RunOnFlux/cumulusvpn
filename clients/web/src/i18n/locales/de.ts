@@ -55,6 +55,14 @@ export const de: Catalog = {
   connect_stat_endpoint: 'Endpunkt',
   connect_stat_dns: 'DNS',
   connect_download_conf: '.conf herunterladen',
+  connect_conf_note:
+    'An diesen Server gebunden. Startet er neu oder wechselt er, zeigt WireGuard den Tunnel weiterhin als verbunden an, obwohl nichts durchkommt — komm zurück und erzeuge eine neue .conf.',
+  connect_conf_regenerate: 'Neue .conf erzeugen',
+  connect_conf_stale:
+    'Der Server, der deine letzte Konfiguration für {country} ausgestellt hat, wurde ersetzt — diese Konfiguration kann sich nicht mehr verbinden. Erzeuge unten eine neue.',
+  connect_conf_unsure:
+    'Der Server, der deine letzte Konfiguration für {country} ausgestellt hat, war nicht erreichbar. Er kann vorübergehend ausgefallen oder endgültig weg sein — wenn dein Tunnel keinen Verkehr durchlässt, erzeuge unten eine neue Konfiguration.',
+  connect_conf_checking: 'Deine letzte Konfiguration wird geprüft…',
   connect_upgrade_cta: 'Auf volle Geschwindigkeit upgraden →',
   connect_identity_title: 'Identität dieses Geräts',
   connect_regenerate: 'Schlüssel neu erzeugen',
@@ -78,6 +86,32 @@ export const de: Catalog = {
   upgrade_privacy_note:
     'Öffnet sich in Zelcore / SSP Wallet. Die Zahlung wird auf der Flux-Blockchain verifiziert — wir sehen nie, wer du bist. Die Nachricht verknüpft die Zahlung mit deinem Schlüssel; sendest du sie ohne diese, kommt das Geld an, aber nichts wird freigeschaltet.',
   upgrade_back: '← Zurück zu Verbinden',
+
+  split_summary_title: 'Erweitert: Split-Tunneling',
+  split_tier_pill: 'PREMIUM · OPT-IN',
+  split_lede:
+    'Wähle, welche Ziele das VPN nutzen. Die erzeugte Konfiguration drückt Regeln als WireGuard-AllowedIPs aus und funktioniert daher mit der Standard-WireGuard-App — nur IP-Bereiche und LAN-Umgehung (Regeln pro App brauchen unsere nativen Apps).',
+  split_mode_aria: 'Split-Tunneling-Modus',
+  split_mode_off: 'Aus',
+  split_mode_exclude: 'Liste ausschließen',
+  split_mode_include: 'Nur diese',
+  split_warn_exclude:
+    'Ausgeschlossener Datenverkehr verlässt dein Gerät ungeschützt und zeigt deine echte IP-Adresse.',
+  split_warn_include:
+    'Nur die aufgeführten Ziele sind geschützt — alles andere zeigt deine echte IP-Adresse.',
+  split_lan_label: 'Zugriff aufs lokale Netzwerk erlauben (Drucker, NAS, Casting)',
+  split_cidr_placeholder: 'z. B. 192.168.0.0/16 oder 203.0.113.7',
+  split_cidr_aria: 'IP-Adresse oder CIDR-Bereich',
+  split_add: 'Hinzufügen',
+  split_input_invalid: 'Keine gültige IP-Adresse und kein gültiger CIDR-Bereich.',
+  split_rules_empty:
+    'Noch keine IP-Regeln — füge oben einen Bereich hinzu oder nutze einfach den LAN-Zugriff.',
+  split_remove_aria: 'Regel {value} entfernen',
+  split_next_note: 'Regeln gelten für die nächste Konfiguration, die du auf dieser Seite erzeugst.',
+  split_premium_required:
+    'Split-Tunneling ist eine Premium-Funktion. Stattdessen wurde eine Voll-Tunnel-Konfiguration erzeugt — upgrade, um deine Regeln anzuwenden.',
+  split_applied:
+    'Split-Tunneling angewendet — diese Konfiguration routet nur, was deine Regeln erlauben.',
 
   multihop_summary_title: 'Erweitert: Multi-Hop (zwei Konfigurationen)',
   multihop_tier_pill: 'PREMIUM · OPT-IN',

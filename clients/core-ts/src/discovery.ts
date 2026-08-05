@@ -6,10 +6,13 @@ import type { Directory, DiscoverOptions, FetchImpl, GatewayInfo, InfoResponse }
 
 /**
  * Derive the ISO-3166-1 alpha-2 country code from a Flux app-spec name.
- * Spec names are `cumulusvpn<cc>` (e.g. `cumulusvpnde` -> `DE`).
+ * Spec names are `cumulusvpn<cc>` (e.g. `cumulusvpnde` -> `DE`), plus the
+ * 443-stealth variant `cumulusvpntls<cc>` (`cumulusvpntlsde` -> `DE`). The `tls`
+ * infix must be stripped too, or the whole variant would map to a bogus country;
+ * both groups in a country share its actual capabilities (from `/v1/info`).
  */
 export function specToCountryCode(spec: string): string {
-  return spec.replace(/^cumulusvpn/, '').toUpperCase();
+  return spec.replace(/^cumulusvpn(?:tls)?/, '').toUpperCase();
 }
 
 /** Public Flux app-location index. */

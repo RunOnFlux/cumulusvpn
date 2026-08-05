@@ -31,12 +31,43 @@ Raws must show real UI with no dev chrome (metro banner, dev menu, inspector)
      build/release-shots/Build/Products/Release-iphonesimulator/CumulusVPN.app
    xcrun simctl launch "iPhone 16 Pro Max" com.cumulusvpn.app
    ```
-2. **Connected-state caveat:** packet-tunnel extensions do NOT run on the iOS
-   Simulator, so `connect.png` (and any connected-state frame) likely needs a
-   **physical iPhone** capture (Xcode → Devices and Simulators, or
-   `xcrun devicectl`). Any modern ~19.5:9 iPhone works — the compositor
-   rescales the raw into the bezel, so the capture does not have to be
-   1320×2868.
+2. **Screenshot mode — needed for `connect.png` and `countries.png`.**
+   Packet-tunnel extensions do NOT run on the iOS Simulator, so the app can
+   never reach `connected` there; and latency is measured live, so the country
+   ratings depend on where the capture machine sits (from Asia-Pacific every
+   European node reads 300–800 ms and the whole list renders "Good").
+
+   `CVPN_SCREENSHOT=1` swaps both for fixed demo data — see
+   `clients/mobile/src/lib/screenshot.ts` for the honesty rules the data has to
+   satisfy (representative-not-invented latencies; throughput under the free
+   tier's own 100 KB/s cap; no fabricated features).
+
+   Xcode does **not** forward the env var to Metro's build phase, so build the
+   bundle separately and drop it into the `.app`:
+   ```bash
+   cd clients/mobile
+   CVPN_SCREENSHOT=1 npx react-native bundle --platform ios --dev false \
+     --entry-file index.js --bundle-output /tmp/demo.jsbundle --reset-cache
+   APP=ios/build/release-shots/Build/Products/Release-iphonesimulator/CumulusVPN.app
+   cp /tmp/demo.jsbundle "$APP/main.jsbundle"
+   xcrun simctl install "iPhone 16 Pro Max" "$APP"
+   ```
+   Then tap Connect — it enters the demo session without the native module.
+
+   **The demo data cannot ship.** `metro.config.js` resolves `./screenshot` to
+   `./screenshot.stub` unless `CVPN_SCREENSHOT=1`, so it never enters a normal
+   bundle's dependency graph. Guarding the call sites alone is NOT enough (the
+   branches die but the module's constants are still bundled — that leak was
+   observed). Before any store upload, prove it:
+   ```bash
+   cd clients/mobile && yarn verify:no-demo-data
+   ```
+
+   A **physical iPhone** capture also works and needs no demo mode
+   (`xcrun devicectl`, or Xcode → Devices and Simulators). Any modern ~19.5:9
+   iPhone works — the compositor rescales the raw into the bezel, so the capture
+   does not have to be 1320×2868. Note you cannot force the 9:41 status bar on a
+   real device the way `simctl status_bar` does on a Simulator.
 3. Canonical status bar before any Simulator capture:
    ```bash
    xcrun simctl status_bar "iPhone 16 Pro Max" override \

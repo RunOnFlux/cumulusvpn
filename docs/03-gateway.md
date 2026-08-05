@@ -82,11 +82,33 @@ netstack PoC hits its gate, skip v0; if it slips, v0 buys time in market.
 ## Subsystem details
 
 ### Peer management
-- Peers live only in memory + optional `/data/peers.cache` (pubkey, assigned 10.x address,
-  paid_until) so restarts are seamless; loss of the cache is fine — clients auto-re-enroll.
+- Peers live in memory and are persisted to `/data/peers.cache` (`CVPN_PEER_CACHE_FILE`) as
+  pubkey → assigned 10.x address, restored into every transport device before the API serves.
+  Tier is *not* cached — entitlement is re-derived from chain, which backfills from block 0 at
+  boot, so a cached tier could only ever be a stale copy of the truth.
+- Losing the cache is survivable but not free. The apps re-enroll on connect, so they only pay a
+  round trip; a **web-issued `.conf` cannot re-enroll at all** — it is consumed by the stock
+  WireGuard client, which has no control-plane. Before persistence, every container restart
+  silently killed every issued `.conf`, and WireGuard's failure mode hides it: the tunnel reads
+  connected, the handshake never completes, and with `AllowedIPs = 0.0.0.0/0` the user loses all
+  traffic until they notice. Restarts are routine — a Flux app update redeploys every container.
+- A migration to a different Flux node is still fatal to an issued `.conf`, and unavoidably so:
+  the new node has its own `/data`, hence its own server key, its own IP, and no peer table. The
+  web UI says this and offers a one-click reissue on the same keypair.
 - Address plan: `10.8.0.0/16` per gateway (no cross-gateway coordination needed — tunnels are
   point-to-point per gateway). IPv6 ULA later.
-- Idle eviction: free peers evicted after 30 days idle, premium after paid_until + 35 days.
+- Idle eviction: free peers evicted after 30 days idle, premium after paid_until + 35 days. Idleness
+  is measured by **last handshake**, never by last enrollment — a web-issued `.conf` enrolls exactly
+  once and then handshakes for as long as it is used, so an enroll-driven clock would reap precisely
+  the users persistence exists to protect. The hourly sweep refreshes stamps from the WireGuard
+  device before deciding. Eviction is not optional once the table persists: a restart used to be an
+  accidental garbage collector, so without it `MAX_PEERS_FREE` would become a *lifetime* cap.
+- Health is observable: `/v1/info.peers_persisted` reports whether this node is actually
+  persisting. It is `false` both when a write failed and when persistence was never enabled, since
+  from a client's point of view those are the same condition — enrollments will not survive.
+- A load that cannot be fully read — unreadable file, an unrecognised format version, more records
+  than `MAX_PEERS_TOTAL` — leaves the file untouched and runs that boot **without** persistence,
+  rather than replacing a file it could not read with one derived from what little it recovered.
 - Capacity guards: `MAX_PEERS_FREE`, `MAX_PEERS_TOTAL`, aggregate free-tier bandwidth ceiling
   (e.g. free pool ≤ 30% of instance throughput) so freeloaders can't starve subscribers.
 

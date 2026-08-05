@@ -1,6 +1,10 @@
 package wg
 
-import "testing"
+import (
+	"net/netip"
+	"sync/atomic"
+	"testing"
+)
 
 // newTestForwarder builds a Forwarder exercising only the egress-policy fields.
 // portAllowed touches neither dev nor lim, so nil is safe here.
@@ -56,5 +60,75 @@ func TestPortAllowed(t *testing.T) {
 				t.Errorf("portAllowed(port=%d, isUDP=%v) = %v, want %v", tc.port, tc.isUDP, got, tc.want)
 			}
 		})
+	}
+}
+
+// TestDestAllowed guards the SSRF filter: an enrolled client must not be able to
+// reach the node's own network / cloud metadata / other internal services
+// through the exit. Only globally-routable destinations are forwarded.
+func TestDestAllowed(t *testing.T) {
+	blocked := []string{
+		"127.0.0.1",       // loopback (the gateway's own control API)
+		"::1",             // loopback v6
+		"169.254.169.254", // cloud metadata
+		"169.254.0.1",     // link-local
+		"10.0.0.5",        // RFC1918
+		"172.16.0.1",      // RFC1918
+		"192.168.1.1",     // RFC1918
+		"100.64.0.1",      // CGNAT
+		"fc00::1",         // ULA (IsPrivate v6)
+		"fe80::1",         // link-local v6
+		"0.0.0.0",         // unspecified
+		"224.0.0.1",       // multicast
+	}
+	allowed := []string{
+		"1.1.1.1",              // public resolver
+		"8.8.8.8",              // public
+		"93.184.216.34",        // public web
+		"2606:4700:4700::1111", // public v6
+	}
+
+	f := newTestForwarder(nil, true) // allowPrivate defaults false
+	for _, s := range blocked {
+		ip := netip.MustParseAddr(s)
+		if f.destAllowed(ip) {
+			t.Errorf("destAllowed(%s) = true, want false (SSRF guard)", s)
+		}
+	}
+	for _, s := range allowed {
+		ip := netip.MustParseAddr(s)
+		if !f.destAllowed(ip) {
+			t.Errorf("destAllowed(%s) = false, want true (public)", s)
+		}
+	}
+
+	// The dev/test override lets private destinations through.
+	f.SetAllowPrivateEgress(true)
+	if !f.destAllowed(netip.MustParseAddr("192.168.1.1")) {
+		t.Error("with AllowPrivateEgress, destAllowed(192.168.1.1) should be true")
+	}
+}
+
+// A forwarded flow commits a host socket, two goroutines and two pump buffers
+// BEFORE the peer's token bucket sees a single byte — so the rate limiter cannot
+// bound it. maxFlows is what stops one peer's flow flood from exhausting the
+// container's memory and taking every other peer on the node down with it.
+func TestAcquireFlowCapsConcurrency(t *testing.T) {
+	var n atomic.Int64
+	for i := 0; i < maxFlows; i++ {
+		if !acquireFlow(&n) {
+			t.Fatalf("flow %d refused below the cap", i)
+		}
+	}
+	if acquireFlow(&n) {
+		t.Fatal("a flow past the cap must be refused")
+	}
+	if got := n.Load(); got != maxFlows {
+		t.Errorf("a refused flow must not consume a slot: count=%d want=%d", got, maxFlows)
+	}
+	// Releasing frees capacity again — a burst must not permanently wedge the node.
+	releaseFlow(&n)
+	if !acquireFlow(&n) {
+		t.Error("a released slot must be reusable")
 	}
 }

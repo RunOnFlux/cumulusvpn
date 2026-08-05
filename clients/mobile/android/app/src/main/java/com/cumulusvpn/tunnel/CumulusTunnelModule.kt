@@ -178,6 +178,42 @@ class CumulusTunnelModule(
      * difficulty in well under a second (the pure-JS Hermes solver takes many
      * seconds and freezes the UI). Mirrors core `solvePoW`/`hasLeadingZeroBits`.
      */
+    /**
+     * List user-launchable apps for the split-tunneling picker (docs/17 §4.1):
+     * label + package for everything with a MAIN/LAUNCHER activity — visible
+     * through the manifest `<queries>` element, no QUERY_ALL_PACKAGES. Sorted
+     * by label; our own package is filtered out (the compiler rejects it as a
+     * rule anyway). Runs off the JS thread — PackageManager + label loading is
+     * slow enough to jank the UI on a large app list.
+     */
+    @ReactMethod
+    fun listInstalledApps(promise: Promise) {
+        powExecutor.execute {
+            try {
+                val pm = reactContext.packageManager
+                val launcher = Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER)
+                val seen = HashSet<String>()
+                val apps = Arguments.createArray()
+                val resolved = pm.queryIntentActivities(launcher, 0)
+                    .mapNotNull { info ->
+                        val pkg = info.activityInfo?.packageName ?: return@mapNotNull null
+                        if (pkg == reactContext.packageName || !seen.add(pkg)) return@mapNotNull null
+                        pkg to (info.loadLabel(pm)?.toString() ?: pkg)
+                    }
+                    .sortedBy { (_, label) -> label.lowercase() }
+                for ((pkg, label) in resolved) {
+                    val row: WritableMap = Arguments.createMap()
+                    row.putString("packageName", pkg)
+                    row.putString("label", label)
+                    apps.pushMap(row)
+                }
+                promise.resolve(apps)
+            } catch (t: Throwable) {
+                promise.reject("E_APPS", t.message, t)
+            }
+        }
+    }
+
     @ReactMethod
     fun solvePow(publicKeyB64: String, bits: Double, promise: Promise) {
         powExecutor.execute {
