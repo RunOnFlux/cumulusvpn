@@ -141,14 +141,23 @@ test('generate.mjs --variant datacenter emits 12 on-chain + 12 plain enterprise 
   }
 });
 
-test('generate.mjs honors per-country instance counts (us=6)', () => {
+test('generate.mjs honors per-country instance counts', () => {
   const sb = makeSandbox();
   try {
     copyIn(sb, 'scripts/generate.mjs', 'scripts/generate.mjs');
     copyIn(sb, 'countries.yaml', 'countries.yaml');
     runNode(join(sb, 'scripts', 'generate.mjs'), ['--stage', 'beta']);
     const us = JSON.parse(readFileSync(join(sb, 'specs', 'onchain', 'cumulusvpnus.json'), 'utf8'));
-    assert.equal(us.instances, 6);
+    // Read the expectation from the manifest rather than hardcoding a number:
+    // instance counts track what is actually registered on-chain and get
+    // re-synced when the fleet is scaled, so a literal here fails the build
+    // every time someone legitimately resizes a country (it did, at us 6→20).
+    // What must hold is that the per-country override REACHES the spec.
+    const manifest = readFileSync(join(sb, 'countries.yaml'), 'utf8');
+    const expected = Number(/\{ cc: us,[^}]*instances:\s*(\d+)/.exec(manifest)?.[1]);
+    assert.ok(expected > 0, 'countries.yaml must set an explicit instances for us');
+    assert.notEqual(expected, 3, 'us must differ from the default to prove the override');
+    assert.equal(us.instances, expected);
   } finally {
     cleanup(sb);
   }
