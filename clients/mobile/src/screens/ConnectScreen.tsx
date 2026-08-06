@@ -500,10 +500,13 @@ function formatDuration(ms: number): string {
  */
 function locationSummary(target: Country, auto: boolean): string {
   const q = gatewayQuality(target.latencyMs, target.best.load);
-  const ping = target.latencyMs === null ? '—' : `${target.latencyMs}`;
+  // Same rule as the picker: no measurement, no verdict (see CountryPickerScreen).
+  const measured = target.latencyMs !== null;
+  const verdict = measured ? q.label : 'Untested';
+  const ping = measured ? `${target.latencyMs}` : '—';
   const head = auto ? `Nearest: ${target.name}` : target.city || target.name;
   const nodes = target.nodeCount === 1 ? '1 node' : `${target.nodeCount} nodes`;
-  return `${head} · ${ping} ms · ${q.loadPct}% load · ${q.label} · ${nodes}`;
+  return `${head} · ${ping} ms · ${q.loadPct}% load · ${verdict} · ${nodes}`;
 }
 
 const styles = StyleSheet.create({

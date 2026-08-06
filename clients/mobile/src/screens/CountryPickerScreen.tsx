@@ -161,6 +161,9 @@ export function CountryPickerScreen({
           keyboardShouldPersistTaps="handled"
           renderItem={({ item }) => {
             const q = gatewayQuality(item.latencyMs, item.best.load);
+            const measured = item.latencyMs !== null;
+            const toneColor = measured ? TONE_COLOR[q.tone] : color.inkFaint;
+            const toneLabel = measured ? q.label : 'Untested';
             return (
               <Pressable
                 style={[styles.row, item.id === selectedCode && styles.rowSelected]}
@@ -176,11 +179,11 @@ export function CountryPickerScreen({
                 </View>
                 <View style={styles.qual}>
                   <View style={styles.qualTop}>
-                    <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
-                    <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
+                    <View style={[styles.qualDot, { backgroundColor: toneColor }]} />
+                    <Text style={[styles.qualLabel, { color: toneColor }]}>{toneLabel}</Text>
                   </View>
                   <Text style={styles.qualSub}>
-                    {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
+                    {measured ? `${item.latencyMs} ms` : '— ms'} · {q.loadPct}% load
                   </Text>
                 </View>
               </Pressable>
@@ -253,6 +256,12 @@ export function CountryPickerScreen({
           const cityCount = twoLevel ? citiesFor(item.code).length : 0;
           const drillable = cityCount > 1;
           const q = gatewayQuality(item.latencyMs, item.best.load);
+          // Unmeasured latency scores neutral inside gatewayQuality, so an idle
+          // node reads "Excellent" before it has ever answered a ping. Say
+          // "Untested" instead — this list exists to be trusted when choosing.
+          const measured = item.latencyMs !== null;
+          const toneColor = measured ? TONE_COLOR[q.tone] : color.inkFaint;
+          const toneLabel = measured ? q.label : 'Untested';
           const pinned = favorites.includes(item.code);
           return (
             <Pressable
@@ -287,14 +296,20 @@ export function CountryPickerScreen({
                   cities inside". */}
               <View style={styles.qual}>
                 <View style={styles.qualTop}>
-                  <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
-                  <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
+                  <View style={[styles.qualDot, { backgroundColor: toneColor }]} />
+                  <Text style={[styles.qualLabel, { color: toneColor }]}>{toneLabel}</Text>
                 </View>
                 <Text style={styles.qualSub}>
-                  {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
+                  {measured ? `${item.latencyMs} ms` : '— ms'} · {q.loadPct}% load
                 </Text>
               </View>
-              {drillable && <Text style={styles.chevron}>›</Text>}
+              {/* Always occupy the chevron column, draw the glyph only when the
+                  row drills into cities. Rendering it conditionally made the
+                  quality block jump left on drillable rows, so the right edge
+                  came out ragged between neighbouring rows. */}
+              <View style={styles.chevronSlot}>
+                {drillable && <Text style={styles.chevron}>›</Text>}
+              </View>
             </Pressable>
           );
         }}
@@ -358,7 +373,8 @@ const styles = StyleSheet.create({
   meta: { flex: 1 },
   name: { color: color.ink, fontSize: 15, fontWeight: '600' },
   sub: { color: color.inkDim, fontSize: 12, marginTop: 2 },
-  chevron: { color: color.inkFaint, fontSize: 22, fontWeight: '400', paddingHorizontal: 4 },
+  chevron: { color: color.inkFaint, fontSize: 22, fontWeight: '400' },
+  chevronSlot: { width: 14, alignItems: 'center', justifyContent: 'center' },
   qual: { alignItems: 'flex-end' },
   qualTop: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   qualDot: { width: 7, height: 7, borderRadius: 4 },
