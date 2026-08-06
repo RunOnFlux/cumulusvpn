@@ -55,6 +55,13 @@ class CumulusMultihopVpnService : VpnService() {
             else -> {
                 val startIntent = intent ?: return START_NOT_STICKY
                 stopRequested = false
+                // Same reconnect guard as the single-hop service: another START
+                // lands on this live instance, and stacking a second nested pair
+                // on top of the first leaves neither able to handshake.
+                if (handle != 0L || tun != null) {
+                    Log.i(TAG, "replacing a live session before reconnect")
+                    teardown()
+                }
                 // Run as a foreground service so the OS won't kill the process (and
                 // silently drop the tunnel) under memory pressure / doze. Must be
                 // called promptly after start; the notification also makes the

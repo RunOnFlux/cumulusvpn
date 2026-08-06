@@ -50,6 +50,17 @@ class CumulusObfsVpnService : VpnService() {
             else -> {
                 val startIntent = intent ?: return START_NOT_STICKY
                 stopRequested = false
+                // A reconnect (or a transport-chain fallback) arrives as another
+                // START on the SAME live service instance — Android does not
+                // recreate a started service. Without this, connect() would
+                // start a second Go device while the first still owns a tun fd
+                // and its sockets: the new tunnel never completes a handshake,
+                // so the app sits on "connecting" and gives up. Tearing down
+                // first is idempotent when nothing is running.
+                if (handle != 0L || tun != null || tlsBridge != null) {
+                    Log.i(TAG, "replacing a live session before reconnect")
+                    teardown()
+                }
                 startForegroundNotification()
                 // Bring the tunnel up OFF the main thread (JNI + device start must
                 // not block the looper).

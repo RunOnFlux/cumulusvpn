@@ -3,30 +3,28 @@ package com.cumulusvpn.tunnel
 import android.content.Context
 import android.content.Intent
 import android.util.Log
-import com.wireguard.android.backend.Backend
-import com.wireguard.android.backend.GoBackend
-import com.wireguard.android.backend.Statistics
-import com.wireguard.android.backend.Tunnel
 import com.wireguard.config.Config
 import java.io.BufferedReader
 import java.io.StringReader
 
 /**
- * The Android WireGuard data plane, driven by the official
- * `com.wireguard.android:tunnel` library ([GoBackend] + [Tunnel] + [Config]).
+ * The Android WireGuard data plane. Every transport — vanilla, AmneziaWG
+ * (`awg`), `wg-tls` and multi-hop — runs on the ONE userspace `wgnest` Go core
+ * (`libgojni.so`, via the [Wgmobile] AAR) inside our own `VpnService`s:
+ * [CumulusObfsVpnService] for single-hop, [CumulusMultihopVpnService] for the
+ * nested pair. This controller only parses configs and routes intents; it owns
+ * no data plane itself, which is why it is an `object` and not a `Service`.
  *
- * The library ships a prebuilt userspace `wireguard-go` (`libwg-go.so`) for
- * every ABI and manages the OS `VpnService`/tun itself — its bundled
- * `GoBackend$VpnService` is declared in `AndroidManifest.xml`. We therefore do
- * NOT subclass `VpnService`; we own a single [GoBackend] and drive it via
- * [Backend.setState]. That is why this controller is an `object`, not a
- * `Service`: the service belongs to the library.
- *
- * Single-hop is fully wired below. Multi-hop (docs/11) needs TWO stacked
- * wireguard-go devices behind one tun; the stock [GoBackend] exposes exactly one
- * device bound to the tun, so the outer-encapsulation seam is the one place a
- * bundled/forked wireguard-go is required — clearly marked `// POC:` in
- * [startMultihop].
+ * **One Go runtime per process — do not add a second.** Vanilla single-hop used
+ * to run on the stock `com.wireguard.android:tunnel` `GoBackend`, which bundles
+ * its own Go runtime in `libwg-go.so`. With both engines linked, whichever one
+ * started SECOND in the process died with `SIGSEGV` (null deref) and took the
+ * app with it — reproducible by connecting vanilla, disconnecting, enabling
+ * Stealth and connecting again, or the reverse. iOS hit the identical wall and
+ * refuses to link WireGuardKit's `libwg-go` (see `PacketTunnelProvider.swift`
+ * and docs/13); Android now matches. The wireguard-android dependency is kept
+ * ONLY for its pure-Kotlin [Config] parser, which loads no native code — never
+ * construct `GoBackend` from it.
  */
 object CumulusTunnelController {
     private const val TAG = "CumulusTunnel"
@@ -46,15 +44,12 @@ object CumulusTunnelController {
     }
 
     @Volatile
-    private var backend: Backend? = null
-
-    @Volatile
     private var currentStateValue: String = STATE_DISCONNECTED
 
     @Volatile
     private var listener: StateListener? = null
 
-    /** True while the active tunnel is the nested (multi-hop) service, not GoBackend. */
+    /** True while the active tunnel is the nested (multi-hop) service. */
     @Volatile
     private var multihopActive: Boolean = false
 
@@ -62,32 +57,11 @@ object CumulusTunnelController {
     @Volatile
     private var obfsActive: Boolean = false
 
-    /** The active tunnel handle, if any. Named [TUNNEL_NAME]. */
-    private val tunnel =
-        object : Tunnel {
-            override fun getName(): String = TUNNEL_NAME
-
-            override fun onStateChange(newState: Tunnel.State) {
-                setState(
-                    when (newState) {
-                        Tunnel.State.UP -> STATE_CONNECTED
-                        Tunnel.State.DOWN -> STATE_DISCONNECTED
-                        Tunnel.State.TOGGLE -> STATE_CONNECTING
-                    },
-                )
-            }
-        }
-
     fun setStateListener(l: StateListener?) {
         listener = l
     }
 
     fun currentState(): String = currentStateValue
-
-    private fun backend(context: Context): Backend =
-        backend ?: synchronized(this) {
-            backend ?: GoBackend(context.applicationContext).also { backend = it }
-        }
 
     /**
      * Bring the single-hop tunnel up from a rendered wg-quick config string
@@ -97,29 +71,24 @@ object CumulusTunnelController {
     fun startTunnel(context: Context, wgQuickConfig: String) {
         setState(STATE_CONNECTING)
         try {
+            // EVERY single-hop transport runs on the ONE wgnest Go core, vanilla
+            // included (empty obfs + no TLS SNI == plain WireGuard).
+            //
+            // Vanilla used to run on the stock wireguard-android [GoBackend],
+            // which ships its OWN Go runtime in libwg-go.so. Loading a second Go
+            // runtime beside wgnest's libgojni.so in one process is not
+            // supported: whichever engine starts SECOND dereferences null and
+            // takes the process down with SIGSEGV. It is reproducible in either
+            // order — connect vanilla, disconnect, enable Stealth, connect (or
+            // the reverse) — because the first engine to run wins the process.
+            // iOS already avoids this by refusing to link WireGuardKit's
+            // libwg-go (see PacketTunnelProvider.swift / docs/13); Android now
+            // matches it. GoBackend is never instantiated, so libwg-go.so is
+            // never loaded — the wireguard-android dependency is kept ONLY for
+            // its pure-Kotlin `Config` parser, which touches no native code.
             val tlsSni = extractTlsSni(wgQuickConfig)
             val obfs = extractObfsUapi(wgQuickConfig)
-            if (tlsSni != null) {
-                // wg-tls single-hop: the wgnest device bridged over TLS. Runs in
-                // the same wgnest service as awg (the official Config parser would
-                // also reject the CVPN_TLS_SNI sentinel line). No [Interface] obfs.
-                startObfsSingleHop(context, wgQuickConfig, "", tlsSni)
-            } else if (obfs.isNotEmpty()) {
-                // Obfuscated (AmneziaWG) single-hop runs in the wgnest service —
-                // the official Config parser can't represent the awg params.
-                // Vanilla single-hop stays on GoBackend, unchanged.
-                startObfsSingleHop(context, wgQuickConfig, obfs, null)
-            } else {
-                // Vanilla single-hop on GoBackend. Reset the obfs/multihop flags:
-                // a prior obfs or multi-hop tunnel may have set them, and a connect
-                // without a clean disconnect would otherwise leave stop/statistics
-                // routing to the wrong (nested/wgnest) backend.
-                obfsActive = false
-                multihopActive = false
-                val config = parse(wgQuickConfig)
-                backend(context).setState(tunnel, Tunnel.State.UP, config)
-                setState(STATE_CONNECTED)
-            }
+            startObfsSingleHop(context, wgQuickConfig, obfs, tlsSni)
         } catch (t: Throwable) {
             Log.e(TAG, "startTunnel failed", t)
             obfsActive = false
@@ -403,7 +372,8 @@ object CumulusTunnelController {
                 context.startService(intent)
                 // onMultihopState(DISCONNECTED) fires from the service's teardown.
             } else {
-                backend?.setState(tunnel, Tunnel.State.DOWN, null)
+                // Nothing running (or a stale flag): there is no other backend
+                // to stop now that every transport rides wgnest.
                 setState(STATE_DISCONNECTED)
             }
         } catch (t: Throwable) {
@@ -415,11 +385,9 @@ object CumulusTunnelController {
     /**
      * Live byte counters from the running device, or zeros when down.
      *
-     * Multi-hop runs in [CumulusMultihopVpnService] (the Go core owns the tun),
-     * so its counters come from there; single-hop reads the wireguard-android
-     * backend. POC: single-hop `lastHandshake` stays 0 — the per-peer handshake
-     * accessor on [Statistics] differs across library versions; totalRx/totalTx
-     * are stable (multi-hop reports a real handshake time from the Go core).
+     * Both services read them straight from the wgnest Go core, so single-hop
+     * now reports a real `lastHandshake` too — the old GoBackend path could
+     * not (its per-peer handshake accessor differed across library versions).
      */
     fun statistics(context: Context): Stats {
         if (obfsActive) {
@@ -428,13 +396,7 @@ object CumulusTunnelController {
         if (multihopActive) {
             return CumulusMultihopVpnService.statistics()
         }
-        val b = backend ?: return Stats(0, 0, 0)
-        return try {
-            val s: Statistics = b.getStatistics(tunnel)
-            Stats(s.totalRx(), s.totalTx(), 0)
-        } catch (t: Throwable) {
-            Stats(0, 0, 0)
-        }
+        return Stats(0, 0, 0)
     }
 
     /** True when an AllowedIPs value is the classic full tunnel (only default
