@@ -229,9 +229,11 @@ export interface VpnActions {
   /** Switch transport mode (Auto vs Stealth); persisted. Applies on next connect. */
   setTransportMode(mode: TransportMode): Promise<void>;
   /** Pick the multi-hop entry country (`null` = auto-pick nearest); persisted. */
-  selectEntryCountry(code: string | null): Promise<void>;
+  /** Pick the multi-hop ENTRY: a location id (`DE` or `DE:Frankfurt`), null = auto. */
+  selectEntryCountry(id: string | null): Promise<void>;
   /** Pick the multi-hop exit country (`null` = auto-pick); persisted. */
-  selectExitCountry(code: string | null): Promise<void>;
+  /** Pick the multi-hop EXIT: a location id (`DE` or `DE:Frankfurt`), null = auto. */
+  selectExitCountry(id: string | null): Promise<void>;
   /** Toggle the kill switch (persisted). Applies on the next connect. */
   setKillSwitch(enabled: boolean): Promise<void>;
   /** Toggle multi-hop node diversity (persisted). Applies on the next connect. */
@@ -371,13 +373,22 @@ export function useVpn(): VpnModel & VpnActions {
     [locations, selectedCode],
   );
 
+  // A hop pick is a LOCATION id: `DE` (whole country) or `DE:Frankfurt` (one
+  // city). Look in the city rows first, then fall back to the country row —
+  // which is also what makes previously-stored bare country codes keep working.
   const entry = useMemo<Country | null>(
-    () => countries.find((c) => c.code === entryCode) ?? null,
-    [countries, entryCode],
+    () =>
+      locations.find((l) => l.id === entryCode) ??
+      countries.find((c) => c.code === entryCode) ??
+      null,
+    [countries, locations, entryCode],
   );
   const exit = useMemo<Country | null>(
-    () => countries.find((c) => c.code === exitCode) ?? null,
-    [countries, exitCode],
+    () =>
+      locations.find((l) => l.id === exitCode) ??
+      countries.find((c) => c.code === exitCode) ??
+      null,
+    [countries, locations, exitCode],
   );
   const multihop = isMultihop(routeStyle);
 
@@ -814,7 +825,19 @@ export function useVpn(): VpnModel & VpnActions {
       // without it the native backend throws (Android: GoBackend BackendException).
       // Ask once — no-op if already granted (VpnService.prepare()==null).
       if (!(await CumulusTunnel.isPrepared())) {
-        const granted = await CumulusTunnel.requestPermission();
+        // requestPermission REJECTS with a specific reason on platforms that
+        // can never grant it (the iOS Simulator has no VPN subsystem, so no
+        // consent dialog can appear); surface that instead of the generic line,
+        // which otherwise sends a tester looking for a prompt that will never
+        // come.
+        let granted = false;
+        try {
+          granted = await CumulusTunnel.requestPermission();
+        } catch (e) {
+          setState('error');
+          setError(e instanceof Error ? e.message : 'VPN permission is required to connect.');
+          return;
+        }
         if (!granted) {
           setState('error');
           setError('VPN permission is required to connect.');
@@ -837,8 +860,11 @@ export function useVpn(): VpnModel & VpnActions {
           transportMode,
           tier: tierRef.current,
           gateways: availableGateways(),
-          entryCountry: entryCode ?? autoEntry ?? null,
-          exitCountry: exitCode,
+          entryCountry: entry?.code ?? autoEntry ?? null,
+          exitCountry: exit?.code ?? null,
+          // City-level pins: only when the user picked a specific city row.
+          entryIps: entry && entry.id.includes(':') ? entry.ips : null,
+          exitIps: exit && exit.id.includes(':') ? exit.ips : null,
           gatewayIpRef,
           setEnrollment,
           killSwitch,
@@ -1122,14 +1148,14 @@ export function useVpn(): VpnModel & VpnActions {
     await saveTransportMode(mode);
   }, []);
 
-  const selectEntryCountry = useCallback(async (code: string | null): Promise<void> => {
-    setEntryCode(code);
-    await saveEntryCountry(code);
+  const selectEntryCountry = useCallback(async (id: string | null): Promise<void> => {
+    setEntryCode(id);
+    await saveEntryCountry(id);
   }, []);
 
-  const selectExitCountry = useCallback(async (code: string | null): Promise<void> => {
-    setExitCode(code);
-    await saveExitCountry(code);
+  const selectExitCountry = useCallback(async (id: string | null): Promise<void> => {
+    setExitCode(id);
+    await saveExitCountry(id);
   }, []);
 
   const setKillSwitch = useCallback(async (enabled: boolean): Promise<void> => {
@@ -1337,6 +1363,10 @@ async function connectMultihop(args: {
   gateways: readonly GatewayInfo[];
   entryCountry: string | null;
   exitCountry: string | null;
+  /** Gateway IPs of the chosen ENTRY city, or null for "anywhere in country". */
+  entryIps: readonly string[] | null;
+  /** Gateway IPs of the chosen EXIT city, or null. */
+  exitIps: readonly string[] | null;
   gatewayIpRef: { current: string | null };
   setEnrollment: (r: EnrollResponse) => void;
   killSwitch: boolean;
@@ -1350,6 +1380,8 @@ async function connectMultihop(args: {
     gateways,
     entryCountry,
     exitCountry,
+    entryIps,
+    exitIps,
     gatewayIpRef,
     setEnrollment,
     killSwitch,
@@ -1365,9 +1397,22 @@ async function connectMultihop(args: {
     hops = selectHops(gateways, routeStyle, {
       ...(entryCountry ? { entryCountry } : {}),
       ...(exitCountry ? { exitCountry } : {}),
+      ...(entryIps ? { entryIps } : {}),
+      ...(exitIps ? { exitIps } : {}),
       ...(requireDistinctSubnet ? { requireDistinctSubnet: true } : {}),
     });
   } catch (e) {
+    // Pinning cities narrows each hop to a handful of nodes, so an impossible
+    // pair is a normal outcome (one city, one node, used for both ends) rather
+    // than a fault. Say which knob to loosen instead of surfacing a raw
+    // selectHops error.
+    if (entryIps || exitIps) {
+      throw new Error(
+        requireDistinctSubnet
+          ? 'No route between those cities. Pick a different city, choose the whole country instead, or turn off Node diversity in Settings.'
+          : 'No route between those cities — they may share the only available node. Pick a different city, or choose the whole country instead.',
+      );
+    }
     if (requireDistinctSubnet) {
       // Name where the setting actually lives — it is no longer on this screen,
       // so "turn off Node diversity" alone would send the user hunting.

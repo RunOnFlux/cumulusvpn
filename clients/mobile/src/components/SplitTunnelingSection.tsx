@@ -38,9 +38,25 @@ interface Props {
   readonly killSwitch: boolean;
   /** True while a session exists — changes then apply on the next connect. */
   readonly locked: boolean;
+  /**
+   * Whether this build may show purchase/upsell surfaces at all
+   * (`flags.inAppUpgrade`; structurally false on iOS — see lib/flags).
+   *
+   * A non-premium user who CANNOT buy anything must not be shown a locked
+   * paid feature: on the App Store that is a 3.1.1 upsell surface with no IAP
+   * behind it, which is what got a previous build rejected. Settings hides the
+   * whole section in that case; this guard makes the component itself safe if
+   * it is ever rendered directly.
+   */
+  readonly canUpgrade: boolean;
 }
 
-export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): React.JSX.Element {
+export function SplitTunnelingSection({
+  tier,
+  killSwitch,
+  locked,
+  canUpgrade,
+}: Props): React.JSX.Element | null {
   const [policy, setPolicy] = useState<SplitPolicy>(EMPTY_POLICY);
   const [draft, setDraft] = useState('');
   const [inputError, setInputError] = useState<string | null>(null);
@@ -109,6 +125,13 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
   // iOS kill switch (`includeAllNetworks`) disregards route carve-outs
   // (docs/17 §4.5) — with both on, the kill switch wins at connect time.
   const iosConflict = Platform.OS === 'ios' && killSwitch && active;
+
+  // Nothing to offer and nothing to sell: render nothing rather than advertise
+  // a locked paid feature (see `canUpgrade`). Placed after the hooks so hook
+  // order stays stable across renders.
+  if (!premium && !canUpgrade) {
+    return null;
+  }
 
   return (
     <View style={styles.card}>

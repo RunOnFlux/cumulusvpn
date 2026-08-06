@@ -241,6 +241,20 @@ final class CumulusTunnelModule: RCTEventEmitter {
         // "VPN permission is required to connect." Give it a minimal valid
         // provider protocol so the save is accepted and the prompt appears; the
         // real connect overwrites it with the full tunnel config.
+        #if targetEnvironment(simulator)
+        // The Simulator has no NetworkExtension VPN subsystem: saving a manager
+        // always fails and iOS never shows the consent prompt, so the generic
+        // "VPN permission is required" left a tester hunting for a dialog that
+        // cannot appear. Say what is actually true. Compile-time guard, so the
+        // shipped device build is untouched (docs/16 Stage F: packet-tunnel
+        // extensions do not run on the Simulator).
+        reject(
+            "E_SIMULATOR",
+            "VPN tunnels are not supported on the iOS Simulator — run on a real device to connect.",
+            nil
+        )
+        return
+        #else
         loadOrCreateManager { [weak self] mgr, _ in
             guard let self, let mgr else { resolve(false); return }
             if mgr.protocolConfiguration == nil {
@@ -253,6 +267,7 @@ final class CumulusTunnelModule: RCTEventEmitter {
             mgr.isEnabled = true
             mgr.saveToPreferences { err in resolve(err == nil) }
         }
+        #endif
     }
 
     // solvePow(publicKeyB64, bits): Promise<String>

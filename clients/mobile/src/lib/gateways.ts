@@ -33,8 +33,15 @@ export interface Country {
   readonly city: string;
   /** Number of reachable gateways in this country. */
   readonly nodeCount: number;
-  /** Best (lowest-load) gateway — the one we enroll at. */
+  /** Best gateway in this row (see `bestOf`) — the one we enroll at. */
   readonly best: GatewayInfo;
+  /**
+   * Every gateway IP this row covers. Multi-hop passes these to core's
+   * `selectHops` as `entryIps`/`exitIps`, so picking a CITY pins that hop to
+   * the city's nodes instead of letting load ordering choose anywhere in the
+   * country (docs/11).
+   */
+  readonly ips: readonly string[];
   /** Round-trip latency in ms to `best`, or null if not yet measured. */
   readonly latencyMs: number | null;
 }
@@ -229,6 +236,7 @@ export function groupByCountry(
       city: localityOf(best.city, code),
       nodeCount: list.length,
       best,
+      ips: list.map((g) => g.ip),
       latencyMs: latency ?? null,
     });
   }
@@ -274,6 +282,7 @@ export function groupByLocation(
       city: localityOf(best.city, code),
       nodeCount: list.length,
       best,
+      ips: list.map((g) => g.ip),
       latencyMs: latencyByIp[best.ip] ?? null,
     });
   }

@@ -33,6 +33,8 @@ interface Props {
   readonly onOpenUpgrade?: (() => void) | undefined;
   /** Re-open the 5.4 data disclosure (also shown as a first-run gate). */
   readonly onOpenPrivacy: () => void;
+  /** Whether this build may show purchase/upsell surfaces (`flags.inAppUpgrade`). */
+  readonly canUpgrade: boolean;
 }
 
 export function SettingsScreen({
@@ -40,6 +42,7 @@ export function SettingsScreen({
   onClose,
   onOpenUpgrade,
   onOpenPrivacy,
+  canUpgrade,
 }: Props): React.JSX.Element {
   const premium = vpn.tier === 'premium';
   const expiry = formatExpiry(vpn.paidUntil);
@@ -136,9 +139,21 @@ export function SettingsScreen({
         />
 
         {/* Split tunneling (docs/17) — premium, applied when a tunnel is built,
-            like the transport/routing toggles above. */}
-        <Text style={styles.section}>Split tunneling</Text>
-        <SplitTunnelingSection tier={vpn.tier} killSwitch={vpn.killSwitch} locked={locked} />
+            like the transport/routing toggles above. Hidden entirely for a
+            non-premium user who has no way to buy (iOS store builds): showing a
+            locked paid feature with no purchase path is the 3.1.1 upsell
+            surface that got a previous build rejected. */}
+        {(premium || canUpgrade) && (
+          <>
+            <Text style={styles.section}>Split tunneling</Text>
+            <SplitTunnelingSection
+              tier={vpn.tier}
+              killSwitch={vpn.killSwitch}
+              locked={locked}
+              canUpgrade={canUpgrade}
+            />
+          </>
+        )}
 
         <Text style={styles.section}>Privacy &amp; support</Text>
         <Pressable

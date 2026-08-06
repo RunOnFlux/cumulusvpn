@@ -399,6 +399,14 @@ function HopButton({
           {country?.name ?? 'Auto'}
         </Text>
       </View>
+      {/* Name the city when this hop is pinned to one (a location id carries
+          `cc:city`). Without it a city pick is invisible: the card would read
+          "Germany" whether you chose the whole country or Nuremberg. */}
+      {country && country.id.includes(':') && country.city ? (
+        <Text style={styles.hopCity} numberOfLines={1}>
+          {country.city}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -645,6 +653,7 @@ const styles = StyleSheet.create({
   },
   hopMain: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   hopFlag: { fontSize: 18 },
+  hopCity: { color: color.inkDim, fontSize: 11.5, marginTop: 2 },
   hopName: { flex: 1, color: color.ink, fontSize: 14, fontWeight: '600' },
   tradeoff: { color: color.inkMuted, fontSize: 12, lineHeight: 17, marginTop: space.xs },
   locBtn: {

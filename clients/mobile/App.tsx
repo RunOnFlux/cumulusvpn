@@ -112,8 +112,9 @@ function App(): React.JSX.Element {
           ) : route === 'entry' ? (
             <CountryPickerScreen
               countries={vpn.countries}
-              selectedCode={vpn.entry?.code ?? null}
-              onSelect={(code) => void vpn.selectEntryCountry(code)}
+              locations={vpn.locations}
+              selectedCode={vpn.entry?.id ?? null}
+              onSelect={(id) => void vpn.selectEntryCountry(id)}
               onSelectAuto={() => void vpn.selectEntryCountry(null)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
@@ -124,8 +125,9 @@ function App(): React.JSX.Element {
           ) : route === 'exit' ? (
             <CountryPickerScreen
               countries={vpn.countries}
-              selectedCode={vpn.exit?.code ?? null}
-              onSelect={(code) => void vpn.selectExitCountry(code)}
+              locations={vpn.locations}
+              selectedCode={vpn.exit?.id ?? null}
+              onSelect={(id) => void vpn.selectExitCountry(id)}
               onSelectAuto={() => void vpn.selectExitCountry(null)}
               onClose={() => setRoute('connect')}
               onRefresh={() => vpn.refresh()}
@@ -148,6 +150,7 @@ function App(): React.JSX.Element {
               onClose={() => setRoute('connect')}
               onOpenUpgrade={flags.inAppUpgrade ? () => setRoute('upgrade') : undefined}
               onOpenPrivacy={() => setRoute('privacy')}
+              canUpgrade={flags.inAppUpgrade}
             />
           ) : (
             <ConnectScreen
