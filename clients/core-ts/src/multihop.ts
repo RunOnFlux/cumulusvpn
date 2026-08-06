@@ -55,6 +55,19 @@ export interface SelectHopsOptions {
   /** Restrict the exit to this country. */
   readonly exitCountry?: string;
   /**
+   * Restrict the ENTRY to these gateway IPs — the city-level pick.
+   *
+   * A country can span cities whose latency differs by hundreds of ms, so
+   * "Germany" is not always a fine enough choice for the hop that carries your
+   * traffic. The caller passes the IPs it already grouped under the chosen city
+   * rather than a city NAME: gateways may report an empty `city` (clients
+   * substitute a country fallback for display), so name matching would silently
+   * drop exactly those nodes. Composes with {@link entryCountry}.
+   */
+  readonly entryIps?: readonly string[];
+  /** Restrict the EXIT to these gateway IPs. See {@link entryIps}. */
+  readonly exitIps?: readonly string[];
+  /**
    * Require the entry and exit to sit on different subnets (IPv4 /24, IPv6 /48)
    * — a co-location guard so a route can't be built from two gateways in the
    * same rack. OFF by default; the UI exposes it as an opt-in toggle because a
@@ -174,14 +187,18 @@ export function selectHops(
 ): SelectedHops {
   const sorted = [...gateways].sort(byLoadThenCountry);
 
-  const entryPool = opts.entryCountry
-    ? sorted.filter((g) => g.country === opts.entryCountry)
-    : sorted;
+  const entryIps = opts.entryIps ? new Set(opts.entryIps) : undefined;
+  const exitIps = opts.exitIps ? new Set(opts.exitIps) : undefined;
+  const entryPool = sorted.filter(
+    (g) =>
+      (!opts.entryCountry || g.country === opts.entryCountry) && (!entryIps || entryIps.has(g.ip)),
+  );
   const entry = entryPool[0];
   if (!entry) {
+    const where = opts.entryCountry ? ` in entry country "${opts.entryCountry}"` : '';
     throw new Error(
-      opts.entryCountry
-        ? `selectHops: no gateway available in entry country "${opts.entryCountry}"`
+      opts.entryCountry || entryIps
+        ? `selectHops: no gateway available${where}${entryIps ? ' at the chosen entry city' : ''}`
         : 'selectHops: no gateways available',
     );
   }
@@ -198,6 +215,9 @@ export function selectHops(
       }
       if (opts.exitCountry && g.country !== opts.exitCountry) {
         return false;
+      }
+      if (exitIps && !exitIps.has(g.ip)) {
+        return false; // city-level exit pick
       }
       if (opts.requireDistinctSubnet && subnetGroup(g.ip) === subnetGroup(from.ip)) {
         return false; // co-location guard: entry and exit must differ by subnet
@@ -225,7 +245,8 @@ export function selectHops(
       ? `in a different country from entry "${entry.country}"`
       : `in country "${entry.country}"`;
   const subnetNote = opts.requireDistinctSubnet ? ' on a distinct subnet' : '';
-  throw new Error(`selectHops: no distinct exit ${jurisdiction}${subnetNote}`);
+  const cityNote = exitIps ? ' at the chosen exit city' : '';
+  throw new Error(`selectHops: no distinct exit ${jurisdiction}${cityNote}${subnetNote}`);
 }
 
 /**

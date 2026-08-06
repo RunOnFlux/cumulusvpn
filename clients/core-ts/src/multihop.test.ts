@@ -193,6 +193,45 @@ describe('selectHops', () => {
     expect(() => selectHops([], 'single')).toThrow();
   });
 
+  it('city-level picks: entryIps/exitIps narrow each hop to chosen gateways', () => {
+    const nyc = gateway({ ip: '5.0.0.1', country: 'US', city: 'New York', load: 0.9 });
+    const sfo = gateway({ ip: '5.0.0.2', country: 'US', city: 'SF', load: 0.1 });
+    const ber = gateway({ ip: '6.0.0.1', country: 'DE', city: 'Berlin', load: 0.5 });
+    const fra = gateway({ ip: '6.0.0.2', country: 'DE', city: 'Frankfurt', load: 0.2 });
+    const fleet = [nyc, sfo, ber, fra];
+
+    // Without a city pick, load ordering wins (SF is the least-loaded US node).
+    expect(selectHops(fleet, 'multihop-cross-jurisdiction', { entryCountry: 'US' }).entry.ip).toBe(
+      sfo.ip,
+    );
+
+    // Pinning the entry city overrides that, even though NYC is busier.
+    const pinned = selectHops(fleet, 'multihop-cross-jurisdiction', {
+      entryCountry: 'US',
+      entryIps: [nyc.ip],
+      exitCountry: 'DE',
+      exitIps: [ber.ip],
+    });
+    expect(pinned.entry.ip).toBe(nyc.ip);
+    expect(pinned.exit?.ip).toBe(ber.ip);
+  });
+
+  it('city-level picks still refuse an impossible route, and say which end', () => {
+    const ber = gateway({ ip: '6.0.0.1', country: 'DE', city: 'Berlin' });
+    const fra = gateway({ ip: '6.0.0.2', country: 'DE', city: 'Frankfurt' });
+    // Same country + same single city for both hops => entry === exit is banned.
+    expect(() =>
+      selectHops([ber, fra], 'multihop-same-country', {
+        entryIps: [ber.ip],
+        exitIps: [ber.ip],
+      }),
+    ).toThrow(/exit city/);
+    // An entry city with no gateways at all names the entry end.
+    expect(() =>
+      selectHops([ber, fra], 'multihop-same-country', { entryIps: ['9.9.9.9'] }),
+    ).toThrow(/entry city/);
+  });
+
   it('is deterministic: tie-breaks by load then country', () => {
     const a = gateway({ ip: '9.9.9.9', country: 'US', load: 0.2 });
     const b = gateway({ ip: '1.1.1.1', country: 'CA', load: 0.2 });
