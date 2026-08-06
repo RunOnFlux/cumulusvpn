@@ -14,6 +14,7 @@ import {
   Text,
   View,
 } from 'react-native';
+import { gatewayQuality } from '@cumulusvpn/core';
 import type { RouteStyle } from '@cumulusvpn/core';
 import type { Country } from '../lib/gateways';
 import type { VpnActions, VpnModel } from '../state/useVpn';
@@ -210,12 +211,12 @@ export function ConnectScreen({
             <Text style={styles.locBtnTitle}>
               {auto ? 'Automatic' : (target?.name ?? 'Choose location')}
             </Text>
+            {/* Ping / load / quality of the BEST node behind this row (see
+                `bestOf` in lib/gateways) — a multi-city country reports the
+                best it can actually give you, so the main screen is enough to
+                choose from without opening the picker. */}
             <Text style={styles.locBtnSub}>
-              {target
-                ? auto
-                  ? `Nearest: ${target.name} · ${target.latencyMs ?? '—'} ms`
-                  : `${target.city} · ${target.latencyMs ?? '—'} ms · ${target.nodeCount} nodes`
-                : 'Tap to pick a country'}
+              {target ? locationSummary(target, auto) : 'Tap to pick a country'}
             </Text>
           </View>
           <Text style={styles.chev}>›</Text>
@@ -490,6 +491,19 @@ function formatDuration(ms: number): string {
     return `${m}m ${String(sec).padStart(2, '0')}s`;
   }
   return `${sec}s`;
+}
+
+/**
+ * One line describing a location row: ping, how busy it is, and the quality
+ * verdict — all from the best node behind the row. Automatic prefixes the
+ * country it resolved to; an explicit pick leads with the city.
+ */
+function locationSummary(target: Country, auto: boolean): string {
+  const q = gatewayQuality(target.latencyMs, target.best.load);
+  const ping = target.latencyMs === null ? '—' : `${target.latencyMs}`;
+  const head = auto ? `Nearest: ${target.name}` : target.city || target.name;
+  const nodes = target.nodeCount === 1 ? '1 node' : `${target.nodeCount} nodes`;
+  return `${head} · ${ping} ms · ${q.loadPct}% load · ${q.label} · ${nodes}`;
 }
 
 const styles = StyleSheet.create({

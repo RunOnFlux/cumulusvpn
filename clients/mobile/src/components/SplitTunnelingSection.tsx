@@ -9,7 +9,7 @@
  * `useVpn.splitForSession` — this UI's job is honesty, not enforcement. The
  * policy itself is device-local and never leaves the phone.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
@@ -46,10 +46,19 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
   const [inputError, setInputError] = useState<string | null>(null);
   const premium = tier === 'premium';
 
+  // Mirror of the persisted policy, read by [update]. The app picker resolves
+  // asynchronously (listing hundreds of apps takes a moment), so its callbacks
+  // outlive the render they were created in. Deriving the next policy from the
+  // captured `policy` let a late callback write a stale snapshot back over a
+  // rule the user had just added — the app rule then vanished on the next
+  // launch while IP rules, added synchronously, survived.
+  const policyRef = useRef<SplitPolicy>(EMPTY_POLICY);
+
   useEffect(() => {
     let alive = true;
     void loadSplitPolicy().then((p) => {
       if (alive) {
+        policyRef.current = p;
         setPolicy(p);
       }
     });
@@ -58,7 +67,18 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
     };
   }, []);
 
-  const update = (next: SplitPolicy): void => {
+  /**
+   * Apply a change to the LATEST policy, not the one captured at render.
+   * `mutate` returning its argument unchanged is a no-op (no write, no
+   * re-render), which is what the picker's prune pass does when nothing is
+   * stale.
+   */
+  const update = (mutate: (prev: SplitPolicy) => SplitPolicy): void => {
+    const next = mutate(policyRef.current);
+    if (next === policyRef.current) {
+      return;
+    }
+    policyRef.current = next;
     setPolicy(next);
     void saveSplitPolicy(next);
   };
@@ -70,9 +90,11 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
     }
     try {
       const rule = normalizeSplitRule({ kind: 'cidr', value });
-      if (!policy.rules.some((r) => r.kind === 'cidr' && r.value === rule.value)) {
-        update({ ...policy, rules: [...policy.rules, rule] });
-      }
+      update((p) =>
+        p.rules.some((r) => r.kind === 'cidr' && r.value === rule.value)
+          ? p
+          : { ...p, rules: [...p.rules, rule] },
+      );
       setDraft('');
       setInputError(null);
     } catch (err) {
@@ -96,7 +118,7 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
             key={mode}
             style={[styles.mode, policy.mode === mode && styles.modeOn]}
             disabled={!premium && mode !== 'off'}
-            onPress={() => update({ ...policy, mode })}
+            onPress={() => update((p) => ({ ...p, mode }))}
             accessibilityRole="radio"
             accessibilityState={{ selected: policy.mode === mode }}
           >
@@ -138,7 +160,7 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
         <Toggle
           value={policy.lanBypass}
           disabled={!premium}
-          onValueChange={(v) => update({ ...policy, lanBypass: v })}
+          onValueChange={(v) => update((p) => ({ ...p, lanBypass: v }))}
         />
       </View>
 
@@ -160,10 +182,10 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
               </Text>
               <Pressable
                 onPress={() =>
-                  update({
-                    ...policy,
-                    rules: policy.rules.filter((x) => !(x.kind === 'app' && x.value === r.value)),
-                  })
+                  update((p) => ({
+                    ...p,
+                    rules: p.rules.filter((x) => !(x.kind === 'app' && x.value === r.value)),
+                  }))
                 }
                 accessibilityRole="button"
                 accessibilityLabel={`Remove app rule ${r.label ?? r.value}`}
@@ -196,9 +218,11 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
                   label: app.label,
                   platform: 'android',
                 });
-                if (!policy.rules.some((r) => r.kind === 'app' && r.value === rule.value)) {
-                  update({ ...policy, rules: [...policy.rules, rule] });
-                }
+                update((p) =>
+                  p.rules.some((r) => r.kind === 'app' && r.value === rule.value)
+                    ? p
+                    : { ...p, rules: [...p.rules, rule] },
+                );
               } catch {
                 // normalizeSplitRule rejects our own identity — nothing to add.
               }
@@ -208,12 +232,12 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
               // Only launcher apps can be added here, so the launcher list is
               // an authoritative universe for picker-created rules.
               const installed = new Set(apps.map((a) => a.packageName));
-              const pruned = policy.rules.filter(
-                (r) => r.kind !== 'app' || r.platform !== 'android' || installed.has(r.value),
-              );
-              if (pruned.length !== policy.rules.length) {
-                update({ ...policy, rules: pruned });
-              }
+              update((p) => {
+                const pruned = p.rules.filter(
+                  (r) => r.kind !== 'app' || r.platform !== 'android' || installed.has(r.value),
+                );
+                return pruned.length === p.rules.length ? p : { ...p, rules: pruned };
+              });
             }}
           />
         </>
@@ -255,7 +279,7 @@ export function SplitTunnelingSection({ tier, killSwitch, locked }: Props): Reac
                 <Text style={styles.ruleText}>{r.value}</Text>
                 <Pressable
                   onPress={() =>
-                    update({ ...policy, rules: policy.rules.filter((x) => x.value !== r.value) })
+                    update((p) => ({ ...p, rules: p.rules.filter((x) => x.value !== r.value) }))
                   }
                   accessibilityRole="button"
                   accessibilityLabel={`Remove rule ${r.value}`}

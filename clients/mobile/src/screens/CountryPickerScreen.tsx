@@ -277,19 +277,24 @@ export function CountryPickerScreen({
                     : `${item.nodeCount} ${item.nodeCount === 1 ? 'node' : 'nodes'} · ${item.city}`}
                 </Text>
               </View>
-              {drillable ? (
-                <Text style={styles.chevron}>›</Text>
-              ) : (
-                <View style={styles.qual}>
-                  <View style={styles.qualTop}>
-                    <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
-                    <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
-                  </View>
-                  <Text style={styles.qualSub}>
-                    {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
-                  </Text>
+              {/* Quality on EVERY row, multi-city included. A drillable row used
+                  to show only a chevron, so the countries with the most nodes —
+                  the ones most worth picking — were the ones you could learn
+                  nothing about without opening them. The numbers describe the
+                  country's BEST node (see `bestOf` in lib/gateways), which is
+                  also the node we enroll at, so the row is honest about what
+                  you get if you tap it. The chevron still marks "there are
+                  cities inside". */}
+              <View style={styles.qual}>
+                <View style={styles.qualTop}>
+                  <View style={[styles.qualDot, { backgroundColor: TONE_COLOR[q.tone] }]} />
+                  <Text style={[styles.qualLabel, { color: TONE_COLOR[q.tone] }]}>{q.label}</Text>
                 </View>
-              )}
+                <Text style={styles.qualSub}>
+                  {item.latencyMs === null ? '— ms' : `${item.latencyMs} ms`} · {q.loadPct}% load
+                </Text>
+              </View>
+              {drillable && <Text style={styles.chevron}>›</Text>}
             </Pressable>
           );
         }}

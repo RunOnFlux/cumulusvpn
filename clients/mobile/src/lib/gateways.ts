@@ -6,7 +6,7 @@
  * count, a representative city and a latency reading for the dot colour. This
  * module does that shaping and nothing else — all networking lives in core.
  */
-import { discoverGateways, pingGateway } from '@cumulusvpn/core';
+import { discoverGateways, gatewayQuality, pingGateway } from '@cumulusvpn/core';
 import type { GatewayInfo } from '@cumulusvpn/core';
 import { bundledSpecs, seedNodeIps } from './directory';
 import { SCREENSHOT_MODE, demoLatency } from './screenshot';
@@ -166,10 +166,39 @@ export function latencyBand(ms: number | null): LatencyBand {
 }
 
 /**
- * Group discovered gateways into country rows.
+ * The best gateway in a group, by the same quality score the UI renders
+ * (`gatewayQuality`: load weighted a little over measured latency).
  *
- * Gateways arrive already sorted by (country, load) from core, so the first
- * gateway seen for a country is its least-loaded — the one we pick.
+ * Core hands us gateways sorted by LOAD only, so taking the first would show a
+ * country's least-busy node even when a sibling city answers in a third of the
+ * time — a US row could advertise 210 ms while a New York node sat at 70 ms.
+ * Picking the best-scoring node means a country row reports the best ping,
+ * load and quality actually available there, which is what a user choosing
+ * between countries needs. It is also the node we enroll at, so the row is a
+ * promise the connection keeps rather than a label.
+ *
+ * Ties fall back to list order (load-sorted), keeping selection deterministic.
+ */
+function bestOf(
+  list: readonly GatewayInfo[],
+  latencyByIp: Readonly<Record<string, number>>,
+): GatewayInfo | undefined {
+  let best: GatewayInfo | undefined;
+  let bestScore = -1;
+  for (const gw of list) {
+    const { score } = gatewayQuality(latencyByIp[gw.ip] ?? null, gw.load);
+    if (score > bestScore) {
+      best = gw;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
+/**
+ * Group discovered gateways into country rows, each reporting the BEST node in
+ * that country (see {@link bestOf}) so a multi-city country still shows one
+ * honest ping / load / quality instead of an arbitrary city's.
  */
 export function groupByCountry(
   gateways: readonly GatewayInfo[],
@@ -187,7 +216,7 @@ export function groupByCountry(
 
   const countries: Country[] = [];
   for (const [code, list] of byCode) {
-    const best = list[0];
+    const best = bestOf(list, latencyByIp);
     if (!best) {
       continue;
     }
@@ -232,7 +261,7 @@ export function groupByLocation(
 
   const rows: Country[] = [];
   for (const [id, list] of byLoc) {
-    const best = list[0];
+    const best = bestOf(list, latencyByIp);
     if (!best) {
       continue;
     }
