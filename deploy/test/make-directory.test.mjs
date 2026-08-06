@@ -1,8 +1,11 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { makeSandbox, cleanup, copyIn, runNode } from './helpers.mjs';
+
+/** deploy/ — this test file lives in deploy/test/. */
+const ROOT = new URL('..', import.meta.url).pathname;
 
 function setup(sb) {
   copyIn(sb, 'scripts/generate.mjs', 'scripts/generate.mjs');
@@ -65,5 +68,31 @@ test('make-directory verify FAILS after the signed payload is tampered', () => {
     assert.match(verify.stderr, /INVALID/);
   } finally {
     cleanup(sb);
+  }
+});
+
+test('every generated on-chain spec appears in the shipped client directories', () => {
+  // A spec that is registered on-chain but missing from the signed directory is
+  // INVISIBLE to clients: discovery only queries /apps/location/<spec> for the
+  // names the directory lists (core discovery.ts), so those gateways can never
+  // be reached no matter how healthy they are. That is exactly what happened to
+  // the 443 stealth group `cumulusvpntlsde` — registered and serving, but
+  // absent from a directory built before it existed, so the premium tier was
+  // unreachable from every app.
+  const specs = readdirSync(join(ROOT, 'specs', 'onchain'))
+    .filter((f) => f.startsWith('cumulus') && f.endsWith('.json'))
+    .map((f) => f.replace(/\.json$/, ''))
+    .sort();
+  assert.ok(specs.length > 0, 'no generated specs — run generate.mjs first');
+
+  for (const rel of [
+    '../clients/web/public/directory.json',
+    '../clients/web/src/directory.bundled.json',
+    '../clients/mobile/src/data/directory.json',
+    '../clients/desktop/src/data/directory.json',
+  ]) {
+    const dir = JSON.parse(readFileSync(join(ROOT, rel), 'utf8'));
+    const missing = specs.filter((s) => !dir.specs.includes(s));
+    assert.deepEqual(missing, [], `${rel} is missing spec(s): ${missing.join(', ')}`);
   }
 });
