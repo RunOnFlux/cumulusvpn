@@ -4,14 +4,13 @@
 // The key is passed in as a value and used once; nothing here logs it, stores
 // it, or returns anything derived from it beyond the signature itself.
 //
-// UNVERIFIED AGAINST A LIVE NODE: the public POST endpoints
-// (/apps/calculateprice, /apps/appregister, /apps/appupdate) have been
-// returning 504 for weeks, so this signing path has never round-tripped
-// against FluxOS. The format below follows the standard message-signing scheme
-// FluxOS uses, but treat the first broadcast as a test — check the response
-// rather than assuming success.
+// Round-tripped against a live node: a throwaway key signed a real loginPhrase
+// and FluxOS accepted it via /id/verifylogin ("Successfully logged in",
+// privilege "user"). The earlier 504s that made this look unverifiable were our
+// own doing — see the postFlux() note in update-image.mjs about content-type.
 import { secp256k1 } from '@noble/curves/secp256k1.js';
 import { sha256 } from '@noble/hashes/sha2.js';
+import { ripemd160 } from '@noble/hashes/legacy.js';
 import { base58, base64 } from '@scure/base';
 
 const MAGIC = 'Bitcoin Signed Message:\n';
@@ -67,4 +66,17 @@ export function signMessage(message, key) {
   const rs = recovered.subarray(1);
   const header = 27 + recid + (compressed ? 4 : 0);
   return base64.encode(concat(Uint8Array.of(header), rs));
+}
+
+/**
+ * The ZelID (a Bitcoin P2PKH address) a key controls. Callers use this to check
+ * a key against an app's `owner` BEFORE signing, so the wrong key fails locally
+ * instead of as a wall of rejected broadcasts. Returns the address only — never
+ * anything from which the key could be recovered.
+ */
+export function deriveZelId(key) {
+  const { priv, compressed } = decodeKey(key);
+  const hash = ripemd160(sha256(secp256k1.getPublicKey(priv, compressed)));
+  const body = concat(Uint8Array.of(0x00), hash);
+  return base58.encode(concat(body, sha256(sha256(body)).subarray(0, 4)));
 }
