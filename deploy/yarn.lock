@@ -10,6 +10,9 @@ __metadata:
   resolution: "@cumulusvpn/deploy@workspace:."
   dependencies:
     "@eslint/js": "npm:10.0.1"
+    "@noble/curves": "npm:2.2.0"
+    "@noble/hashes": "npm:2.2.0"
+    "@scure/base": "npm:2.2.0"
     eslint: "npm:10.7.0"
     globals: "npm:17.7.0"
     prettier: "npm:3.9.5"
@@ -131,6 +134,29 @@ __metadata:
   version: 0.4.3
   resolution: "@humanwhocodes/retry@npm:0.4.3"
   checksum: 10c0/3775bb30087d4440b3f7406d5a057777d90e4b9f435af488a4923ef249e93615fb78565a85f173a186a076c7706a81d0d57d563a2624e4de2c5c9c66c486ce42
+  languageName: node
+  linkType: hard
+
+"@noble/curves@npm:2.2.0":
+  version: 2.2.0
+  resolution: "@noble/curves@npm:2.2.0"
+  dependencies:
+    "@noble/hashes": "npm:2.2.0"
+  checksum: 10c0/e545d3bb03ebedd5c04c2cab81342d64f5ce8a4c1019cfe207f3dc69174bc0ad7cfb50effc31bfa8616b8340900f445dd053da7454190428857c4eedd3b51413
+  languageName: node
+  linkType: hard
+
+"@noble/hashes@npm:2.2.0":
+  version: 2.2.0
+  resolution: "@noble/hashes@npm:2.2.0"
+  checksum: 10c0/cad8630c504d6b9271984f685cd0af9101b40988fc2dfbe17ccdf068a9941f95cc5c9957d89e9ca4b7ca94c15cb35f93510c5d53a09fbcc83ee503b93d0a1034
+  languageName: node
+  linkType: hard
+
+"@scure/base@npm:2.2.0":
+  version: 2.2.0
+  resolution: "@scure/base@npm:2.2.0"
+  checksum: 10c0/30158ccf5da86b0f06928f1cfe24a29fbea22824adf6f8895222910cade1ad4fe7593958aacf563287e6b4c55746f47395178e7a4763b059c22d6ee8e6f76387
   languageName: node
   linkType: hard
 

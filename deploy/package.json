@@ -12,9 +12,13 @@
     "lint": "eslint .",
     "format": "prettier --write . --ignore-path ../.prettierignore",
     "format:check": "prettier --check . --ignore-path ../.prettierignore",
-    "test": "node --test \"test/*.test.mjs\""
+    "test": "node --test \"test/*.test.mjs\"",
+    "update-image": "node scripts/update-image.mjs"
   },
   "dependencies": {
+    "@noble/curves": "2.2.0",
+    "@noble/hashes": "2.2.0",
+    "@scure/base": "2.2.0",
     "yaml": "2.9.0"
   },
   "devDependencies": {
