@@ -77,22 +77,34 @@ test('every generated on-chain spec appears in the shipped client directories', 
   // names the directory lists (core discovery.ts), so those gateways can never
   // be reached no matter how healthy they are. That is exactly what happened to
   // the 443 stealth group `cumulusvpntlsde` — registered and serving, but
-  // absent from a directory built before it existed, so the premium tier was
-  // unreachable from every app.
-  const specs = readdirSync(join(ROOT, 'specs', 'onchain'))
-    .filter((f) => f.startsWith('cumulus') && f.endsWith('.json'))
-    .map((f) => f.replace(/\.json$/, ''))
-    .sort();
-  assert.ok(specs.length > 0, 'no generated specs — run generate.mjs first');
+  // absent from a directory built before it existed.
+  //
+  // Generate the specs in a sandbox rather than reading deploy/specs/onchain:
+  // those files are gitignored, so on a fresh checkout (CI) the directory does
+  // not exist at all and this guard would only ever run on the author's machine.
+  const sb = makeSandbox();
+  try {
+    copyIn(sb, 'scripts/generate.mjs', 'scripts/generate.mjs');
+    copyIn(sb, 'countries.yaml', 'countries.yaml');
+    // `scale` is the widest stage, so this covers every country we generate.
+    runNode(join(sb, 'scripts', 'generate.mjs'), ['--stage', 'scale']);
+    const specs = readdirSync(join(sb, 'specs', 'onchain'))
+      .filter((f) => f.startsWith('cumulus') && f.endsWith('.json'))
+      .map((f) => f.replace(/\.json$/, ''))
+      .sort();
+    assert.ok(specs.length > 0, 'generate.mjs produced no specs');
 
-  for (const rel of [
-    '../clients/web/public/directory.json',
-    '../clients/web/src/directory.bundled.json',
-    '../clients/mobile/src/data/directory.json',
-    '../clients/desktop/src/data/directory.json',
-  ]) {
-    const dir = JSON.parse(readFileSync(join(ROOT, rel), 'utf8'));
-    const missing = specs.filter((s) => !dir.specs.includes(s));
-    assert.deepEqual(missing, [], `${rel} is missing spec(s): ${missing.join(', ')}`);
+    for (const rel of [
+      '../clients/web/public/directory.json',
+      '../clients/web/src/directory.bundled.json',
+      '../clients/mobile/src/data/directory.json',
+      '../clients/desktop/src/data/directory.json',
+    ]) {
+      const dir = JSON.parse(readFileSync(join(ROOT, rel), 'utf8'));
+      const missing = specs.filter((s) => !dir.specs.includes(s));
+      assert.deepEqual(missing, [], `${rel} is missing spec(s): ${missing.join(', ')}`);
+    }
+  } finally {
+    cleanup(sb);
   }
 });
