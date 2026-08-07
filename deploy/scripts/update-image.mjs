@@ -66,14 +66,25 @@ const has = (name) => args.includes(`--${name}`);
 const MUTABLE = new Set(['repotag', 'environmentParameters', 'expire']);
 
 /**
- * Blocks of slack subtracted from the remaining subscription. FluxOS allows an
- * update to extend by at most 8 blocks and the free-update payer by 11; the chain
- * keeps moving between the height we read and the height a node judges us at, so
- * without a margin a slow broadcast reads as an extension and starts costing
- * money. Four post-fork blocks is about two minutes of subscription — the price
- * of making the window forgiving.
+ * Blocks of slack subtracted from the remaining subscription, and the reason a
+ * fleet-wide run works at all.
+ *
+ * A judge computes `blocksToExtend = height_when_judged - height_when_signed -
+ * EXTEND_MARGIN`, and refuses the update as an extension above 8 (FluxOS) or 11
+ * (the free-update payer). So the margin is not a rounding fudge — it is how long
+ * the broadcast stays claimable. A bigger margin makes blocksToExtend SMALLER and
+ * buys time.
+ *
+ * That time matters because the payer is serial: it sleeps 60s after each payment,
+ * so the twentieth app in a batch is judged twenty minutes after it was signed. A
+ * 4-block margin (~2 min) closed the window after five apps and stranded fifteen
+ * — they stayed temporary forever, since nothing retries a skipped message.
+ *
+ * 120 blocks is an hour of claim window at 30s post-fork blocks, against ~3 months
+ * of subscription. Sacrificing an hour to make the run reliable is not a trade
+ * worth thinking twice about.
  */
-const EXTEND_MARGIN = 4;
+const EXTEND_MARGIN = 120;
 
 /** The env vars this migration owns; everything else on-chain is preserved. */
 function desiredTransportEnv() {
@@ -94,10 +105,29 @@ function mergeEnv(current, desired) {
   return [...kept, ...desired];
 }
 
+/**
+ * Retry transport-level failures only. A FluxOS error REPLY is a verdict and is
+ * never retried — but a dropped connection says nothing about the request, and
+ * losing one app out of 22 to a stray `fetch failed` means hand-finishing the
+ * batch later.
+ */
+async function withRetry(fn, attempts = 3) {
+  for (let i = 1; ; i += 1) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (i >= attempts) throw e;
+      await new Promise((r) => setTimeout(r, 2000 * i));
+    }
+  }
+}
+
 async function getJson(url) {
-  const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+  return withRetry(async () => {
+    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return res.json();
+  });
 }
 
 /**
@@ -109,18 +139,20 @@ async function getJson(url) {
  * This is what made every /apps POST look "dead" (504) for weeks.
  */
 async function postFlux(path, payload, headers = {}) {
-  const res = await fetch(`${FLUX_API}${path}`, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-    headers,
-    signal: AbortSignal.timeout(90_000),
+  return withRetry(async () => {
+    const res = await fetch(`${FLUX_API}${path}`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+      headers,
+      signal: AbortSignal.timeout(90_000),
+    });
+    const text = await res.text();
+    try {
+      return JSON.parse(text);
+    } catch {
+      throw new Error(`${path}: non-JSON reply (${res.status}) ${text.slice(0, 120)}`);
+    }
   });
-  const text = await res.text();
-  try {
-    return JSON.parse(text);
-  } catch {
-    throw new Error(`${path}: non-JSON reply (${res.status}) ${text.slice(0, 120)}`);
-  }
 }
 
 function unwrap(reply, what) {
