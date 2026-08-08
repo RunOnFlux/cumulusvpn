@@ -80,11 +80,17 @@ const MUTABLE = new Set(['repotag', 'environmentParameters', 'expire']);
  * 4-block margin (~2 min) closed the window after five apps and stranded fifteen
  * — they stayed temporary forever, since nothing retries a skipped message.
  *
- * 120 blocks is an hour of claim window at 30s post-fork blocks, against ~3 months
- * of subscription. Sacrificing an hour to make the run reliable is not a trade
- * worth thinking twice about.
+ * Sizing it: the payer was measured at roughly one app per six minutes (5 apps
+ * per 30-minute window, twice), so a 23-app fleet needs ~2.5 hours of claim
+ * window. 120 blocks bought one hour — enough to take the fleet from 7 to 12 in a
+ * single run, and not enough to finish it. 480 blocks is four hours at 30s
+ * post-fork blocks, which covers the whole fleet with room for a slower queue.
+ *
+ * The only cost is ending the subscription four hours early on a ~3 month term.
+ * Nothing rejects an update for shortening: both gates test `blocksToExtend <=
+ * limit`, and a negative value passes by construction.
  */
-const EXTEND_MARGIN = 120;
+const EXTEND_MARGIN = 480;
 
 /** The env vars this migration owns; everything else on-chain is preserved. */
 function desiredTransportEnv() {
@@ -319,8 +325,50 @@ async function main() {
   const zelidauth = await login(owner, key, signMessage);
   console.log(`\nAuthenticated as ${owner}.\n`);
 
+  // Broadcast in small batches, waiting for each to be paid before sending the
+  // next. FluxOS keeps only a handful of temporary messages around — the pool was
+  // observed holding 3 network-wide — and the free-update payer works through
+  // what it can see at roughly one per minute. Submitting the whole fleet at once
+  // therefore does not queue: the payer takes about five, the rest are pruned
+  // before it comes back, and nothing retries them. Two runs lost 15 and then 11
+  // apps exactly that way, both stopping at five.
+  const BATCH = Number(flag('batch') ?? 4);
+  const batches = [];
+  for (let i = 0; i < ready.length; i += BATCH) batches.push(ready.slice(i, i + BATCH));
+
   const broadcast = [];
-  for (const { name, next } of ready) {
+  const stuck = [];
+  for (const [bi, batch] of batches.entries()) {
+    // Re-price the subscription against the CURRENT height for every batch. A
+    // fleet run spans hours, and expire is only meaningful relative to the height
+    // it was computed at.
+    const nowHeight = await daemonHeight();
+    console.log(`— batch ${bi + 1}/${batches.length} (height ${nowHeight})`);
+    const sent = await broadcastBatch(batch, nowHeight, { key, zelidauth, signMessage });
+    broadcast.push(...sent);
+    if (!sent.length) continue;
+    const pending = await waitForLive(
+      sent.map((s) => s.name),
+      image,
+    );
+    stuck.push(...pending);
+  }
+
+  console.log(`\n${broadcast.length}/${ready.length} update message(s) broadcast.`);
+  if (stuck.length) {
+    console.log(`Not confirmed: ${stuck.join(' ')} — re-run to re-sign just those.`);
+  } else if (broadcast.length) {
+    console.log('All confirmed live on-chain.');
+  }
+  return;
+}
+
+/** Sign and submit one batch, returning what actually went out. */
+async function broadcastBatch(batch, nowHeight, { key, zelidauth, signMessage }) {
+  const sent = [];
+  for (const item of batch) {
+    const { name, next, expiresAt } = item;
+    next.expire = expiresAt - nowHeight - EXTEND_MARGIN;
     try {
       // Ask the node to format the spec exactly as it will when verifying our
       // signature. Signing our own JSON instead would break the moment FluxOS
@@ -359,28 +407,28 @@ async function main() {
         `${name} update`,
       );
       console.log(`→ ${name.padEnd(18)} broadcast, message ${hash}`);
-      broadcast.push({ name, hash });
+      sent.push({ name, hash });
     } catch (e) {
       console.log(`✗ ${name.padEnd(18)} ${e.message}`);
     }
   }
+  return sent;
+}
 
-  console.log(`\n${broadcast.length}/${ready.length} update message(s) broadcast.`);
-  console.log(
-    'Each is now a temporary message. The network pays the 0.02 FLUX minimum for\n' +
-      'free updates a few minutes later, after which the new image is live on-chain.',
-  );
-  if (!broadcast.length || !has('wait')) return;
-
-  // Poll the on-chain spec rather than the message: repotag flipping is the
-  // outcome we actually care about, and it only flips once the message is paid
-  // for and permanent.
-  const deadline = Date.now() + 30 * 60 * 1000;
-  const pending = new Map(broadcast.map((b) => [b.name, b.hash]));
-  console.log('\nWaiting for the network to confirm (up to 30 min)…');
+/**
+ * Wait for a batch to go permanent, returning whatever never did.
+ *
+ * Polls the on-chain spec rather than the message: the repotag flipping is the
+ * outcome we actually want, and it only flips once the message has been paid for.
+ * A batch that never confirms is reported, not retried here — re-running the tool
+ * re-signs at a fresh height, which is the correct retry.
+ */
+async function waitForLive(names, image, minutes = 15) {
+  const pending = new Set(names);
+  const deadline = Date.now() + minutes * 60 * 1000;
   while (pending.size && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 30_000));
-    for (const name of [...pending.keys()]) {
+    for (const name of [...pending]) {
       try {
         const { data } = await getJson(`${FLUX_API}/apps/appspecifications/${name}`);
         if (data?.compose?.every((c) => c.repotag === image)) {
@@ -392,9 +440,8 @@ async function main() {
       }
     }
   }
-  for (const [name, hash] of pending) {
-    console.log(`… ${name.padEnd(18)} still pending (message ${hash})`);
-  }
+  for (const name of pending) console.log(`… ${name.padEnd(18)} not confirmed in ${minutes} min`);
+  return [...pending];
 }
 
 main().catch((e) => {
