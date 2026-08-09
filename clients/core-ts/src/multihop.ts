@@ -167,10 +167,10 @@ function byLoadThenCountry(a: GatewayInfo, b: GatewayInfo): number {
  * `'single'` returns just the entry (no exit).
  *
  * With `opts.requireDistinctSubnet`, entry and exit must also fall in different
- * subnets. To honor that without spuriously failing, the least-loaded entry is
- * no longer fixed: entry candidates are tried in load order until one yields a
- * valid exit. Without the flag, behavior is unchanged — the least-loaded entry
- * is used and the call throws if it has no valid exit.
+ * subnets. The entry is not fixed to the least-loaded node: entry candidates
+ * are tried in load order until one yields a valid exit, so a constraint that
+ * merely disqualifies the first candidate (its subnet, or a city pin claiming
+ * its only counterpart) cannot fail a satisfiable route.
  *
  * @param gateways - Discovered, verified gateways to choose from.
  * @param style - The desired {@link RouteStyle}.
@@ -229,11 +229,11 @@ export function selectHops(
       return g.country !== from.country;
     });
 
-  // Default: fixed least-loaded entry (behavior unchanged). With the distinct-
-  // subnet rule, walk entry candidates in load order so a satisfiable pair
-  // isn't missed just because the least-loaded node's subnet has no partner.
-  const entryCandidates = opts.requireDistinctSubnet ? entryPool : [entry];
-  for (const candidate of entryCandidates) {
+  // Walk entry candidates in load order: the least-loaded entry is tried first
+  // (so the happy path is unchanged), but when its exit set is empty — its
+  // subnet has no partner, or a city pin claimed its only counterpart — the
+  // next candidate gets a chance instead of failing a satisfiable route.
+  for (const candidate of entryPool) {
     const exit = exitFor(candidate);
     if (exit) {
       return { entry: candidate, exit };

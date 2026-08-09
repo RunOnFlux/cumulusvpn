@@ -193,6 +193,16 @@ describe('selectHops', () => {
     expect(() => selectHops([], 'single')).toThrow();
   });
 
+  it('walks past a least-loaded entry whose only counterpart is claimed by the exit pin', () => {
+    // us1 is the least-loaded US node AND the only node the exit city pins:
+    // fixing the entry to us1 would leave no exit, but us2 → us1 is valid.
+    const { entry, exit } = selectHops([us1, us2], 'multihop-same-country', {
+      exitIps: ['1.0.0.1'],
+    });
+    expect(entry.ip).toBe('1.0.0.2');
+    expect(exit?.ip).toBe('1.0.0.1');
+  });
+
   it('city-level picks: entryIps/exitIps narrow each hop to chosen gateways', () => {
     const nyc = gateway({ ip: '5.0.0.1', country: 'US', city: 'New York', load: 0.9 });
     const sfo = gateway({ ip: '5.0.0.2', country: 'US', city: 'SF', load: 0.1 });
