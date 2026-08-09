@@ -1,13 +1,22 @@
 name: desktop-release
 
-# CumulusVPN desktop installer for macOS (Apple Silicon), built with tauri-action
-# and published to a GitHub Release.
+# CumulusVPN desktop installers, built with tauri-action and published to a
+# GitHub Release: macOS (Apple Silicon) .dmg/.app and Linux (x86_64)
+# .deb/.rpm/.AppImage.
 #
-# Apple Silicon only for now: Intel Macs are dropped (obsolete), and Windows/Linux
-# would need the wireguard-go sidecar cross-compiled first (fetch-wireguard-go.sh
-# vendors only aarch64-apple-darwin today) — add those matrix legs later if wanted.
+# Platform notes:
+# - Intel Macs are deliberately dropped (obsolete).
+# - Windows is NOT built yet — not because of CI, but because the app's route
+#   programming is a marked seam on Windows (routing.rs errors on any
+#   not-macos/linux path) and wintun.dll is not bundled, so an installer would
+#   produce a tunnel that routes nothing. Implement the netsh/route-based
+#   routing + wintun packaging first, then add
+#   { runner: windows-latest, target: x86_64-pc-windows-msvc, bundles: 'msi,nsis' }.
+# - The wireguard-go (AmneziaWG) sidecar is cross-built from source per target
+#   by fetch-wireguard-go.sh (pure Go, CGO off) — no prebuilt downloads.
 #
-# Trigger: push a tag like `desktop-v1.2.3`, or run manually.
+# Trigger: push a tag like `desktop-v1.2.3`, or run manually (manual runs only
+# BUILD — no release is created, useful to CI-validate a new matrix leg).
 #
 # Required secret: TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD) for the updater.
 # Optional (Gatekeeper-clean .dmg): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
@@ -23,7 +32,15 @@ permissions:
 
 jobs:
   build:
-    runs-on: macos-latest # Apple Silicon runner
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest # Apple Silicon runner
+            target: aarch64-apple-darwin
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
 
@@ -37,7 +54,15 @@ jobs:
       - name: Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin
+          targets: ${{ matrix.target }}
+
+      # Tauri's Linux backend is webkit2gtk; the tray needs appindicator.
+      - name: Linux system deps (webkit2gtk / gtk / appindicator)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
+            libayatana-appindicator3-dev librsvg2-dev patchelf
 
       # fetch-wireguard-go.sh builds the wireguard-go sidecar from source (pure
       # Go, CGO disabled), so the runner needs a Go toolchain (>= 1.23).
@@ -51,8 +76,8 @@ jobs:
           yarn install --immutable
           yarn workspace @cumulusvpn/core build
 
-      - name: Provide wireguard-go sidecar (aarch64-apple-darwin, vendored)
-        run: bash clients/desktop/scripts/fetch-wireguard-go.sh
+      - name: Build wireguard-go sidecar (${{ matrix.target }})
+        run: bash clients/desktop/scripts/fetch-wireguard-go.sh ${{ matrix.target }}
         shell: bash
 
       - name: Build + release (tauri-action)
@@ -70,8 +95,10 @@ jobs:
           # repository secrets and re-add them as env here (see docs/14-releases.md).
         with:
           projectPath: clients/desktop
-          tagName: ${{ github.ref_name }}
-          releaseName: 'CumulusVPN Desktop ${{ github.ref_name }}'
+          # On a manual dispatch tagName is empty, so tauri-action only builds —
+          # no draft release named after a branch.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('CumulusVPN Desktop {0}', github.ref_name) || '' }}
           releaseDraft: true
           prerelease: false
-          args: --target aarch64-apple-darwin
+          args: --target ${{ matrix.target }}
