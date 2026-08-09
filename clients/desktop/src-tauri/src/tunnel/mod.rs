@@ -19,6 +19,56 @@ use thiserror::Error;
 use killswitch::Backend;
 use wggo::{Sidecar, WgConfig};
 
+/// `CREATE_NO_WINDOW` process-creation flag. The app is a GUI process, so every
+/// child we spawn (netsh/route/powershell/wireguard-go) would otherwise flash a
+/// console window on screen. Shared by the `wggo` and `routing` submodules.
+#[cfg(windows)]
+pub(crate) const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+
+/// Fail fast if the process cannot edit the network stack. On Windows every
+/// step of a connect — creating the wintun adapter, opening the
+/// `ProtectedPrefix` UAPI pipe, netsh route edits, the firewall kill switch —
+/// needs Administrator, and each would otherwise fail mid-connect with its own
+/// cryptic error; one check up front turns that into a single actionable
+/// message. Detection is the exact `WindowsPrincipal` role test via PowerShell
+/// (already this codebase's Windows toolbox — see `killswitch`) rather than a
+/// new windows-sys dependency.
+#[cfg(windows)]
+fn ensure_elevated() -> Result<(), TunnelError> {
+    use std::os::windows::process::CommandExt;
+    let out = std::process::Command::new("powershell")
+        .args([
+            "-NoProfile",
+            "-Command",
+            "[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)",
+        ])
+        .creation_flags(CREATE_NO_WINDOW)
+        .output();
+    match out {
+        Ok(o)
+            if o.status.success()
+                && String::from_utf8_lossy(&o.stdout)
+                    .trim()
+                    .eq_ignore_ascii_case("true") =>
+        {
+            Ok(())
+        }
+        // Cannot prove elevation (including a missing/failed PowerShell): the
+        // connect would fail anyway, so surface the actionable message now.
+        _ => Err(TunnelError::Sidecar(
+            "not running elevated — run CumulusVPN as Administrator",
+        )),
+    }
+}
+
+/// macOS/Linux equally require root, but their commands fail with clear
+/// "needs root" errors until the privileged-helper seam is wired — no separate
+/// pre-check needed.
+#[cfg(not(windows))]
+fn ensure_elevated() -> Result<(), TunnelError> {
+    Ok(())
+}
+
 /// Interface name we ask wireguard-go to create. // POC: single fixed tunnel;
 /// a real build allocates `utunN` / `wg0` dynamically to avoid collisions.
 const IFACE: &str = "cvpn0";
@@ -230,6 +280,7 @@ impl TunnelManager {
         tls: Option<TlsParams>,
         split: Option<&SplitParams>,
     ) -> Result<TunnelStatus, TunnelError> {
+        ensure_elevated()?;
         let mut config = WgConfig::parse(wg_config)?;
         // wg-tls rides a TLS/TCP session; vanilla/awg dial the gateway over UDP.
         // The kill switch + endpoint bypass are scoped to `endpoint` (the real
@@ -404,6 +455,7 @@ impl TunnelManager {
         &self,
         params: &MultihopParams<'_>,
     ) -> Result<TunnelStatus, TunnelError> {
+        ensure_elevated()?;
         // Parse both nested configs before touching any state. The outer config
         // legitimately carries no DNS; the inner sets the exit's DNS + 1340 MTU.
         let outer_cfg = WgConfig::parse(params.outer)?;

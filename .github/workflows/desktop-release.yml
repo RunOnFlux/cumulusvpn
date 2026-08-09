@@ -1,17 +1,17 @@
 name: desktop-release
 
 # CumulusVPN desktop installers, built with tauri-action and published to a
-# GitHub Release: macOS (Apple Silicon) .dmg/.app and Linux (x86_64)
-# .deb/.rpm/.AppImage.
+# GitHub Release: macOS (Apple Silicon) .dmg/.app, Linux (x86_64)
+# .deb/.rpm/.AppImage, and Windows (x86_64) NSIS + MSI.
 #
 # Platform notes:
 # - Intel Macs are deliberately dropped (obsolete).
-# - Windows is NOT built yet — not because of CI, but because the app's route
-#   programming is a marked seam on Windows (routing.rs errors on any
-#   not-macos/linux path) and wintun.dll is not bundled, so an installer would
-#   produce a tunnel that routes nothing. Implement the netsh/route-based
-#   routing + wintun packaging first, then add
-#   { runner: windows-latest, target: x86_64-pc-windows-msvc, bundles: 'msi,nsis' }.
+# - Windows: routing.rs drives netsh/PowerShell and wggo.rs speaks UAPI over
+#   the named pipe, so the installer produces a working tunnel. wireguard-go
+#   needs wintun.dll next to the exe: the step below fetches the pinned
+#   official build (SHA256-verified) and tauri.windows.conf.json bundles it.
+#   Artifacts are UNSIGNED — no Windows code-signing cert yet, so SmartScreen
+#   will warn on first run; tauri `targets: "all"` emits NSIS + MSI.
 # - The wireguard-go (AmneziaWG) sidecar is cross-built from source per target
 #   by fetch-wireguard-go.sh (pure Go, CGO off) — no prebuilt downloads.
 #
@@ -40,6 +40,8 @@ jobs:
             target: aarch64-apple-darwin
           - runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
@@ -79,6 +81,25 @@ jobs:
       - name: Build wireguard-go sidecar (${{ matrix.target }})
         run: bash clients/desktop/scripts/fetch-wireguard-go.sh ${{ matrix.target }}
         shell: bash
+
+      # wireguard-go on Windows drives the wintun driver, whose DLL must sit
+      # next to the executable (its loader searches the application dir +
+      # System32 only). Wintun's license permits redistribution with
+      # WireGuard-compatible software; we vendor the pinned official build,
+      # verified against the SHA256 published on wintun.net for this exact zip.
+      # tauri.windows.conf.json bundles src-tauri/wintun/wintun.dll into the
+      # install dir next to the app (and its sidecar).
+      - name: Fetch wintun.dll (pinned + SHA256-verified)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $expected = '07c256185d6ee3652e09fa55c0b673e2624b565e02c4b9091c79ca7d2f24ef51'
+          Invoke-WebRequest -Uri 'https://www.wintun.net/builds/wintun-0.14.1.zip' -OutFile wintun.zip
+          $actual = (Get-FileHash wintun.zip -Algorithm SHA256).Hash.ToLower()
+          if ($actual -ne $expected) { throw "wintun-0.14.1.zip SHA256 mismatch: got $actual" }
+          Expand-Archive wintun.zip -DestinationPath wintun-unzip
+          New-Item -ItemType Directory -Force -Path clients/desktop/src-tauri/wintun | Out-Null
+          Copy-Item wintun-unzip/wintun/bin/amd64/wintun.dll clients/desktop/src-tauri/wintun/wintun.dll
 
       - name: Build + release (tauri-action)
         uses: tauri-apps/tauri-action@v1

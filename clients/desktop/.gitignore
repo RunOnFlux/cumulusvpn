@@ -5,3 +5,8 @@ src-tauri/gen
 src-tauri/binaries/wireguard-go*
 # NOTE: src-tauri/icons/* are build INPUTS (tauri.conf.json bundle.icon reads them
 # at compile time and CI does not regenerate them) — they must be committed.
+
+# Vendored wintun driver DLL — fetched (pinned + SHA256-verified) by CI, never
+# committed. Wintun's license permits redistribution with WireGuard-compatible
+# software; we vendor the pinned official build (see desktop-release.yml).
+src-tauri/wintun/

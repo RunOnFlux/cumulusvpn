@@ -12,13 +12,22 @@
 //! poll `get=1` for the transfer counters and last-handshake surfaced in the UI.
 //!
 //! **What is real here:** binary resolution, process spawn, waiting for the TUN
-//! device + UAPI socket, the UnixStream UAPI client (set/get), address + MTU +
-//! route programming (via [`super::routing`]), and process reaping. **What
-//! remains a marked seam:** the Windows named-pipe UAPI client, and elevation —
-//! creating a TUN device and editing the routing table require root/Admin, so
-//! in a shipped build the spawn + route calls run through the platform
-//! privileged helper (macOS `SMAppService`, Linux `polkit`, Windows service).
-//! Run unelevated, `spawn` fails cleanly ("needs elevated privileges").
+//! device + UAPI endpoint, the UAPI client (UnixStream on Unix, named pipe on
+//! Windows — set/get), address + MTU + route programming (via
+//! [`super::routing`]), and process reaping. **What remains a marked seam:**
+//! elevation — creating a TUN device and editing the routing table require
+//! root/Admin, so in a shipped build the spawn + route calls run through the
+//! platform privileged helper (macOS `SMAppService`, Linux `polkit`, Windows
+//! service). Run unelevated, `spawn` fails cleanly ("needs elevated
+//! privileges"); Windows additionally refuses up front with an actionable
+//! message (`super::ensure_elevated`).
+//!
+//! **Windows specifics:** wireguard-go's Windows `main` takes exactly one
+//! argument (the interface name), is always foreground (no `-f`), never writes
+//! `WG_TUN_NAME_FILE` (the wintun adapter gets exactly the requested name), and
+//! needs `wintun.dll` next to the executable — its Go wintun loader searches
+//! only the application dir + System32, and the bundle places the DLL there via
+//! `tauri.windows.conf.json`.
 
 use std::fs;
 use std::path::PathBuf;
@@ -287,12 +296,15 @@ fn uapi_socket_path(iface: &str) -> PathBuf {
 ///
 /// On macOS the kernel only allows `utunN` names, so we request the `utun`
 /// prefix and let it auto-assign, recovering the real name from
-/// `WG_TUN_NAME_FILE`. Linux/Windows accept our logical name verbatim.
+/// `WG_TUN_NAME_FILE`. Linux accepts our logical name verbatim. (Windows does
+/// too — wintun names the adapter exactly as requested, and the `cvpn*` labels
+/// are valid adapter aliases — so its `spawn` passes the logical name directly
+/// and this indirection is Unix-only.)
 #[cfg(target_os = "macos")]
 fn requested_name(_logical: &str) -> String {
     "utun".to_string()
 }
-#[cfg(not(target_os = "macos"))]
+#[cfg(all(unix, not(target_os = "macos")))]
 fn requested_name(logical: &str) -> String {
     logical.to_string()
 }
@@ -390,23 +402,57 @@ impl Sidecar {
         })
     }
 
-    /// Windows spawn seam: the process launch is real, but the wintun device +
-    /// named-pipe UAPI client + WFP kill switch need the wireguard-nt helper.
+    /// Windows spawn: same lifecycle as Unix minus the name-file dance — the
+    /// wintun adapter gets exactly the requested name, so the two wait phases
+    /// collapse into one: probe the UAPI named pipe by *opening* it, which is
+    /// both the readiness check and the existence check (`Path::exists` is not
+    /// dependable for `\\.\pipe\` paths). The pipe lives under
+    /// `ProtectedPrefix\Administrators`, so a successful open also proves the
+    /// endpoint is wireguard-go's, not a squatter's.
     #[cfg(windows)]
     pub fn spawn(logical: &str) -> Result<Self, TunnelError> {
+        use std::os::windows::process::CommandExt;
+
         let bin = resolve_wireguard_go()?;
-        // POC: real impl requests elevation via the installed Windows service and
-        // waits on the named pipe below instead of returning immediately.
-        let child = Command::new(&bin)
-            .arg("-f")
-            .arg(logical)
-            .env("WG_PROCESS_FOREGROUND", "1")
+        let mut child = Command::new(&bin)
+            .arg(logical) // windows main: exactly one arg, always foreground
+            .env("LOG_LEVEL", "error")
+            .creation_flags(super::CREATE_NO_WINDOW) // GUI app: no console flash
             .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .spawn()
             .map_err(|_| TunnelError::Sidecar("failed to spawn wireguard-go"))?;
+
+        let uapi_path = uapi_socket_path(logical);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            if let Ok(Some(_status)) = child.try_wait() {
+                return Err(TunnelError::Sidecar(
+                    "wireguard-go exited during startup (needs Administrator to create the wintun adapter, and wintun.dll next to the app)",
+                ));
+            }
+            if fs::OpenOptions::new()
+                .read(true)
+                .write(true)
+                .open(&uapi_path)
+                .is_ok()
+            {
+                break;
+            }
+            if Instant::now() > deadline {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(TunnelError::Sidecar(
+                    "wireguard-go started but its UAPI pipe never appeared",
+                ));
+            }
+            thread::sleep(Duration::from_millis(100));
+        }
+
         Ok(Sidecar {
             interface: logical.to_string(),
-            uapi_path: uapi_socket_path(logical),
+            uapi_path,
             child: Some(child),
         })
     }
@@ -456,14 +502,47 @@ impl Sidecar {
         Ok(String::from_utf8_lossy(&buf).into_owned())
     }
 
-    /// Windows UAPI seam: talking to wireguard-go over its named pipe needs a
-    /// pipe client (overlapped IO); not yet implemented.
+    /// Windows UAPI client. wireguard-go serves UAPI on the byte-mode named
+    /// pipe `\\.\pipe\ProtectedPrefix\Administrators\WireGuard\<iface>`; for
+    /// our strictly request→response usage a plain synchronous `File` opened
+    /// read+write IS a pipe client — no overlapped IO needed. Fresh connection
+    /// per exchange, like the Unix client. There is no read timeout (`File`
+    /// cannot express one): the server always terminates a response with a
+    /// blank line, and if it dies mid-read the pipe breaks and the read
+    /// returns, so this cannot hang indefinitely.
     #[cfg(windows)]
-    fn uapi_exchange(&self, _request: &str) -> Result<String, TunnelError> {
-        // POC: implement the `\\.\pipe\...\WireGuard\<iface>` named-pipe client.
-        Err(TunnelError::Uapi(
-            "windows named-pipe UAPI client not implemented",
-        ))
+    fn uapi_exchange(&self, request: &str) -> Result<String, TunnelError> {
+        use std::io::{Read, Write};
+
+        let mut pipe = fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(&self.uapi_path)
+            .map_err(|_| TunnelError::Uapi("cannot open wireguard-go UAPI pipe"))?;
+        pipe.write_all(request.as_bytes())
+            .map_err(|_| TunnelError::Uapi("failed to write UAPI request"))?;
+        pipe.flush()
+            .map_err(|_| TunnelError::Uapi("failed to flush UAPI request"))?;
+
+        let mut buf: Vec<u8> = Vec::with_capacity(1024);
+        let mut chunk = [0u8; 1024];
+        loop {
+            match pipe.read(&mut chunk) {
+                Ok(0) => break, // peer closed
+                Ok(n) => {
+                    buf.extend_from_slice(&chunk[..n]);
+                    // UAPI responses terminate with an empty line.
+                    if buf.ends_with(b"\n\n") {
+                        break;
+                    }
+                }
+                // A broken pipe after (partial) data is the peer going away —
+                // return what we have, mirroring the Unix timeout path.
+                Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => break,
+                Err(_) => return Err(TunnelError::Uapi("failed to read UAPI response")),
+            }
+        }
+        Ok(String::from_utf8_lossy(&buf).into_owned())
     }
 
     /// Apply a parsed config to the running interface via UAPI `set`, then bring
