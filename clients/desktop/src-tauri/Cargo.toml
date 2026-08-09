@@ -23,7 +23,7 @@ tauri-plugin-opener = "2.0.0"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
 thiserror = "2.0.18"
-base64 = "0.22.1"
+base64 = "0.23.1"
 # POC: reserved for real UAPI socket IO / counter polling of wireguard-go.
 tokio = { version = "1.40.0", features = ["rt-multi-thread", "macros", "sync", "io-util", "net", "time"] }
 # wg-tls transport: the client-side UDP<->TLS bridge (see tunnel::tlsbridge).
@@ -36,7 +36,7 @@ tokio-rustls = { version = "0.26.0", default-features = false, features = ["ring
 [dev-dependencies]
 # Self-signed cert generation for the wg-tls bridge loopback test (ring backend,
 # matching the runtime crypto provider — no aws-lc-rs/cmake).
-rcgen = { version = "0.13.1", default-features = false, features = ["ring"] }
+rcgen = { version = "0.14.8", default-features = false, features = ["ring"] }
 
 [features]
 # Enables Tauri's custom-protocol asset loading in release builds.
