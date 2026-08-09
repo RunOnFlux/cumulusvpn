@@ -1,12 +1,13 @@
 /**
  * The connect orb — the emotional centre of the app (mockup `.orb`).
  *
- * Off: faint ring, "Tap to connect". On: cyan glow ring, "Connected". A subtle
- * pulse animation runs while connecting so the state change feels alive
+ * Off: faint ring, "Tap to connect". On: cyan glow ring, "Connected". While
+ * connecting/disconnecting a bright arc orbits the ring (with a subtle scale
+ * pulse underneath) so the wait visibly reads as work in progress
  * (docs/05: "motion on the connect state").
  */
 import { useEffect, useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { color, font } from '../theme/tokens';
 import type { TunnelState } from '../native/CumulusTunnel';
 
@@ -36,30 +37,56 @@ export function Orb({ state, onPress }: Props): React.JSX.Element {
   const on = state === 'connected';
   const busy = state === 'connecting' || state === 'reasserting' || state === 'disconnecting';
   const pulse = useRef(new Animated.Value(0)).current;
+  const spin = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!busy) {
       pulse.stopAnimation();
       pulse.setValue(0);
+      spin.stopAnimation();
+      spin.setValue(0);
       return;
     }
-    const loop = Animated.loop(
+    const pulseLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(pulse, { toValue: 1, duration: 900, useNativeDriver: true }),
         Animated.timing(pulse, { toValue: 0, duration: 900, useNativeDriver: true }),
       ]),
     );
-    loop.start();
-    return () => loop.stop();
-  }, [busy, pulse]);
+    const spinLoop = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 1100,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+    pulseLoop.start();
+    spinLoop.start();
+    return () => {
+      pulseLoop.stop();
+      spinLoop.stop();
+    };
+  }, [busy, pulse, spin]);
 
   const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.06] });
+  const rotate = spin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
   const glowColor = on ? color.cyan : color.hairlineStrong;
+  // Tearing down reads as winding down, not lighting up — mute the arc for it.
+  const arcColor = state === 'disconnecting' ? '#9FB2C4' : color.cyan;
 
   return (
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={label(state)}>
       <Animated.View style={[styles.orb, { transform: [{ scale }] }]}>
         <View style={[styles.ring, { borderColor: glowColor }, on && styles.ringOn]} />
+        {busy && (
+          <Animated.View
+            style={[
+              styles.arc,
+              { borderTopColor: arcColor, borderRightColor: arcColor, transform: [{ rotate }] },
+            ]}
+          />
+        )}
         <View style={[styles.core, on ? styles.coreOn : styles.coreOff]}>
           <PowerGlyph color={on ? color.cyan : '#9FB2C4'} />
           <Text style={[styles.state, { color: on ? color.cyan : '#9FB2C4' }]}>{label(state)}</Text>
@@ -98,6 +125,17 @@ const styles = StyleSheet.create({
     bottom: 0,
     borderRadius: 84,
     borderWidth: 2,
+  },
+  // Busy spinner: a half-circle arc (top+right borders) rotated by the loop.
+  arc: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 84,
+    borderWidth: 2.5,
+    borderColor: 'transparent',
   },
   ringOn: {
     shadowColor: color.cyan,
