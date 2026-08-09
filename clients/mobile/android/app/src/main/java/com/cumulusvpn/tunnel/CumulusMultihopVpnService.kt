@@ -52,20 +52,20 @@ class CumulusMultihopVpnService : VpnService() {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopRequested = true
-                teardown()
-                stopSelf()
+                // Stopping the nested Go pair is a JNI call that can block for
+                // a second or more — never on the main thread, or the whole UI
+                // (including the app's disconnect animation) freezes with it.
+                // stopSelf(startId) is a no-op if a newer START already
+                // arrived, so a quick stop→start can't kill the fresh session.
+                Thread {
+                    teardown()
+                    stopSelf(startId)
+                }.start()
                 return START_NOT_STICKY
             }
             else -> {
                 val startIntent = intent ?: return START_NOT_STICKY
                 stopRequested = false
-                // Same reconnect guard as the single-hop service: another START
-                // lands on this live instance, and stacking a second nested pair
-                // on top of the first leaves neither able to handshake.
-                if (handle != 0L || tun != null) {
-                    Log.i(TAG, "replacing a live session before reconnect")
-                    teardown()
-                }
                 notifText = startIntent.getStringExtra(EXTRA_NOTIF_TEXT) ?: ""
                 // Run as a foreground service so the OS won't kill the process (and
                 // silently drop the tunnel) under memory pressure / doze. Must be
@@ -77,6 +77,16 @@ class CumulusMultihopVpnService : VpnService() {
                 // block the main looper (ANR / process freeze).
                 Thread {
                     try {
+                        // Same reconnect guard as the single-hop service:
+                        // another START lands on this live instance, and
+                        // stacking a second nested pair on top of the first
+                        // leaves neither able to handshake. JNI when live —
+                        // hence inside this thread; stopDataPlane (not
+                        // teardown) keeps the notification just posted.
+                        if (handle != 0L || tun != null) {
+                            Log.i(TAG, "replacing a live session before reconnect")
+                            stopDataPlane()
+                        }
                         connect(startIntent)
                         if (stopRequested) {
                             // A stop raced in during connect — tear the just-started
@@ -184,7 +194,13 @@ class CumulusMultihopVpnService : VpnService() {
         Log.i(TAG, "nested tunnel up: entry=$entryIp:$entryPort exit=$exitIp obfs=${entryObfs.isNotEmpty()} handle=$handle")
     }
 
-    private fun teardown() {
+    /**
+     * Stop the nested Go pair / tun — the JNI half of teardown, which can
+     * block; only ever call it off the main thread. Synchronized so a threaded
+     * stop can't interleave with a replace-before-reconnect.
+     */
+    @Synchronized
+    private fun stopDataPlane() {
         val h = handle
         handle = 0
         activeHandle = 0
@@ -202,6 +218,10 @@ class CumulusMultihopVpnService : VpnService() {
         } catch (_: Throwable) {
         }
         tun = null
+    }
+
+    private fun teardown() {
+        stopDataPlane()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     }
 
@@ -244,10 +264,14 @@ class CumulusMultihopVpnService : VpnService() {
     }
 
     override fun onRevoke() {
-        // The OS or another VPN app revoked us.
-        teardown()
-        CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_DISCONNECTED)
-        stopSelf()
+        // The OS or another VPN app revoked us. Same rule as ACTION_STOP: the
+        // JNI teardown must not block the main thread this callback runs on.
+        stopRequested = true
+        Thread {
+            teardown()
+            CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_DISCONNECTED)
+            stopSelf()
+        }.start()
         super.onRevoke()
     }
 

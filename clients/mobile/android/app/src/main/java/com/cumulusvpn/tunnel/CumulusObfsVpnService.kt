@@ -47,30 +47,39 @@ class CumulusObfsVpnService : VpnService() {
         when (intent?.action) {
             ACTION_STOP -> {
                 stopRequested = true
-                teardown()
-                stopSelf()
+                // Stopping the Go device is a JNI call that can block for a
+                // beat — never on the main thread, or the whole UI (including
+                // the app's disconnect animation) freezes with it.
+                // stopSelf(startId) is a no-op if a newer START already
+                // arrived, so a quick stop→start can't kill the fresh session.
+                Thread {
+                    teardown()
+                    stopSelf(startId)
+                }.start()
                 return START_NOT_STICKY
             }
             else -> {
                 val startIntent = intent ?: return START_NOT_STICKY
                 stopRequested = false
-                // A reconnect (or a transport-chain fallback) arrives as another
-                // START on the SAME live service instance — Android does not
-                // recreate a started service. Without this, connect() would
-                // start a second Go device while the first still owns a tun fd
-                // and its sockets: the new tunnel never completes a handshake,
-                // so the app sits on "connecting" and gives up. Tearing down
-                // first is idempotent when nothing is running.
-                if (handle != 0L || tun != null || tlsBridge != null) {
-                    Log.i(TAG, "replacing a live session before reconnect")
-                    teardown()
-                }
                 notifText = startIntent.getStringExtra(EXTRA_NOTIF_TEXT) ?: ""
                 startForegroundNotification()
                 // Bring the tunnel up OFF the main thread (JNI + device start must
                 // not block the looper).
                 Thread {
                     try {
+                        // A reconnect (or a transport-chain fallback) arrives as
+                        // another START on the SAME live service instance —
+                        // Android does not recreate a started service. Without
+                        // this, connect() would start a second Go device while
+                        // the first still owns a tun fd and its sockets: the new
+                        // tunnel never completes a handshake, so the app sits on
+                        // "connecting" and gives up. Idempotent when idle, JNI
+                        // when live — hence inside this thread; stopDataPlane
+                        // (not teardown) keeps the notification just posted.
+                        if (handle != 0L || tun != null || tlsBridge != null) {
+                            Log.i(TAG, "replacing a live session before reconnect")
+                            stopDataPlane()
+                        }
                         connect(startIntent)
                         if (stopRequested) {
                             teardown()
@@ -205,7 +214,13 @@ class CumulusObfsVpnService : VpnService() {
         }
     }
 
-    private fun teardown() {
+    /**
+     * Stop the Go device / TLS bridge / tun — the JNI half of teardown, which
+     * can block; only ever call it off the main thread. Synchronized so a
+     * threaded stop can't interleave with a replace-before-reconnect.
+     */
+    @Synchronized
+    private fun stopDataPlane() {
         val h = handle
         handle = 0
         activeHandle = 0
@@ -226,6 +241,10 @@ class CumulusObfsVpnService : VpnService() {
         } catch (_: Throwable) {
         }
         tun = null
+    }
+
+    private fun teardown() {
+        stopDataPlane()
         ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
     }
 
@@ -276,9 +295,14 @@ class CumulusObfsVpnService : VpnService() {
     }
 
     override fun onRevoke() {
-        teardown()
-        CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_DISCONNECTED)
-        stopSelf()
+        // Same rule as ACTION_STOP: the JNI teardown must not block the main
+        // thread the OS delivers this callback on.
+        stopRequested = true
+        Thread {
+            teardown()
+            CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_DISCONNECTED)
+            stopSelf()
+        }.start()
         super.onRevoke()
     }
 
