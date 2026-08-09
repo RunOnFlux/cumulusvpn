@@ -29,6 +29,21 @@ updates:
     groups:
       mobile-npm:
         patterns: ['*']
+    ignore:
+      # The RN toolchain (metro, @react-native/babel-preset) is built for Babel 7;
+      # Babel 8 in the app while the preset stays on 7 breaks the test/bundle
+      # pipeline (PR #30). Lift when React Native declares Babel 8 support.
+      - dependency-name: '@babel/core'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@babel/runtime'
+        update-types: ['version-update:semver-major']
+      # @react-native/jest-preset targets jest ^29 — a jest 30 core under a 29
+      # environment throws `clearMocksOnScope is not a function`. Move jest
+      # WITH the RN preset when RN adopts jest 30, not independently.
+      - dependency-name: 'jest'
+        update-types: ['version-update:semver-major']
+      - dependency-name: '@types/jest'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: npm
     directory: '/deploy' # standalone deploy tooling
@@ -68,6 +83,14 @@ updates:
     groups:
       gateway-gomod:
         patterns: ['*']
+    ignore:
+      # LOAD-BEARING PINS (docs/15): amneziawg-go v0.2.19 + the 20231202 gVisor
+      # snapshot, in three lockstep places (gateway/go.mod, wgnest/go.mod,
+      # desktop fetch-wireguard-go.sh). Newer gVisor breaks the vendored
+      # netstack ("found packages stack and bridge" — PR #29), and AWG 2.0
+      # drags exactly that gVisor in. Move all three together, by hand.
+      - dependency-name: 'gvisor.dev/gvisor'
+      - dependency-name: 'github.com/amnezia-vpn/amneziawg-go'
 
   - package-ecosystem: github-actions
     directory: '/' # workflow action versions
