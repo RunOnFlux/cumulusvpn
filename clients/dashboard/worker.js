@@ -21,6 +21,8 @@ import { connect } from 'cloudflare:sockets';
 
 // Planned fleet (keep in sync with deploy/countries.yaml). Undeployed specs just
 // return zero instances — which is itself useful (shows roadmap vs live).
+// se/ch/kr were dropped (2026-08-09): Flux has no usable nodes in those
+// countries, so the specs will never be registered.
 const COUNTRY_CODES = [
   'us',
   'ca',
@@ -36,12 +38,9 @@ const COUNTRY_CODES = [
   'br',
   'es',
   'it',
-  'se',
-  'ch',
   'at',
   'fi',
   'mx',
-  'kr',
   'in',
   'za',
   'ru',
@@ -49,8 +48,13 @@ const COUNTRY_CODES = [
   'hk',
   'ae',
 ];
+// Countries with a separate 443 stealth group (`cumulusvpntls<cc>`) — keep in
+// sync with `stealth: true` in deploy/countries.yaml. Probed like the standard
+// fleet, plus a TCP reachability check of the 443 TLS relay itself.
+const STEALTH_CODES = ['de'];
 const FLUX_API = 'https://api.runonflux.io';
 const CONTROL_PORT = 51821;
+const RELAY_PORT = 443;
 const PROBE_TIMEOUT_MS = 6000;
 
 /** Public IPv4 literal only — hardens the probe against a poisoned Flux-API
@@ -165,10 +169,39 @@ async function httpGet(host, port, path, timeoutMs) {
   }
 }
 
-/** Probe one gateway's /v1/info; never throws. */
-async function probe(ip, cc, spec) {
-  const inst = { ip, cc, spec, up: false };
+/**
+ * True when `host:port` accepts a TCP connection within the timeout. Health
+ * check for the stealth group's 443 relay: its TLS cert is deliberately
+ * self-signed under a camouflage SNI, so a full TLS probe would fail
+ * verification — the relay listening at all is the signal we need.
+ */
+async function tcpOpen(host, port, timeoutMs) {
+  let socket;
+  try {
+    socket = connect({ hostname: host, port }, { secureTransport: 'off', allowHalfOpen: false });
+    await Promise.race([
+      socket.opened,
+      new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), timeoutMs)),
+    ]);
+    return true;
+  } catch {
+    return false;
+  } finally {
+    try {
+      if (socket) await socket.close();
+    } catch {
+      /* already closed */
+    }
+  }
+}
+
+/** Probe one gateway's /v1/info (and, for stealth, its 443 relay); never throws. */
+async function probe(ip, cc, spec, tier) {
+  const inst = { ip, cc, spec, tier, up: false };
   if (!isPublicIPv4(ip)) return inst; // don't let a poisoned index point us inward
+  // Run the relay check alongside the info probe — a stealth node whose control
+  // API died can still have a live (or dead) relay, and both facts matter.
+  const relayCheck = tier === 'stealth' ? tcpOpen(ip, RELAY_PORT, PROBE_TIMEOUT_MS) : null;
   try {
     const text = await httpGet(ip, CONTROL_PORT, '/v1/info', PROBE_TIMEOUT_MS);
     const j = JSON.parse(text);
@@ -183,15 +216,19 @@ async function probe(ip, cc, spec) {
   } catch {
     // unreachable → stays up:false
   }
+  if (relayCheck) inst.relay443 = await relayCheck;
   return inst;
 }
 
 async function fleet() {
+  const groups = [
+    ...COUNTRY_CODES.map((cc) => ({ cc, spec: `cumulusvpn${cc}`, tier: 'standard' })),
+    ...STEALTH_CODES.map((cc) => ({ cc, spec: `cumulusvpntls${cc}`, tier: 'stealth' })),
+  ];
   const perSpec = await Promise.all(
-    COUNTRY_CODES.map(async (cc) => {
-      const spec = `cumulusvpn${cc}`;
+    groups.map(async ({ cc, spec, tier }) => {
       const ips = await locations(spec);
-      return Promise.all(ips.map((ip) => probe(ip, cc.toUpperCase(), spec)));
+      return Promise.all(ips.map((ip) => probe(ip, cc.toUpperCase(), spec, tier)));
     }),
   );
   const instances = perSpec.flat();

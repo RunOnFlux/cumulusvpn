@@ -109,6 +109,7 @@
   .badge.latest{ color:var(--green); background:color-mix(in srgb,var(--green) 16%,transparent); }
   .badge.stale{ color:var(--amber); background:color-mix(in srgb,var(--amber-2) 18%,transparent); }
   .badge.down{ color:var(--red); background:color-mix(in srgb,var(--red) 15%,transparent); }
+  .badge.stealth{ color:var(--cyan); background:color-mix(in srgb,var(--cyan) 15%,transparent); }
   .inst .right { text-align:right; min-width:96px; }
   .loadbar { width:96px; height:6px; border-radius:6px; background:var(--surface-2); overflow:hidden; margin-left:auto; }
   .loadbar > i { display:block; height:100%; border-radius:6px; }
@@ -210,11 +211,20 @@
       ? '<div class="loadbar"><i class="'+loadClass(inst.load)+'" style="width:'+Math.round((inst.load||0)*100)+'%"></i></div>'
         + '<div class="cap">'+pct(inst.load)+' load'+(inst.capacity!=null? ' · '+inst.capacity+' free':'')+'</div>'
       : '<div class="dash">unreachable</div>';
+    // 443-stealth-group node: name the tier, and report the TLS relay's own
+    // reachability — a stealth node with a dead relay is broken even when its
+    // control API answers.
+    var stealth = '';
+    if (inst.tier === 'stealth') {
+      stealth = ' <span class="badge stealth">stealth</span>'
+        + (inst.relay443 === true ? ' <span class="badge latest">443 relay up</span>'
+          : inst.relay443 === false ? ' <span class="badge down">443 relay down</span>' : '');
+    }
     return '<div class="inst">'
       + '<span class="dot '+(inst.up?'up':'down')+'"></span>'
       + '<div class="meta"><div class="ip">'+esc(inst.ip)+'</div>'
       + '<div class="sub">'+ (inst.up? (esc(inst.version||'?')) : 'no response')
-      + (locality? ' · '+esc(locality):'') + ' '+buildBadge(inst,latest)+'</div></div>'
+      + (locality? ' · '+esc(locality):'') + stealth + ' '+buildBadge(inst,latest)+'</div></div>'
       + '<div class="right">'+right+'</div></div>';
   }
 
