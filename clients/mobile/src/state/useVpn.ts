@@ -11,7 +11,7 @@
  *   config → hand to native tunnel → poll status for tier.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { PermissionsAndroid, Platform } from 'react-native';
 import {
   applyTransportToEndpoint,
   buildMultihopConfig,
@@ -66,6 +66,7 @@ import {
   loadKeypair,
   loadKillSwitch,
   loadNodeDiversity,
+  loadNotifDetails,
   loadRouteStyle,
   loadSplitPolicy,
   loadTransportMode,
@@ -79,6 +80,7 @@ import {
   saveKeypair,
   saveKillSwitch,
   saveNodeDiversity,
+  saveNotifDetails,
   saveRouteStyle,
   saveTransportMode,
   saveSelectedCountry,
@@ -180,6 +182,12 @@ export interface VpnModel {
    * case a multi-hop connect fails with a clear message (persisted).
    */
   readonly nodeDiversity: boolean;
+  /**
+   * Android only: show the connected route in the ongoing VPN notification.
+   * The notification itself always exists (a foreground service must post
+   * one) — off keeps it to a generic "tunnel active" line (persisted).
+   */
+  readonly notifDetails: boolean;
   /** Auto-connect on app launch once discovery completes (persisted). */
   readonly autoConnect: boolean;
   /** Unix-ms when the active session connected, or null when not connected. */
@@ -238,6 +246,8 @@ export interface VpnActions {
   setKillSwitch(enabled: boolean): Promise<void>;
   /** Toggle multi-hop node diversity (persisted). Applies on the next connect. */
   setNodeDiversity(enabled: boolean): Promise<void>;
+  /** Toggle route details in the Android ongoing notification (persisted). */
+  setNotifDetails(enabled: boolean): Promise<void>;
   /** Toggle auto-connect on launch (persisted). */
   setAutoConnect(enabled: boolean): Promise<void>;
   /** Pin/unpin a country as a favorite (persisted). */
@@ -247,6 +257,29 @@ export interface VpnActions {
 }
 
 const STATUS_POLL_MS = 30_000;
+
+/** Country code of a hop pick (`DE` or `DE:Frankfurt` → `DE`; null stays null). */
+function hopCc(id: string | null): string | null {
+  return id ? (id.split(':')[0] ?? null) : null;
+}
+
+/**
+ * True when two PICKED hop countries can never satisfy the style's jurisdiction
+ * rule (same-country needs one country; cross-jurisdiction needs two). An unset
+ * end (null = Auto) never conflicts — connect resolves it around the other pick.
+ */
+function hopsConflict(style: RouteStyle, a: string | null, b: string | null): boolean {
+  if (!a || !b) {
+    return false;
+  }
+  if (style === 'multihop-same-country') {
+    return a !== b;
+  }
+  if (style === 'multihop-cross-jurisdiction') {
+    return a === b;
+  }
+  return false;
+}
 
 export function useVpn(): VpnModel & VpnActions {
   const [keypair, setKeypair] = useState<Keypair | null>(null);
@@ -274,6 +307,7 @@ export function useVpn(): VpnModel & VpnActions {
   const [exitCode, setExitCode] = useState<string | null>(null);
   const [killSwitch, setKillSwitchState] = useState(false);
   const [nodeDiversity, setNodeDiversityState] = useState(false);
+  const [notifDetails, setNotifDetailsState] = useState(true);
   const [autoConnect, setAutoConnectState] = useState(false);
   const [favorites, setFavorites] = useState<readonly string[]>([]);
   // Mirror of `favorites` for toggleFavorite to read the current value without a
@@ -302,6 +336,8 @@ export function useVpn(): VpnModel & VpnActions {
   // distinguish an unexpected drop from a user disconnect, for auto-reconnect.
   const wantConnectedRef = useRef(false);
   const wasConnectedRef = useRef(false);
+  /** POST_NOTIFICATIONS asked this session (Android 13+); never re-prompt. */
+  const notifPermAskedRef = useRef(false);
 
   // Latest enrolled gateway IP, kept in a ref for the status poller.
   const gatewayIpRef = useRef<string | null>(null);
@@ -346,9 +382,15 @@ export function useVpn(): VpnModel & VpnActions {
     const all = gatewaysRef.current;
     const free = (gs: readonly GatewayInfo[]): GatewayInfo[] =>
       gs.filter((g) => (avoidRef.current.get(g.ip) ?? 0) <= now);
-    const inCity = all.filter(
-      (g) => g.country === location.code && localityOf(g.city, g.country) === location.city,
-    );
+    // A whole-country pick (bare-code id — the "Any city" row) must not bias
+    // toward the row's representative city: its `city` is just the best node's
+    // locality, not a user choice, so only the country pool applies.
+    const cityPinned = location.id.includes(':');
+    const inCity = !cityPinned
+      ? []
+      : all.filter(
+          (g) => g.country === location.code && localityOf(g.city, g.country) === location.city,
+        );
     const inCountry = all.filter((g) => g.country === location.code);
     for (const pool of [free(inCity), free(inCountry)]) {
       if (pool.length > 0) {
@@ -365,12 +407,16 @@ export function useVpn(): VpnModel & VpnActions {
     return free.length > 0 ? free : gatewaysRef.current;
   }, []);
 
-  // Single-hop selection is a LOCATION (city) id; `selectedCode` holds it. Old
-  // persisted country codes still resolve because a single-city country's id
-  // equals its code.
+  // Single-hop selection is a LOCATION id (`DE:Frankfurt`) or a bare country
+  // code (`DE` — the picker's "Any city" row, whole-country selection). City
+  // ids resolve in `locations`; bare codes fall back to the country row (which
+  // also keeps old persisted country codes working).
   const selected = useMemo<Country | null>(
-    () => locations.find((l) => l.id === selectedCode) ?? null,
-    [locations, selectedCode],
+    () =>
+      locations.find((l) => l.id === selectedCode) ??
+      countries.find((c) => c.code === selectedCode) ??
+      null,
+    [countries, locations, selectedCode],
   );
 
   // A hop pick is a LOCATION id: `DE` (whole country) or `DE:Frankfurt` (one
@@ -490,6 +536,7 @@ export function useVpn(): VpnModel & VpnActions {
         setExitCode(await loadExitCountry());
         setKillSwitchState(await loadKillSwitch());
         setNodeDiversityState(await loadNodeDiversity());
+        setNotifDetailsState(await loadNotifDetails());
         setAutoConnectState(await loadAutoConnect());
         favoritesRef.current = await loadFavorites();
         setFavorites(favoritesRef.current);
@@ -845,15 +892,41 @@ export function useVpn(): VpnModel & VpnActions {
         }
       }
 
+      // Android 13+ gates even a foreground service's notification behind the
+      // runtime POST_NOTIFICATIONS permission — without it the ongoing status
+      // notification silently never appears. Ask once; a denial is fine (the
+      // tunnel works regardless), so the answer is not checked.
+      if (Platform.OS === 'android' && !notifPermAskedRef.current) {
+        notifPermAskedRef.current = true;
+        try {
+          await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS);
+        } catch {
+          // Pre-13 Android has no such permission — nothing to ask.
+        }
+      }
+
       if (isMultihop(routeStyle)) {
+        // Picks are reconciled at selection time, but a pair persisted under an
+        // older build can still violate the style's rule — fail with the rule,
+        // not a confusing "no route" from selectHops.
+        if (entry && exit && hopsConflict(routeStyle, entry.code, exit.code)) {
+          throw new Error(
+            routeStyle === 'multihop-same-country'
+              ? 'Balanced keeps both hops in one country, but entry and exit are set to different countries. Match them, or set one to Auto.'
+              : 'Cross-jurisdiction needs two different countries, but entry and exit are the same. Change one, or set it to Auto.',
+          );
+        }
         // Auto entry: prefer the NEAREST measured country (countries are
         // latency-sorted) that can satisfy the route, instead of letting
         // selectHops fall back to the globally least-loaded gateway — which can
         // be on another continent (the "I picked auto and got Canada" surprise).
+        // A picked exit constrains it: same-country must enter in the exit's
+        // country; cross-jurisdiction must enter anywhere else.
+        const exitCc = exit?.code ?? null;
         const autoEntry =
           routeStyle === 'multihop-same-country'
-            ? countries.find((c) => c.nodeCount >= 2)?.code
-            : countries[0]?.code;
+            ? (exitCc ?? countries.find((c) => c.nodeCount >= 2)?.code)
+            : countries.find((c) => c.code !== exitCc)?.code;
         const hops = await connectMultihop({
           keypair,
           routeStyle,
@@ -869,6 +942,7 @@ export function useVpn(): VpnModel & VpnActions {
           setEnrollment,
           killSwitch,
           requireDistinctSubnet: nodeDiversity,
+          notifDetails,
         });
         // Multi-hop has a single entry transport, so there is no chain to walk —
         // it still reaches 'connected' via native status events, which means the
@@ -886,8 +960,13 @@ export function useVpn(): VpnModel & VpnActions {
       }
 
       // ---- single-hop (Fast, default) ----
-      // `selectedCode` is a LOCATION id; auto (null) → nearest location.
-      const target = locations.find((l) => l.id === selectedCode) ?? locations[0] ?? null;
+      // `selectedCode` is a LOCATION id or a bare country code (whole-country
+      // "Any city" pick); auto (null) → nearest location.
+      const target =
+        locations.find((l) => l.id === selectedCode) ??
+        countries.find((c) => c.code === selectedCode) ??
+        locations[0] ??
+        null;
       if (!target) {
         setState('error');
         setError('No gateways reachable');
@@ -985,7 +1064,17 @@ export function useVpn(): VpnModel & VpnActions {
         }
 
         try {
-          await CumulusTunnel.startTunnel(wgConfig, target.name, killSwitch);
+          // Android surfaces this label in the ongoing notification (blank
+          // keeps the generic "tunnel active" text — the user's preference);
+          // iOS uses the country name as the VPN profile label in system
+          // Settings, unaffected by the Android-only setting.
+          const tunnelName =
+            Platform.OS === 'android'
+              ? notifDetails
+                ? `${target.name} · ${localityOf(gw.city, gw.country)}`
+                : ''
+              : target.name;
+          await CumulusTunnel.startTunnel(wgConfig, tunnelName, killSwitch);
         } catch {
           // A native reject is a verdict on this transport, not the node — try
           // the next one rather than failing the whole connect.
@@ -1054,6 +1143,7 @@ export function useVpn(): VpnModel & VpnActions {
     exitCode,
     killSwitch,
     nodeDiversity,
+    notifDetails,
     pickGateway,
     avoidGateway,
     availableGateways,
@@ -1138,25 +1228,51 @@ export function useVpn(): VpnModel & VpnActions {
     await saveSelectedCountry(code);
   }, []);
 
-  const setRouteStyle = useCallback(async (style: RouteStyle): Promise<void> => {
-    setRouteStyleState(style);
-    await saveRouteStyle(style);
-  }, []);
+  const setRouteStyle = useCallback(
+    async (style: RouteStyle): Promise<void> => {
+      setRouteStyleState(style);
+      await saveRouteStyle(style);
+      // Picks made under the old style may be impossible under the new one
+      // (e.g. DE→NL switched to same-country). Reset the exit to Auto rather
+      // than letting connect fail on a pair the UI itself created.
+      if (hopsConflict(style, hopCc(entryCode), hopCc(exitCode))) {
+        setExitCode(null);
+        await saveExitCountry(null);
+      }
+    },
+    [entryCode, exitCode],
+  );
 
   const setTransportMode = useCallback(async (mode: TransportMode): Promise<void> => {
     setTransportModeState(mode);
     await saveTransportMode(mode);
   }, []);
 
-  const selectEntryCountry = useCallback(async (id: string | null): Promise<void> => {
-    setEntryCode(id);
-    await saveEntryCountry(id);
-  }, []);
+  // Last pick wins: if the other end can no longer satisfy the style's
+  // jurisdiction rule, reset it to Auto instead of letting connect fail later.
+  const selectEntryCountry = useCallback(
+    async (id: string | null): Promise<void> => {
+      setEntryCode(id);
+      await saveEntryCountry(id);
+      if (hopsConflict(routeStyle, hopCc(id), hopCc(exitCode))) {
+        setExitCode(null);
+        await saveExitCountry(null);
+      }
+    },
+    [routeStyle, exitCode],
+  );
 
-  const selectExitCountry = useCallback(async (id: string | null): Promise<void> => {
-    setExitCode(id);
-    await saveExitCountry(id);
-  }, []);
+  const selectExitCountry = useCallback(
+    async (id: string | null): Promise<void> => {
+      setExitCode(id);
+      await saveExitCountry(id);
+      if (hopsConflict(routeStyle, hopCc(entryCode), hopCc(id))) {
+        setEntryCode(null);
+        await saveEntryCountry(null);
+      }
+    },
+    [routeStyle, entryCode],
+  );
 
   const setKillSwitch = useCallback(async (enabled: boolean): Promise<void> => {
     setKillSwitchState(enabled);
@@ -1166,6 +1282,11 @@ export function useVpn(): VpnModel & VpnActions {
   const setNodeDiversity = useCallback(async (enabled: boolean): Promise<void> => {
     setNodeDiversityState(enabled);
     await saveNodeDiversity(enabled);
+  }, []);
+
+  const setNotifDetails = useCallback(async (enabled: boolean): Promise<void> => {
+    setNotifDetailsState(enabled);
+    await saveNotifDetails(enabled);
   }, []);
 
   const setAutoConnect = useCallback(async (enabled: boolean): Promise<void> => {
@@ -1205,6 +1326,7 @@ export function useVpn(): VpnModel & VpnActions {
     exit,
     killSwitch,
     nodeDiversity,
+    notifDetails,
     autoConnect,
     connectedSince,
     splitActive,
@@ -1223,6 +1345,7 @@ export function useVpn(): VpnModel & VpnActions {
     selectExitCountry,
     setKillSwitch,
     setNodeDiversity,
+    setNotifDetails,
     setAutoConnect,
     toggleFavorite,
     openVpnSettings,
@@ -1371,6 +1494,7 @@ async function connectMultihop(args: {
   setEnrollment: (r: EnrollResponse) => void;
   killSwitch: boolean;
   requireDistinctSubnet: boolean;
+  notifDetails: boolean;
 }): Promise<{ entry: GatewayInfo; exit: GatewayInfo; splitApplied: boolean }> {
   const {
     keypair,
@@ -1386,6 +1510,7 @@ async function connectMultihop(args: {
     setEnrollment,
     killSwitch,
     requireDistinctSubnet,
+    notifDetails,
   } = args;
 
   // core enforces entry !== exit and the per-style jurisdiction rule; a null
@@ -1473,7 +1598,15 @@ async function connectMultihop(args: {
     ...(split ? { split } : {}),
   });
 
-  const label = `${hops.entry.country} → ${hops.exit.country}`;
+  // Android surfaces this in the ongoing notification (blank = generic text,
+  // per the user's preference); iOS keeps the short code form as the VPN
+  // profile label in system Settings.
+  const label =
+    Platform.OS === 'android'
+      ? notifDetails
+        ? `${localityOf(hops.entry.city, hops.entry.country)} ${hops.entry.country} → ${localityOf(hops.exit.city, hops.exit.country)} ${hops.exit.country}`
+        : ''
+      : `${hops.entry.country} → ${hops.exit.country}`;
   await CumulusTunnel.startMultihop(mh.outer, mh.inner, label, killSwitch);
   return { entry: hops.entry, exit: hops.exit, splitApplied: split !== undefined };
 }

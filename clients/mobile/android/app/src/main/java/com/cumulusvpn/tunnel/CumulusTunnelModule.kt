@@ -75,7 +75,9 @@ class CumulusTunnelModule(
     @ReactMethod
     fun startTunnel(wgConfig: String, serverName: String, killSwitch: Boolean, promise: Promise) {
         try {
-            CumulusTunnelController.startTunnel(reactContext, wgConfig)
+            // serverName feeds the ongoing notification's text; blank means the
+            // user turned route details off, and the service shows generic copy.
+            CumulusTunnelController.startTunnel(reactContext, wgConfig, serverName)
             promise.resolve(null)
         } catch (t: Throwable) {
             promise.reject("E_START", t.message, t)
@@ -92,7 +94,7 @@ class CumulusTunnelModule(
         promise: Promise,
     ) {
         try {
-            CumulusTunnelController.startMultihop(reactContext, outerConfig, innerConfig)
+            CumulusTunnelController.startMultihop(reactContext, outerConfig, innerConfig, routeLabel)
             promise.resolve(null)
         } catch (t: Throwable) {
             promise.reject("E_START_MULTIHOP", t.message, t)

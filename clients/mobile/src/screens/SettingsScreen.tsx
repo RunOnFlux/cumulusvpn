@@ -2,7 +2,7 @@
  * Settings — connection preferences + about. Kept intentionally small: the
  * product is "one screen, one job", so this is prefs, not a control panel.
  */
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
 import { PoweredByFlux } from '../components/PoweredByFlux';
@@ -137,6 +137,19 @@ export function SettingsScreen({
           disabled={locked}
           onValueChange={(v) => void vpn.setNodeDiversity(v)}
         />
+        {/* Android only: the ongoing VPN notification always exists (a
+            foreground service must post one) — this controls whether it names
+            the connected route or stays a generic "tunnel active" line. iOS
+            has no equivalent surface (the status-bar VPN badge is system-owned),
+            so the row would be a dead switch there. */}
+        {Platform.OS === 'android' && (
+          <ToggleRow
+            title="Notification details"
+            sub="Show the connected route in the ongoing VPN notification"
+            value={vpn.notifDetails}
+            onValueChange={(v) => void vpn.setNotifDetails(v)}
+          />
+        )}
 
         {/* Split tunneling (docs/17) — premium, applied when a tunnel is built,
             like the transport/routing toggles above. Hidden entirely for a

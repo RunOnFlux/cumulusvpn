@@ -31,6 +31,7 @@ const K = {
   transportMode: 'cvpn:transportMode',
   killSwitch: 'cvpn:killSwitch',
   nodeDiversity: 'cvpn:nodeDiversity',
+  notifDetails: 'cvpn:notifDetails',
   autoConnect: 'cvpn:autoConnect',
   favorites: 'cvpn:favorites',
   entryCountry: 'cvpn:entryCountry',
@@ -186,6 +187,20 @@ export async function loadKillSwitch(): Promise<boolean> {
 /** Persist the kill-switch preference. */
 export async function saveKillSwitch(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(K.killSwitch, enabled ? '1' : '0');
+}
+
+/**
+ * Load the Android notification-details preference (default ON). Android's
+ * ongoing VPN notification always exists (a foreground service must post one);
+ * this only controls whether it names the route or stays generic.
+ */
+export async function loadNotifDetails(): Promise<boolean> {
+  return (await AsyncStorage.getItem(K.notifDetails)) !== '0';
+}
+
+/** Persist the Android notification-details preference. */
+export async function saveNotifDetails(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(K.notifDetails, enabled ? '1' : '0');
 }
 
 /** Load the multi-hop node-diversity preference (default off). */

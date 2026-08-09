@@ -2,6 +2,7 @@ package com.cumulusvpn.tunnel
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
@@ -44,6 +45,9 @@ class CumulusMultihopVpnService : VpnService() {
     @Volatile
     private var stopRequested = false
 
+    /** Route text for the ongoing notification; blank = generic copy. */
+    private var notifText: String = ""
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
@@ -62,6 +66,7 @@ class CumulusMultihopVpnService : VpnService() {
                     Log.i(TAG, "replacing a live session before reconnect")
                     teardown()
                 }
+                notifText = startIntent.getStringExtra(EXTRA_NOTIF_TEXT) ?: ""
                 // Run as a foreground service so the OS won't kill the process (and
                 // silently drop the tunnel) under memory pressure / doze. Must be
                 // called promptly after start; the notification also makes the
@@ -210,12 +215,18 @@ class CumulusMultihopVpnService : VpnService() {
             )
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
         }
+        // Tap → bring the app to the foreground.
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        val tap = launch?.let {
+            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
+        }
         val notif = NotificationCompat.Builder(this, NOTIF_CHANNEL)
             .setContentTitle("CumulusVPN")
-            .setContentText("Multi-hop tunnel active")
+            .setContentText(notifText.ifBlank { "Multi-hop tunnel active" })
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .apply { if (tap != null) setContentIntent(tap) }
             .build()
         val type =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -283,6 +294,7 @@ class CumulusMultihopVpnService : VpnService() {
         const val EXTRA_EXIT_IP = "exitIp"
         const val EXTRA_EXIT_ASSIGNED = "exitAssigned"
         const val EXTRA_EXIT_DNS = "exitDns"
+        const val EXTRA_NOTIF_TEXT = "notifText"
 
         // Stealth: the ENTRY hop's awg port (51821) + [Interface] obfs UAPI. Absent
         // / 0 / "" => vanilla entry.

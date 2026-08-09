@@ -68,7 +68,7 @@ object CumulusTunnelController {
      * (produced by core `buildWgConfig`). Throws on parse/permission/backend
      * failure so the RN module can reject the JS promise with a real message.
      */
-    fun startTunnel(context: Context, wgQuickConfig: String) {
+    fun startTunnel(context: Context, wgQuickConfig: String, notifText: String = "") {
         setState(STATE_CONNECTING)
         try {
             // EVERY single-hop transport runs on the ONE wgnest Go core, vanilla
@@ -88,7 +88,7 @@ object CumulusTunnelController {
             // its pure-Kotlin `Config` parser, which touches no native code.
             val tlsSni = extractTlsSni(wgQuickConfig)
             val obfs = extractObfsUapi(wgQuickConfig)
-            startObfsSingleHop(context, wgQuickConfig, obfs, tlsSni)
+            startObfsSingleHop(context, wgQuickConfig, obfs, tlsSni, notifText)
         } catch (t: Throwable) {
             Log.e(TAG, "startTunnel failed", t)
             obfsActive = false
@@ -189,6 +189,7 @@ object CumulusTunnelController {
         wgQuickConfig: String,
         obfs: String,
         tlsSni: String?,
+        notifText: String,
     ) {
         var priv = ""
         var pub = ""
@@ -228,6 +229,8 @@ object CumulusTunnelController {
             putExtra(CumulusObfsVpnService.EXTRA_PORT, port)
             putExtra(CumulusObfsVpnService.EXTRA_OBFS, obfs)
             putExtra(CumulusObfsVpnService.EXTRA_DNS, dns)
+            // Route text for the ongoing notification; blank = generic copy.
+            putExtra(CumulusObfsVpnService.EXTRA_NOTIF_TEXT, notifText)
             // wg-tls: bridge the WG device over TLS to the gateway relay (the
             // config Endpoint, gateway:tlsPort). The service excludes the gateway
             // IP from the tun so the TLS socket bypasses it.
@@ -282,7 +285,7 @@ object CumulusTunnelController {
      * [CumulusMultihopVpnService], which owns the OS tun. The service reports
      * back through [onMultihopState].
      */
-    fun startMultihop(context: Context, outerConfig: String, innerConfig: String) {
+    fun startMultihop(context: Context, outerConfig: String, innerConfig: String, notifText: String = "") {
         setState(STATE_CONNECTING)
         try {
             // The OUTER (entry) config may carry AmneziaWG [Interface] params in
@@ -315,6 +318,8 @@ object CumulusTunnelController {
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_IP, exitIp)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_ASSIGNED, exitAssigned)
                 putExtra(CumulusMultihopVpnService.EXTRA_EXIT_DNS, exitDns)
+                // Route text for the ongoing notification; blank = generic copy.
+                putExtra(CumulusMultihopVpnService.EXTRA_NOTIF_TEXT, notifText)
                 // Split tunneling: the inner (exit) config's AllowedIPs carries
                 // the compiled tunnel routes (docs/17 §7.2). Default => absent.
                 val innerAllowed = exitPeer.allowedIps.joinToString(", ") { it.toString() }

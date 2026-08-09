@@ -2,6 +2,7 @@ package com.cumulusvpn.tunnel
 
 import android.app.NotificationChannel
 import android.app.NotificationManager
+import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.net.VpnService
@@ -39,6 +40,9 @@ class CumulusObfsVpnService : VpnService() {
     @Volatile
     private var stopRequested = false
 
+    /** Route text for the ongoing notification; blank = generic copy. */
+    private var notifText: String = ""
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_STOP -> {
@@ -61,6 +65,7 @@ class CumulusObfsVpnService : VpnService() {
                     Log.i(TAG, "replacing a live session before reconnect")
                     teardown()
                 }
+                notifText = startIntent.getStringExtra(EXTRA_NOTIF_TEXT) ?: ""
                 startForegroundNotification()
                 // Bring the tunnel up OFF the main thread (JNI + device start must
                 // not block the looper).
@@ -242,12 +247,18 @@ class CumulusObfsVpnService : VpnService() {
             )
             getSystemService(NotificationManager::class.java)?.createNotificationChannel(ch)
         }
+        // Tap → bring the app to the foreground.
+        val launch = packageManager.getLaunchIntentForPackage(packageName)
+        val tap = launch?.let {
+            PendingIntent.getActivity(this, 0, it, PendingIntent.FLAG_IMMUTABLE)
+        }
         val notif = NotificationCompat.Builder(this, NOTIF_CHANNEL)
             .setContentTitle("CumulusVPN")
-            .setContentText("Stealth tunnel active")
+            .setContentText(notifText.ifBlank { "VPN tunnel active" })
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .apply { if (tap != null) setContentIntent(tap) }
             .build()
         val type =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -285,6 +296,7 @@ class CumulusObfsVpnService : VpnService() {
         const val EXTRA_PORT = "port"
         const val EXTRA_OBFS = "obfs"
         const val EXTRA_DNS = "dns"
+        const val EXTRA_NOTIF_TEXT = "notifText"
 
         // wg-tls: the gateway TLS relay (host:port) to bridge to, and the SNI to
         // present. Both present → the WG device is bridged over TLS.

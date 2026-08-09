@@ -52,6 +52,13 @@ interface Props {
   readonly favorites: readonly string[];
   /** Pin/unpin a country. */
   readonly onToggleFavorite: (code: string) => void;
+  /**
+   * Show an "Any city" row atop the city list that selects the WHOLE country
+   * (its bare code). Both the single-hop picker and multi-hop entry/exit
+   * resolve a bare code to country-wide selection (least-loaded node anywhere
+   * in the country).
+   */
+  readonly allowWholeCountry?: boolean;
 }
 
 export function CountryPickerScreen({
@@ -65,6 +72,7 @@ export function CountryPickerScreen({
   onSelectAuto,
   favorites,
   onToggleFavorite,
+  allowWholeCountry = false,
 }: Props): React.JSX.Element {
   const [query, setQuery] = useState('');
   const [openCc, setOpenCc] = useState<string | null>(null);
@@ -159,6 +167,25 @@ export function CountryPickerScreen({
           data={cities}
           keyExtractor={(c) => c.id}
           keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={
+            allowWholeCountry && country ? (
+              <Pressable
+                style={[styles.row, country.id === selectedCode && styles.rowSelected]}
+                onPress={() => select(country.id)}
+                accessibilityRole="button"
+                accessibilityLabel={`Any city in ${country.name}`}
+              >
+                <View style={styles.cityDot} />
+                <View style={styles.meta}>
+                  <Text style={styles.name}>Any city</Text>
+                  <Text style={styles.sub}>
+                    Whole country · best of {country.nodeCount}{' '}
+                    {country.nodeCount === 1 ? 'node' : 'nodes'}
+                  </Text>
+                </View>
+              </Pressable>
+            ) : null
+          }
           renderItem={({ item }) => {
             const q = gatewayQuality(item.latencyMs, item.best.load);
             const measured = item.latencyMs !== null;
