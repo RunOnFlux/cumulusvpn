@@ -152,5 +152,5 @@ dependencies {
     // the shared cross-language vector file (docs/17 §5) — divergence from
     // clients/core-ts/src/__fixtures__/split-routes.json is a build failure.
     testImplementation("junit:junit:4.13.2")
-    testImplementation("org.json:json:20240303")
+    testImplementation("org.json:json:20260719")
 }
