@@ -87,6 +87,27 @@ export const sw: Catalog = {
     'Inafungua kwenye Zelcore / SSP Wallet. Malipo yanathibitishwa kwenye mnyororo wa vizuizi wa Flux — hatuoni kamwe wewe ni nani. Ujumbe unaunganisha malipo na ufunguo wako; kutuma bila huo kunamaanisha fedha zinawasili lakini hakuna kinachofunguliwa.',
   upgrade_back: '← Rudi kwenye Unganisha',
 
+  upgrade_eyebrow_card: 'Au lipa kwa kadi',
+  upgrade_card_lede:
+    'Jisajili kwa kadi, Apple Pay au Google Pay. Malipo yanashughulikiwa na Stripe — hatuioni kamwe kadi yako. Huduma yako ya premium bado inawashwa kwenye mnyororo wa vizuizi wa Flux, ikiunganishwa tu na msimbo wako wa malipo usiojulikana.',
+  upgrade_plan_aria: 'Mpango wa usajili',
+  upgrade_plan_monthly: '{usd} / mwezi',
+  upgrade_plan_annual: '{usd} / mwaka',
+  upgrade_card_cta: 'Lipa kwa kadi',
+  upgrade_card_cta_busy: 'Inafungua malipo salama…',
+  upgrade_card_error: 'Haikuwezekana kufungua malipo. Jaribu tena baada ya muda mfupi.',
+  upgrade_card_note:
+    'Yanajisasisha kiotomatiki; ghairi wakati wowote kupitia barua pepe ya risiti ya Stripe. Kulipa kwa FLUX hapo juu ni nafuu zaidi — bei ya kadi inajumuisha ada za uchakataji.',
+  upgrade_activating_title: 'Inawasha huduma yako ya premium…',
+  upgrade_state_pending: 'Malipo yamepokelewa — inaandaa uwashaji wako kwenye mtandao wa Flux.',
+  upgrade_state_broadcast: 'Uwashaji umetumwa kwenye mtandao wa Flux — inasubiri uthibitisho.',
+  upgrade_state_confirmed:
+    'Imethibitishwa! Kasi kamili itafunguliwa kwenye seva zote ndani ya dakika moja.',
+  upgrade_state_failed:
+    'Hitilafu imetokea wakati wa kuwasha. Malipo yako yako salama — tunajaribu tena kiotomatiki, na huduma yako ya premium itaonekana hivi karibuni.',
+  upgrade_activating_hint: 'Unaweza kufunga ukurasa huu — uwashaji utakamilika wenyewe.',
+  upgrade_activated_cta: 'Rudi kwenye Unganisha →',
+
   split_summary_title: 'Kina: split tunneling',
   split_tier_pill: 'PREMIUM · HIARI',
   split_lede:

@@ -16,11 +16,16 @@
    (`https://dashboard.cumulusvpn.com/api/flags` → `{"android":false,"ios":false}`,
    `updatedAt 2026-07-22T08:00:06Z`), so `UpgradeScreen` renders the store-compliant "manage
    on the web" copy — **no** QR / "Open in wallet" deep-link / pay-to address. The listing's
-   **"In-app purchases: No"** and the `data-safety.md` "no financial info" answers are now
-   truthful, matching `billing-stance.md`. The repo seed `flags.json` was aligned to
-   `android:false` so a re-seed can't reintroduce it. ⚠️ **This is a runtime remote flag, not a
-   build-time lock** — the only thing holding the store build compliant is the KV value staying
-   `false` (see the guardrail below).
+   **"In-app purchases: No"** and the `data-safety.md` "no financial info" answers were
+   truthful at the time, matching `billing-stance.md`. The repo seed `flags.json` was aligned
+   to `android:false` so a re-seed can't reintroduce it. ⚠️ **This is a runtime remote flag,
+   not a build-time lock** — the only thing holding the store build compliant is the KV value
+   staying `false` (see the guardrail below).
+   **Update 2026-08-09:** `inAppUpgrade.android` stays `false` for Play builds (crypto is
+   direct-APK only), but the store build now DOES sell in-app — the `premium` subscription via
+   **Play Billing**, gated by the new `iapPurchase` flag. The listing/data-safety answers were
+   re-flipped accordingly ("In-app purchases: Yes"; purchase history collected). See §9 and
+   `billing-stance.md` (revised).
 2. ⚠️ **Guardrail — do NOT flip the crypto flag on after approval.** The flag is fetched at
    launch from the dashboard KV and takes effect with no rebuild (≤60 s edge cache). Remotely
    enabling a payment path post-review is itself a policy violation (behavior change after
@@ -111,13 +116,17 @@
   → **`clients/native/wgnest/check-16k.sh`** now audits any `.aar`/`.aab`/`.apk`/`.so` and
   exits non-zero on regression. **Wire it into CI** before the release upload step.
 
-## 4. Payments / crypto — resolved (was blocker #1)
+## 4. Payments / crypto — resolved (was blocker #1; revised 2026-08-09)
 
 - [x] ✅ Crypto upgrade is **OFF** on Play (live flag `inAppUpgrade.android = false`) — the
-  `billing-stance.md` "manage-on-web" posture is active and compliant.
-- [ ] ⬜ Declare **In-app purchases: No** in the Console to match the shipped build.
-- [ ] ⚠️ Keep it OFF for every store build (guardrail, blocker-list #2) — flipping it on
-  post-review is a Payments-policy violation.
+  FLUX/crypto UI stays web/direct-APK only, per `billing-stance.md` (revised).
+- [ ] ⬜ Declare **In-app purchases: Yes ($1.99–$14.99)** in the Console to match the shipped
+  build, which now sells the `premium` subscription via Play Billing (see §9; supersedes the
+  old "No" declaration).
+- [ ] ⚠️ Keep the **crypto** flag OFF for every store build (guardrail, blocker-list #2) —
+  flipping it on post-review is a Payments-policy violation. The IAP flag `iapPurchase` is the
+  opposite: it must be **ON** through review and rollout (§9), and is a kill switch only
+  afterwards.
 
 ## 5. Play Console — App content
 
@@ -125,11 +134,10 @@
   to YouTube Unlisted and paste the URL).
 - [ ] ⬜ **Foreground service types** declaration (feature description + defer-impact; reuse the
   same demo video URL). ⚠️ tied to the specialUse-vs-systemExempted decision in §2.
-- [x] ✅ **Data safety** answers ready (`store/play/data-safety.md`) — but ⚠️ **fix the
-  transit-encryption claim**: it says "TLS for discovery/API," yet the control plane is
-  **cleartext HTTP** (ed25519-signed, per `network_security_config.xml`). Say
-  "tunnel encrypted via WireGuard; control API integrity-signed, not TLS" so the form matches
-  reality. Must be consistent with the privacy policy + VpnService declaration.
+- [x] ✅ **Data safety** answers ready (`store/play/data-safety.md`) — the transit-encryption
+  claim was fixed there ("tunnel encrypted via WireGuard; control API integrity-signed, not
+  TLS") and the 2026-08 purchase-history update is in. Keep consistent with the privacy policy
+  + VpnService declaration when re-answering the form.
 - [x] ✅ **Privacy policy** URL live (`cumulusvpn.com/privacy`, verified) — paste into the Play
   Console Privacy policy field.
 - [x] ✅ **In-app privacy link added** (2026-07-22). Play wants the policy reachable from
@@ -167,4 +175,33 @@
 
 - [ ] VPN "Verified" badge later (needs Org account + MASA L2 + 10k installs + 250 reviews +
   90 days).
-- [ ] Optional Play Billing for fiat reach.
+- [x] ✅ ~~Optional Play Billing for fiat reach.~~ **Done** (2026-08-09) — see §9.
+
+## 9. Play Billing / IAP setup (added 2026-08-09)
+
+The Play build sells one subscription product **`premium`** (base plans **`premium-monthly`**
+$1.99/mo, **`premium-annual`** $14.99/yr) via Play Billing (react-native-iap); purchases carry
+`obfuscatedExternalAccountId` = the device's pseudonymous payment code. Receipts are verified
+by the payments bridge (docs/18-payments-bridge.md) at pay.cumulusvpn.com; entitlement stays
+chain-only (gateways unchanged). Setup, in order:
+
+- [ ] ⬜ **Merchant account** (payments profile) set up and verified in the Play Console —
+  nothing sells without it.
+- [ ] ⬜ **Subscription product `premium`** created (Monetize → Products → Subscriptions) with
+  base plans **`premium-monthly`** ($1.99/month) and **`premium-annual`** ($14.99/year), both
+  auto-renewing, activated.
+- [ ] ⬜ **RTDN wired:** Cloud Pub/Sub topic for Real-time developer notifications, with a
+  **push subscription** to `https://pay.cumulusvpn.com/v1/google/rtdn` using **OIDC auth**;
+  topic set in Play Console → Monetize → Monetization setup. This is how the payments bridge
+  learns about renewals/cancellations. Send a test notification and verify receipt.
+- [ ] ⬜ **App content re-declarations:** Store settings → **In-app purchases: Yes**; update
+  the **VpnService declaration** (digital-goods answer now Yes via Play Billing — see
+  `vpnservice-declaration.md`).
+- [ ] ⬜ **Data safety re-submitted** per the updated `data-safety.md` (Financial info →
+  Purchase history: Collected, not shared, App functionality; payment info itself handled by
+  Google Play).
+- [ ] ⬜ **License testers** added (Play Console → Settings → License testing) and the full
+  purchase/cancel/renewal flow exercised with test purchases before rollout.
+- [ ] ⬜ **Flip `iapPurchase.android = true` in the Cloudflare KV BEFORE rollout** (the flag
+  fails closed OFF; reviewers/users must be able to reach the declared subscription). After
+  rollout it is an emergency kill switch only.

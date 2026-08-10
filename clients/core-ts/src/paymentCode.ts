@@ -33,6 +33,35 @@ export function paymentMemo(publicKeyB64: string): string {
   return MEMO_PREFIX + paymentCode(publicKeyB64);
 }
 
+/** sha256 domain-separation prefix for the Apple appAccountToken derivation. */
+const APP_ACCOUNT_DOMAIN = 'cvpn-appaccount:';
+
+/**
+ * Deterministic Apple `appAccountToken` UUID for a payment code.
+ *
+ * StoreKit lets a purchase carry an `appAccountToken` (UUID) that Apple
+ * echoes on every transaction and renewal notification. Deriving it from the
+ * payment code lets the bridge map store events back to the code with no
+ * account system: `sha256("cvpn-appaccount:" + code)[0:16]` with the RFC
+ * 4122 version-4/variant bits forced, formatted lowercase 8-4-4-4-12.
+ *
+ * MUST stay byte-identical to `uuidForCode()` in `bridge/src/codes.ts` —
+ * the bridge recomputes it at verify time and rejects a mismatch (this is
+ * what binds a receipt to the code it was bought for). Both sides pin a
+ * shared test vector.
+ *
+ * @param code - The base58 payment code from {@link paymentCode}.
+ * @returns A stable RFC 4122-shaped UUID string.
+ */
+export function appAccountToken(code: string): string {
+  const digest = sha256(new TextEncoder().encode(APP_ACCOUNT_DOMAIN + code));
+  const b = digest.slice(0, 16);
+  b[6] = (b[6]! & 0x0f) | 0x40; // version 4
+  b[8] = (b[8]! & 0x3f) | 0x80; // RFC 4122 variant
+  const hex = Array.from(b, (x) => x.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 /**
  * Wallet URI schemes we hand a prefilled payment off to, in the order we try
  * them (first one a wallet has registered wins):

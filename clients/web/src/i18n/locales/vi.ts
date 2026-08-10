@@ -87,6 +87,27 @@ export const vi: Catalog = {
     'Mở trong Zelcore / SSP Wallet. Khoản thanh toán được xác minh trên blockchain của Flux — chúng tôi không bao giờ biết bạn là ai. Tin nhắn gắn khoản thanh toán với khóa của bạn; gửi mà không kèm tin nhắn nghĩa là tiền vẫn đến nhưng không có gì được mở khóa.',
   upgrade_back: '← Quay lại Kết nối',
 
+  upgrade_eyebrow_card: 'Hoặc thanh toán bằng thẻ',
+  upgrade_card_lede:
+    'Đăng ký bằng thẻ, Apple Pay hoặc Google Pay. Khâu thanh toán do Stripe xử lý — chúng tôi không bao giờ thấy thẻ của bạn. Premium của bạn vẫn được kích hoạt trên blockchain của Flux, chỉ gắn với mã thanh toán ẩn danh của bạn.',
+  upgrade_plan_aria: 'Gói đăng ký',
+  upgrade_plan_monthly: '{usd} / tháng',
+  upgrade_plan_annual: '{usd} / năm',
+  upgrade_card_cta: 'Thanh toán bằng thẻ',
+  upgrade_card_cta_busy: 'Đang mở trang thanh toán an toàn…',
+  upgrade_card_error: 'Không mở được trang thanh toán. Vui lòng thử lại sau giây lát.',
+  upgrade_card_note:
+    'Tự động gia hạn; hủy bất cứ lúc nào từ email biên nhận của Stripe. Thanh toán bằng FLUX ở trên rẻ hơn — giá khi trả bằng thẻ đã bao gồm phí xử lý.',
+  upgrade_activating_title: 'Đang kích hoạt premium của bạn…',
+  upgrade_state_pending: 'Đã nhận thanh toán — đang chuẩn bị kích hoạt cho bạn trên mạng Flux.',
+  upgrade_state_broadcast: 'Đã gửi kích hoạt lên mạng Flux — đang chờ xác nhận.',
+  upgrade_state_confirmed:
+    'Đã xác nhận! Tốc độ tối đa sẽ được mở khóa trên tất cả máy chủ trong vòng một phút.',
+  upgrade_state_failed:
+    'Đã có lỗi trong quá trình kích hoạt. Khoản thanh toán của bạn vẫn an toàn — chúng tôi tự động thử lại và premium của bạn sẽ sớm xuất hiện.',
+  upgrade_activating_hint: 'Bạn có thể đóng trang này — quá trình kích hoạt sẽ tự hoàn tất.',
+  upgrade_activated_cta: 'Quay lại Kết nối →',
+
   split_summary_title: 'Nâng cao: split tunneling',
   split_tier_pill: 'PREMIUM · TÙY CHỌN',
   split_lede:

@@ -87,6 +87,27 @@ export const id: Catalog = {
     'Terbuka di Zelcore / SSP Wallet. Pembayaran diverifikasi di blockchain Flux — kami tidak pernah tahu siapa Anda. Pesan mengaitkan pembayaran dengan kunci Anda; mengirim tanpa pesan berarti dana sampai tapi tidak ada yang terbuka.',
   upgrade_back: '← Kembali ke Hubungkan',
 
+  upgrade_eyebrow_card: 'Atau bayar dengan kartu',
+  upgrade_card_lede:
+    'Berlangganan dengan kartu, Apple Pay, atau Google Pay. Checkout ditangani oleh Stripe — kami tidak pernah melihat kartu Anda. Premium Anda tetap diaktifkan di blockchain Flux, hanya terkait dengan kode pembayaran anonim Anda.',
+  upgrade_plan_aria: 'Paket langganan',
+  upgrade_plan_monthly: '{usd} / bulan',
+  upgrade_plan_annual: '{usd} / tahun',
+  upgrade_card_cta: 'Bayar dengan kartu',
+  upgrade_card_cta_busy: 'Membuka checkout aman…',
+  upgrade_card_error: 'Tidak dapat membuka checkout. Silakan coba lagi sebentar lagi.',
+  upgrade_card_note:
+    'Diperpanjang otomatis; batalkan kapan saja dari email tanda terima Stripe. Membayar dengan FLUX di atas lebih murah — harga kartu menutup biaya pemrosesan.',
+  upgrade_activating_title: 'Mengaktifkan premium Anda…',
+  upgrade_state_pending: 'Pembayaran diterima — menyiapkan aktivasi Anda di jaringan Flux.',
+  upgrade_state_broadcast: 'Aktivasi dikirim ke jaringan Flux — menunggu konfirmasi.',
+  upgrade_state_confirmed:
+    'Terkonfirmasi! Kecepatan penuh terbuka di semua server dalam waktu satu menit.',
+  upgrade_state_failed:
+    'Terjadi kesalahan saat mengaktifkan. Pembayaran Anda aman — kami mencoba lagi secara otomatis, dan premium Anda akan segera muncul.',
+  upgrade_activating_hint: 'Anda bisa menutup halaman ini — aktivasi selesai dengan sendirinya.',
+  upgrade_activated_cta: 'Kembali ke Hubungkan →',
+
   split_summary_title: 'Lanjutan: split tunneling',
   split_tier_pill: 'PREMIUM · OPSIONAL',
   split_lede:

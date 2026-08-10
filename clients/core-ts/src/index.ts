@@ -11,11 +11,26 @@ export { generateKeypair, publicKeyFromPrivate } from './keys.js';
 export {
   paymentCode,
   paymentMemo,
+  appAccountToken,
   walletDeepLink,
   walletDeepLinks,
   WALLET_SCHEMES,
 } from './paymentCode.js';
 export type { WalletScheme } from './paymentCode.js';
+export {
+  createStripeCheckout,
+  verifyApplePurchase,
+  verifyGooglePurchase,
+  paymentStatus,
+  DEFAULT_BRIDGE_URL,
+} from './bridge.js';
+export type {
+  PaymentPlan,
+  BridgePayment,
+  BridgePaymentStatus,
+  PaymentStatusResult,
+  BridgeOptions,
+} from './bridge.js';
 export { hasLeadingZeroBits, powHash, solvePoW, verifyPoW } from './pow.js';
 export { verifySignedResponse } from './sign.js';
 export { discoverGateways, directoryVerify } from './discovery.js';

@@ -8,22 +8,31 @@ import { TierBadge } from './components/TierBadge.js';
 import { StatBar } from './components/StatBar.js';
 import { SessionTimer } from './components/SessionTimer.js';
 import { Settings } from './components/Settings.js';
-import { UPGRADE_URL } from './lib/directory.js';
+import { upgradeUrl } from './lib/directory.js';
+import { loadOrCreateKeypair } from './lib/storage.js';
+import { paymentCode } from '@cumulusvpn/core';
 
 /** Which hop the country picker is currently editing, or closed. */
 type PickerTarget = 'entry' | 'exit' | null;
 
 /**
- * Open the upgrade/payment page. Desktop has no store constraints, so it may
- * link out (or embed) the pay-to-address flow freely.
+ * Open the upgrade/payment page with THIS app's payment code (`?code=`), so
+ * a payment made in the browser — FLUX or card — credits the desktop key
+ * rather than the browser's own keypair.
  *
  * // POC: uses `window.open`; a shipped Tauri build opens it in the system
  * browser via `@tauri-apps/plugin-opener`, or hosts it in a dedicated embedded
  * WebviewWindow so the FLUX QR / wallet deep link render in-app.
  */
 function openUpgrade(): void {
+  let code = '';
   try {
-    window.open(UPGRADE_URL, '_blank', 'noopener');
+    code = paymentCode(loadOrCreateKeypair().publicKey);
+  } catch {
+    /* fall back to the un-prefilled page */
+  }
+  try {
+    window.open(upgradeUrl(code), '_blank', 'noopener');
   } catch {
     /* no-op in headless contexts */
   }

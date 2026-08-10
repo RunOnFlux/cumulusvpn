@@ -874,12 +874,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=1103d9&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=739840&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.2.0"
     "@noble/hashes": "npm:2.2.0"
     "@scure/base": "npm:2.2.0"
-  checksum: 10c0/f3ee4c9f62703dfc5156eb1d8a54dbfd95e332ecd4bef659dec043495fd74b507caa46726c6e284f8bd1a34b112233afb338c2790a0e4a426b2542a8aff828b2
+  checksum: 10c0/a8724a6556cfb1c3dd9220284b83f500ba1da73db2961776c7609f5e75f101a283745d3c3aa1bd7be77c2a395daa91e62c870241d71727eefa9ff192d7f6a50a
   languageName: node
   linkType: hard
 
@@ -908,6 +908,8 @@ __metadata:
     react: "npm:19.2.8"
     react-native: "npm:0.86.2"
     react-native-get-random-values: "npm:2.0.0"
+    react-native-iap: "npm:16.0.2"
+    react-native-nitro-modules: "npm:0.36.5"
     react-native-safe-area-context: "npm:5.8.1"
     react-test-renderer: "npm:19.2.8"
     text-encoding-polyfill: "npm:0.6.7"
@@ -5810,6 +5812,34 @@ __metadata:
   peerDependencies:
     react-native: ">=0.81"
   checksum: 10c0/fd2e10ab3bca54bff8f5844e3314b797e02822e86663bc2dafe00a511b8a8e1c05d96aa0b8dc1ffad428387d44bbf458ce770a429858433d36f58a16e6e52986
+  languageName: node
+  linkType: hard
+
+"react-native-iap@npm:16.0.2":
+  version: 16.0.2
+  resolution: "react-native-iap@npm:16.0.2"
+  peerDependencies:
+    "@amazon-devices/keplerscript-appstore-iap-lib": ~2.12.13
+    "@amazon-devices/package-manager-lib": ~1.0.1767254401
+    react: "*"
+    react-native: "*"
+    react-native-nitro-modules: ^0.36.1
+  peerDependenciesMeta:
+    "@amazon-devices/keplerscript-appstore-iap-lib":
+      optional: true
+    "@amazon-devices/package-manager-lib":
+      optional: true
+  checksum: 10c0/3ea65868294a67a742a6bcee789b8718813d0d6dba9ae56d4153ddaad6f0ea5adb8f7ed7e41d73c2d157e9f72c09c09ff5c0b7f73806cfa84e5cd5e747c42a7c
+  languageName: node
+  linkType: hard
+
+"react-native-nitro-modules@npm:0.36.5":
+  version: 0.36.5
+  resolution: "react-native-nitro-modules@npm:0.36.5"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/c7b2133f924967b68c0f0f678b5a5dce1a784a7e22f57ebf203ef5803a5c9c745b6d4dda8c9bcedd13f7c5ca53a8707784e98572a2ca8a864fe0b905163a34b5
   languageName: node
   linkType: hard
 

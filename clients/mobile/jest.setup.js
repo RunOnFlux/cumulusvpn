@@ -6,6 +6,11 @@
  * subpath isn't a stable package export across versions — a self-contained fake
  * of the handful of methods `storage.ts` uses is simpler and version-proof.
  */
+// NOTE: react-native-iap (which binds to the Nitro native runtime, absent
+// under Node) is replaced automatically by the root __mocks__/react-native-iap.js
+// — a package-adjacent __mocks__ dir auto-mocks node_modules modules, no
+// jest.mock() call needed (and adding one here recurses into the mock itself).
+
 jest.mock('@react-native-async-storage/async-storage', () => {
   let store = {};
   return {

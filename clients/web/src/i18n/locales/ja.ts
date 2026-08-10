@@ -87,6 +87,27 @@ export const ja: Catalog = {
     'Zelcore / SSP Wallet で開きます。支払いは Flux のブロックチェーン上で検証され — あなたが誰かを私たちが知ることはありません。メッセージが支払いをあなたの鍵に結びつけます。メッセージなしで送ると、資金は届いてもロックは解除されません。',
   upgrade_back: '← 接続に戻る',
 
+  upgrade_eyebrow_card: 'またはカードで支払う',
+  upgrade_card_lede:
+    'カード、Apple Pay、Google Pay で購読できます。決済は Stripe が処理し — 私たちがあなたのカードを見ることはありません。プレミアムはこの場合も Flux のブロックチェーン上で有効化され、匿名の支払いコードだけに結びつけられます。',
+  upgrade_plan_aria: 'サブスクリプションプラン',
+  upgrade_plan_monthly: '{usd} / 月',
+  upgrade_plan_annual: '{usd} / 年',
+  upgrade_card_cta: 'カードで支払う',
+  upgrade_card_cta_busy: '安全な決済ページを開いています…',
+  upgrade_card_error: '決済ページを開けませんでした。しばらくしてからもう一度お試しください。',
+  upgrade_card_note:
+    '自動的に更新されます。Stripe の領収書メールからいつでも解約できます。上記の FLUX での支払いのほうが割安です — カード価格には決済手数料が含まれています。',
+  upgrade_activating_title: 'プレミアムを有効化しています…',
+  upgrade_state_pending: '支払いを受け取りました — Flux ネットワークでの有効化を準備しています。',
+  upgrade_state_broadcast: '有効化を Flux ネットワークに送信しました — 確認を待っています。',
+  upgrade_state_confirmed:
+    '確認されました！1 分以内にすべてのサーバーでフルスピードが解放されます。',
+  upgrade_state_failed:
+    '有効化の途中で問題が発生しました。支払いは安全です — 自動的に再試行するので、プレミアムはまもなく反映されます。',
+  upgrade_activating_hint: 'このページは閉じてもかまいません — 有効化は自動で完了します。',
+  upgrade_activated_cta: '接続に戻る →',
+
   split_summary_title: '上級者向け: スプリットトンネリング',
   split_tier_pill: 'プレミアム · オプトイン',
   split_lede:

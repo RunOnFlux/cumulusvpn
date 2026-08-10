@@ -14,10 +14,17 @@ paste live under `store/` — this doc is the *sequence*, `store/` is the *conte
 Files you'll paste from:
 ```
 store/privacy-policy.md
-store/app-store/{listing,privacy-nutrition-label,app-review}.md
-store/play/{listing,data-safety,vpnservice-declaration,billing-stance}.md
+store/app-store/{listing,privacy-nutrition-label,app-review,readiness-checklist}.md
+store/play/{listing,data-safety,vpnservice-declaration,billing-stance,readiness-checklist}.md
 store/assets-checklist.md   + store/assets/**  (icons, feature graphic)
 ```
+
+> **2026-08-09 — IAP adopted.** Both store builds now sell auto-renewable premium
+> subscriptions ($1.99/mo, $14.99/yr) via Apple IAP / Google Play Billing, verified by the
+> payments bridge (docs/18-payments-bridge.md); entitlement stays chain-only (gateways
+> unchanged). The IAP setup sequences live in the two readiness checklists
+> (`store/app-store/readiness-checklist.md` §9, `store/play/readiness-checklist.md` §9) —
+> steps below reference them where they slot into this runbook.
 
 ---
 
@@ -137,21 +144,33 @@ In App Store Connect → CumulusVPN → the new version:
 2. **Pricing and Availability → Availability:** deselect the prohibited markets in
    `store/app-store/app-review.md` §6 (China mainland, Russia, UAE, Oman, Iran, North Korea,
    Turkmenistan, Belarus, + any counsel adds). Cross-ref docs/05 & docs/06.
-3. **App Privacy:** enter answers from `store/app-store/privacy-nutrition-label.md` → results in
-   **Data Not Collected**. Set Privacy Policy URL.
+3. **App Privacy:** enter answers from `store/app-store/privacy-nutrition-label.md` → now
+   **"Yes, we collect"** with exactly one type: Purchases → Purchase History (App
+   Functionality, not linked, not tracking); Financial Info stays No. The "Data Not Collected"
+   badge is gone by design since the IAP launch. Set Privacy Policy URL.
 4. **Version page:** paste Name/Subtitle/Promo/Description/Keywords/Support URL and What's New
-   from `store/app-store/listing.md`. Upload screenshots (6.7" required; see assets-checklist —
-   still to be captured from the running app).
-5. **App Review Information → Notes:** paste the reviewer notes from
-   `store/app-store/app-review.md` §2 (the 3.1.1 "manage-on-web / no IAP" explanation is the key
-   part). Contact email `info@cumulusvpn.com`.
-6. **Age Rating:** answer per §4 (all None; VPN=yes where asked) → 4+/17+.
-7. **Export Compliance:** already handled by the Info.plist key; if prompted, answer per §5 (no
+   from `store/app-store/listing.md`. Upload screenshots (captured — 6.9" is the base slot; see
+   `store/app-store/readiness-checklist.md` §6). Screens showing the subscribe section must be
+   re-captured for the IAP release.
+5. **In-app purchases:** complete `store/app-store/readiness-checklist.md` §9 — Paid
+   Applications agreement, subscription group "Premium" with `cvpn.premium.monthly` ($1.99/mo)
+   and `cvpn.premium.annual` ($14.99/yr) + review screenshots, App Store Server Notifications
+   V2 → `https://pay.cumulusvpn.com/v1/apple/notifications` (sandbox + prod), sandbox testing.
+   Select the subscriptions on the version page — the **first** subscriptions must be
+   submitted together with a build. **Flip `iapPurchase.ios = true` in the KV BEFORE
+   submitting** (reviewers must find the declared IAPs).
+6. **App Review Information → Notes:** paste the reviewer notes from
+   `store/app-store/app-review.md` §2 (the 3.1.1 IAP-subscription explanation + sandbox test
+   steps are the key part). Contact email `info@cumulusvpn.com`.
+7. **Age Rating:** answer per §4 (all None; VPN=yes where asked) → 4+/17+.
+8. **Export Compliance:** already handled by the Info.plist key; if prompted, answer per §5 (no
    CCATS/ERN — standard crypto exemption).
-8. Attach the uploaded build → **Add for Review** → **Submit**.
+9. Attach the uploaded build → **Add for Review** → **Submit**.
 
-Expect a VPN-specific review (they will test the tunnel and check for in-app purchase). The
-manage-on-web design is what keeps 3.1.1 clean — do not add any "Buy" button to the iOS build.
+Expect a VPN-specific review (they will test the tunnel and the subscriptions). What keeps
+3.1.1/3.1.3 clean now: all selling runs through StoreKit, and the iOS build contains **zero**
+FLUX/crypto/price/web-purchase mentions — the only purchase surface is the IAP subscribe
+section (with Restore Purchases, Manage Subscription, Privacy Policy and Terms of Use links).
 
 ---
 
@@ -194,18 +213,26 @@ cd android
 In https://play.google.com/console → Create app (Name **CumulusVPN**, App, Free, declarations):
 1. **App content** — complete every card:
    - **Privacy policy:** `https://cumulusvpn.com/privacy`.
-   - **Data safety:** enter from `store/play/data-safety.md` → **No data collected/shared**.
-   - **VPN service:** declare from `store/play/vpnservice-declaration.md` §1.
+   - **Data safety:** enter from `store/play/data-safety.md` → purchase history collected
+     (in-app subscription; not shared, App functionality), everything else not
+     collected/shared.
+   - **VPN service:** declare from `store/play/vpnservice-declaration.md` §1 (digital-goods
+     answer is now **Yes** — subscription via Play Billing).
    - **Content rating:** IARC questionnaire per `store/play/vpnservice-declaration.md` §2 → general.
    - Ads: **No**. Target audience: adults (not Families). Government/financial: No. News: No.
 2. **Main store listing:** paste Title/Short/Full from `store/play/listing.md`; upload
    `store/assets/icon/play-icon-512.png`, `store/assets/play-feature-graphic-1024x500.png`, and
    phone screenshots (min 2 — capture from the running app; see assets-checklist).
-3. **Store settings:** Category **Tools**; In-app purchases **No** (see
-   `store/play/billing-stance.md` — no Play Billing at launch).
-4. **Production → Countries/regions:** exclude the same prohibited markets as iOS
+3. **Store settings:** Category **Tools**; In-app purchases **Yes ($1.99–$14.99)** (see
+   `store/play/billing-stance.md`, revised 2026-08-09 — Play Billing adopted).
+4. **Play Billing setup:** complete `store/play/readiness-checklist.md` §9 — merchant account,
+   subscription `premium` with base plans `premium-monthly` ($1.99/mo) / `premium-annual`
+   ($14.99/yr), RTDN Pub/Sub topic pushing to `https://pay.cumulusvpn.com/v1/google/rtdn`
+   (OIDC auth), license testers. **Flip `iapPurchase.android = true` in the KV before
+   rollout** (the subscribe UI fails closed OFF; the declared subscription must be reachable).
+5. **Production → Countries/regions:** exclude the same prohibited markets as iOS
    (`store/app-store/app-review.md` §6); cross-ref docs/06.
-5. **Production → Create release:** upload `app-release.aab`, add release notes from
+6. **Production → Create release:** upload `app-release.aab`, add release notes from
    `store/play/listing.md`, review, **roll out** (start with a closed/internal test track first if
    you want a staged rollout).
 
@@ -257,5 +284,6 @@ Everything else — all listing copy, privacy/data-safety/VpnService/content-rat
 reviewer notes, export-compliance guidance, icon set, and the Play feature graphic — is prepared
 under `store/` and ready to paste/upload.
 
-See also: **docs/05** (why manage-on-web, store policy rationale) and **docs/06** (no-logs legal
-posture, datacenter-only placement, availability).
+See also: **docs/05** (store policy rationale; IAP adoption + per-platform purchase-surface
+matrix), **docs/18** (payments bridge) and **docs/06** (no-logs legal posture, datacenter-only
+placement, availability).

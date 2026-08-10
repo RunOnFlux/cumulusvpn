@@ -22,6 +22,8 @@
     "react": "19.2.8",
     "react-native": "0.86.2",
     "react-native-get-random-values": "2.0.0",
+    "react-native-iap": "16.0.2",
+    "react-native-nitro-modules": "0.36.5",
     "react-native-safe-area-context": "5.8.1",
     "text-encoding-polyfill": "0.6.7"
   },

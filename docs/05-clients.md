@@ -93,9 +93,33 @@ options (Mullvad's playbook), in order of recommendation:
 3. **External-purchase link** (Apple's post-Epic US entitlement / Google external-offer programs).
    Legally fluid as of 2026, commission still applies — don't depend on it at launch.
 
-Net: build the beautiful pay-to-address screen once, ship it on **web/desktop**; on mobile, launch
-with option 1 and treat IAP as a fast-follow. Never call it "buy" in iOS builds regardless — it's a
-wallet transfer in the user's own wallet.
+Net (original): build the beautiful pay-to-address screen once, ship it on **web/desktop**; on
+mobile, launch with option 1 and treat IAP as a fast-follow. Never call it "buy" in iOS builds
+regardless — it's a wallet transfer in the user's own wallet.
+
+**Update 2026-08 — option 2 ADOPTED (alongside the web flow).** The stores launched on option 1;
+the IAP fast-follow has since been executed. Both store builds now sell auto-renewable premium
+subscriptions — **$1.99/month, $14.99/year** — via react-native-iap: on iOS, StoreKit 2 with
+`cvpn.premium.monthly` / `cvpn.premium.annual` (subscription group "Premium"); on Play, one
+subscription product `premium` with base plans `premium-monthly` / `premium-annual`. Receipts
+are verified by the payments bridge (docs/18-payments-bridge.md) at pay.cumulusvpn.com, which
+settles each verified purchase/renewal as a FLUX-chain transaction with the buyer's
+`CVPN1:<code>` memo — so **the chain remains the only entitlement source and gateways were not
+changed**. Never present the store purchase as "buying crypto": the subscription IS the premium
+unlock; chain settlement is an internal mechanism. The subscribe UI is gated by the remote
+`iapPurchase` flag (per platform, fails closed OFF; must be ON through store review, kill
+switch afterwards); the old `inAppUpgrade` flag still gates the crypto UI (hard-off on iOS,
+OFF for Play builds, direct-APK only).
+
+Purchase surface per platform:
+
+| Surface | How premium is bought |
+|---|---|
+| iOS (App Store build) | Apple IAP only (`cvpn.premium.monthly` / `cvpn.premium.annual`) — zero FLUX/crypto/price/web-purchase mentions in-app (3.1.1/3.1.3) |
+| Android (Play build) | Play Billing only (`premium` sub, base plans `premium-monthly` / `premium-annual`) |
+| Android (direct APK) | FLUX crypto UI, gated by the `inAppUpgrade` flag |
+| Web (vpn.cumulusvpn.com/#/upgrade) | FLUX (20 FLUX ≈ $0.99) **+** Stripe card / Apple Pay / Google Pay ($1.99/mo, $14.99/yr) |
+| Desktop | Links out to the web upgrade page |
 
 - Apple 5.4 additionally: no selling user data (trivially true — we have none), VPN must use
   NEVPNManager APIs (WireGuardKit does), available only where legal (regional availability list:

@@ -56,7 +56,9 @@ HOW TO TEST (no credentials needed)
    prompt on first connect (NEVPNManager) — approve it.
 3. Use the country list to switch servers.
 4. The "tier" line shows Free. Multi-hop is an optional toggle in settings (off by default).
-No account, no test user, and no payment are required to fully exercise the app.
+5. (Optional, premium) Open the subscribe section, purchase a subscription in the sandbox
+   environment, and premium speed unlocks within about one minute — see the IAP section below.
+No account and no test user are required; the free tier fully exercises the core app.
 
 CRYPTO FEATURES (Guideline 2.1)
 The app contains NO cryptocurrency features of any kind: no wallet, no exchange, no trading,
@@ -64,16 +66,32 @@ no mining, no token, and it performs no cryptocurrency transactions. It is a Wir
 client built on Apple's Network Extension framework.
 
 PAYMENTS / IN-APP PURCHASE (Guideline 3.1.1)
-This build contains NO in-app purchase, NO purchase UI, and NO references to purchasing:
-there is no upgrade screen, no price, no upsell text, and no link or instructions pointing to
-any external purchase mechanism. The app is fully functional for free — every feature
-(connect, country selection, multi-hop, kill switch) works without any purchase. The only
-tier-related element is a small non-interactive status chip showing the plan the server
-reports for this device's key. Nothing in the app or its metadata offers, prices, or directs
-users to buy anything.
+The app offers two auto-renewable subscriptions via Apple In-App Purchase (StoreKit 2),
+subscription group "Premium":
+- cvpn.premium.monthly — Premium Monthly, $1.99/month
+- cvpn.premium.annual — Premium Annual, $14.99/year
+The subscription unlocks premium speed on our decentralized gateway network within about one
+minute of purchase; entitlement is delivered via our activation service and follows the
+device's locally generated key, so no account is needed. All purchasing runs through StoreKit —
+there are no external purchase links, no alternative payment mechanisms, and no prices or
+purchase references outside the IAP flow. The app remains fully functional for free — every
+core feature (connect, country selection, multi-hop, kill switch) works without any purchase.
+
+HOW TO TEST THE SUBSCRIPTION (sandbox)
+1. Open the subscribe section (Settings → Plan → tap the tier row). It shows the two subscription options,
+   Restore Purchases, a Manage Subscription link, the Privacy Policy, and the Terms of Use
+   (Apple standard EULA).
+2. Purchase either plan with a sandbox Apple ID (subscriptions must be tested in the sandbox
+   environment; sandbox renewals are accelerated as usual).
+3. Within ~1 minute the tier line switches to Premium and speeds increase.
+4. Restore Purchases is on the same screen; Manage Subscription opens
+   apps.apple.com/account/subscriptions.
 
 PRIVACY
 No account, no email, no logs. The public key shown/used is a routing token, not personal data.
+For subscribers we retain only the store purchase confirmation (transaction identifier), keyed
+to a pseudonymous code — not linked to identity and not used for tracking. Apple processes the
+payment; we never receive payment card data.
 See privacy policy: https://cumulusvpn.com/privacy
 
 NETWORK EXTENSION
@@ -90,11 +108,12 @@ Reviewer questions: info@cumulusvpn.com
 
 | Guideline | Requirement | How CumulusVPN complies |
 |---|---|---|
-| 5.4 (VPN) | Org account, NEVPNManager, no data sale, available only where legal | Org account; WireGuardKit over NEVPNManager; no data collected/sold; regional availability list excludes prohibited markets (see below). |
-| 5.4 | Explain what user data is collected and how used | "Data Not Collected"; explained in review notes + privacy policy. |
-| 3.1.1(a) | Digital goods/functionality must use IAP | Nothing is sold in or via the app: no IAP, no purchase UI, no prices, no upgrade path shown. App only shows tier status. |
-| 3.1.3 | No steering to external purchase inside iOS app | No external purchase link, instructions, or mention anywhere in the app or metadata. |
-| 3.1.5(b) | Crypto apps may facilitate exchange but not sell own goods | We do NOT rely on this; the app has no crypto features and performs no crypto transactions. |
+| 5.4 (VPN) | Org account, NEVPNManager, no data sale, available only where legal | Org account; WireGuardKit over NEVPNManager; no data sold; regional availability list excludes prohibited markets (see below). |
+| 5.4 | Explain what user data is collected and how used | Only Purchases → purchase history (not linked to identity, not used for tracking); explained in review notes + privacy policy + nutrition label. |
+| 3.1.1(a) | Digital goods/functionality must use IAP | Premium is sold exclusively via Apple IAP: two auto-renewable subscriptions (`cvpn.premium.monthly` $1.99/mo, `cvpn.premium.annual` $14.99/yr) in subscription group "Premium", StoreKit 2. Purchases carry an `appAccountToken` (UUID one-way derived from the device's pseudonymous payment code). |
+| 3.1.2 | Auto-renewable subs: clear terms, privacy policy + EULA links | Subscribe section shows price/duration, Restore Purchases, Manage Subscription link, Privacy Policy (https://cumulusvpn.com/privacy) and Terms of Use (Apple standard EULA). |
+| 3.1.3 | No steering to external purchase inside iOS app | No external purchase link, instructions, or mention anywhere in the app or metadata — StoreKit is the only purchase surface on iOS; zero FLUX/crypto/web-purchase mentions. |
+| 3.1.5(b) | Crypto apps may facilitate exchange but not sell own goods | We do NOT rely on this; the app has no crypto features and performs no crypto transactions. Premium is sold with IAP. |
 | 2.1 (completeness) | App must be testable | Fully testable with no account/credentials; steps above. |
 | 4.0 / 4.2 | Not a thin/wrapper app | First-party native client with real UI, tunnel, discovery, failover, multi-hop. |
 | 2.5.1 | Public APIs only | Official Network Extension APIs; no private APIs. |

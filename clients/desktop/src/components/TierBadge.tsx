@@ -28,7 +28,7 @@ export function TierBadge({ entitlement, onUpgrade }: Props): JSX.Element {
         <span className="paid">paid until {formatPaidUntil(entitlement.paidUntil)}</span>
       ) : (
         <button className="upgrade" onClick={onUpgrade} title={UPGRADE_URL}>
-          Upgrade at cumulusvpn.com →
+          Upgrade — card or FLUX →
         </button>
       )}
     </div>

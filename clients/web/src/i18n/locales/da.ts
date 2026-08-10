@@ -87,6 +87,26 @@ export const da: Catalog = {
     'Åbner i Zelcore / SSP Wallet. Betalingen verificeres på Flux-blockchainen — vi ser aldrig, hvem du er. Beskeden knytter betalingen til din nøgle; sender du uden den, ankommer pengene, men intet låses op.',
   upgrade_back: '← Tilbage til Forbind',
 
+  upgrade_eyebrow_card: 'Eller betal med kort',
+  upgrade_card_lede:
+    'Tegn et abonnement med kort, Apple Pay eller Google Pay. Betalingen håndteres af Stripe — vi ser aldrig dit kort. Din premium aktiveres stadig på Flux-blockchainen, kun knyttet til din anonyme betalingskode.',
+  upgrade_plan_aria: 'Abonnementsplan',
+  upgrade_plan_monthly: '{usd} / måned',
+  upgrade_plan_annual: '{usd} / år',
+  upgrade_card_cta: 'Betal med kort',
+  upgrade_card_cta_busy: 'Åbner sikker betaling…',
+  upgrade_card_error: 'Kunne ikke åbne betalingen. Prøv igen om et øjeblik.',
+  upgrade_card_note:
+    'Fornys automatisk; opsig når som helst fra Stripe-kvitteringsmailen. At betale i FLUX ovenfor er billigere — kortprisen dækker gebyrer for betalingsbehandling.',
+  upgrade_activating_title: 'Aktiverer din premium…',
+  upgrade_state_pending: 'Betaling modtaget — forbereder din aktivering på Flux-netværket.',
+  upgrade_state_broadcast: 'Aktivering sendt til Flux-netværket — venter på bekræftelse.',
+  upgrade_state_confirmed: 'Bekræftet! Fuld hastighed låses op på alle servere inden for et minut.',
+  upgrade_state_failed:
+    'Noget gik galt under aktiveringen. Din betaling er sikker — vi prøver automatisk igen, og din premium dukker op om lidt.',
+  upgrade_activating_hint: 'Du kan lukke denne side — aktiveringen fuldføres af sig selv.',
+  upgrade_activated_cta: 'Tilbage til Forbind →',
+
   split_summary_title: 'Avanceret: split tunneling',
   split_tier_pill: 'PREMIUM · TILVALG',
   split_lede:

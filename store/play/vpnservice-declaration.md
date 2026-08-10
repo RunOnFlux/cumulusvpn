@@ -32,7 +32,7 @@ kept. Privacy policy: https://cumulusvpn.com/privacy
 **Policy compliance checklist (Google VPN policy):**
 - [x] Core purpose is VPN — yes.
 - [x] Uses `VpnService` as the foundation — yes (wireguard-android over `VpnService`).
-- [x] Declares in Data safety how it handles data — declared "no data collected" (see data-safety.md).
+- [x] Declares in Data safety how it handles data — declared purchase history (in-app subscription) as the sole collected type, nothing shared (see data-safety.md).
 - [x] Does not use VPN to collect data / manipulate ads / redirect traffic for benefit — correct.
 - [x] Discloses non-standard on-device data access — none.
 - [x] Runs a foreground service with an ongoing notification while connected (VpnService best
@@ -54,7 +54,7 @@ Communication (Tools)** — NOT a game. Answer **No** to all content questions.
 | Gambling (simulated or real)? | No |
 | Does the app share the user's current physical location with other users? | No |
 | Does the app allow users to interact or exchange content / communicate? | No (no user-to-user messaging/social features) |
-| Does the app allow purchase of digital goods? | No (no in-app purchase; premium is external via FLUX on the web) |
+| Does the app allow purchase of digital goods? | **Yes** — an optional in-app auto-renewing subscription (premium speed tier, $1.99/mo or $14.99/yr) sold via **Google Play Billing**. No other purchase mechanism exists in the app. |
 | Is the app a web browser / does it allow unrestricted internet content? | It is a **VPN**: it tunnels the device's own traffic; it is not a browser and provides no in-app content feed. Answer per IARC's VPN/utility wording; a VPN does not by itself raise the rating. |
 | User-generated content? | No |
 | Does it contain digital purchases with randomized/loot mechanics? | No |
@@ -63,5 +63,6 @@ Expected IARC output: **Everyone / PEGI 3 / rated for general audiences.** Some 
 attach a VPN/utility note; that is expected and acceptable.
 
 **Content-rating notes to keep on file:** CumulusVPN is a network utility with no in-app content,
-no user interaction features, no ads, and no purchasable digital goods inside the app. All rating
-questions are answered "No" truthfully.
+no user interaction features, and no ads. The only "Yes" is the purchase of digital goods — an
+optional premium-speed subscription sold via Google Play Billing — which does not affect the
+rating. All other rating questions are answered "No" truthfully.

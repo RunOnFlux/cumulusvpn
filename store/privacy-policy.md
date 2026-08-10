@@ -1,6 +1,6 @@
 # CumulusVPN Privacy Policy
 
-**Last updated: 16 July 2026**
+**Last updated: 9 August 2026**
 **Effective date: 16 July 2026**
 
 CumulusVPN is a decentralized VPN service. This policy explains, in plain language, exactly
@@ -23,8 +23,10 @@ Abuse reports: **info@cumulusvpn.com**
   to you.
 - **Gateways keep peer state in RAM only.** When a server restarts, that state is gone. There
   is no traffic database to seize, subpoena, or leak.
-- **Payments are optional and made in FLUX cryptocurrency on a public blockchain.** We do not
-  operate the blockchain, do not take card details, and never learn your name from a payment.
+- **Payments are optional.** You can subscribe in-app through Apple's App Store or Google
+  Play, pay by card via Stripe on our website, or pay in FLUX cryptocurrency on a public
+  blockchain. Whichever you choose, we never receive card details and never learn your name
+  from a payment — we only receive the confirmation needed to unlock premium.
 - **No trackers, no advertising SDKs, no analytics that identify you.** The apps contain no
   third-party advertising or behavioural-tracking code.
 - **We are not a data business.** We have no user data to sell, and we do not sell data.
@@ -116,11 +118,10 @@ are and where you are going. Multi-hop is off by default and is described honest
 
 CumulusVPN has a free tier that requires **no payment and no identifying information**.
 
-If you choose to upgrade to premium (higher speed), you pay in **FLUX cryptocurrency** on the
-Flux public blockchain. Important points:
+If you choose to upgrade to premium (higher speed), you have several options. One is to pay in
+**FLUX cryptocurrency** on the Flux public blockchain, from our website or desktop app.
+Important points about the FLUX option:
 
-- **Payment happens on the web or desktop, not inside the mobile apps.** The mobile apps do not
-  contain a purchase screen; they only display your current tier.
 - You send FLUX from **your own wallet** to our published payment address, including a short
   memo derived from your public key so the network can credit the right key. We do **not**
   collect card numbers, billing addresses, or names.
@@ -134,9 +135,16 @@ Flux public blockchain. Important points:
   public blockchain and keyed only to the public key. We store no separate customer billing
   record with your name in it, because we do not have your name.
 
-If you later use an in-app fiat payment option offered through Apple's App Store or Google Play
-(should we add one), that transaction is processed by Apple or Google under their own privacy
-policies; we receive only the confirmation needed to grant premium, not your payment card data.
+If you use the in-app subscription offered through Apple's App Store or Google Play (a monthly
+or annual premium subscription), that transaction is processed by Apple or Google under their
+own privacy policies. We receive only the purchase confirmation — a store transaction
+identifier / purchase token — tied to your pseudonymous payment code, so the network can grant
+premium to the right key. We never receive your payment card data, billing address, or name;
+Apple or Google holds those.
+
+If you pay by card (including Apple Pay or Google Pay) via **Stripe** on our website, the same
+framing applies: Stripe processes the payment under its own privacy policy, and we receive
+only the confirmation tied to your pseudonymous payment code — never your card data.
 
 ---
 

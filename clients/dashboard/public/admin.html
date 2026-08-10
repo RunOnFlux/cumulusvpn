@@ -125,6 +125,23 @@
         <label class="sw"><input type="checkbox" id="t-ios" /><span class="track"></span><span class="knob"></span></label>
       </div>
 
+      <h2>iapPurchase</h2>
+      <p class="hint">
+        Store-billing subscriptions (Apple IAP / Play Billing via the payments bridge).
+        Store-compliant — but it must be <b>ON before submitting a build with the subscribe UI for
+        review</b> (reviewers must find the declared subscriptions; fail-closed flags would hide
+        them). Off afterwards = emergency kill switch only (bridge outage).
+      </p>
+
+      <div class="row">
+        <div class="k">Android <small>Play Billing</small></div>
+        <label class="sw"><input type="checkbox" id="iap-android" /><span class="track"></span><span class="knob"></span></label>
+      </div>
+      <div class="row">
+        <div class="k">iOS <small>Apple IAP</small></div>
+        <label class="sw"><input type="checkbox" id="iap-ios" /><span class="track"></span><span class="knob"></span></label>
+      </div>
+
       <div class="foot">
         <span class="updated" id="updated">—</span>
         <button class="btn primary" id="save">Save</button>
@@ -161,6 +178,9 @@
       var u = (f && f.inAppUpgrade) || {};
       $('t-android').checked = u.android === true;
       $('t-ios').checked = u.ios === true;
+      var iap = (f && f.iapPurchase) || {};
+      $('iap-android').checked = iap.android === true;
+      $('iap-ios').checked = iap.ios === true;
       $('updated').textContent = f && f.updatedAt
         ? 'Last updated ' + new Date(f.updatedAt).toLocaleString()
         : 'Never updated (serving defaults)';
@@ -191,7 +211,10 @@
 
   function save() {
     $('save-err').textContent = '';
-    var body = { inAppUpgrade: { android: $('t-android').checked, ios: $('t-ios').checked } };
+    var body = {
+      inAppUpgrade: { android: $('t-android').checked, ios: $('t-ios').checked },
+      iapPurchase: { android: $('iap-android').checked, ios: $('iap-ios').checked },
+    };
     fetch('/api/flags', {
       method: 'POST',
       headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },

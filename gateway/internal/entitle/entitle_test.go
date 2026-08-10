@@ -188,3 +188,46 @@ func TestExactMultipleOverpayFloatEpsilon(t *testing.T) {
 		t.Errorf("exact 3× overpay granted only %v (want ~90 days = 3 months)", d)
 	}
 }
+
+// TestBridgeFiatSettlement is the cross-language contract check with the
+// payments bridge (bridge/, docs/18-payments-bridge.md): a bridge-settled
+// monthly tx (1 x 20 FLUX) and annual tx (12 x 20 FLUX) carrying the memo
+// the bridge builds for the all-zero fixture pubkey must grant exactly
+// 1 + 12 months. The memo string here is byte-identical to the OP_RETURN
+// payload in the bridge's golden tx test (bridge/test/tx.test.ts) and the
+// fluxnode decodeOpReturn bridge-fixture test.
+func TestBridgeFiatSettlement(t *testing.T) {
+	const addr = "t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ"
+	const price = 20.0
+
+	pk := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+	if got := PaymentCode(pk); got != "2RkUfDC55GMndKreXqK7Jruu8Snx" {
+		t.Fatalf("fixture drift: PaymentCode = %q, want 2RkUfDC55GMndKreXqK7Jruu8Snx", got)
+	}
+	const memo = "CVPN1:2RkUfDC55GMndKreXqK7Jruu8Snx"
+
+	now := time.Now()
+	src := &mockSource{
+		height: 100,
+		txs: []Tx{
+			// bridge monthly settlement: exactly price -> +30 days
+			{TxID: "fiat-m", Height: 10, Time: now, AmountTo: 20.0, Memos: []string{memo}},
+			// bridge annual settlement: 12 x price in ONE tx -> +360 days
+			{TxID: "fiat-a", Height: 11, Time: now, AmountTo: 240.0, Memos: []string{memo}},
+		},
+	}
+
+	e := New(src, addr, price)
+	if err := e.Backfill(context.Background()); err != nil {
+		t.Fatalf("backfill: %v", err)
+	}
+	premium, paidUntil := e.Tier(pk)
+	if !premium {
+		t.Fatal("bridge-settled payments did not grant premium")
+	}
+	got := paidUntil.Sub(now)
+	want := 13 * 30 * 24 * time.Hour
+	if got < want-time.Hour || got > want+time.Hour {
+		t.Fatalf("paid_until = now+%v, want ~%v (1 monthly + 12 annual months)", got, want)
+	}
+}

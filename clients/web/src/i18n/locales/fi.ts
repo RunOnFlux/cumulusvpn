@@ -87,6 +87,27 @@ export const fi: Catalog = {
     'Avautuu Zelcoressa / SSP Walletissa. Maksu vahvistetaan Fluxin lohkoketjussa — emme koskaan näe, kuka olet. Viesti sitoo maksun avaimeesi; jos lähetät ilman sitä, varat saapuvat mutta mitään ei avaudu.',
   upgrade_back: '← Takaisin Yhdistä-sivulle',
 
+  upgrade_eyebrow_card: 'Tai maksa kortilla',
+  upgrade_card_lede:
+    'Tilaa kortilla, Apple Payllä tai Google Payllä. Maksun hoitaa Stripe — emme koskaan näe korttiasi. Premiumisi aktivoidaan silti Fluxin lohkoketjussa, sidottuna vain anonyymiin maksukoodiisi.',
+  upgrade_plan_aria: 'Tilaussuunnitelma',
+  upgrade_plan_monthly: '{usd} / kuukausi',
+  upgrade_plan_annual: '{usd} / vuosi',
+  upgrade_card_cta: 'Maksa kortilla',
+  upgrade_card_cta_busy: 'Avataan turvallista maksua…',
+  upgrade_card_error: 'Maksua ei voitu avata. Yritä hetken kuluttua uudelleen.',
+  upgrade_card_note:
+    'Uusiutuu automaattisesti; peruuta milloin tahansa Stripen kuittisähköpostista. FLUXilla maksaminen yllä on halvempaa — kortin hinta kattaa käsittelykulut.',
+  upgrade_activating_title: 'Aktivoidaan premiumiasi…',
+  upgrade_state_pending: 'Maksu vastaanotettu — valmistellaan aktivointiasi Flux-verkossa.',
+  upgrade_state_broadcast: 'Aktivointi lähetetty Flux-verkkoon — odotetaan vahvistusta.',
+  upgrade_state_confirmed:
+    'Vahvistettu! Täysi nopeus avautuu kaikilla palvelimilla minuutin sisällä.',
+  upgrade_state_failed:
+    'Aktivoinnissa meni jotain pieleen. Maksusi on turvassa — yritämme automaattisesti uudelleen, ja premiumisi ilmestyy pian.',
+  upgrade_activating_hint: 'Voit sulkea tämän sivun — aktivointi valmistuu itsestään.',
+  upgrade_activated_cta: 'Takaisin Yhdistä-sivulle →',
+
   split_summary_title: 'Lisäasetukset: jaettu tunnelointi',
   split_tier_pill: 'PREMIUM · VALINNAINEN',
   split_lede:

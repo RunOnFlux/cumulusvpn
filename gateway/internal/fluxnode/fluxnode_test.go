@@ -56,6 +56,22 @@ func TestDecodeOpReturn(t *testing.T) {
 	}
 }
 
+// TestDecodeOpReturnBridgeFixture is the cross-language contract check with
+// the payments bridge (bridge/src/flux/tx.ts): the script hex below is the
+// OP_RETURN output of a REAL tx built and signed by the bridge's
+// buildPaymentTx (deterministic fixture key; regenerate with the snippet in
+// bridge/test/tx.test.ts if the builder ever changes). If this fails, fiat
+// payments would settle on-chain without granting entitlement.
+func TestDecodeOpReturnBridgeFixture(t *testing.T) {
+	// Emitted by @runonflux/utxo-lib's nullData encoder: 0x6a + direct push 0x22.
+	const bridgeScript = "6a224356504e313a32526b556644433535474d6e644b726558714b374a72757538536e78"
+	const wantMemo = "CVPN1:2RkUfDC55GMndKreXqK7Jruu8Snx"
+	got, ok := decodeOpReturn(bridgeScript)
+	if !ok || got != wantMemo {
+		t.Fatalf("decodeOpReturn(bridge fixture) = (%q, %v), want (%q, true)", got, ok, wantMemo)
+	}
+}
+
 // txFromJSON unmarshals a raw insight-style transaction into insightTx so tests
 // exercise the same struct+tags the wire path decodes into.
 func txFromJSON(t *testing.T, raw string) insightTx {

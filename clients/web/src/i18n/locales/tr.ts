@@ -87,6 +87,26 @@ export const tr: Catalog = {
     'Zelcore / SSP Wallet içinde açılır. Ödeme, Flux blok zincirinde doğrulanır — kim olduğunu asla görmeyiz. Mesaj, ödemeyi anahtarına bağlar; mesaj olmadan göndermek, paranın ulaşıp hiçbir şeyin açılmaması anlamına gelir.',
   upgrade_back: '← Bağlan’a dön',
 
+  upgrade_eyebrow_card: 'Ya da kartla öde',
+  upgrade_card_lede:
+    'Kart, Apple Pay veya Google Pay ile abone ol. Ödeme sayfası Stripe tarafından yürütülür — kartını asla görmeyiz. Premium’un yine Flux blok zincirinde etkinleştirilir ve yalnızca anonim ödeme koduna bağlıdır.',
+  upgrade_plan_aria: 'Abonelik planı',
+  upgrade_plan_monthly: '{usd} / ay',
+  upgrade_plan_annual: '{usd} / yıl',
+  upgrade_card_cta: 'Kartla öde',
+  upgrade_card_cta_busy: 'Güvenli ödeme sayfası açılıyor…',
+  upgrade_card_error: 'Ödeme sayfası açılamadı. Lütfen birazdan tekrar dene.',
+  upgrade_card_note:
+    'Otomatik yenilenir; istediğin zaman Stripe makbuz e-postasından iptal edebilirsin. Yukarıda FLUX ile ödemek daha ucuz — kart fiyatı işlem ücretlerini karşılar.',
+  upgrade_activating_title: 'Premium’un etkinleştiriliyor…',
+  upgrade_state_pending: 'Ödeme alındı — Flux ağındaki etkinleştirmen hazırlanıyor.',
+  upgrade_state_broadcast: 'Etkinleştirme Flux ağına gönderildi — onay bekleniyor.',
+  upgrade_state_confirmed: 'Onaylandı! Tam hız bir dakika içinde tüm sunucularda açılır.',
+  upgrade_state_failed:
+    'Etkinleştirme sırasında bir şeyler ters gitti. Ödemen güvende — otomatik olarak yeniden deniyoruz, premium’un kısa süre içinde görünecek.',
+  upgrade_activating_hint: 'Bu sayfayı kapatabilirsin — etkinleştirme kendi kendine tamamlanır.',
+  upgrade_activated_cta: 'Bağlan’a dön →',
+
   split_summary_title: 'Gelişmiş: split tunneling',
   split_tier_pill: 'PREMIUM · İSTEĞE BAĞLI',
   split_lede:

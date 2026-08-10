@@ -87,6 +87,27 @@ export const nl: Catalog = {
     'Opent in Zelcore / SSP Wallet. Betaling wordt geverifieerd op de Flux-blockchain — wij zien nooit wie je bent. Het bericht koppelt de betaling aan je sleutel; versturen zonder bericht betekent dat het geld aankomt maar niets wordt ontgrendeld.',
   upgrade_back: '← Terug naar Verbinden',
 
+  upgrade_eyebrow_card: 'Of betaal met kaart',
+  upgrade_card_lede:
+    'Abonneer je met een kaart, Apple Pay of Google Pay. De checkout wordt afgehandeld door Stripe — wij zien nooit je kaart. Je premium wordt nog steeds geactiveerd op de Flux-blockchain, alleen gekoppeld aan je anonieme betaalcode.',
+  upgrade_plan_aria: 'Abonnement',
+  upgrade_plan_monthly: '{usd} / maand',
+  upgrade_plan_annual: '{usd} / jaar',
+  upgrade_card_cta: 'Betalen met kaart',
+  upgrade_card_cta_busy: 'Beveiligde checkout wordt geopend…',
+  upgrade_card_error: 'Kon de checkout niet openen. Probeer het zo opnieuw.',
+  upgrade_card_note:
+    'Verlengt automatisch; opzeggen kan altijd via de Stripe-bevestigingsmail. Hierboven betalen in FLUX is goedkoper — de kaartprijs dekt de verwerkingskosten.',
+  upgrade_activating_title: 'Je premium wordt geactiveerd…',
+  upgrade_state_pending: 'Betaling ontvangen — je activering op het Flux-netwerk wordt voorbereid.',
+  upgrade_state_broadcast: 'Activering verzonden naar het Flux-netwerk — wachten op bevestiging.',
+  upgrade_state_confirmed:
+    'Bevestigd! Volle snelheid wordt binnen een minuut op alle servers ontgrendeld.',
+  upgrade_state_failed:
+    'Er ging iets mis bij het activeren. Je betaling is veilig — we proberen het automatisch opnieuw en je premium verschijnt binnenkort.',
+  upgrade_activating_hint: 'Je kunt deze pagina sluiten — de activering wordt vanzelf afgerond.',
+  upgrade_activated_cta: 'Terug naar Verbinden →',
+
   split_summary_title: 'Geavanceerd: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

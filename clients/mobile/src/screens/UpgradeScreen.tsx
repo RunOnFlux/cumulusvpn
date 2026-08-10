@@ -1,24 +1,38 @@
 /**
- * Upgrade — pay in FLUX. ONLY rendered when the remote `inAppUpgrade` flag is
- * on for this platform (see lib/flags.ts — never on iOS, and only intended for
- * direct-APK/off-store Android builds): the full in-app flow with a QR of the
- * BIP21 `flux:` payment URI, an "Open in wallet" hand-off that tries each
- * registered wallet scheme (`zel:` Zelcore → `flux:` → `ssp:` SSP) until one
- * opens prefilled, and copyable pay-to details.
+ * Upgrade — up to two purchase surfaces, each behind its own remote flag
+ * (lib/flags.ts):
  *
- * When the flag is off the app shows NO purchase UI anywhere — this screen is
- * unreachable (no upsell line, no tappable tier pill, no upgrade route), so
- * store review sees no purchase surface at all (guideline 3.1.1 / Play
- * Payments).
+ *  - `iapPurchase` → SubscribeSection: auto-renewable store subscriptions
+ *    via Apple IAP / Google Play Billing. Store-compliant by construction;
+ *    the ONLY surface iOS builds ever render. Verified server-side by the
+ *    payments bridge, which settles the entitlement on the Flux chain
+ *    (docs/18-payments-bridge.md).
+ *  - `inAppUpgrade` → InAppPay: the FLUX crypto flow (QR + wallet hand-off)
+ *    — direct-APK Android builds only, never iOS, a store violation if shown
+ *    in store builds.
  *
- * Entitlement is chain-based + device-key-scoped, so the phone unlocks itself
- * ~1 min after the transfer confirms, regardless of where it was paid.
+ * With both flags off the app shows NO purchase UI anywhere — this screen is
+ * unreachable (no upsell line, no tappable tier pill, no upgrade route).
+ *
+ * Entitlement is chain-based + device-key-scoped either way, so the phone
+ * unlocks itself ~1 min after the chain tx confirms, regardless of rail.
  */
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { useState } from 'react';
 import { walletDeepLink, walletDeepLinks } from '@cumulusvpn/core';
 import type { Tier } from '@cumulusvpn/core';
 import type { PaymentIdentity } from '../state/useVpn';
+import type { IapState } from '../state/useIap';
+import type { IapPlan } from '../lib/iap';
 import { Qr } from '../components/Qr';
 import { TierPill } from '../components/TierPill';
 import { color, font, radius, space } from '../theme/tokens';
@@ -28,8 +42,21 @@ interface Props {
   /** RFC3339 timestamp premium is paid through, or null when free/unknown. */
   readonly paidUntil: string | null;
   readonly payment: PaymentIdentity | null;
+  /** Crypto (FLUX) section visible — remote `inAppUpgrade` flag. */
+  readonly cryptoEnabled: boolean;
+  /** Store subscription section visible — remote `iapPurchase` flag. */
+  readonly iap: IapState | null;
   readonly onClose: () => void;
 }
+
+/** OS subscription-management deep link (Apple requires this to be reachable). */
+const MANAGE_URL =
+  Platform.OS === 'ios'
+    ? 'https://apps.apple.com/account/subscriptions'
+    : 'https://play.google.com/store/account/subscriptions';
+const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+/** Apple's standard EULA for auto-renewable subscriptions. */
+const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -50,9 +77,17 @@ export function formatExpiry(iso: string | null): { date: string; daysLeft: numb
   return { date: `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`, daysLeft };
 }
 
-export function UpgradeScreen({ tier, paidUntil, payment, onClose }: Props): React.JSX.Element {
+export function UpgradeScreen({
+  tier,
+  paidUntil,
+  payment,
+  cryptoEnabled,
+  iap,
+  onClose,
+}: Props): React.JSX.Element {
   const premium = tier === 'premium';
   const expiry = formatExpiry(paidUntil);
+  const showCrypto = cryptoEnabled && payment !== null;
   return (
     <ScrollView
       style={styles.root}
@@ -74,8 +109,9 @@ export function UpgradeScreen({ tier, paidUntil, payment, onClose }: Props): Rea
         {premium ? (
           <>
             <Text style={styles.copy}>
-              You’re on Premium — full speed on every gateway. Pay again any time to add more time;
-              it stacks on top of your current expiry.
+              {showCrypto
+                ? 'You’re on Premium — full speed on every gateway. Pay again any time to add more time; it stacks on top of your current expiry.'
+                : 'You’re on Premium — full speed on every gateway.'}
             </Text>
             {expiry ? (
               <View style={styles.priceRow}>
@@ -88,14 +124,24 @@ export function UpgradeScreen({ tier, paidUntil, payment, onClose }: Props): Rea
                 </Text>
               </View>
             ) : null}
+            {iap ? (
+              <Pressable
+                onPress={() => void Linking.openURL(MANAGE_URL)}
+                accessibilityRole="link"
+                hitSlop={8}
+              >
+                <Text style={styles.link}>Manage subscription</Text>
+              </Pressable>
+            ) : null}
           </>
         ) : (
           <>
             <Text style={styles.copy}>
-              Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account,
-              paid once with FLUX for 30 days.
+              {showCrypto
+                ? 'Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account, paid once with FLUX for 30 days.'
+                : 'Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account needed.'}
             </Text>
-            {payment ? (
+            {showCrypto ? (
               <View style={styles.priceRow}>
                 <Text style={styles.priceLabel}>Premium</Text>
                 <Text style={styles.price}>
@@ -107,8 +153,151 @@ export function UpgradeScreen({ tier, paidUntil, payment, onClose }: Props): Rea
         )}
       </View>
 
-      {payment ? <InAppPay payment={payment} premium={premium} /> : null}
+      {iap && !premium ? <SubscribeSection iap={iap} /> : null}
+      {showCrypto ? <InAppPay payment={payment} premium={premium} /> : null}
     </ScrollView>
+  );
+}
+
+/**
+ * Store-billing subscription section — the only purchase surface store
+ * builds render. Prices come from the store (localized); the chain
+ * settlement is invisible to the user beyond a brief "Activating…".
+ */
+function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Element {
+  const [plan, setPlan] = useState<IapPlan>('monthly');
+  const busy = iap.phase === 'purchasing' || iap.phase === 'verifying';
+
+  if (iap.phase === 'done') {
+    return (
+      <View style={styles.card}>
+        <Text style={styles.copy}>
+          Subscribed — full speed is unlocked on every gateway. Manage or cancel any time in your
+          store account.
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <Text style={styles.section}>Subscribe</Text>
+      {!iap.ready ? (
+        <View style={[styles.card, styles.iapLoading]}>
+          {iap.error ? (
+            <Text style={styles.copy}>{iap.error}</Text>
+          ) : (
+            <>
+              <ActivityIndicator color={color.cyan} />
+              <Text style={styles.copy}>Loading plans…</Text>
+            </>
+          )}
+        </View>
+      ) : iap.phase === 'activating' ? (
+        <View style={[styles.card, styles.iapLoading]}>
+          <ActivityIndicator color={color.amber} />
+          <Text style={styles.copy}>
+            Activating on the decentralized network… full speed unlocks on every gateway within a
+            minute. You can leave this screen.
+          </Text>
+        </View>
+      ) : iap.phase === 'pending_store' ? (
+        <View style={styles.card}>
+          <Text style={styles.copy}>
+            Waiting for your payment to be approved by the store. Premium activates automatically
+            once it completes.
+          </Text>
+        </View>
+      ) : (
+        <>
+          <View style={styles.planRow}>
+            <PlanCard
+              label="Monthly"
+              price={iap.prices.monthly}
+              unit="/ month"
+              selected={plan === 'monthly'}
+              onSelect={() => setPlan('monthly')}
+            />
+            <PlanCard
+              label="Annual"
+              price={iap.prices.annual}
+              unit="/ year"
+              selected={plan === 'annual'}
+              onSelect={() => setPlan('annual')}
+            />
+          </View>
+
+          <Pressable
+            onPress={() => iap.purchase(plan)}
+            disabled={busy}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.payBtn, (pressed || busy) && styles.payBtnPressed]}
+          >
+            <Text style={styles.payBtnLabel}>{busy ? 'Opening store…' : 'Subscribe'}</Text>
+          </Pressable>
+          {iap.error ? <Text style={styles.walletError}>{iap.error}</Text> : null}
+
+          <Text style={styles.note}>
+            Auto-renews until cancelled; cancel any time in your store account. Payment is handled
+            by the store — we never see your card. Premium is activated on the Flux blockchain, tied
+            only to this device’s anonymous key.
+          </Text>
+          <View style={styles.legalRow}>
+            <Pressable onPress={() => iap.restore()} accessibilityRole="button" hitSlop={8}>
+              <Text style={styles.link}>Restore Purchases</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void Linking.openURL(MANAGE_URL)}
+              accessibilityRole="link"
+              hitSlop={8}
+            >
+              <Text style={styles.link}>Manage Subscription</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void Linking.openURL(PRIVACY_URL)}
+              accessibilityRole="link"
+              hitSlop={8}
+            >
+              <Text style={styles.link}>Privacy Policy</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void Linking.openURL(TERMS_URL)}
+              accessibilityRole="link"
+              hitSlop={8}
+            >
+              <Text style={styles.link}>Terms of Use</Text>
+            </Pressable>
+          </View>
+        </>
+      )}
+    </>
+  );
+}
+
+function PlanCard({
+  label,
+  price,
+  unit,
+  selected,
+  onSelect,
+}: {
+  readonly label: string;
+  readonly price: string | null;
+  readonly unit: string;
+  readonly selected: boolean;
+  readonly onSelect: () => void;
+}): React.JSX.Element {
+  return (
+    <Pressable
+      onPress={onSelect}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+      style={[styles.planCard, selected && styles.planCardSelected]}
+    >
+      <Text style={styles.planLabel}>{label}</Text>
+      <Text style={styles.planPrice}>{price ?? '—'}</Text>
+      <Text style={styles.planUnit}>{unit}</Text>
+    </Pressable>
   );
 }
 
@@ -324,4 +513,28 @@ const styles = StyleSheet.create({
   stepNumText: { color: color.amber, fontSize: 12, fontWeight: '700' },
   stepText: { flex: 1, color: color.inkMuted, fontSize: 14, lineHeight: 20 },
   note: { color: color.inkFaint, fontSize: 12, lineHeight: 17, marginTop: space.lg },
+  iapLoading: { alignItems: 'center', gap: space.md },
+  planRow: { flexDirection: 'row', gap: space.md },
+  planCard: {
+    flex: 1,
+    backgroundColor: color.glass,
+    borderColor: color.hairline,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: space.lg,
+    alignItems: 'center',
+    gap: 4,
+  },
+  planCardSelected: { borderColor: color.amber, backgroundColor: color.orbCoreOn },
+  planLabel: { color: color.inkDim, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  planPrice: { color: color.ink, fontSize: 20, fontWeight: '700' },
+  planUnit: { color: color.inkFaint, fontSize: 12 },
+  link: { color: color.cyan, fontSize: 13, fontWeight: '600' },
+  legalRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.lg,
+    marginTop: space.lg,
+    justifyContent: 'center',
+  },
 });

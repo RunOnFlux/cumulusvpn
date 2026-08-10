@@ -12,6 +12,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { PoweredByFlux } from './src/components/PoweredByFlux';
 import { useVpn } from './src/state/useVpn';
 import { useFlags } from './src/state/useFlags';
+import { useIap } from './src/state/useIap';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { CountryPickerScreen } from './src/screens/CountryPickerScreen';
 import { UpgradeScreen } from './src/screens/UpgradeScreen';
@@ -25,6 +26,10 @@ type Route = 'connect' | 'countries' | 'upgrade' | 'entry' | 'exit' | 'settings'
 function App(): React.JSX.Element {
   const vpn = useVpn();
   const flags = useFlags();
+  // Any purchase surface on = the upgrade route exists. The IAP hook only
+  // mounts store machinery when its flag is on (and quietly no-ops otherwise).
+  const canUpgrade = flags.inAppUpgrade || flags.iapPurchase;
+  const iap = useIap(flags.iapPurchase, vpn.payment?.code ?? null, vpn.tier === 'premium');
   const [route, setRoute] = useState<Route>('connect');
   // App Store 5.4: the data disclosure must be seen BEFORE the service is used,
   // so it gates the whole UI on first launch. `null` = still reading the ack
@@ -49,14 +54,14 @@ function App(): React.JSX.Element {
     void saveDisclosureAck();
   };
 
-  // If the purchase flag drops while the user is ON the upgrade screen (remote
-  // flip reaching a foregrounded app), snap back to Connect — the route must
-  // never outlive the flag that makes it legal to show.
+  // If every purchase flag drops while the user is ON the upgrade screen
+  // (remote flip reaching a foregrounded app), snap back to Connect — the
+  // route must never outlive the flags that make it legal to show.
   useEffect(() => {
-    if (route === 'upgrade' && !flags.inAppUpgrade) {
+    if (route === 'upgrade' && !canUpgrade) {
       setRoute('connect');
     }
-  }, [route, flags.inAppUpgrade]);
+  }, [route, canUpgrade]);
 
   // Android hardware back: from any sub-screen, return to Connect instead of
   // closing the app; on Connect, fall through to the default (exit).
@@ -138,11 +143,13 @@ function App(): React.JSX.Element {
               favorites={vpn.favorites}
               onToggleFavorite={(code) => void vpn.toggleFavorite(code)}
             />
-          ) : route === 'upgrade' && flags.inAppUpgrade ? (
+          ) : route === 'upgrade' && canUpgrade ? (
             <UpgradeScreen
               tier={vpn.tier}
               paidUntil={vpn.paidUntil}
               payment={vpn.payment}
+              cryptoEnabled={flags.inAppUpgrade}
+              iap={flags.iapPurchase ? iap : null}
               onClose={() => setRoute('connect')}
             />
           ) : route === 'privacy' ? (
@@ -151,15 +158,15 @@ function App(): React.JSX.Element {
             <SettingsScreen
               vpn={vpn}
               onClose={() => setRoute('connect')}
-              onOpenUpgrade={flags.inAppUpgrade ? () => setRoute('upgrade') : undefined}
+              onOpenUpgrade={canUpgrade ? () => setRoute('upgrade') : undefined}
               onOpenPrivacy={() => setRoute('privacy')}
-              canUpgrade={flags.inAppUpgrade}
+              canUpgrade={canUpgrade}
             />
           ) : (
             <ConnectScreen
               vpn={vpn}
               onOpenCountries={() => setRoute('countries')}
-              onOpenUpgrade={flags.inAppUpgrade ? () => setRoute('upgrade') : undefined}
+              onOpenUpgrade={canUpgrade ? () => setRoute('upgrade') : undefined}
               onOpenEntry={() => setRoute('entry')}
               onOpenExit={() => setRoute('exit')}
               onOpenSettings={() => setRoute('settings')}

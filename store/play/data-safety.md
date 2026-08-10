@@ -2,8 +2,9 @@
 
 Where: Play Console → App content → **Data safety**. Google requires you to declare data
 collection/sharing, security practices, and (for VPN/security apps) may cross-check against an
-independent security review. Answer truthfully; CumulusVPN's honest answer is "no data collected
-or shared."
+independent security review. Answer truthfully; since the in-app subscription launched
+(2026-08-09), CumulusVPN's honest answer is "purchase history is collected — nothing else, and
+nothing is shared."
 
 ---
 
@@ -11,23 +12,30 @@ or shared."
 
 | Question | Answer |
 |---|---|
-| Does your app collect or share any of the required user data types? | **No** |
+| Does your app collect or share any of the required user data types? | **Yes** — exactly one type: Financial info → Purchase history (see Section 2). |
 | Is all of the user data collected by your app encrypted in transit? | **Yes** — all actual user traffic rides the WireGuard-encrypted tunnel. (The gateway control/discovery API is plain HTTP, but every response is ed25519-signed and verified by the app, and it carries only public gateway metadata plus your public routing key — no private or sensitive data, and no TLS.) Declare "encrypted in transit" since the question concerns collected user data, whose carrier is the encrypted tunnel. |
 | Do you provide a way for users to request that their data be deleted? | **Yes** — users can delete their key on-device (fully severs the pseudonymous link); there is no server-side personal-data store to delete. Provide the deletion/contact info: info@cumulusvpn.com and https://cumulusvpn.com/privacy. |
 
-Because the answer to "collect or share" is **No**, Google will show **"No data collected"** and
-**"No data shared with third parties"** on the listing. You still complete the security section
-below.
+Because purchase history is now collected, the listing will no longer show the blanket
+**"No data collected"** badge — it will show the single declared type instead, still with
+**"No data shared with third parties."** You still complete the security section below.
 
-## Section 2 — Per data-type declarations (all NOT collected, NOT shared)
+## Section 2 — Per data-type declarations (one collected type; everything else NOT collected, NOT shared)
 
-Declare **not collected / not shared** for every category. Reference list:
+Declare **not collected / not shared** for every category except Financial info. Reference list:
 
 - Location (approximate, precise) — **Not collected**
 - Personal info (name, email, user IDs, address, phone, race/ethnicity, political/religious,
   sexual orientation, other) — **Not collected**
-- Financial info (payment info, purchase history, credit score, other) — **Not collected**
-  (FLUX is paid from the user's own wallet on the web; app takes no payment data)
+- Financial info:
+  - **Purchase history — Collected, not shared.** Purpose: **App functionality**. We retain,
+    server-side, the Play purchase token / transaction ids for the in-app `premium`
+    subscription, keyed to the device's pseudonymous payment code
+    (`obfuscatedExternalAccountId`) so premium can be granted and renewed — not linked to an
+    identity (no accounts), not used for tracking, never shared.
+  - Payment info, credit score, other — **Not collected.** The payment itself is handled by
+    Google Play; card/payment-instrument data never reaches us. (FLUX remains a web-only
+    option paid from the user's own wallet; the Play build contains no crypto purchase.)
 - Health and fitness — **Not collected**
 - Messages (emails, SMS, other in-app messages) — **Not collected**
 - Photos and videos — **Not collected**
@@ -55,8 +63,11 @@ Declare **not collected / not shared** for every category. Reference list:
 
 ## Section 4 — Notes to keep the answer defensible
 
-Google's reviewers may push back on a VPN declaring "no data collected." Be ready to explain
-(same facts as the privacy policy and Apple label):
+Google's reviewers may push back on a VPN declaring almost nothing collected. Be ready to
+explain (same facts as the privacy policy and Apple label):
+- The only collected type is **purchase history** for the in-app subscription (Play purchase
+  tokens keyed to a pseudonymous payment code, App functionality, not shared); the payment
+  instrument itself is Google's, not ours.
 - No accounts, no email, no identifiers requested.
 - Real IP is processed transiently to route packets and never logged/retained — Google's
   definition of "collect" excludes transient processing not sent off-device to a persistent

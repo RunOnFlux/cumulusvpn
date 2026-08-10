@@ -87,6 +87,26 @@ export const sv: Catalog = {
     'Öppnas i Zelcore / SSP Wallet. Betalningen verifieras på Flux blockkedja — vi ser aldrig vem du är. Meddelandet knyter betalningen till din nyckel; skickar du utan det anländer pengarna men inget låses upp.',
   upgrade_back: '← Tillbaka till Anslut',
 
+  upgrade_eyebrow_card: 'Eller betala med kort',
+  upgrade_card_lede:
+    'Prenumerera med kort, Apple Pay eller Google Pay. Betalningen hanteras av Stripe — vi ser aldrig ditt kort. Premium aktiveras fortfarande på Flux blockkedja, knuten enbart till din anonyma betalningskod.',
+  upgrade_plan_aria: 'Prenumerationsplan',
+  upgrade_plan_monthly: '{usd} / månad',
+  upgrade_plan_annual: '{usd} / år',
+  upgrade_card_cta: 'Betala med kort',
+  upgrade_card_cta_busy: 'Öppnar säker betalning…',
+  upgrade_card_error: 'Kunde inte öppna betalningen. Försök igen om en stund.',
+  upgrade_card_note:
+    'Förnyas automatiskt; avsluta när som helst via Stripe-kvittot på e-post. Att betala i FLUX ovan är billigare — kortpriset täcker hanteringsavgifterna.',
+  upgrade_activating_title: 'Aktiverar ditt premium…',
+  upgrade_state_pending: 'Betalning mottagen — förbereder din aktivering på Flux-nätverket.',
+  upgrade_state_broadcast: 'Aktivering skickad till Flux-nätverket — väntar på bekräftelse.',
+  upgrade_state_confirmed: 'Bekräftat! Full hastighet låses upp på alla servrar inom en minut.',
+  upgrade_state_failed:
+    'Något gick fel vid aktiveringen. Din betalning är säker — vi försöker igen automatiskt och ditt premium dyker upp inom kort.',
+  upgrade_activating_hint: 'Du kan stänga den här sidan — aktiveringen slutförs av sig själv.',
+  upgrade_activated_cta: 'Tillbaka till Anslut →',
+
   split_summary_title: 'Avancerat: split tunneling',
   split_tier_pill: 'PREMIUM · TILLVAL',
   split_lede:

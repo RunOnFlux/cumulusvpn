@@ -1,0 +1,40 @@
+{
+  "name": "@cumulusvpn/bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CumulusVPN payments bridge — converts verified fiat payments (Stripe, Apple IAP, Google Play Billing) into on-chain FLUX payments carrying the user's CVPN1 memo. Standalone (NOT a root workspace); runs on operator infra, never as a Flux app.",
+  "type": "module",
+  "packageManager": "yarn@4.5.0",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint .",
+    "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\" \"*.{json,md}\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"test/**/*.ts\" \"*.{json,md}\""
+  },
+  "dependencies": {
+    "@apple/app-store-server-library": "3.1.0",
+    "@fastify/rate-limit": "11.2.0",
+    "@noble/hashes": "2.2.0",
+    "@runonflux/utxo-lib": "1.0.5",
+    "@scure/base": "2.2.0",
+    "better-sqlite3": "13.0.3",
+    "fastify": "5.11.3",
+    "google-auth-library": "11.0.0",
+    "googleapis": "174.0.1",
+    "stripe": "22.4.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "9.6.0",
+    "@types/node": "24.13.3",
+    "eslint": "10.8.1",
+    "prettier": "3.9.6",
+    "typescript": "5.9.3",
+    "typescript-eslint": "8.66.0",
+    "vitest": "4.1.10"
+  }
+}

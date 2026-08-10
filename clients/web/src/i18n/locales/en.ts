@@ -93,6 +93,26 @@ export const en = {
     'Opens in Zelcore / SSP Wallet. Payment is verified on the Flux blockchain — we never see who you are. The message ties the payment to your key; sending without it means funds arrive but nothing unlocks.',
   upgrade_back: '← Back to Connect',
 
+  upgrade_eyebrow_card: 'Or pay with card',
+  upgrade_card_lede:
+    'Subscribe with a card, Apple Pay or Google Pay. Checkout is handled by Stripe — we never see your card. Your premium is still activated on the Flux blockchain, tied only to your anonymous payment code.',
+  upgrade_plan_aria: 'Subscription plan',
+  upgrade_plan_monthly: '{usd} / month',
+  upgrade_plan_annual: '{usd} / year',
+  upgrade_card_cta: 'Pay with card',
+  upgrade_card_cta_busy: 'Opening secure checkout…',
+  upgrade_card_error: 'Could not open checkout. Please try again in a moment.',
+  upgrade_card_note:
+    'Renews automatically; cancel anytime from the Stripe receipt email. Paying in FLUX above is cheaper — card pricing covers processing fees.',
+  upgrade_activating_title: 'Activating your premium…',
+  upgrade_state_pending: 'Payment received — preparing your activation on the Flux network.',
+  upgrade_state_broadcast: 'Activation sent to the Flux network — waiting for confirmation.',
+  upgrade_state_confirmed: 'Confirmed! Full speed unlocks on all servers within a minute.',
+  upgrade_state_failed:
+    'Something went wrong while activating. Your payment is safe — we retry automatically, and your premium will appear shortly.',
+  upgrade_activating_hint: 'You can close this page — activation completes on its own.',
+  upgrade_activated_cta: 'Back to Connect →',
+
   split_summary_title: 'Advanced: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

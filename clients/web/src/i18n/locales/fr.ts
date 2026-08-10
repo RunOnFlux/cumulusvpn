@@ -87,6 +87,27 @@ export const fr: Catalog = {
     "S'ouvre dans Zelcore / SSP Wallet. Le paiement est vérifié sur la blockchain Flux — nous ne voyons jamais qui vous êtes. Le message relie le paiement à votre clé ; l'envoyer sans lui fait arriver les fonds, mais rien ne se débloque.",
   upgrade_back: '← Retour à Connexion',
 
+  upgrade_eyebrow_card: 'Ou payez par carte',
+  upgrade_card_lede:
+    'Abonnez-vous par carte, Apple Pay ou Google Pay. Le paiement est géré par Stripe — nous ne voyons jamais votre carte. Votre premium est tout de même activé sur la blockchain Flux, relié uniquement à votre code de paiement anonyme.',
+  upgrade_plan_aria: "Formule d'abonnement",
+  upgrade_plan_monthly: '{usd} / mois',
+  upgrade_plan_annual: '{usd} / an',
+  upgrade_card_cta: 'Payer par carte',
+  upgrade_card_cta_busy: 'Ouverture du paiement sécurisé…',
+  upgrade_card_error: "Impossible d'ouvrir le paiement. Veuillez réessayer dans un instant.",
+  upgrade_card_note:
+    "Renouvelé automatiquement ; annulez à tout moment depuis l'e-mail de reçu Stripe. Payer en FLUX ci-dessus revient moins cher — le prix par carte couvre les frais de traitement.",
+  upgrade_activating_title: 'Activation de votre premium…',
+  upgrade_state_pending: 'Paiement reçu — préparation de votre activation sur le réseau Flux.',
+  upgrade_state_broadcast: 'Activation envoyée au réseau Flux — en attente de confirmation.',
+  upgrade_state_confirmed:
+    "Confirmé ! La vitesse maximale se débloque sur tous les serveurs en moins d'une minute.",
+  upgrade_state_failed:
+    "Un problème est survenu pendant l'activation. Votre paiement est en sécurité — nous réessayons automatiquement, et votre premium apparaîtra sous peu.",
+  upgrade_activating_hint: "Vous pouvez fermer cette page — l'activation se termine toute seule.",
+  upgrade_activated_cta: 'Retour à Connexion →',
+
   split_summary_title: 'Avancé : split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

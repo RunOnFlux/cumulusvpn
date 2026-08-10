@@ -7,6 +7,12 @@ the same entitlement state by scanning the chain. There is no activation server,
 account. This copies the battle-tested mechanism FluxOS itself uses for app registration payments
 (fixed address + 64-char hash in OP_RETURN, scanned by `explorerService.js`).
 
+> **Fiat rails (18-payments-bridge.md):** card/IAP subscriptions do not weaken this principle.
+> The operator-run bridge verifies a Stripe/Apple/Google payment and then **broadcasts the same
+> FLUX tx a crypto user would have sent** (treasury wallet, buyer's memo). Gateways still trust
+> only the chain; the bridge is a payer into the system, not an entitlement source. The webhooks
+> it consumes are between the bridge and the payment providers — gateways still have none.
+
 ## The protocol
 
 ### Identity
@@ -52,9 +58,10 @@ Clients display: "Send **20 FLUX** (~$0.99) with this exact message."
 
 ### Wallet UX
 - Zelcore, SSP Wallet and the explorer all support OP_RETURN messages on sends ("message" field).
-- Apps: "Upgrade" screen → shows amount + address + memo + QR + wallet deep links. In-store builds
-  this is framed as a **wallet transfer** ("send FLUX with this message"), and per store policy the
-  flow lives on the website with the app deep-linking out (see 05).
+- Apps: "Upgrade" screen → shows amount + address + memo + QR + wallet deep links — but ONLY where
+  the `inAppUpgrade` flag allows it (web, desktop link-out, direct-APK Android). **Store builds show
+  no crypto surface at all** — they sell premium via store-billing subscriptions instead
+  (`iapPurchase` flag, settled on-chain by the bridge; see 05 and 18-payments-bridge.md).
 - Failure modes handled: wrong/no memo → funds arrive but no entitlement: publish a signed
   refund/claim procedure (prove key ownership by signing a challenge with the WG private key +
   prove payment tx; manual at first, tooling later). Underpayment → ignored, same claim path.

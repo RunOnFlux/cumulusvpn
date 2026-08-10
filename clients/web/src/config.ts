@@ -18,6 +18,27 @@ export const DIRECTORY_URL = '/directory.json';
 // canonical price is `price_flux` from the signed directory (chain-anchored).
 export const PRICE_USD_APPROX = '$0.99';
 
+// Fiat (card) subscription prices. Display-only — the authoritative prices
+// live in Stripe; keep in sync with the bridge's STRIPE_PRICE_* products.
+// Fiat costs more than FLUX deliberately: it absorbs processor fees plus the
+// treasury payout that settles the entitlement on-chain (docs/18).
+export const PRICE_USD_MONTHLY = '$1.99';
+export const PRICE_USD_ANNUAL = '$14.99';
+
+// Payments-bridge origin (Stripe checkout, payment status). docs/18.
+export const BRIDGE_URL = 'https://pay.cumulusvpn.com';
+
+// localStorage key for a payment-code override handed in via #/upgrade?code=…
+// (the desktop app deep-links here with ITS code so the payment credits the
+// desktop key, not the browser's). Persisted across the Stripe redirect.
+export const PAY_CODE_OVERRIDE_STORAGE_KEY = 'cvpn.paycode.override.v1';
+
+// localStorage key for the unix-seconds timestamp of the last checkout we
+// started. The post-return status poll ignores bridge payments created
+// before it — a renewing subscriber's PREVIOUS confirmed payment must not
+// flash an instant (false) "Confirmed!" for the checkout they just made.
+export const PAY_CHECKOUT_STARTED_STORAGE_KEY = 'cvpn.paycheckout.started.v1';
+
 // localStorage key under which the in-browser WireGuard keypair is persisted so
 // the payment code stays stable across the Connect and Upgrade pages.
 export const KEYPAIR_STORAGE_KEY = 'cvpn.keypair.v1';

@@ -51,10 +51,10 @@ HONEST ABOUT WHAT A VPN CAN DO
 CumulusVPN protects you from local-network snooping, ISP logging, and geo-restrictions. It is not
 anonymity software like Tor, and we say so plainly. No overselling.
 
-PREMIUM IS MANAGED ON THE WEB
-Premium speed is optional and is purchased with FLUX cryptocurrency from your own wallet on our
-website. Once your key is upgraded, your phone unlocks premium automatically. The app itself does
-not ask you for money.
+PREMIUM, IF YOU WANT IT
+Premium speed is an optional in-app subscription — $1.99/month or $14.99/year, billed through
+Google Play. Cancel anytime in your Play subscriptions. The free tier never expires, and no
+purchase is ever required to use the VPN.
 
 Powered by Flux Cloud. Privacy that is structural, not a slogan.
 
@@ -82,13 +82,15 @@ https://cumulusvpn.com/privacy
 
 ## Store Settings
 - Contains ads: **No**
-- In-app purchases: **No** (premium is external, via FLUX on the web — see billing stance doc)
+- In-app purchases: **Yes ($1.99–$14.99)** — one subscription product `premium`, base plans
+  `premium-monthly` ($1.99/mo) / `premium-annual` ($14.99/yr) via Google Play Billing (see
+  billing stance doc; FLUX remains web/direct-APK only and is never sold in the Play build)
 
 ## What's new (release notes, first release)
 ```
 First public release of CumulusVPN.
 - One-tap WireGuard connection, no account required
-- Free tier included, premium via FLUX on the web
+- Free tier included; optional premium subscription for higher speeds
 - Server picker with live latency
 - Optional multi-hop for maximum privacy
 - Zero activity logs, RAM-only server state

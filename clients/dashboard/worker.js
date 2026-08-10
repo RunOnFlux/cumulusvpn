@@ -260,8 +260,14 @@ async function fleet() {
 // The mobile app fetches GET /api/flags at launch (same JSON shape as the repo's
 // flags.json). Writes go through POST /api/flags, gated by the ADMIN_TOKEN secret.
 const FLAGS_KEY = 'flags';
+// Every per-platform flag the apps understand (see repo flags.json):
+//   inAppUpgrade — crypto/FLUX purchase UI (direct-APK Android only)
+//   iapPurchase  — store-billing subscription UI (must be ON before store review)
+const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase'];
 // Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
-const DEFAULT_FLAGS = { inAppUpgrade: { android: false, ios: false } };
+const DEFAULT_FLAGS = Object.fromEntries(
+  FLAG_NAMES.map((name) => [name, { android: false, ios: false }]),
+);
 
 function jsonResponse(obj, extraHeaders = {}, status = 200) {
   return new Response(JSON.stringify(obj), {
@@ -291,13 +297,29 @@ async function tokenMatches(provided, secret) {
   return diff === 0;
 }
 
-/** Coerce arbitrary input to the strict flags shape, or null if invalid. */
+/**
+ * Coerce arbitrary input to the strict flags shape, or null if invalid.
+ * A flag absent from the input resolves to all-OFF (fail-closed) — so a KV
+ * record written before a new flag existed stays valid after a deploy, and a
+ * partial POST can never accidentally clear an unrelated flag to a non-shape.
+ * At least one known flag must be present and well-formed.
+ */
 function validateFlags(body) {
   if (!body || typeof body !== 'object') return null;
-  const u = body.inAppUpgrade;
-  if (!u || typeof u !== 'object') return null;
-  if (typeof u.android !== 'boolean' || typeof u.ios !== 'boolean') return null;
-  return { inAppUpgrade: { android: u.android, ios: u.ios } };
+  const out = {};
+  let sawAny = false;
+  for (const name of FLAG_NAMES) {
+    const u = body[name];
+    if (u === undefined) {
+      out[name] = { android: false, ios: false };
+      continue;
+    }
+    if (!u || typeof u !== 'object') return null;
+    if (typeof u.android !== 'boolean' || typeof u.ios !== 'boolean') return null;
+    out[name] = { android: u.android, ios: u.ios };
+    sawAny = true;
+  }
+  return sawAny ? out : null;
 }
 
 /** Current flags from KV (validated), or the fail-safe default. */
@@ -345,12 +367,22 @@ export default {
       const valid = validateFlags(body);
       if (!valid) {
         return jsonResponse(
-          { error: 'expected { inAppUpgrade: { android: boolean, ios: boolean } }' },
+          { error: 'expected { <flag>: { android: boolean, ios: boolean } } with at least one of: ' + FLAG_NAMES.join(', ') },
           {},
           400,
         );
       }
-      const record = { ...valid, updatedAt: new Date().toISOString() };
+      // Merge over the CURRENT stored flags, not all-false defaults: a POST
+      // that omits a flag (e.g. a browser-cached older admin.html that only
+      // knows inAppUpgrade) must not silently force the omitted flag OFF —
+      // iapPurchase being remotely cleared mid-store-review is exactly the
+      // failure this prevents. Fail-closed defaults still apply on READ.
+      const current = await readFlags(env);
+      const merged = {};
+      for (const name of FLAG_NAMES) {
+        merged[name] = body[name] !== undefined ? valid[name] : (current[name] ?? { android: false, ios: false });
+      }
+      const record = { ...merged, updatedAt: new Date().toISOString() };
       await env.FLAGS_KV.put(FLAGS_KEY, JSON.stringify(record));
       return jsonResponse(record, { 'access-control-allow-origin': '*' });
     }

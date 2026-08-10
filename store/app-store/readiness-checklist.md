@@ -105,14 +105,25 @@
   material policy change. Re-openable from Settings → "What data we collect".
   Verified: `tsc` clean, `eslint` clean, 29/29 tests pass.
   ⚠️ This screen, the App Privacy label and `PrivacyInfo.xcprivacy` must stay mutually
-  consistent — reviewers cross-check all three.
-- [ ] ⬜ **App Privacy label** in ASC = "Data Not Collected" (repo's
-  `privacy-nutrition-label.md` is ready) — must match the manifest + policy exactly. VPNs get
-  manual scrutiny here.
+  consistent — reviewers cross-check all three. ⚠️ 2026-08-09: with IAP subscriptions now sold
+  in-app (§9), verify the disclosure copy no longer claims "nothing is sold inside the app"
+  and mentions the retained purchase confirmation; bump `DISCLOSURE_VERSION` if reworded.
+- [ ] ⬜ **App Privacy label** in ASC — updated 2026-08-09 for IAP: now **"Yes, we collect"**
+  with exactly one type — Purchases → Purchase History (App Functionality, not linked, not
+  tracking); Financial Info stays No. The "Data Not Collected" badge is **lost** (accepted).
+  Repo's `privacy-nutrition-label.md` is updated — must match the manifest + policy exactly.
+  VPNs get manual scrutiny here.
 
 ## 4. In-app purchase / crypto (3.1.1)
 
-- [x] ✅ **Purchase UI is hard-OFF on iOS at build level** (resolved 2026-07-30 after the
+> **Update 2026-08-09 — Apple IAP adopted.** The iOS build now sells two auto-renewable
+> subscriptions via StoreKit 2 (see §9). Everything below about the **crypto/FLUX** purchase
+> surface (`inAppUpgrade`) remains true and in force — the crypto UI stays hard-off on iOS at
+> build level. The new IAP subscribe UI is a separate surface, gated by the new `iapPurchase`
+> remote flag (fails closed OFF; must be ON through review — see §9). On iOS the app shows
+> ONLY the IAP surface: zero FLUX/crypto/price/web-purchase mentions (3.1.1/3.1.3).
+
+- [x] ✅ **Crypto purchase UI is hard-OFF on iOS at build level** (resolved 2026-07-30 after the
   1.0.2 (15) rejection under 3.1.1). `resolveFlags` in `clients/mobile/src/lib/flags.ts` only
   honors `inAppUpgrade` for platforms in `PURCHASE_UI_PLATFORMS` (= android only), so a remote
   KV flip can NEVER enable purchase UI on iOS. When the flag is off the app now shows **no
@@ -125,10 +136,12 @@
   contains "PREMIUM IS MANAGED ON THE WEB", "upgrade with FLUX", or the `crypto` keyword; the
   description mentions the free tier only (price info in the description is permitted per
   2.3.7), with no premium-purchase or website-payment references.
-- [x] ✅ **Premium on iOS (3.1.3(b))**: resolved as "no purchase surface" — premium is never
-  offered, priced, or referenced in the iOS app or metadata; a device whose key already has
-  premium entitlement simply runs at full speed (neutral status chip). If we later want to
-  SELL premium to iOS users, that requires Apple IAP (or a US-storefront-gated external link).
+- [x] ✅ **Premium on iOS (3.1.3(b))**: originally resolved as "no purchase surface" — premium
+  was never offered, priced, or referenced in the iOS app or metadata; a device whose key
+  already had premium entitlement simply ran at full speed (neutral status chip). The "if we
+  later want to SELL premium to iOS users, that requires Apple IAP" branch has now been taken:
+  premium IS sold on iOS, exclusively via Apple IAP (§9). The no-external-steering posture is
+  unchanged — StoreKit is the only purchase surface.
 - [x] ✅ Account deletion (5.1.1(v)) — **N/A**, the app has no accounts (key-based identity).
 
 ## 5. App Store Connect content
@@ -168,5 +181,35 @@
 
 ## 8. Post-launch (not gating)
 
-- [ ] Consider adding Apple IAP for fiat reach.
+- [x] ✅ ~~Consider adding Apple IAP for fiat reach.~~ **Done** (2026-08-09) — see §9.
 - [ ] Transparency report; keep policy ⇄ label ⇄ manifest in sync on every update.
+
+## 9. IAP setup — auto-renewable subscriptions (added 2026-08-09)
+
+The iOS build sells two auto-renewable subscriptions via StoreKit 2 (react-native-iap);
+purchases carry an `appAccountToken` (a UUID one-way derived from the device's pseudonymous
+payment code). Receipts are verified by the payments bridge (docs/18-payments-bridge.md) at
+pay.cumulusvpn.com; entitlement stays chain-only (gateways unchanged). Setup, in order:
+
+- [ ] ⬜ **Paid Applications agreement** active (App Store Connect → Business/Agreements, Tax,
+  and Banking): agreement signed, bank account + tax forms complete. Nothing sells until this
+  is green.
+- [ ] ⬜ **Subscription group "Premium"** with the two products:
+  `cvpn.premium.monthly` ($1.99/month) and `cvpn.premium.annual` ($14.99/year). Localized
+  display names ("Premium Monthly" / "Premium Annual"), descriptions, and a **review
+  screenshot** for each product (required before a sub can be submitted).
+- [ ] ⬜ **App Store Server Notifications V2** URL set to
+  `https://pay.cumulusvpn.com/v1/apple/notifications` — for **both sandbox and production**
+  (App Store Connect → App Information → App Store Server Notifications). This is how the
+  payments bridge learns about renewals/cancellations.
+- [ ] ⬜ **App Privacy answers updated** in ASC to match the new `privacy-nutrition-label.md`
+  (Purchases → Purchase History collected; badge lost — see §3).
+- [ ] ⬜ **Sandbox testers** created (Users and Access → Sandbox) and the full
+  purchase/restore/renewal flow exercised in sandbox on a real device before submission.
+- [ ] ⬜ **First-sub-submitted-with-build rule:** the first auto-renewable subscription(s) must
+  be submitted for review **together with a new app build** (select them on the version page).
+  Subsequent subscription changes can be reviewed independently.
+- [ ] ⬜ **Flip `iapPurchase.ios = true` in the Cloudflare KV BEFORE submitting for review.**
+  The flag fails closed OFF; reviewers must find the declared IAPs in the app or the
+  submission is rejected (2.1/3.1.1). After approval the flag is an emergency kill switch
+  only — never OFF during a review window.

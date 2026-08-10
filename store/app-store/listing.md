@@ -49,6 +49,26 @@ https://cumulusvpn.com
 https://cumulusvpn.com/privacy
 ```
 
+## In-App Purchases (shown on the product page)
+
+Two auto-renewable subscriptions, App Store Connect subscription group **"Premium"**. Their
+display names + prices appear on the product page under "In-App Purchases" once approved:
+
+| Product ID | Display name | Price |
+|---|---|---|
+| `cvpn.premium.monthly` | Premium Monthly | $1.99 / month |
+| `cvpn.premium.annual` | Premium Annual | $14.99 / year |
+
+**Auto-renewable subscription metadata requirements (Guideline 3.1.2):** the app metadata must
+carry a functional **Terms of Use (EULA)** link and the **Privacy Policy** link. We use Apple's
+standard EULA, so no custom EULA upload — reference it in the description/metadata:
+
+- Terms of Use (EULA): `https://www.apple.com/legal/internet-services/itunes/dev/stdeula/`
+- Privacy Policy: `https://cumulusvpn.com/privacy`
+
+Both links are also reachable in-app from the subscribe section (alongside Restore Purchases
+and the Manage Subscription link) — keep the metadata and in-app links in sync.
+
 ## Copyright
 ```
 2026 CumulusVPN

@@ -5,12 +5,25 @@ whether you collect it, and if so how it is used and whether it is linked to ide
 tracking. "Collect" in Apple's definition means transmitting data off the device **and
 retaining it** beyond the transient processing needed to perform an action the user requested.
 
-## Top-level answer
+## Top-level answer (updated 2026-08-09 — IAP subscriptions added)
 
-> **"Do you or your third-party partners collect data from this app?"** → **No, we do not
-> collect data from this app.**
+> **"Do you or your third-party partners collect data from this app?"** → **Yes, we collect
+> data from this app.**
 
-Result: the product page shows **"Data Not Collected."**
+We now sell auto-renewable subscriptions via Apple IAP, and we retain — server-side, keyed to
+the pseudonymous payment code — the store transaction identifiers (purchase history) needed to
+grant and renew premium. That is "collected" under Apple's definition, so **exactly one** data
+type is declared:
+
+| Data type | Collected | Purpose | Linked to identity | Used for tracking |
+|---|---|---|---|---|
+| **Purchases → Purchase History** | **Yes** | **App Functionality** | **No** | **No** |
+
+Everything else remains **Not collected**. **Financial Info stays "No"** — Apple processes the
+payment; card/payment-instrument data never reaches us.
+
+Result: the product page **no longer shows the "Data Not Collected" badge** — that badge is
+lost by design with the IAP launch. It instead shows "Data Not Linked to You: Purchases."
 
 ### Why this is the correct and truthful answer
 
@@ -26,11 +39,14 @@ Result: the product page shows **"Data Not Collected."**
   a persistent store or shipped to a central server.
 - **No analytics or advertising SDKs** are embedded. No IDFA/IDFV is requested; App Tracking
   Transparency is not triggered because we do not track.
-- **Payments** are made in FLUX on a public blockchain, on the web/desktop, from the user's own
-  wallet — the app does not collect payment info, card data, or purchase history.
+- **Payments:** Apple processes the in-app subscription; we never see card or
+  payment-instrument data (Financial Info = No). What we do retain is the **purchase history**
+  (store transaction identifiers) keyed to the pseudonymous payment code — declared above as
+  Purchases, App Functionality, not linked to identity, not used for tracking. The
+  `appAccountToken` on each purchase is a UUID one-way derived from that code, not an identity.
 - **Optional crash reports** are strictly opt-in and off by default; if a reviewer considers
   opt-in diagnostics as "Diagnostics collected," see the fallback table at the bottom — but as
-  shipped with crash reporting disabled by default, nothing is collected.
+  shipped with crash reporting disabled by default, no diagnostics are collected.
 
 ## Per-category answers (as presented in App Store Connect)
 
@@ -38,7 +54,7 @@ Result: the product page shows **"Data Not Collected."**
 |---|---|---|
 | Contact Info (name, email, phone, address, other) | **No** | No accounts. |
 | Health & Fitness | **No** | — |
-| Financial Info (payment, credit, other financial) | **No** | FLUX paid from user's own wallet on the web; app takes no payment data. |
+| Financial Info (payment, credit, other financial) | **No** | Apple processes the IAP payment; we never receive card/payment-instrument data. (FLUX remains web-only, paid from the user's own wallet.) |
 | Location (precise, coarse) | **No** | Server country is a user choice, not device location. |
 | Sensitive Info | **No** | — |
 | Contacts | **No** | — |
@@ -46,7 +62,7 @@ Result: the product page shows **"Data Not Collected."**
 | Browsing History | **No** | Never recorded. |
 | Search History | **No** | — |
 | Identifiers (User ID, Device ID) | **No** | No IDFA/IDFV/user ID collected. WG public key is transient routing token, not retained. |
-| Purchases (purchase history) | **No** | No in-app purchase; entitlement derived from public chain, keyed to public key only. |
+| Purchases (purchase history) | **Yes** | Store transaction ids / purchase tokens retained server-side, keyed to the pseudonymous payment code. Purpose: App Functionality. **Not linked to identity** (no accounts, no email), **not used for tracking**. |
 | Usage Data (product interaction, ads, other) | **No** | No analytics SDK. |
 | Diagnostics (crash, performance, other) | **No** (default) | Crash reporting is opt-in and OFF by default; if enabled by user, see fallback below. |
 | Surroundings / Body / Other Data | **No** | — |
@@ -63,4 +79,5 @@ If a future build turns crash reporting on by default, update the label to:
 |---|---|---|---|---|
 | Diagnostics → Crash Data | Yes | **No** | **No** | App Functionality (bug fixing) |
 
-As currently designed (opt-in, default off), **Data Not Collected** stands.
+As currently designed (opt-in, default off), Diagnostics stays **No** — the only declared data
+type remains Purchases → Purchase History.

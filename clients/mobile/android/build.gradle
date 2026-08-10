@@ -5,6 +5,15 @@ buildscript {
         compileSdkVersion = 36
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
+        // Load-bearing pin: RN 0.86's gradle plugin caps the usable KGP API
+        // at this version (its includeBuild loads KGP 2.1.20 classes into
+        // the parent classloader — any kotlinVersion >= 2.2 dies at
+        // configuration with a KotlinJvmCompilerOptions.getJvmDefault
+        // NoSuchMethod clash). This in turn caps readable library metadata
+        // at Kotlin 2.2, which is why react-native-iap is pinned to 16.0.2:
+        // 16.1.0+ (Aug 2026) ships openiap-google 3.1+ AARs with Kotlin 2.4
+        // metadata. Bump the iap pin when RN's toolchain reaches Kotlin 2.3+
+        // or upstream rebuilds with compatible metadata.
         kotlinVersion = "2.1.20"
     }
     repositories {

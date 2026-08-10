@@ -77,3 +77,13 @@ export function countryMeta(code: string): CountryMeta {
  *  `#/upgrade` hash route; cumulusvpn.com is the asset-only landing (no /upgrade,
  *  it 404s). */
 export const UPGRADE_URL = 'https://vpn.cumulusvpn.com/#/upgrade';
+
+/**
+ * Upgrade URL that credits THIS app's key. Without `?code=`, the web page
+ * derives the payment code from the *browser's* keypair — a payment made
+ * there (FLUX or card) would silently unlock the wrong key. The web page
+ * honours the override for both the FLUX memo and Stripe checkout.
+ */
+export function upgradeUrl(paymentCode: string): string {
+  return paymentCode ? `${UPGRADE_URL}?code=${encodeURIComponent(paymentCode)}` : UPGRADE_URL;
+}

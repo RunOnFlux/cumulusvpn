@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  appAccountToken,
   paymentCode,
   paymentMemo,
   walletDeepLink,
@@ -37,6 +38,26 @@ describe('paymentCode', () => {
 describe('paymentMemo', () => {
   it('prefixes the code with CVPN1:', () => {
     expect(paymentMemo(ZERO_PUB)).toBe(`CVPN1:${ZERO_CODE}`);
+  });
+});
+
+describe('appAccountToken', () => {
+  // SHARED VECTORS with bridge/test/codes.test.ts — the bridge recomputes
+  // this UUID at verify time and rejects a mismatch, so client and server
+  // derivations must never drift. Update both files together (and remap
+  // existing subscriptions) if the derivation ever changes.
+  const ONES_CODE = '2bmMSbm88eN6MA6RuDiFKjNAZEuk'; // paymentCode of 32 x 0x01
+
+  it('matches the shared cross-package vectors', () => {
+    expect(appAccountToken(ZERO_CODE)).toBe('d47c7e4b-c0f7-421c-a429-72ad6e9ecaf3');
+    expect(appAccountToken(ONES_CODE)).toBe('b2cc0e5c-45f5-4846-9d80-1fffa5f63323');
+  });
+
+  it('is a stable RFC 4122-shaped UUID', () => {
+    const uuid = appAccountToken(SEQ_CODE);
+    expect(uuid).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(appAccountToken(SEQ_CODE)).toBe(uuid);
+    expect(appAccountToken(ZERO_CODE)).not.toBe(uuid);
   });
 });
 

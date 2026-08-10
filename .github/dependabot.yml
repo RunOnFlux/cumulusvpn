@@ -30,6 +30,14 @@ updates:
       mobile-npm:
         patterns: ['*']
     ignore:
+      # react-native-iap 16.1.0+ (Aug 2026) ships openiap-google 3.1+ AARs
+      # with Kotlin 2.4 metadata, unreadable by RN 0.86's Kotlin 2.1.20 —
+      # and the RN gradle plugin caps kotlinVersion at 2.1.x (getJvmDefault
+      # classloader clash on >= 2.2). Held at 16.0.2 (openiap-google 3.0.1,
+      # Kotlin 2.2 metadata — the newest that builds). Lift when RN's
+      # toolchain reaches Kotlin 2.3+ or upstream rebuilds compatibly.
+      - dependency-name: 'react-native-iap'
+        versions: ['>16.0.2']
       # The RN toolchain (metro, @react-native/babel-preset) is built for Babel 7;
       # Babel 8 in the app while the preset stays on 7 breaks the test/bundle
       # pipeline (PR #30). Lift when React Native declares Babel 8 support.

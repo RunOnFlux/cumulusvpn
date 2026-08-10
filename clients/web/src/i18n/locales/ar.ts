@@ -100,6 +100,26 @@ export const ar: Catalog = {
     'يفتح في Zelcore / SSP Wallet. يُتحقَّق من الدفعة على سلسلة كتل Flux — لا نرى أبدًا من أنت. تربط الرسالة الدفعة بمفتاحك؛ الإرسال بدونها يعني وصول الأموال دون أن يُطلَق شيء.',
   upgrade_back: '→ العودة إلى الاتصال',
 
+  upgrade_eyebrow_card: 'أو ادفع بالبطاقة',
+  upgrade_card_lede:
+    'اشترك ببطاقة أو Apple Pay أو Google Pay. تتولى Stripe عملية الدفع — لا نرى بطاقتك أبدًا. يُفعَّل وضعك المميز مع ذلك على سلسلة كتل Flux، مرتبطًا فقط برمز الدفع المجهول الخاص بك.',
+  upgrade_plan_aria: 'خطة الاشتراك',
+  upgrade_plan_monthly: '{usd} / شهريًا',
+  upgrade_plan_annual: '{usd} / سنويًا',
+  upgrade_card_cta: 'ادفع بالبطاقة',
+  upgrade_card_cta_busy: 'جارٍ فتح صفحة الدفع الآمنة…',
+  upgrade_card_error: 'تعذّر فتح صفحة الدفع. يُرجى المحاولة مرة أخرى بعد قليل.',
+  upgrade_card_note:
+    'يتجدد تلقائيًا؛ يمكنك الإلغاء في أي وقت من رسالة إيصال Stripe البريدية. الدفع بـ FLUX أعلاه أرخص — سعر البطاقة يغطي رسوم المعالجة.',
+  upgrade_activating_title: 'جارٍ تفعيل وضعك المميز…',
+  upgrade_state_pending: 'تم استلام الدفعة — جارٍ تجهيز التفعيل على شبكة Flux.',
+  upgrade_state_broadcast: 'أُرسل التفعيل إلى شبكة Flux — بانتظار التأكيد.',
+  upgrade_state_confirmed: 'تم التأكيد! تُفتح السرعة الكاملة على جميع الخوادم خلال دقيقة.',
+  upgrade_state_failed:
+    'حدث خطأ ما أثناء التفعيل. دفعتك آمنة — نعيد المحاولة تلقائيًا، وسيظهر وضعك المميز قريبًا.',
+  upgrade_activating_hint: 'يمكنك إغلاق هذه الصفحة — يكتمل التفعيل من تلقاء نفسه.',
+  upgrade_activated_cta: 'العودة إلى الاتصال ←',
+
   split_summary_title: 'متقدم: تقسيم النفق',
   split_tier_pill: 'بريميوم · اختياري',
   split_lede:

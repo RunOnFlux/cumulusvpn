@@ -87,6 +87,27 @@ export const it: Catalog = {
     'Si apre in Zelcore / SSP Wallet. Il pagamento è verificato sulla blockchain di Flux — non vediamo mai chi sei. Il messaggio collega il pagamento alla tua chiave; inviarlo senza significa che i fondi arrivano ma nulla si sblocca.',
   upgrade_back: '← Torna a Connetti',
 
+  upgrade_eyebrow_card: 'Oppure paga con carta',
+  upgrade_card_lede:
+    'Abbonati con carta, Apple Pay o Google Pay. Il checkout è gestito da Stripe — non vediamo mai la tua carta. Il tuo premium viene comunque attivato sulla blockchain di Flux, legato solo al tuo codice di pagamento anonimo.',
+  upgrade_plan_aria: 'Piano di abbonamento',
+  upgrade_plan_monthly: '{usd} / mese',
+  upgrade_plan_annual: '{usd} / anno',
+  upgrade_card_cta: 'Paga con carta',
+  upgrade_card_cta_busy: 'Apertura del checkout sicuro…',
+  upgrade_card_error: 'Impossibile aprire il checkout. Riprova tra un momento.',
+  upgrade_card_note:
+    "Si rinnova automaticamente; disdici quando vuoi dall'email di ricevuta Stripe. Pagare in FLUX qui sopra costa meno — il prezzo con carta copre le commissioni di elaborazione.",
+  upgrade_activating_title: 'Attivazione del tuo premium…',
+  upgrade_state_pending: 'Pagamento ricevuto — prepariamo la tua attivazione sulla rete Flux.',
+  upgrade_state_broadcast: 'Attivazione inviata alla rete Flux — in attesa di conferma.',
+  upgrade_state_confirmed:
+    'Confermato! La piena velocità si sblocca su tutti i server entro un minuto.',
+  upgrade_state_failed:
+    "Qualcosa è andato storto durante l'attivazione. Il tuo pagamento è al sicuro — riproviamo automaticamente e il tuo premium comparirà a breve.",
+  upgrade_activating_hint: "Puoi chiudere questa pagina — l'attivazione si completa da sola.",
+  upgrade_activated_cta: 'Torna a Connetti →',
+
   split_summary_title: 'Avanzato: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

@@ -92,8 +92,8 @@ export function DisclosureScreen({ onAccept, onClose }: Props): React.JSX.Elemen
         <Group
           title="Your plan"
           points={[
-            'Nothing is sold inside this app, and it never asks you for money.',
-            'Your plan is checked using your public key alone — no personal or payment details are stored.',
+            'Premium is optional. If you subscribe in the app, payment is handled entirely by your app store — we never see your card or your identity, only the confirmation that unlocks premium.',
+            'Your plan is checked using your public key alone — no account, no email, no personal details stored.',
           ]}
         />
 

@@ -86,6 +86,26 @@ export const zh: Catalog = {
     '在 Zelcore / SSP Wallet 中打开。付款会在 Flux 区块链上验证——我们永远不知道你是谁。留言把付款与你的密钥绑定；不带留言发送意味着资金会到账，但不会解锁任何东西。',
   upgrade_back: '← 返回连接',
 
+  upgrade_eyebrow_card: '或使用银行卡付款',
+  upgrade_card_lede:
+    '使用银行卡、Apple Pay 或 Google Pay 订阅。结账由 Stripe 处理——我们永远看不到你的卡。你的高级权限仍在 Flux 区块链上激活，只与你的匿名付款代码绑定。',
+  upgrade_plan_aria: '订阅方案',
+  upgrade_plan_monthly: '{usd} / 月',
+  upgrade_plan_annual: '{usd} / 年',
+  upgrade_card_cta: '使用银行卡付款',
+  upgrade_card_cta_busy: '正在打开安全结账页面…',
+  upgrade_card_error: '无法打开结账页面。请稍后再试。',
+  upgrade_card_note:
+    '自动续订；随时可通过 Stripe 收据邮件取消。上方用 FLUX 付款更便宜——银行卡价格包含了手续费。',
+  upgrade_activating_title: '正在激活你的高级权限…',
+  upgrade_state_pending: '已收到付款——正在为你准备 Flux 网络上的激活。',
+  upgrade_state_broadcast: '激活已发送至 Flux 网络——等待确认中。',
+  upgrade_state_confirmed: '已确认！全速将在一分钟内在所有服务器解锁。',
+  upgrade_state_failed:
+    '激活时出了点问题。你的付款是安全的——我们会自动重试，你的高级权限很快就会出现。',
+  upgrade_activating_hint: '你可以关闭此页面——激活会自行完成。',
+  upgrade_activated_cta: '返回连接 →',
+
   split_summary_title: '高级：分流隧道',
   split_tier_pill: '高级版 · 可选',
   split_lede:

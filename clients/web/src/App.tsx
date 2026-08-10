@@ -13,7 +13,7 @@ import { clearIssuedConfig } from './lib/issuedConfig';
 
 export function App() {
   const [themeMode, toggleTheme] = useTheme();
-  const [route, navigate] = useRoute();
+  const [route, navigate, routeParams] = useRoute();
   const { locale } = useI18n();
   const discovery = useDiscovery(locale);
   const [keypair, setKeypair] = useState<Keypair>(() => loadOrCreateKeypair());
@@ -38,6 +38,7 @@ export function App() {
         <UpgradePage
           keypair={keypair}
           directory={discovery.directory}
+          params={routeParams}
           onNavigateConnect={() => navigate('connect')}
         />
       ) : (

@@ -102,7 +102,9 @@ export async function loadActiveRoute(): Promise<PersistedRoute | null> {
  * policy is explicitly not sufficient. Bump this whenever the substance of that
  * declaration changes so the screen is shown again.
  */
-export const DISCLOSURE_VERSION = '1';
+// '2': in-app store subscriptions added — the "nothing is sold inside this
+// app" claim was replaced with the store-payment disclosure.
+export const DISCLOSURE_VERSION = '2';
 
 /** The route styles a user may persist (mirrors core `RouteStyle`). */
 const ROUTE_STYLES: readonly RouteStyle[] = [
