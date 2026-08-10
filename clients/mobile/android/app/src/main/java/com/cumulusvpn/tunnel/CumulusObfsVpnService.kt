@@ -277,6 +277,11 @@ class CumulusObfsVpnService : VpnService() {
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            // API 31+ defers FGS notifications ~10s by default — on the first
+            // connect of a session the shade shows nothing (a reconnect shows
+            // instantly only because a recently-visible FGS notification skips
+            // deferral). A VPN status notification must be immediate.
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .apply { if (tap != null) setContentIntent(tap) }
             .build()
         val type =

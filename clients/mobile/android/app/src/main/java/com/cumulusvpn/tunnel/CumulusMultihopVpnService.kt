@@ -246,6 +246,10 @@ class CumulusMultihopVpnService : VpnService() {
             .setSmallIcon(applicationInfo.icon)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            // API 31+ defers FGS notifications ~10s by default — see the same
+            // annotation in CumulusObfsVpnService: the first connect of a
+            // session would show no notification without this.
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .apply { if (tap != null) setContentIntent(tap) }
             .build()
         val type =
