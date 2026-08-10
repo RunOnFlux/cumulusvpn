@@ -23,7 +23,7 @@ const REVOKE_NOTIFICATION = 12;
 export interface GoogleVerifyOutcome {
   readonly accepted: boolean;
   readonly reason: string;
-  readonly months?: number;
+  readonly days?: number;
   readonly test?: boolean;
 }
 
@@ -78,8 +78,8 @@ export class GoogleRail {
     }
     const line = sub.lineItems?.[0];
     const basePlan = line?.offerDetails?.basePlanId;
-    const months = this.monthsForBasePlan(basePlan);
-    if (months === null) {
+    const days = this.daysForBasePlan(basePlan);
+    if (days === null) {
       return { accepted: false, reason: `unknown_base_plan:${basePlan ?? 'none'}` };
     }
     const orderId =
@@ -89,7 +89,7 @@ export class GoogleRail {
     if (!orderId) {
       return { accepted: false, reason: 'no_order_id' };
     }
-    const plan: Plan = months === 12 ? 'annual' : 'monthly';
+    const plan: Plan = days === 360 ? 'annual' : 'monthly';
     this.subs.upsert('google', purchaseToken, code, plan);
 
     await this.acknowledgeIfNeeded(sub, purchaseToken, line?.productId ?? undefined);
@@ -97,17 +97,17 @@ export class GoogleRail {
     const isTest = sub.testPurchase !== undefined && sub.testPurchase !== null;
     if (isTest && !this.cfg.testGrants) {
       this.log.info({ order: orderId }, 'google test purchase verified (no chain grant)');
-      return { accepted: true, reason: 'test_verified', months, test: true };
+      return { accepted: true, reason: 'test_verified', days, test: true };
     }
     const result = recordGrant(this.payments, this.priceZats, {
       rail: 'google',
       eventKey: orderId,
       externalRef: purchaseToken,
       paymentCode: code,
-      months,
+      days,
     });
     this.log.info({ order: orderId, result }, 'google purchase verified');
-    return { accepted: true, reason: result, months, test: false };
+    return { accepted: true, reason: result, days, test: false };
   }
 
   /**
@@ -176,12 +176,12 @@ export class GoogleRail {
     }
   }
 
-  private monthsForBasePlan(basePlanId: string | null | undefined): number | null {
+  private daysForBasePlan(basePlanId: string | null | undefined): number | null {
     if (basePlanId === this.cfg.basePlanMonthly) {
-      return 1;
+      return 30;
     }
     if (basePlanId === this.cfg.basePlanAnnual) {
-      return 12;
+      return 360;
     }
     return null;
   }

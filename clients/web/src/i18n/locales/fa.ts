@@ -107,6 +107,20 @@ export const fa: Catalog = {
   upgrade_activating_hint: 'می‌توانید این صفحه را ببندید — فعال‌سازی خودبه‌خود کامل می‌شود.',
   upgrade_activated_cta: 'بازگشت به اتصال ←',
 
+  redeem_eyebrow: 'کدی دارید؟',
+  redeem_lede:
+    'یک کوپن یا کد تبلیغاتی استفاده کنید. کدهای زمان رایگان روی شبکه Flux برای این دستگاه فعال می‌شوند؛ کدهای تخفیف روی پرداخت با کارت در بالا اعمال می‌شوند.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'استفاده از کد',
+  redeem_cta_busy: 'در حال بررسی…',
+  redeem_discount_applied:
+    'تخفیف {percent}% اعمال شد — در بالا با کارت پرداخت کنید؛ تخفیف در صفحه پرداخت لحاظ می‌شود.',
+  redeem_err_invalid: 'این کد معتبر نیست. غلط‌های تایپی را بررسی کنید و دوباره تلاش کنید.',
+  redeem_err_expired: 'این کد منقضی شده است.',
+  redeem_err_exhausted: 'این کد قبلاً به‌طور کامل استفاده شده است.',
+  redeem_err_already: 'این دستگاه قبلاً این کد را استفاده کرده است.',
+  redeem_err_later: 'استفاده از کد موقتاً در دسترس نیست — لطفاً چند دقیقه دیگر دوباره تلاش کنید.',
+
   split_summary_title: 'پیشرفته: تقسیم تونل',
   split_tier_pill: 'پریمیوم · اختیاری',
   split_lede:

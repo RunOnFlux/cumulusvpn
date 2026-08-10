@@ -19,6 +19,7 @@ UI within ~1 min of confirmation.
 | Stripe | `subscription_data.metadata.cvpn_code`/`cvpn_plan` set at Checkout | invoice's subscription metadata (fallback: retrieve subscription) | **invoice id** — only `invoice.paid` grants |
 | Apple | `appAccountToken` = UUID derived from the code (below); `/v1/apple/verify` recomputes and rejects mismatch | ASN v2 → `appAccountToken` map or `originalTransactionId` binding persisted at first verify | **transactionId** (unique per renewal) |
 | Google | `obfuscatedExternalAccountId` = the raw code (~27 chars) | RTDN → `subscriptionsv2.get` → account id, fallback purchaseToken binding | **latestOrderId** (`GPA…-0, -1, …`) |
+| Voucher | our own DB: `voucher_redemptions` UNIQUE(voucher, code) | n/a (one-shot grants) | **`voucher_id:payment_code`** (mirrors the UNIQUE) |
 
 Everything a webhook/notification claims is re-verified against the
 provider (Stripe signature over raw bytes; Apple JWS x5c chain to the
@@ -61,9 +62,43 @@ broadcast ─▶ confirmer: ≥1 conf → confirmed; expired unmined → back to
 - Treasury runs dry → rows stay `pending`, retry forever with backoff,
   operator is paged. Users see `pending` via the status endpoint.
 
+## Vouchers & promo codes
+
+Dashboard-managed codes (bridge SQLite; admin via `/internal/vouchers`,
+proxied by the dashboard worker). Two types:
+
+- **`grant_days`** — free time. Redemption enqueues a treasury settlement of
+  `ceil(price_zats × days / 30)` zats (the CEIL is load-bearing: the gateway
+  grants `floor(30 × amount/price)` days, and a floored payout would
+  truncate to zero for 1-day grants). 30-multiples settle as whole price
+  multiples and work on ANY gateway; day-granular values are gated by
+  `DAY_GRANTS_ENABLED` until the fleet runs the pro-rata rule (docs/04).
+  Every redemption spends real treasury FLUX — grants are as irrevocable as
+  any chain payment; revoking a code only stops future redemptions.
+- **`stripe_discount`** — percent off the card checkout. The bridge
+  provisions one Stripe coupon per batch + one promotion code per voucher;
+  the checkout endpoint applies it via `discounts` (deliberately not
+  `allow_promotion_codes` — our box handles both code types with a uniform
+  error taxonomy). Redemptions are attributed back from discounted
+  `invoice.paid` webhooks for stats. Store-side IAP discounts are a
+  different mechanism entirely: Apple Offer Codes / Play promo codes,
+  console-configured, invisible to the bridge beyond ordinary purchases.
+
+Code format: `CVPN-XXXXX-XXXXX` display, 10 chars canonical from a
+31-char no-ambiguity alphabet (~2^49.5 entropy); vanity codes 6–20 chars
+(≥8 for grants). Brute-force posture: 5/min/IP route limit + a global
+breaker (>50 invalid-code attempts/10 min → 429 for all for 15 min +
+operator alert). Redemption double-spend walls: `UNIQUE(voucher_id,
+payment_code)` + the payments queue's `UNIQUE(rail, event_key)`.
+
 ## Client-facing API (`https://pay.cumulusvpn.com`, `{status,data}` envelope)
 
-- `POST /v1/stripe/checkout` `{payment_code, plan}` → `{url, session_id}`
+- `POST /v1/voucher/redeem` `{payment_code, code}` →
+  `{type:'grant_days', days, state:'pending'}` (consumed; settles on-chain) or
+  `{type:'stripe_discount', percent_off}` (not consumed; pass the code as
+  `voucher` to checkout). Errors: `invalid` / `expired` / `exhausted` /
+  `already_redeemed` / `temporarily_unavailable`.
+- `POST /v1/stripe/checkout` `{payment_code, plan, voucher?}` → `{url, session_id}`
 - `POST /v1/apple/verify` `{payment_code, signed_transaction}`
 - `POST /v1/google/verify` `{payment_code, purchase_token}`
 - `GET  /v1/payment/:code/status` → recent payments with

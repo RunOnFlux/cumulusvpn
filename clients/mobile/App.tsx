@@ -28,7 +28,7 @@ function App(): React.JSX.Element {
   const flags = useFlags();
   // Any purchase surface on = the upgrade route exists. The IAP hook only
   // mounts store machinery when its flag is on (and quietly no-ops otherwise).
-  const canUpgrade = flags.inAppUpgrade || flags.iapPurchase;
+  const canUpgrade = flags.inAppUpgrade || flags.iapPurchase || flags.voucherRedeem;
   const iap = useIap(flags.iapPurchase, vpn.payment?.code ?? null, vpn.tier === 'premium');
   const [route, setRoute] = useState<Route>('connect');
   // App Store 5.4: the data disclosure must be seen BEFORE the service is used,
@@ -149,6 +149,7 @@ function App(): React.JSX.Element {
               paidUntil={vpn.paidUntil}
               payment={vpn.payment}
               cryptoEnabled={flags.inAppUpgrade}
+              voucherEnabled={flags.voucherRedeem}
               iap={flags.iapPurchase ? iap : null}
               onClose={() => setRoute('connect')}
             />

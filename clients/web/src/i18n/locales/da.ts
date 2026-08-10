@@ -107,6 +107,20 @@ export const da: Catalog = {
   upgrade_activating_hint: 'Du kan lukke denne side — aktiveringen fuldføres af sig selv.',
   upgrade_activated_cta: 'Tilbage til Forbind →',
 
+  redeem_eyebrow: 'Har du en kode?',
+  redeem_lede:
+    'Indløs en voucher eller rabatkode. Koder med gratis tid aktiveres på Flux-netværket for denne enhed; rabatkoder gælder for kortbetalingen ovenfor.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Indløs',
+  redeem_cta_busy: 'Kontrollerer…',
+  redeem_discount_applied:
+    '{percent}% rabat anvendt — betal med kort ovenfor, så er rabatten med i betalingen.',
+  redeem_err_invalid: 'Den kode er ikke gyldig. Tjek for tastefejl, og prøv igen.',
+  redeem_err_expired: 'Denne kode er udløbet.',
+  redeem_err_exhausted: 'Denne kode er allerede brugt fuldt ud.',
+  redeem_err_already: 'Denne enhed har allerede indløst denne kode.',
+  redeem_err_later: 'Indløsning er kortvarigt utilgængelig — prøv igen om et par minutter.',
+
   split_summary_title: 'Avanceret: split tunneling',
   split_tier_pill: 'PREMIUM · TILVALG',
   split_lede:

@@ -107,6 +107,20 @@ export const sv: Catalog = {
   upgrade_activating_hint: 'Du kan stänga den här sidan — aktiveringen slutförs av sig själv.',
   upgrade_activated_cta: 'Tillbaka till Anslut →',
 
+  redeem_eyebrow: 'Har du en kod?',
+  redeem_lede:
+    'Lös in en värdekod eller kampanjkod. Koder för gratistid aktiveras på Flux-nätverket för den här enheten; rabattkoder gäller kortbetalningen ovan.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Lös in',
+  redeem_cta_busy: 'Kontrollerar…',
+  redeem_discount_applied:
+    '{percent} % rabatt tillagd — betala med kort ovan så ingår rabatten i betalningen.',
+  redeem_err_invalid: 'Den koden är inte giltig. Kontrollera stavningen och försök igen.',
+  redeem_err_expired: 'Den här koden har gått ut.',
+  redeem_err_exhausted: 'Den här koden är redan helt förbrukad.',
+  redeem_err_already: 'Den här enheten har redan löst in den här koden.',
+  redeem_err_later: 'Inlösen är tillfälligt otillgänglig — försök igen om några minuter.',
+
   split_summary_title: 'Avancerat: split tunneling',
   split_tier_pill: 'PREMIUM · TILLVAL',
   split_lede:

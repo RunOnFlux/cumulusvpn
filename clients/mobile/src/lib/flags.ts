@@ -36,6 +36,17 @@ const PURCHASE_UI_PLATFORMS: ReadonlySet<string> = new Set(['android']);
  */
 const IAP_PLATFORMS: ReadonlySet<string> = new Set(['ios', 'android']);
 
+/**
+ * Platforms whose builds may show the in-app VOUCHER REDEEM box (our own
+ * codes). iOS is excluded at build level: Apple 3.1.1 prohibits custom
+ * unlock mechanisms (license keys/codes) regardless of IAP presence — iOS
+ * users redeem on the web (Device code in Settings) or via Apple's own
+ * offer-code sheet, which is store-sanctioned and always allowed. Android
+ * stays remote-controlled: direct-APK builds only; keep OFF in KV while a
+ * Play build is live (same binary, and Play policy matches Apple's).
+ */
+const VOUCHER_REDEEM_PLATFORMS: ReadonlySet<string> = new Set(['android']);
+
 export interface Flags {
   /**
    * In-app FLUX upgrade (QR + wallet deep-link + pay-to details). When OFF —
@@ -50,10 +61,21 @@ export interface Flags {
    * on for this platform.
    */
   readonly iapPurchase: boolean;
+  /**
+   * In-app voucher/promo-code redeem box for OUR codes. When OFF — the
+   * default, and always the case on iOS — no code-entry surface renders.
+   * The store-sanctioned offer-code sheets (Apple/Play) are NOT gated by
+   * this flag; they ride with `iapPurchase`.
+   */
+  readonly voucherRedeem: boolean;
 }
 
 /** Safe default when the remote flags can't be fetched: everything OFF. */
-export const DEFAULT_FLAGS: Flags = { inAppUpgrade: false, iapPurchase: false };
+export const DEFAULT_FLAGS: Flags = {
+  inAppUpgrade: false,
+  iapPurchase: false,
+  voucherRedeem: false,
+};
 
 /** Read a `{ android, ios }` boolean flag from a parsed doc for the given OS. */
 function platformFlag(json: unknown, key: string, os: string): boolean {
@@ -72,6 +94,7 @@ export function resolveFlags(json: unknown, os: string): Flags {
   return {
     inAppUpgrade: PURCHASE_UI_PLATFORMS.has(os) && platformFlag(json, 'inAppUpgrade', os),
     iapPurchase: IAP_PLATFORMS.has(os) && platformFlag(json, 'iapPurchase', os),
+    voucherRedeem: VOUCHER_REDEEM_PLATFORMS.has(os) && platformFlag(json, 'voucherRedeem', os),
   };
 }
 

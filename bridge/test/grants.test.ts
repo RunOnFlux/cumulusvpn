@@ -16,7 +16,7 @@ describe('recordGrant', () => {
         eventKey: 't1',
         externalRef: 'o1',
         paymentCode: 'nonsense',
-        months: 1,
+        days: 30,
       }),
     ).toBe('invalid_code');
     expect(payments.queueStats().pending).toBe(0);
@@ -29,7 +29,7 @@ describe('recordGrant', () => {
       eventKey: 'GPA.1-0',
       externalRef: 'tok',
       paymentCode: VALID,
-      months: 12,
+      days: 360,
     };
     expect(recordGrant(payments, 20e8, ev)).toBe('queued');
     expect(recordGrant(payments, 20e8, ev)).toBe('duplicate');

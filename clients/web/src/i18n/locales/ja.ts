@@ -108,6 +108,21 @@ export const ja: Catalog = {
   upgrade_activating_hint: 'このページは閉じてもかまいません — 有効化は自動で完了します。',
   upgrade_activated_cta: '接続に戻る →',
 
+  redeem_eyebrow: 'コードをお持ちですか？',
+  redeem_lede:
+    'バウチャーやプロモコードを引き換えられます。無料期間コードはこのデバイス向けに Flux ネットワーク上で有効化され、割引コードは上のカード決済に適用されます。',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: '引き換える',
+  redeem_cta_busy: '確認中…',
+  redeem_discount_applied:
+    '{percent}% オフが適用されました — 上のカードで支払うと、割引が決済時に反映されます。',
+  redeem_err_invalid:
+    'このコードは有効ではありません。入力ミスがないか確認して、もう一度お試しください。',
+  redeem_err_expired: 'このコードは有効期限が切れています。',
+  redeem_err_exhausted: 'このコードはすでに使い切られています。',
+  redeem_err_already: 'このデバイスではこのコードをすでに引き換え済みです。',
+  redeem_err_later: '引き換えは一時的にご利用いただけません — 数分後にもう一度お試しください。',
+
   split_summary_title: '上級者向け: スプリットトンネリング',
   split_tier_pill: 'プレミアム · オプトイン',
   split_lede:

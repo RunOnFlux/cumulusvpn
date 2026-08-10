@@ -1,7 +1,7 @@
 /** Typed repository over the `payments` + `spent_outpoints` tables. */
 import type { Db } from './db.js';
 
-export type Rail = 'stripe' | 'apple' | 'google';
+export type Rail = 'stripe' | 'apple' | 'google' | 'voucher';
 export type PaymentStatus = 'pending' | 'broadcast' | 'confirmed' | 'failed';
 
 export interface PaymentRow {
@@ -10,7 +10,7 @@ export interface PaymentRow {
   readonly event_key: string;
   readonly external_ref: string;
   readonly payment_code: string;
-  readonly months: number;
+  readonly days: number;
   readonly flux_zats: number;
   readonly status: PaymentStatus;
   readonly txid: string | null;
@@ -29,7 +29,7 @@ export interface NewPayment {
   readonly eventKey: string;
   readonly externalRef: string;
   readonly paymentCode: string;
-  readonly months: number;
+  readonly days: number;
   readonly fluxZats: number;
 }
 
@@ -46,11 +46,11 @@ export class PaymentsRepo {
   insertIdempotent(p: NewPayment): number | null {
     const r = this.db
       .prepare(
-        `INSERT INTO payments (rail, event_key, external_ref, payment_code, months, flux_zats, created_at)
+        `INSERT INTO payments (rail, event_key, external_ref, payment_code, days, flux_zats, created_at)
          VALUES (?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT (rail, event_key) DO NOTHING`,
       )
-      .run(p.rail, p.eventKey, p.externalRef, p.paymentCode, p.months, p.fluxZats, now());
+      .run(p.rail, p.eventKey, p.externalRef, p.paymentCode, p.days, p.fluxZats, now());
     return r.changes === 1 ? Number(r.lastInsertRowid) : null;
   }
 

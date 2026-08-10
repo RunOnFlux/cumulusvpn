@@ -62,6 +62,14 @@ export interface Config {
   readonly adminToken: string;
   readonly alertWebhookUrl: string | undefined;
   readonly minTreasuryFlux: number;
+  /**
+   * Whether day-granular (non-30-multiple) voucher grants may be CREATED.
+   * Keep false until the whole gateway fleet runs the pro-rata day rule —
+   * old gateways ignore sub-price payments, so a day voucher settled early
+   * would grant nothing on them. 30-multiple vouchers are always allowed
+   * (they settle as whole price multiples, which every gateway honors).
+   */
+  readonly dayGrantsEnabled: boolean;
   readonly stripe: StripeConfig | undefined;
   readonly apple: AppleConfig | undefined;
   readonly google: GoogleConfig | undefined;
@@ -168,6 +176,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     adminToken: required(env, 'ADMIN_TOKEN'),
     alertWebhookUrl: env.ALERT_WEBHOOK_URL || undefined,
     minTreasuryFlux: num(env, 'MIN_TREASURY_FLUX', 200),
+    dayGrantsEnabled: env.DAY_GRANTS_ENABLED === 'true',
     stripe: loadStripe(env),
     apple: loadApple(env),
     google: loadGoogle(env),
@@ -180,5 +189,5 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return cfg;
 }
 
-/** Months granted per plan — annual settles as one 12-month chain payment. */
-export const PLAN_MONTHS: Record<'monthly' | 'annual', number> = { monthly: 1, annual: 12 };
+/** Days granted per plan — annual settles as one 360-day chain payment. */
+export const PLAN_DAYS: Record<'monthly' | 'annual', number> = { monthly: 30, annual: 360 };

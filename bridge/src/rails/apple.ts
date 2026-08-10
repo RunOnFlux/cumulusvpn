@@ -30,7 +30,7 @@ const GRANT_TYPES = new Set(['SUBSCRIBED', 'DID_RENEW', 'OFFER_REDEEMED']);
 export interface AppleVerifyOutcome {
   readonly accepted: boolean;
   readonly reason: string;
-  readonly months?: number;
+  readonly days?: number;
   /** True when the payload verified only against the sandbox environment. */
   readonly sandbox?: boolean;
 }
@@ -61,8 +61,8 @@ export class AppleRail {
     if (!txn) {
       return { accepted: false, reason: 'verification_failed' };
     }
-    const months = this.monthsForProduct(txn.productId);
-    if (months === null) {
+    const days = this.daysForProduct(txn.productId);
+    if (days === null) {
       return { accepted: false, reason: 'unknown_product' };
     }
     const expected = uuidForCode(code);
@@ -72,7 +72,7 @@ export class AppleRail {
     if (!txn.transactionId || !txn.originalTransactionId) {
       return { accepted: false, reason: 'missing_transaction_ids' };
     }
-    const plan: Plan = months === 12 ? 'annual' : 'monthly';
+    const plan: Plan = days === 360 ? 'annual' : 'monthly';
     this.subs.upsert('apple', txn.originalTransactionId, code, plan);
     this.subs.mapAppleToken(expected, code);
     if (sandbox && !this.cfg.sandboxGrants) {
@@ -80,17 +80,17 @@ export class AppleRail {
         { transaction: txn.transactionId },
         'apple sandbox purchase verified (no chain grant)',
       );
-      return { accepted: true, reason: 'sandbox_verified', months, sandbox: true };
+      return { accepted: true, reason: 'sandbox_verified', days, sandbox: true };
     }
     const result = recordGrant(this.payments, this.priceZats, {
       rail: 'apple',
       eventKey: txn.transactionId,
       externalRef: txn.originalTransactionId,
       paymentCode: code,
-      months,
+      days,
     });
     this.log.info({ transaction: txn.transactionId, result }, 'apple purchase verified');
-    return { accepted: true, reason: result, months, sandbox: false };
+    return { accepted: true, reason: result, days, sandbox: false };
   }
 
   /** App Store Server Notification V2 (renewals, refunds, expiry). */
@@ -131,25 +131,20 @@ export class AppleRail {
       // the client-side verify records the grant when it lands.
       return 'notification:code-unknown';
     }
-    const months = this.monthsForProduct(txn.productId);
-    if (months === null || !txn.transactionId) {
+    const days = this.daysForProduct(txn.productId);
+    if (days === null || !txn.transactionId) {
       return 'notification:bad-product';
     }
     if (sandbox && !this.cfg.sandboxGrants) {
       return 'notification:sandbox-skipped';
     }
-    this.subs.upsert(
-      'apple',
-      txn.originalTransactionId,
-      code,
-      months === 12 ? 'annual' : 'monthly',
-    );
+    this.subs.upsert('apple', txn.originalTransactionId, code, days === 360 ? 'annual' : 'monthly');
     const result = recordGrant(this.payments, this.priceZats, {
       rail: 'apple',
       eventKey: txn.transactionId,
       externalRef: txn.originalTransactionId,
       paymentCode: code,
-      months,
+      days,
     });
     this.log.info({ type, transaction: txn.transactionId, result }, 'apple notification grant');
     return `notification:${result}`;
@@ -167,12 +162,12 @@ export class AppleRail {
       : undefined;
   }
 
-  private monthsForProduct(productId: string | undefined): number | null {
+  private daysForProduct(productId: string | undefined): number | null {
     if (productId === this.cfg.productMonthly) {
-      return 1;
+      return 30;
     }
     if (productId === this.cfg.productAnnual) {
-      return 12;
+      return 360;
     }
     return null;
   }

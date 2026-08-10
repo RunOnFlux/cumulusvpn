@@ -263,7 +263,7 @@ const FLAGS_KEY = 'flags';
 // Every per-platform flag the apps understand (see repo flags.json):
 //   inAppUpgrade — crypto/FLUX purchase UI (direct-APK Android only)
 //   iapPurchase  — store-billing subscription UI (must be ON before store review)
-const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase'];
+const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase', 'voucherRedeem'];
 // Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
 const DEFAULT_FLAGS = Object.fromEntries(
   FLAG_NAMES.map((name) => [name, { android: false, ios: false }]),
@@ -347,6 +347,35 @@ export default {
         'cache-control': 'public, max-age=60',
         'access-control-allow-origin': '*',
       });
+    }
+
+    // ---- voucher admin: authenticated proxy to the payments bridge ----
+    // The browser authenticates with the DASHBOARD token it already holds;
+    // the bridge's own admin token (BRIDGE_ADMIN_TOKEN secret) never leaves
+    // this Worker. Setup:
+    //   wrangler secret put BRIDGE_ADMIN_TOKEN --config clients/dashboard/wrangler.jsonc
+    if (url.pathname.startsWith('/api/vouchers')) {
+      if (!(await tokenMatches(bearerToken(request), env.ADMIN_TOKEN))) {
+        return jsonResponse({ error: 'unauthorized' }, {}, 401);
+      }
+      if (!env.BRIDGE_URL || !env.BRIDGE_ADMIN_TOKEN) {
+        return jsonResponse({ error: 'bridge proxy not configured' }, {}, 503);
+      }
+      const upstream = new URL(
+        url.pathname.replace('/api/vouchers', '/internal/vouchers') + url.search,
+        env.BRIDGE_URL,
+      );
+      const init = {
+        method: request.method,
+        headers: {
+          authorization: `Bearer ${env.BRIDGE_ADMIN_TOKEN}`,
+          'content-type': 'application/json',
+        },
+      };
+      if (request.method === 'POST') {
+        init.body = await request.text();
+      }
+      return fetch(upstream, init);
     }
 
     if (url.pathname === '/api/admin/verify' && request.method === 'POST') {

@@ -108,6 +108,21 @@ export const it: Catalog = {
   upgrade_activating_hint: "Puoi chiudere questa pagina — l'attivazione si completa da sola.",
   upgrade_activated_cta: 'Torna a Connetti →',
 
+  redeem_eyebrow: 'Hai un codice?',
+  redeem_lede:
+    'Riscatta un voucher o un codice promozionale. I codici di tempo gratuito si attivano sulla rete Flux per questo dispositivo; i codici sconto valgono per il checkout con carta qui sopra.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Riscatta',
+  redeem_cta_busy: 'Verifica in corso…',
+  redeem_discount_applied:
+    'Sconto del {percent}% applicato — paga con carta qui sopra e lo sconto è incluso al checkout.',
+  redeem_err_invalid:
+    'Questo codice non è valido. Controlla eventuali errori di battitura e riprova.',
+  redeem_err_expired: 'Questo codice è scaduto.',
+  redeem_err_exhausted: 'Questo codice è già stato utilizzato completamente.',
+  redeem_err_already: 'Questo dispositivo ha già riscattato questo codice.',
+  redeem_err_later: 'Il riscatto è momentaneamente non disponibile — riprova tra qualche minuto.',
+
   split_summary_title: 'Avanzato: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

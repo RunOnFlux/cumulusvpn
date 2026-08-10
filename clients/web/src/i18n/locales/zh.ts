@@ -106,6 +106,19 @@ export const zh: Catalog = {
   upgrade_activating_hint: '你可以关闭此页面——激活会自行完成。',
   upgrade_activated_cta: '返回连接 →',
 
+  redeem_eyebrow: '有兑换码？',
+  redeem_lede:
+    '兑换代金券或优惠码。免费时长码会在 Flux 网络上为此设备激活；折扣码适用于上方的银行卡结账。',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: '兑换',
+  redeem_cta_busy: '正在检查…',
+  redeem_discount_applied: '已应用 {percent}% 折扣——用上方银行卡付款，折扣会在结账时自动计入。',
+  redeem_err_invalid: '该兑换码无效。请检查是否有输入错误后重试。',
+  redeem_err_expired: '此兑换码已过期。',
+  redeem_err_exhausted: '此兑换码已被用完。',
+  redeem_err_already: '此设备已兑换过此码。',
+  redeem_err_later: '兑换功能暂时不可用——请几分钟后重试。',
+
   split_summary_title: '高级：分流隧道',
   split_tier_pill: '高级版 · 可选',
   split_lede:

@@ -55,40 +55,54 @@ func TestStackingAndCap(t *testing.T) {
 	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	// Fresh payment: 30 days from now.
-	got := stack(time.Time{}, 1, now)
+	got := stack(time.Time{}, 30, now)
 	if want := now.Add(period); !got.Equal(want) {
 		t.Errorf("fresh: got %v want %v", got, want)
 	}
 
 	// Stacking on top of existing future time.
 	future := now.Add(period)
-	got = stack(future, 1, now)
+	got = stack(future, 30, now)
 	if want := now.Add(2 * period); !got.Equal(want) {
 		t.Errorf("stack: got %v want %v", got, want)
 	}
 
 	// Expired past time resets base to now.
 	past := now.Add(-100 * period)
-	got = stack(past, 1, now)
+	got = stack(past, 30, now)
 	if want := now.Add(period); !got.Equal(want) {
 		t.Errorf("expired base: got %v want %v", got, want)
 	}
 
 	// Overpayment: 3 periods at once.
-	got = stack(time.Time{}, 3, now)
+	got = stack(time.Time{}, 90, now)
 	if want := now.Add(3 * period); !got.Equal(want) {
 		t.Errorf("multi: got %v want %v", got, want)
 	}
 
 	// Cap at 24 months of prepaid time.
-	got = stack(now.Add(maxPrepaid), 1, now)
+	got = stack(now.Add(maxPrepaid), 1, now) // even one day past the cap truncates
 	if want := now.Add(maxPrepaid); !got.Equal(want) {
 		t.Errorf("cap: got %v want %v", got, want)
 	}
 	// Huge overpayment also capped.
-	got = stack(time.Time{}, 100, now)
+	got = stack(time.Time{}, 3000, now)
 	if want := now.Add(maxPrepaid); !got.Equal(want) {
 		t.Errorf("cap-overpay: got %v want %v", got, want)
+	}
+
+	// Day-granular grants (voucher settlements).
+	got = stack(time.Time{}, 1, now)
+	if want := now.Add(day); !got.Equal(want) {
+		t.Errorf("one day: got %v want %v", got, want)
+	}
+	got = stack(now.Add(day), 7, now)
+	if want := now.Add(8 * day); !got.Equal(want) {
+		t.Errorf("1d+7d stack: got %v want %v", got, want)
+	}
+	got = stack(now.Add(maxPrepaid-12*time.Hour), 45, now)
+	if want := now.Add(maxPrepaid); !got.Equal(want) {
+		t.Errorf("near-cap day grant truncates: got %v want %v", got, want)
 	}
 }
 
@@ -122,8 +136,10 @@ func TestEngineBackfillAndTier(t *testing.T) {
 		txs: []Tx{
 			// valid, single month
 			{TxID: "a", Height: 10, Time: now, AmountTo: 4.5, Memos: []string{"CVPN1:" + code}},
-			// underpaid -> ignored
+			// sub-price: pro-rata days now — floor(30*1.0/4.5) = 6 days
 			{TxID: "b", Height: 11, Time: now, AmountTo: 1.0, Memos: []string{"CVPN1:" + code}},
+			// below one day's worth (price/30 = 0.15) -> ignored
+			{TxID: "b2", Height: 11, Time: now, AmountTo: 0.1, Memos: []string{"CVPN1:" + code}},
 			// overpaid 2x -> +60 days on top
 			{TxID: "c", Height: 12, Time: now, AmountTo: 9.0, Memos: []string{"CVPN1:" + code}},
 			// no memo -> ignored
@@ -146,10 +162,12 @@ func TestEngineBackfillAndTier(t *testing.T) {
 	if !premium {
 		t.Fatal("expected premium after valid payments")
 	}
-	// 1 + 2 = 3 periods of entitlement.
-	wantMin := now.Add(3*period - time.Minute)
-	if paidUntil.Before(wantMin) {
-		t.Errorf("paidUntil = %v, want >= ~%v", paidUntil, wantMin)
+	// 30 + 6 + 60 = 96 days of entitlement (the 1.0-FLUX tx now grants
+	// pro-rata days instead of being ignored — the new semantics).
+	wantMin := now.Add(96*day - time.Minute)
+	wantMax := now.Add(96*day + time.Minute)
+	if paidUntil.Before(wantMin) || paidUntil.After(wantMax) {
+		t.Errorf("paidUntil = %v, want ~%v", paidUntil, wantMin)
 	}
 	if flips != 1 {
 		t.Errorf("expected exactly one premium flip, got %d", flips)
@@ -229,5 +247,58 @@ func TestBridgeFiatSettlement(t *testing.T) {
 	want := 13 * 30 * 24 * time.Hour
 	if got < want-time.Hour || got > want+time.Hour {
 		t.Fatalf("paid_until = now+%v, want ~%v (1 monthly + 12 annual months)", got, want)
+	}
+}
+
+// TestProRataDayGrants pins the day-granular rule against the EXACT amounts
+// the bridge broadcasts for voucher settlements: zats = ceil(priceZats*d/30),
+// which round-trip through the explorer as the float FLUX values below. A
+// 1-zat-short amount must reject — the ceil on the payer side and the epsilon
+// here are calibrated so the floor never truncates a funded grant and never
+// promotes an underfunded one.
+func TestProRataDayGrants(t *testing.T) {
+	const addr = "t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ"
+	const price = 20.0
+	const memo = "CVPN1:2RkUfDC55GMndKreXqK7Jruu8Snx"
+	pk := "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
+
+	cases := []struct {
+		name   string
+		amount float64 // FLUX, as the insight API reports the zat value
+		days   int     // 0 = rejected
+	}{
+		{"one day (ceil 66_666_667 zats)", 0.66666667, 1},
+		{"one zat short of a day", 0.66666666, 0},
+		{"three days (exact 2 FLUX)", 2.0, 3},
+		{"seven days (ceil 466_666_667 zats)", 4.66666667, 7},
+		{"thirty days (exactly price)", 20.0, 30},
+		{"annual (12x price)", 240.0, 360},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			now := time.Now()
+			src := &mockSource{height: 10, txs: []Tx{
+				{TxID: "v", Height: 5, Time: now, AmountTo: tc.amount, Memos: []string{memo}},
+			}}
+			e := New(src, addr, price)
+			if err := e.Backfill(context.Background()); err != nil {
+				t.Fatal(err)
+			}
+			premium, paidUntil := e.Tier(pk)
+			if tc.days == 0 {
+				if premium {
+					t.Fatalf("amount %v should be rejected, got premium until %v", tc.amount, paidUntil)
+				}
+				return
+			}
+			if !premium {
+				t.Fatalf("amount %v should grant %d day(s)", tc.amount, tc.days)
+			}
+			got := paidUntil.Sub(now)
+			want := time.Duration(tc.days) * day
+			if got < want-time.Minute || got > want+time.Minute {
+				t.Fatalf("amount %v: paid_until = now+%v, want ~%v", tc.amount, got, want)
+			}
+		})
 	}
 }

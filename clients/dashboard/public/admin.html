@@ -142,11 +142,73 @@
         <label class="sw"><input type="checkbox" id="iap-ios" /><span class="track"></span><span class="knob"></span></label>
       </div>
 
+      <h2>voucherRedeem</h2>
+      <p class="hint">
+        In-app voucher redeem box (our codes). Direct-APK Android only — keep <b>OFF while a
+        Play build is live</b> (same binary). iOS is excluded at build level (Apple 3.1.1
+        forbids custom unlock codes); iOS users redeem on the web or via Apple offer codes.
+      </p>
+      <div class="row">
+        <div class="k">Android <small>direct APK only</small></div>
+        <label class="sw"><input type="checkbox" id="vr-android" /><span class="track"></span><span class="knob"></span></label>
+      </div>
+      <div class="row">
+        <div class="k">iOS <small>build-level off — toggle has no effect</small></div>
+        <label class="sw"><input type="checkbox" id="vr-ios" disabled /><span class="track"></span><span class="knob"></span></label>
+      </div>
+
       <div class="foot">
         <span class="updated" id="updated">—</span>
         <button class="btn primary" id="save">Save</button>
       </div>
       <div class="err" id="save-err"></div>
+    </div>
+
+    <div class="dash-head" style="margin-top:28px">
+      <div class="sec-title">Vouchers</div>
+    </div>
+    <div class="card">
+      <div class="warn">
+        <b>⚠ Vouchers mint treasury FLUX:</b> every redeemed free-time code is settled on-chain
+        from the bridge treasury. Revoking stops <i>future</i> redemptions only — settled grants
+        cannot be clawed back. Generated codes are shown <b>once</b> (download the CSV).
+      </div>
+
+      <div id="voucher-stats" class="hint" style="margin:10px 0">Loading campaign stats…</div>
+
+      <h2>Create</h2>
+      <div class="row"><div class="k">Type</div>
+        <select id="v-type">
+          <option value="grant_days">Free days (settled on-chain)</option>
+          <option value="stripe_discount">Card discount % (Stripe)</option>
+        </select>
+      </div>
+      <div class="row"><div class="k">Value <small id="v-value-hint">days (30 = 1 month)</small></div>
+        <input type="number" id="v-value" min="1" max="360" value="30" />
+      </div>
+      <div class="row"><div class="k">Codes to generate</div>
+        <input type="number" id="v-count" min="1" max="1000" value="1" />
+      </div>
+      <div class="row"><div class="k">Vanity code <small>optional, overrides count</small></div>
+        <input type="text" id="v-code" placeholder="LAUNCH26 (no 0/O/1/I/L)" />
+      </div>
+      <div class="row"><div class="k">Campaign</div>
+        <input type="text" id="v-campaign" placeholder="e.g. summer-launch" />
+      </div>
+      <div class="row"><div class="k">Max redemptions <small>per code</small></div>
+        <input type="number" id="v-max" min="1" value="1" />
+      </div>
+      <div class="row"><div class="k">Expires</div>
+        <input type="date" id="v-expiry" />
+      </div>
+      <div class="foot">
+        <span class="updated" id="v-projected"></span>
+        <button class="btn primary" id="v-create">Create</button>
+      </div>
+      <div class="err" id="v-err"></div>
+
+      <h2>Recent codes</h2>
+      <div id="voucher-list" class="hint">Loading…</div>
     </div>
   </div>
 </div>
@@ -181,13 +243,112 @@
       var iap = (f && f.iapPurchase) || {};
       $('iap-android').checked = iap.android === true;
       $('iap-ios').checked = iap.ios === true;
+      var vr = (f && f.voucherRedeem) || {};
+      $('vr-android').checked = vr.android === true;
+      $('vr-ios').checked = vr.ios === true;
       $('updated').textContent = f && f.updatedAt
         ? 'Last updated ' + new Date(f.updatedAt).toLocaleString()
         : 'Never updated (serving defaults)';
     });
   }
 
-  function showEditor() { $('login').hidden = true; $('editor').hidden = false; loadFlags(); }
+  function showEditor() { $('login').hidden = true; $('editor').hidden = false; loadFlags(); loadVoucherStats(); loadVouchers(); }
+
+  // ---- vouchers (proxied to the payments bridge; dashboard token auth) ----
+  function vfetch(path, init) {
+    init = init || {};
+    init.headers = Object.assign({ authorization: 'Bearer ' + token }, init.headers || {});
+    return fetch('/api/vouchers' + path, init).then(function (r) {
+      if (r.status === 401) { signOut(); throw new Error('session expired'); }
+      return r.json().then(function (j) {
+        if (j && j.status === 'success') return j.data;
+        var msg = (j && j.data && j.data.message) || (j && j.error) || ('HTTP ' + r.status);
+        throw new Error(msg);
+      });
+    });
+  }
+
+  function loadVoucherStats() {
+    vfetch('/stats').then(function (d) {
+      var rows = (d.campaigns || []).map(function (c) {
+        return '<b>' + (c.campaign || '(no campaign)') + '</b> · ' + c.vouchers + ' codes · ' +
+          c.redemptions + ' redeemed · ' + c.days_granted + ' days granted (' +
+          Number(c.flux_spent).toFixed(2) + ' FLUX)';
+      });
+      $('voucher-stats').innerHTML = rows.length ? rows.join('<br/>') : 'No campaigns yet.';
+    }).catch(function (e) { $('voucher-stats').textContent = 'Stats unavailable: ' + e.message; });
+  }
+
+  function loadVouchers() {
+    vfetch('?limit=50').then(function (d) {
+      var vs = d.vouchers || [];
+      if (!vs.length) { $('voucher-list').textContent = 'No vouchers yet.'; return; }
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:13px">' +
+        '<tr><th align="left">Code</th><th align="left">Type</th><th align="left">Campaign</th>' +
+        '<th align="left">Used</th><th align="left">Expires</th><th align="left">Status</th><th></th></tr>' +
+        vs.map(function (v) {
+          var exp = v.expires_at ? new Date(v.expires_at * 1000).toLocaleDateString() : '—';
+          var typ = v.type === 'grant_days' ? v.value + 'd free' : v.value + '% off';
+          return '<tr><td><code>' + v.display_code + '</code></td><td>' + typ + '</td><td>' +
+            (v.campaign || '—') + '</td><td>' + v.redemption_count + '/' + v.max_redemptions +
+            '</td><td>' + exp + '</td><td>' + v.status + '</td><td>' +
+            (v.status === 'active'
+              ? '<button class="btn ghost sm" data-revoke="' + v.id + '">Revoke</button>'
+              : '') + '</td></tr>';
+        }).join('') + '</table>';
+      $('voucher-list').innerHTML = html;
+      $('voucher-list').querySelectorAll('[data-revoke]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          if (!confirm('Revoke this code? Settled grants cannot be clawed back.')) return;
+          vfetch('/' + b.getAttribute('data-revoke') + '/revoke', { method: 'POST' })
+            .then(function () { toast('Revoked', true); loadVouchers(); loadVoucherStats(); })
+            .catch(function (e) { toast(e.message, false); });
+        });
+      });
+    }).catch(function (e) { $('voucher-list').textContent = 'Unavailable: ' + e.message; });
+  }
+
+  $('v-type').addEventListener('change', function () {
+    var grant = $('v-type').value === 'grant_days';
+    $('v-value-hint').textContent = grant ? 'days (30 = 1 month)' : 'percent off (1-100)';
+    $('v-value').max = grant ? 360 : 100;
+  });
+
+  $('v-create').addEventListener('click', function () {
+    $('v-err').textContent = '';
+    var vanity = $('v-code').value.trim();
+    var expiry = $('v-expiry').value
+      ? Math.floor(new Date($('v-expiry').value + 'T23:59:59Z').getTime() / 1000)
+      : null;
+    var body = {
+      type: $('v-type').value,
+      value: Number($('v-value').value),
+      campaign: $('v-campaign').value.trim(),
+      max_redemptions: Number($('v-max').value) || 1,
+      expires_at: expiry,
+    };
+    if (vanity) { body.code = vanity; } else { body.count = Number($('v-count').value) || 1; }
+    vfetch('', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      .then(function (d) {
+        var codes = d.codes || [];
+        $('v-projected').textContent = d.projected_cost_flux
+          ? 'Max treasury cost: ' + d.projected_cost_flux.toFixed(2) + ' FLUX' : '';
+        if (codes.length > 1) {
+          var csv = 'code\n' + codes.join('\n');
+          var a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+          a.download = (body.campaign || 'vouchers') + '-codes.csv';
+          a.click();
+          URL.revokeObjectURL(a.href);
+          toast(codes.length + ' codes created — CSV downloaded (shown once!)', true);
+        } else {
+          prompt('Code created — copy it now (shown once):', codes[0] || '');
+          toast('Created', true);
+        }
+        loadVouchers(); loadVoucherStats();
+      })
+      .catch(function (e) { $('v-err').textContent = e.message; toast('Create failed', false); });
+  });
   function showLogin() { $('editor').hidden = true; $('login').hidden = false; $('pw').focus(); }
 
   function signOut() {
@@ -214,6 +375,7 @@
     var body = {
       inAppUpgrade: { android: $('t-android').checked, ios: $('t-ios').checked },
       iapPurchase: { android: $('iap-android').checked, ios: $('iap-ios').checked },
+      voucherRedeem: { android: $('vr-android').checked, ios: false },
     };
     fetch('/api/flags', {
       method: 'POST',

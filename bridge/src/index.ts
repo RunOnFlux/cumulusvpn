@@ -9,8 +9,8 @@ import { PaymentsRepo } from './db/payments.js';
 import { SubscriptionsRepo } from './db/subscriptions.js';
 import { ChainClient } from './flux/chain.js';
 import { treasuryKeyFromWif } from './flux/tx.js';
+import { VouchersRepo } from './db/vouchers.js';
 import { buildServer } from './server.js';
-import { Alerter } from './worker/alerts.js';
 import { startBroadcaster } from './worker/broadcaster.js';
 import { startConfirmer } from './worker/confirmer.js';
 import { startLoop } from './worker/loop.js';
@@ -22,9 +22,15 @@ const subs = new SubscriptionsRepo(db);
 const chain = new ChainClient(cfg.explorerUrl, cfg.explorerFallbackUrl);
 const key = treasuryKeyFromWif(cfg.treasuryWif);
 
-const app = await buildServer({ cfg, payments, subs, chain, treasuryAddress: key.address });
-
-const alerter = new Alerter(cfg.alertWebhookUrl, app.log);
+const vouchers = new VouchersRepo(db, payments, cfg.priceZats);
+const { app, alerter } = await buildServer({
+  cfg,
+  payments,
+  subs,
+  vouchers,
+  chain,
+  treasuryAddress: key.address,
+});
 const workers = [
   startBroadcaster({
     chain,

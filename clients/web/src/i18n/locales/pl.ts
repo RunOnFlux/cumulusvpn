@@ -113,6 +113,21 @@ export const pl: Catalog = {
   upgrade_activating_hint: 'Możesz zamknąć tę stronę — aktywacja dokończy się sama.',
   upgrade_activated_cta: 'Wróć do Połącz →',
 
+  redeem_eyebrow: 'Masz kod?',
+  redeem_lede:
+    'Wykorzystaj voucher lub kod promocyjny. Kody na darmowy czas aktywują się w sieci Flux dla tego urządzenia; kody rabatowe dotyczą płatności kartą powyżej.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Wykorzystaj',
+  redeem_cta_busy: 'Sprawdzanie…',
+  redeem_discount_applied:
+    '{percent}% zniżki naliczone — zapłać kartą powyżej, a rabat zostanie uwzględniony przy płatności.',
+  redeem_err_invalid:
+    'Ten kod jest nieprawidłowy. Sprawdź, czy nie ma literówek, i spróbuj ponownie.',
+  redeem_err_expired: 'Ten kod wygasł.',
+  redeem_err_exhausted: 'Ten kod został już w pełni wykorzystany.',
+  redeem_err_already: 'To urządzenie już wykorzystało ten kod.',
+  redeem_err_later: 'Realizacja kodów jest chwilowo niedostępna — spróbuj ponownie za kilka minut.',
+
   split_summary_title: 'Zaawansowane: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

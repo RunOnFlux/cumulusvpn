@@ -205,3 +205,17 @@ chain-only (gateways unchanged). Setup, in order:
 - [ ] ⬜ **Flip `iapPurchase.android = true` in the Cloudflare KV BEFORE rollout** (the flag
   fails closed OFF; reviewers/users must be able to reach the declared subscription). After
   rollout it is an emergency kill switch only.
+
+## 10. Promo codes & vouchers (added 2026-08-10)
+
+- [ ] ⬜ **Play promo codes** (the store-sanctioned code path in the Play build): Play Console →
+  Monetize → **Promo codes** → create a campaign for the `premium` subscription (note Google's
+  per-quarter quantity limits). The app offers "Redeem a Play promo code" on the Upgrade screen
+  (`openRedeemOfferCodeAndroid`); redemptions arrive as ordinary Play Billing purchases through
+  the bridge — no bridge configuration needed.
+- [ ] ⬜ **Our voucher codes**: the in-app redeem box is gated by the `voucherRedeem` flag —
+  **must stay OFF in KV while a Play build is live** (Play Payments policy; same binary as the
+  direct APK). Play users redeem our codes at vpn.cumulusvpn.com using the Device code in
+  Settings → About.
+- [ ] ⬜ Dashboard: `BRIDGE_ADMIN_TOKEN` secret set on the dashboard worker so the Vouchers
+  admin panel works (see clients/dashboard/wrangler.jsonc setup comment).

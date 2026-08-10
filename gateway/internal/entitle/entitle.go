@@ -8,10 +8,14 @@
 //   - identity is the client's WireGuard pubkey K (32 bytes)
 //   - the OP_RETURN memo carries CVPN1:<code> where
 //     code = base58(sha256(K)[0:20])
-//   - a tx grants entitlement iff it pays >= priceFlux to the payment address
-//     with exactly one valid CVPN1 memo and >= 1 confirmation
-//   - effect: paid_until[code] = max(now, paid_until[code]) + 30 days,
-//     stacking, capped at +24 months of prepaid time
+//   - a tx grants entitlement iff it pays >= priceFlux/30 (one day's worth)
+//     to the payment address with exactly one valid CVPN1 memo and >= 1
+//     confirmation
+//   - effect: paid_until[code] = max(now, paid_until[code]) + days, where
+//     days = floor(30 * amount / priceFlux) — pro-rata by the day, so whole
+//     multiples of the price grant whole 30-day months exactly as before,
+//     and fractional amounts (voucher settlements, docs/18) grant days.
+//     Stacking, capped at +24 months of prepaid time.
 package entitle
 
 import (
@@ -27,8 +31,9 @@ import (
 
 const (
 	memoPrefix   = "CVPN1:"
-	period       = 30 * 24 * time.Hour
-	maxPrepaid   = 24 * period // cap: 24 months of prepaid time from now
+	day          = 24 * time.Hour
+	period       = 30 * day
+	maxPrepaid   = 24 * period // cap: 24 months (720 days) of prepaid time from now
 	pollInterval = 15 * time.Second
 )
 
@@ -163,19 +168,22 @@ func (e *Engine) applyTxs(txs []Tx) {
 		if !ok {
 			continue
 		}
-		// Overpayment grants whole multiples of the period
-		// (docs/04-payments.md: "pay 3x -> 90 days"). AmountTo is a float64 sum of
-		// vout values, so an exact multiple (e.g. 3×20) can land a hair below the
-		// integer — add the same epsilon ValidPayment uses so 59.999… still yields
-		// 3 months, not 2.
-		months := int((tx.AmountTo + 1e-9) / e.priceFlux)
-		if months < 1 {
-			months = 1
+		// Pro-rata by the day: days = floor(30 * amount / price). Whole
+		// multiples of the price grant whole 30-day months exactly as the
+		// original months rule did ("pay 3x -> 90 days"); fractional amounts
+		// (bridge voucher settlements, docs/18 — sized ceil(price*days/30) in
+		// zats so this floor never truncates) grant days. AmountTo is a
+		// float64 sum of vout values, so an exact multiple can land a hair
+		// below the integer — the same epsilon ValidPayment uses keeps
+		// 59.999… at 90 days, not 89.
+		days := int(30 * (tx.AmountTo + 1e-9) / e.priceFlux)
+		if days < 1 {
+			continue // ValidPayment already rejects; belt and braces
 		}
 
 		e.mu.Lock()
 		wasPremium := e.paidUntil[code].After(time.Now())
-		e.paidUntil[code] = stack(e.paidUntil[code], months, tx.Time)
+		e.paidUntil[code] = stack(e.paidUntil[code], days, tx.Time)
 		nowPremium := e.paidUntil[code].After(time.Now())
 		e.mu.Unlock()
 
@@ -185,14 +193,14 @@ func (e *Engine) applyTxs(txs []Tx) {
 	}
 }
 
-// stack applies `months` periods on top of an existing paid_until, capping
+// stack applies a grant of `days` on top of an existing paid_until, capping
 // the result at now + maxPrepaid. `now` is passed in for deterministic tests.
-func stack(current time.Time, months int, now time.Time) time.Time {
+func stack(current time.Time, days int, now time.Time) time.Time {
 	base := current
 	if base.Before(now) {
 		base = now
 	}
-	result := base.Add(time.Duration(months) * period)
+	result := base.Add(time.Duration(days) * day)
 	if cap := now.Add(maxPrepaid); result.After(cap) {
 		result = cap
 	}
@@ -201,13 +209,14 @@ func stack(current time.Time, months int, now time.Time) time.Time {
 
 // ValidPayment reports whether tx is a valid CVPN payment to address at
 // priceFlux, returning the payment code from its memo. A valid tx must:
-//   - pay >= priceFlux to address, and
+//   - pay >= priceFlux/30 (one day's worth) to address, and
 //   - carry exactly one CVPN1: memo with a non-empty code.
 //
 // Confirmation depth is enforced by the caller's tx source (AddressTxs only
 // returns confirmed txs); the optional 0-conf fast path lives elsewhere.
 func ValidPayment(tx Tx, address string, priceFlux float64) (code string, ok bool) {
-	if tx.AmountTo+1e-9 < priceFlux {
+	// Kept in multiplied form (30*amount < price) to avoid a division.
+	if 30*(tx.AmountTo+1e-9) < priceFlux {
 		return "", false
 	}
 	c, err := MemoParse(tx.Memos)

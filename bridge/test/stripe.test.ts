@@ -6,6 +6,7 @@ import type { FastifyBaseLogger } from 'fastify';
 import { openDb } from '../src/db/db.js';
 import { PaymentsRepo } from '../src/db/payments.js';
 import { SubscriptionsRepo } from '../src/db/subscriptions.js';
+import { VouchersRepo } from '../src/db/vouchers.js';
 import { StripeRail } from '../src/rails/stripe.js';
 import type { StripeConfig } from '../src/config.js';
 
@@ -35,11 +36,22 @@ const nullLog = {
   },
 } as unknown as FastifyBaseLogger;
 
-function setup(): { rail: StripeRail; payments: PaymentsRepo; subs: SubscriptionsRepo } {
+function setup(): {
+  rail: StripeRail;
+  payments: PaymentsRepo;
+  subs: SubscriptionsRepo;
+  vouchers: VouchersRepo;
+} {
   const db = openDb(':memory:');
   const payments = new PaymentsRepo(db);
   const subs = new SubscriptionsRepo(db);
-  return { rail: new StripeRail(cfg, 20e8, payments, subs, nullLog), payments, subs };
+  const vouchers = new VouchersRepo(db, payments, 20e8);
+  return {
+    rail: new StripeRail(cfg, 20e8, payments, subs, vouchers, nullLog),
+    payments,
+    subs,
+    vouchers,
+  };
 }
 
 /** Sign an event payload exactly like Stripe's webhook delivery does. */
@@ -96,17 +108,17 @@ describe('stripe rail', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]).toMatchObject({
       rail: 'stripe',
-      months: 1,
+      days: 30,
       flux_zats: 20e8,
       status: 'pending',
     });
   });
 
-  it('grants 12 months for an annual invoice as a single 240-FLUX payment', async () => {
+  it('grants 360 days for an annual invoice as a single 240-FLUX payment', async () => {
     const { rail, payments } = setup();
     const { raw, sig } = signedEvent(invoicePaidEvent('in_B', 'sub_2', 'annual', 1499));
     expect(await rail.handleWebhook(raw, sig)).toBe('invoice:queued');
-    expect(payments.byCode(CODE)[0]).toMatchObject({ months: 12, flux_zats: 240e8 });
+    expect(payments.byCode(CODE)[0]).toMatchObject({ days: 360, flux_zats: 240e8 });
   });
 
   it('treats a new invoice on the same subscription as a fresh renewal grant', async () => {
@@ -116,6 +128,25 @@ describe('stripe rail', () => {
     await rail.handleWebhook(a.raw, a.sig);
     await rail.handleWebhook(b.raw, b.sig);
     expect(payments.byCode(CODE)).toHaveLength(2);
+  });
+
+  it('grants a 100%-discounted invoice (zero amount WITH a discount)', async () => {
+    const { rail, payments, vouchers } = setup();
+    const [v] = vouchers.createBatch(
+      { type: 'stripe_discount', value: 100, maxRedemptions: 10 },
+      ['FREEMONTH23'],
+      { couponId: 'coup_free', promoIds: ['promo_free'] },
+    );
+    const ev = invoicePaidEvent('in_free', 'sub_free', 'monthly', 0) as {
+      data: { object: Record<string, unknown> };
+    };
+    ev.data.object.total_discount_amounts = [{ amount: 199, discount: 'di_1' }];
+    ev.data.object.discounts = [{ promotion_code: 'promo_free', coupon: 'coup_free' }];
+    const { raw, sig } = signedEvent(ev);
+    expect(await rail.handleWebhook(raw, sig)).toBe('invoice:queued');
+    expect(payments.byCode(CODE)[0]).toMatchObject({ days: 30, flux_zats: 20e8 });
+    // ...and the redemption was attributed to our voucher for stats.
+    expect(vouchers.byId(v!.id)!.redemption_count).toBe(1);
   });
 
   it('ignores zero-amount invoices', async () => {

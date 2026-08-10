@@ -39,14 +39,19 @@ e.g. CVPN1:3QJmnh8vzBqoQpuTGDsUCkbFyxVQ
 
 ### Payment rule (evaluated identically by every gateway)
 A tx grants entitlement iff:
-1. it pays `≥ CVPN_PRICE_FLUX` (from app spec env — single source of truth all gateways share)
-   to `CVPN_PAYMENT_ADDRESS`, and
+1. it pays `≥ CVPN_PRICE_FLUX / 30` — one day's worth — (price from app spec env, the single
+   source of truth all gateways share) to `CVPN_PAYMENT_ADDRESS`, and
 2. it carries exactly one valid `CVPN1:` memo, and
 3. it has ≥ 1 confirmation (30 s blocks; optional optimistic 0-conf unlock while pending).
 
-Effect: `paid_until[H] = max(now, paid_until[H]) + 30 days`. Payments stack (prepay up to 24
-months). Overpayment: multiples of the price grant multiple months (pay 3× → 90 days) — nice UX
-for wallets with min-amount quirks, and forgiving of price-drift timing.
+Effect: `paid_until[H] = max(now, paid_until[H]) + days`, where
+`days = floor(30 × amount / price)` — pro-rata by the day. Whole multiples of the price grant
+whole 30-day months (pay 3× → 90 days) exactly as the original rule did; sub-price amounts grant
+days, which is how the payments bridge settles short vouchers ("7 days free", docs/18). Fiat and
+voucher settlements round their payout UP to the next whole zat (`ceil(price_zats × days / 30)`)
+so the day computation never truncates. Payments stack (prepay up to 24 months / 720 days).
+Note the rule is retroactive at backfill: historical txs between `price/30` and `price` —
+previously ignored as underpayment — grant their pro-rata days once a gateway runs this rule.
 
 ### Price in FLUX vs $0.99
 FLUX/USD moves; gateways must agree on one number without an oracle. Solution: the canonical price

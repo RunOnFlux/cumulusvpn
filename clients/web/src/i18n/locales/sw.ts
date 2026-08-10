@@ -108,6 +108,21 @@ export const sw: Catalog = {
   upgrade_activating_hint: 'Unaweza kufunga ukurasa huu — uwashaji utakamilika wenyewe.',
   upgrade_activated_cta: 'Rudi kwenye Unganisha →',
 
+  redeem_eyebrow: 'Una msimbo?',
+  redeem_lede:
+    'Tumia vocha au msimbo wa ofa. Misimbo ya muda wa bure inawashwa kwenye mtandao wa Flux kwa kifaa hiki; misimbo ya punguzo inatumika kwenye malipo ya kadi hapo juu.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Tumia msimbo',
+  redeem_cta_busy: 'Inakagua…',
+  redeem_discount_applied:
+    'Punguzo la {percent}% limewekwa — lipa kwa kadi hapo juu na punguzo litajumuishwa kwenye malipo.',
+  redeem_err_invalid: 'Msimbo huo si sahihi. Angalia makosa ya uandishi kisha ujaribu tena.',
+  redeem_err_expired: 'Msimbo huu umekwisha muda wake.',
+  redeem_err_exhausted: 'Msimbo huu tayari umetumika wote.',
+  redeem_err_already: 'Kifaa hiki tayari kimetumia msimbo huu.',
+  redeem_err_later:
+    'Utumiaji wa misimbo haupatikani kwa sasa — jaribu tena baada ya dakika chache.',
+
   split_summary_title: 'Kina: split tunneling',
   split_tier_pill: 'PREMIUM · HIARI',
   split_lede:

@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createStripeCheckout,
   paymentStatus,
+  redeemVoucher,
   verifyApplePurchase,
   verifyGooglePurchase,
   DEFAULT_BRIDGE_URL,
@@ -92,5 +93,50 @@ describe('paymentStatus', () => {
     expect((f.mock.calls[0] as [string])[0]).toBe(
       `${DEFAULT_BRIDGE_URL}/v1/payment/${CODE}/status`,
     );
+  });
+});
+
+describe('redeemVoucher', () => {
+  it('POSTs the device code + voucher and returns a grant outcome', async () => {
+    const f = fetchReturning({
+      status: 'success',
+      data: { type: 'grant_days', days: 7, state: 'pending' },
+    });
+    const out = await redeemVoucher(f, { code: CODE, voucher: 'CVPN-ABCDE-FGHJK' });
+    expect(out).toEqual({ type: 'grant_days', days: 7, state: 'pending' });
+    const [url, init] = f.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${DEFAULT_BRIDGE_URL}/v1/voucher/redeem`);
+    expect(JSON.parse(init.body as string)).toEqual({
+      payment_code: CODE,
+      code: 'CVPN-ABCDE-FGHJK',
+    });
+  });
+
+  it('returns discount outcomes for checkout carry-through', async () => {
+    const f = fetchReturning({
+      status: 'success',
+      data: { type: 'stripe_discount', percent_off: 50 },
+    });
+    const out = await redeemVoucher(f, { code: CODE, voucher: 'HALFOFF9' });
+    expect(out).toEqual({ type: 'stripe_discount', percent_off: 50 });
+  });
+
+  it('surfaces redemption failures as ApiError with the taxonomy slug', async () => {
+    const f = fetchReturning({
+      status: 'error',
+      data: { code: '409', name: 'already_redeemed', message: 'code already redeemed' },
+    });
+    await expect(redeemVoucher(f, { code: CODE, voucher: 'USED' })).rejects.toMatchObject({
+      slug: 'already_redeemed',
+    });
+  });
+});
+
+describe('createStripeCheckout with voucher', () => {
+  it('carries the discount code into the checkout request', async () => {
+    const f = fetchReturning({ status: 'success', data: { url: 'u', session_id: 's' } });
+    await createStripeCheckout(f, { code: CODE, plan: 'annual', voucher: 'HALFOFF9' });
+    const [, init] = f.mock.calls[0] as [string, RequestInit];
+    expect(JSON.parse(init.body as string).voucher).toBe('HALFOFF9');
   });
 });

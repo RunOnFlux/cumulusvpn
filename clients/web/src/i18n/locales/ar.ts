@@ -120,6 +120,20 @@ export const ar: Catalog = {
   upgrade_activating_hint: 'يمكنك إغلاق هذه الصفحة — يكتمل التفعيل من تلقاء نفسه.',
   upgrade_activated_cta: 'العودة إلى الاتصال ←',
 
+  redeem_eyebrow: 'هل لديك رمز؟',
+  redeem_lede:
+    'استرد قسيمة أو رمزًا ترويجيًا. رموز الوقت المجاني تُفعَّل على شبكة Flux لهذا الجهاز؛ ورموز الخصم تُطبَّق على الدفع بالبطاقة أعلاه.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'استرداد',
+  redeem_cta_busy: 'جارٍ التحقق…',
+  redeem_discount_applied:
+    'تم تطبيق خصم {percent}% — ادفع بالبطاقة أعلاه وسيُدرج الخصم في صفحة الدفع.',
+  redeem_err_invalid: 'هذا الرمز غير صالح. تحقق من الأخطاء الإملائية وحاول مرة أخرى.',
+  redeem_err_expired: 'انتهت صلاحية هذا الرمز.',
+  redeem_err_exhausted: 'استُخدم هذا الرمز بالكامل بالفعل.',
+  redeem_err_already: 'استرد هذا الجهاز هذا الرمز بالفعل.',
+  redeem_err_later: 'الاسترداد غير متاح مؤقتًا — يُرجى المحاولة مرة أخرى بعد بضع دقائق.',
+
   split_summary_title: 'متقدم: تقسيم النفق',
   split_tier_pill: 'بريميوم · اختياري',
   split_lede:

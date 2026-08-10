@@ -107,6 +107,22 @@ export const tr: Catalog = {
   upgrade_activating_hint: 'Bu sayfayı kapatabilirsin — etkinleştirme kendi kendine tamamlanır.',
   upgrade_activated_cta: 'Bağlan’a dön →',
 
+  redeem_eyebrow: 'Kodun mu var?',
+  redeem_lede:
+    'Bir hediye kodu ya da promosyon kodu kullan. Ücretsiz süre kodları bu cihaz için Flux ağında etkinleştirilir; indirim kodları yukarıdaki kartla ödemeye uygulanır.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Kodu kullan',
+  redeem_cta_busy: 'Kontrol ediliyor…',
+  redeem_discount_applied:
+    '%{percent} indirim uygulandı — yukarıda kartla öde, indirim ödeme sayfasında dahil edilmiş olur.',
+  redeem_err_invalid:
+    'Bu kod geçerli değil. Yazım hatası olup olmadığını kontrol edip tekrar dene.',
+  redeem_err_expired: 'Bu kodun süresi dolmuş.',
+  redeem_err_exhausted: 'Bu kod zaten tamamen kullanılmış.',
+  redeem_err_already: 'Bu cihaz bu kodu zaten kullandı.',
+  redeem_err_later:
+    'Kod kullanımı kısa süreliğine kullanılamıyor — lütfen birkaç dakika sonra tekrar dene.',
+
   split_summary_title: 'Gelişmiş: split tunneling',
   split_tier_pill: 'PREMIUM · İSTEĞE BAĞLI',
   split_lede:

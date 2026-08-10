@@ -107,6 +107,21 @@ export const hi: Catalog = {
   upgrade_activating_hint: 'आप यह पेज बंद कर सकते हैं — सक्रियण अपने आप पूरा हो जाता है।',
   upgrade_activated_cta: 'कनेक्ट पर वापस जाएँ →',
 
+  redeem_eyebrow: 'कोई कोड है?',
+  redeem_lede:
+    'वाउचर या प्रोमो कोड रिडीम करें। मुफ़्त समय वाले कोड इस डिवाइस के लिए Flux नेटवर्क पर सक्रिय होते हैं; छूट वाले कोड ऊपर कार्ड चेकआउट पर लागू होते हैं।',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'रिडीम करें',
+  redeem_cta_busy: 'जाँच हो रही है…',
+  redeem_discount_applied:
+    '{percent}% की छूट लागू हो गई — ऊपर कार्ड से भुगतान करें, छूट चेकआउट में शामिल होगी।',
+  redeem_err_invalid: 'यह कोड मान्य नहीं है। टाइपिंग की गलती जाँचें और फिर कोशिश करें।',
+  redeem_err_expired: 'इस कोड की अवधि समाप्त हो चुकी है।',
+  redeem_err_exhausted: 'यह कोड पहले ही पूरी तरह इस्तेमाल हो चुका है।',
+  redeem_err_already: 'इस डिवाइस पर यह कोड पहले ही रिडीम किया जा चुका है।',
+  redeem_err_later:
+    'रिडीम करना थोड़ी देर के लिए उपलब्ध नहीं है — कृपया कुछ मिनट बाद फिर कोशिश करें।',
+
   split_summary_title: 'उन्नत: स्प्लिट टनलिंग',
   split_tier_pill: 'प्रीमियम · वैकल्पिक',
   split_lede:

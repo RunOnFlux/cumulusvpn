@@ -213,3 +213,18 @@ pay.cumulusvpn.com; entitlement stays chain-only (gateways unchanged). Setup, in
   The flag fails closed OFF; reviewers must find the declared IAPs in the app or the
   submission is rejected (2.1/3.1.1). After approval the flag is an emergency kill switch
   only — never OFF during a review window.
+
+## 10. Offer codes & vouchers (added 2026-08-10)
+
+- [ ] ⬜ **Apple Offer Codes** (the store-sanctioned "enter a code" path on iOS): App Store
+  Connect → the app → Subscriptions → group "Premium" → the subscription → **Offer Codes** →
+  create one-time-use batches or custom codes (free months or discounted periods). The app
+  presents Apple's native redemption sheet ("Redeem an offer code" on the Upgrade screen, via
+  `presentCodeRedemptionSheetIOS`); redemptions arrive as ordinary IAP transactions through the
+  bridge's verify/notification path — no bridge configuration needed.
+- [ ] ⬜ **Our voucher codes on iOS**: never redeemable in-app (3.1.1 — custom unlock codes).
+  Users redeem at vpn.cumulusvpn.com using the **Device code** shown in Settings → About.
+  Support copy may point there; the APP must not (no external-purchase steering).
+- [ ] ⬜ Reviewer notes: if an offer-code campaign is live during review, mention where the
+  redemption sheet is (Upgrade screen), and that the in-app "Device code" row is a neutral
+  device identifier used for support.

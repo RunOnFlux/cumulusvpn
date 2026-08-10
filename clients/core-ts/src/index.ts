@@ -22,6 +22,7 @@ export {
   verifyApplePurchase,
   verifyGooglePurchase,
   paymentStatus,
+  redeemVoucher,
   DEFAULT_BRIDGE_URL,
 } from './bridge.js';
 export type {
@@ -30,6 +31,7 @@ export type {
   BridgePaymentStatus,
   PaymentStatusResult,
   BridgeOptions,
+  RedeemOutcome,
 } from './bridge.js';
 export { hasLeadingZeroBits, powHash, solvePoW, verifyPoW } from './pow.js';
 export { verifySignedResponse } from './sign.js';

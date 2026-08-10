@@ -175,8 +175,11 @@ Signed by the directory key (`CVPN_DIRECTORY_PUBKEY`); clients ship the pubkey a
 
 ## Entitlement rule (server-side, deterministic from chain)
 
-A FLUX tx grants premium iff it pays `≥ price_flux` to `payment_address` **and** carries exactly one
-valid `CVPN1:<code>` OP_RETURN memo **and** has ≥1 confirmation. Effect:
-`paid_until[code] = max(now, paid_until[code]) + 30d`, stacking, capped at now + 24 months.
-Overpayment grants whole multiples (`floor(amount/price)` months). Reference:
-`gateway/internal/entitle/entitle.go`.
+A FLUX tx grants premium iff it pays `≥ price_flux/30` (one day's worth) to `payment_address`
+**and** carries exactly one valid `CVPN1:<code>` OP_RETURN memo **and** has ≥1 confirmation.
+Effect: `paid_until[code] = max(now, paid_until[code]) + days`, where
+`days = floor(30 × amount / price_flux)`, stacking, capped at now + 720 days (24 months).
+Whole multiples of `price_flux` grant whole 30-day months exactly as before (pay 3× → 90 days);
+fractional amounts grant pro-rata days — the bridge's voucher settlements (docs/18) size their
+payout as `ceil(price_zats × days / 30)` zats so this floor never truncates a funded grant.
+Reference: `gateway/internal/entitle/entitle.go`.

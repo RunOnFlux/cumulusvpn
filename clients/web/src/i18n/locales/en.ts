@@ -113,6 +113,20 @@ export const en = {
   upgrade_activating_hint: 'You can close this page — activation completes on its own.',
   upgrade_activated_cta: 'Back to Connect →',
 
+  redeem_eyebrow: 'Have a code?',
+  redeem_lede:
+    'Redeem a voucher or promo code. Free-time codes activate on the Flux network for this device; discount codes apply to the card checkout above.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Redeem',
+  redeem_cta_busy: 'Checking…',
+  redeem_discount_applied:
+    '{percent}% off applied — pay by card above and the discount is included at checkout.',
+  redeem_err_invalid: 'That code isn’t valid. Check for typos and try again.',
+  redeem_err_expired: 'This code has expired.',
+  redeem_err_exhausted: 'This code has already been fully used.',
+  redeem_err_already: 'This device has already redeemed this code.',
+  redeem_err_later: 'Redemption is briefly unavailable — please try again in a few minutes.',
+
   split_summary_title: 'Advanced: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

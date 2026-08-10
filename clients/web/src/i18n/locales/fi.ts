@@ -108,6 +108,21 @@ export const fi: Catalog = {
   upgrade_activating_hint: 'Voit sulkea tämän sivun — aktivointi valmistuu itsestään.',
   upgrade_activated_cta: 'Takaisin Yhdistä-sivulle →',
 
+  redeem_eyebrow: 'Onko sinulla koodi?',
+  redeem_lede:
+    'Lunasta kuponki tai kampanjakoodi. Ilmaisajan koodit aktivoidaan Flux-verkossa tälle laitteelle; alennuskoodit koskevat yllä olevaa korttimaksua.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Lunasta',
+  redeem_cta_busy: 'Tarkistetaan…',
+  redeem_discount_applied:
+    '{percent}% alennus käytössä — maksa kortilla yllä, niin alennus sisältyy maksuun.',
+  redeem_err_invalid: 'Koodi ei kelpaa. Tarkista kirjoitusvirheet ja yritä uudelleen.',
+  redeem_err_expired: 'Tämä koodi on vanhentunut.',
+  redeem_err_exhausted: 'Tämä koodi on jo käytetty kokonaan.',
+  redeem_err_already: 'Tämä laite on jo lunastanut tämän koodin.',
+  redeem_err_later:
+    'Lunastus on hetkellisesti poissa käytöstä — yritä uudelleen muutaman minuutin kuluttua.',
+
   split_summary_title: 'Lisäasetukset: jaettu tunnelointi',
   split_tier_pill: 'PREMIUM · VALINNAINEN',
   split_lede:

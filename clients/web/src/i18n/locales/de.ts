@@ -109,6 +109,21 @@ export const de: Catalog = {
     'Du kannst diese Seite schließen — die Aktivierung läuft von selbst weiter.',
   upgrade_activated_cta: 'Zurück zu Verbinden →',
 
+  redeem_eyebrow: 'Hast du einen Code?',
+  redeem_lede:
+    'Löse einen Gutschein- oder Aktionscode ein. Codes für Gratiszeit werden im Flux-Netzwerk für dieses Gerät aktiviert; Rabattcodes gelten für den Karten-Checkout oben.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Einlösen',
+  redeem_cta_busy: 'Wird geprüft…',
+  redeem_discount_applied:
+    '{percent}% Rabatt angewendet — zahle oben mit Karte, und der Rabatt ist im Checkout enthalten.',
+  redeem_err_invalid: 'Dieser Code ist nicht gültig. Prüfe auf Tippfehler und versuche es erneut.',
+  redeem_err_expired: 'Dieser Code ist abgelaufen.',
+  redeem_err_exhausted: 'Dieser Code wurde bereits vollständig eingelöst.',
+  redeem_err_already: 'Dieses Gerät hat diesen Code bereits eingelöst.',
+  redeem_err_later:
+    'Das Einlösen ist kurzzeitig nicht verfügbar — bitte versuche es in ein paar Minuten erneut.',
+
   split_summary_title: 'Erweitert: Split-Tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

@@ -106,6 +106,20 @@ export const ko: Catalog = {
   upgrade_activating_hint: '이 페이지를 닫아도 됩니다 — 활성화는 저절로 완료됩니다.',
   upgrade_activated_cta: '연결로 돌아가기 →',
 
+  redeem_eyebrow: '코드가 있으신가요?',
+  redeem_lede:
+    '바우처나 프로모션 코드를 사용해 보세요. 무료 이용 코드는 이 기기를 위해 Flux 네트워크에서 활성화되며, 할인 코드는 위의 카드 결제에 적용됩니다.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: '사용하기',
+  redeem_cta_busy: '확인 중…',
+  redeem_discount_applied:
+    '{percent}% 할인이 적용되었습니다 — 위에서 카드로 결제하면 할인이 결제 시 반영됩니다.',
+  redeem_err_invalid: '유효하지 않은 코드입니다. 오타가 없는지 확인하고 다시 시도해 주세요.',
+  redeem_err_expired: '이 코드는 만료되었습니다.',
+  redeem_err_exhausted: '이 코드는 이미 모두 사용되었습니다.',
+  redeem_err_already: '이 기기에서는 이미 이 코드를 사용했습니다.',
+  redeem_err_later: '코드 사용이 잠시 불가능합니다 — 몇 분 후에 다시 시도해 주세요.',
+
   split_summary_title: '고급: 스플릿 터널링',
   split_tier_pill: '프리미엄 · 선택',
   split_lede:

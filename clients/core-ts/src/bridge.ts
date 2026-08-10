@@ -79,17 +79,51 @@ const postJson = (body: object): RequestInit => ({
 /**
  * Create a Stripe Checkout Session for a card subscription. Redirect the
  * user to the returned `url`; Stripe sends them back to the web upgrade
- * page, which then polls {@link paymentStatus}.
+ * page, which then polls {@link paymentStatus}. An optional `voucher` (a
+ * discount code previously validated via {@link redeemVoucher}) applies the
+ * discount at checkout.
  */
 export async function createStripeCheckout(
   fetchImpl: FetchImpl,
-  params: { code: string; plan: PaymentPlan },
+  params: { code: string; plan: PaymentPlan; voucher?: string },
   opts?: BridgeOptions,
 ): Promise<{ url: string; session_id: string }> {
   return bridgeFetch(
     fetchImpl,
     '/v1/stripe/checkout',
-    postJson({ payment_code: params.code, plan: params.plan }),
+    postJson({
+      payment_code: params.code,
+      plan: params.plan,
+      ...(params.voucher !== undefined ? { voucher: params.voucher } : {}),
+    }),
+    opts,
+  );
+}
+
+/** Outcome of redeeming a code: free time queued on-chain, or a discount to carry into checkout. */
+export type RedeemOutcome =
+  | { type: 'grant_days'; days: number; state: 'pending' }
+  | { type: 'stripe_discount'; percent_off: number };
+
+/**
+ * Redeem a voucher / promo code for this device's payment code.
+ *
+ * `grant_days` outcomes are consumed immediately — the bridge queues the
+ * on-chain settlement and {@link paymentStatus} tracks it ("activating…").
+ * `stripe_discount` outcomes are NOT consumed: pass the same code as
+ * `voucher` to {@link createStripeCheckout} to apply it. Errors surface as
+ * {@link ApiError} with slugs `invalid` / `expired` / `exhausted` /
+ * `already_redeemed` / `temporarily_unavailable`.
+ */
+export async function redeemVoucher(
+  fetchImpl: FetchImpl,
+  params: { code: string; voucher: string },
+  opts?: BridgeOptions,
+): Promise<RedeemOutcome> {
+  return bridgeFetch(
+    fetchImpl,
+    '/v1/voucher/redeem',
+    postJson({ payment_code: params.code, code: params.voucher }),
     opts,
   );
 }

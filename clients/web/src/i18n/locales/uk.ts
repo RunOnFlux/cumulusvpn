@@ -113,6 +113,20 @@ export const uk: Catalog = {
   upgrade_activating_hint: 'Цю сторінку можна закрити — активація завершиться сама.',
   upgrade_activated_cta: 'Назад до підключення →',
 
+  redeem_eyebrow: 'Маєш код?',
+  redeem_lede:
+    'Активуй ваучер або промокод. Коди на безкоштовний час активуються в мережі Flux для цього пристрою; коди на знижку застосовуються до оплати карткою вище.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Активувати',
+  redeem_cta_busy: 'Перевіряємо…',
+  redeem_discount_applied:
+    'Знижку {percent}% застосовано — оплати карткою вище, і її буде враховано під час оплати.',
+  redeem_err_invalid: 'Цей код недійсний. Перевір, чи немає одруків, і спробуй ще раз.',
+  redeem_err_expired: 'Термін дії цього коду минув.',
+  redeem_err_exhausted: 'Цей код уже повністю використано.',
+  redeem_err_already: 'Цей пристрій уже активував цей код.',
+  redeem_err_later: 'Активація кодів тимчасово недоступна — спробуй ще раз за кілька хвилин.',
+
   split_summary_title: 'Додатково: роздільне тунелювання',
   split_tier_pill: 'ПРЕМІУМ · ОПЦІЯ',
   split_lede:

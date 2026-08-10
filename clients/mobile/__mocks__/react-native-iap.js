@@ -11,6 +11,9 @@ const requestPurchase = jest.fn(async () => null);
 const finishTransaction = jest.fn(async () => undefined);
 const getAvailablePurchases = jest.fn(async () => []);
 
+const presentCodeRedemptionSheetIOS = jest.fn(async () => null);
+const openRedeemOfferCodeAndroid = jest.fn(async () => undefined);
+
 const purchaseUpdatedListener = jest.fn((fn) => {
   listeners.purchase.add(fn);
   return { remove: () => listeners.purchase.delete(fn) };
@@ -49,6 +52,8 @@ const __reset = () => {
 module.exports = {
   __esModule: true,
   initConnection,
+  presentCodeRedemptionSheetIOS,
+  openRedeemOfferCodeAndroid,
   fetchProducts,
   requestPurchase,
   finishTransaction,

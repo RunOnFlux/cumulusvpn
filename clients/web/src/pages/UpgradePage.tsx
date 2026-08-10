@@ -1,5 +1,12 @@
 import { useMemo, useState } from 'react';
-import { createStripeCheckout, paymentCode, walletDeepLink, MEMO_PREFIX } from '@cumulusvpn/core';
+import {
+  ApiError,
+  createStripeCheckout,
+  paymentCode,
+  redeemVoucher,
+  walletDeepLink,
+  MEMO_PREFIX,
+} from '@cumulusvpn/core';
 import type { Directory, Keypair, PaymentPlan } from '@cumulusvpn/core';
 import {
   BRIDGE_URL,
@@ -74,7 +81,15 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
   const [plan, setPlan] = useState<PaymentPlan>('monthly');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [checkoutError, setCheckoutError] = useState(false);
-  const phase = usePaymentStatus(code, session !== null);
+  // Voucher box: prefilled from a marketing deep-link (#/upgrade?voucher=CODE).
+  const [voucherInput, setVoucherInput] = useState(() => params.get('voucher') ?? '');
+  const [voucherBusy, setVoucherBusy] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  /** A grant code was consumed — show the activation panel. */
+  const [redeemed, setRedeemed] = useState(false);
+  /** A discount code was validated — carried into checkout. */
+  const [discount, setDiscount] = useState<{ code: string; percentOff: number } | null>(null);
+  const phase = usePaymentStatus(code, session !== null || redeemed);
 
   const selectPlan = (next: PaymentPlan): void => {
     setPlan(next);
@@ -94,13 +109,54 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
     try {
       const { url } = await createStripeCheckout(
         fetch.bind(window),
-        { code, plan },
+        { code, plan, ...(discount ? { voucher: discount.code } : {}) },
         { baseUrl: BRIDGE_URL },
       );
       window.location.assign(url);
     } catch {
       setCheckoutError(true);
       setCheckoutBusy(false);
+    }
+  };
+
+  const redeem = async (): Promise<void> => {
+    const trimmed = voucherInput.trim();
+    if (trimmed === '' || voucherBusy) {
+      return;
+    }
+    setVoucherBusy(true);
+    setVoucherError(null);
+    try {
+      localStorage.setItem(PAY_CHECKOUT_STARTED_STORAGE_KEY, String(Math.floor(Date.now() / 1000)));
+    } catch {
+      /* private mode — poll falls back to the whole feed */
+    }
+    try {
+      const outcome = await redeemVoucher(
+        fetch.bind(window),
+        { code, voucher: trimmed },
+        { baseUrl: BRIDGE_URL },
+      );
+      if (outcome.type === 'grant_days') {
+        setRedeemed(true);
+      } else {
+        setDiscount({ code: trimmed, percentOff: outcome.percent_off });
+      }
+    } catch (e) {
+      const slug = e instanceof ApiError ? e.slug : 'network';
+      const key =
+        slug === 'expired'
+          ? 'redeem_err_expired'
+          : slug === 'exhausted'
+            ? 'redeem_err_exhausted'
+            : slug === 'already_redeemed'
+              ? 'redeem_err_already'
+              : slug === 'temporarily_unavailable' || slug === 'rate_limited'
+                ? 'redeem_err_later'
+                : 'redeem_err_invalid';
+      setVoucherError(t(key));
+    } finally {
+      setVoucherBusy(false);
     }
   };
 
@@ -120,8 +176,9 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
   const qrLink = walletDeepLink(payment_address, price_flux, memo, 'flux');
   const payLink = walletDeepLink(payment_address, price_flux, memo, 'zel');
 
-  // Returning from Stripe Checkout: replace both pay cards with progress.
-  if (session) {
+  // Returning from Stripe Checkout, or a grant code just redeemed:
+  // replace the pay cards with settlement progress.
+  if (session || redeemed) {
     return (
       <main className="page">
         <div className="wrap narrow">
@@ -234,6 +291,44 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
 
           {checkoutError && <p className="pay-note error">{t('upgrade_card_error')}</p>}
           <p className="pay-note">{t('upgrade_card_note')}</p>
+        </section>
+
+        <section className="card pay-card">
+          <div className="page-head center">
+            <span className="eyebrow">{t('redeem_eyebrow')}</span>
+            <p className="lede">{t('redeem_lede')}</p>
+          </div>
+          <div className="btn-row">
+            <input
+              className="mono"
+              style={{ flex: 1, padding: '12px', fontSize: '15px' }}
+              value={voucherInput}
+              placeholder={t('redeem_placeholder')}
+              onChange={(e) => {
+                setVoucherInput(e.target.value);
+                setVoucherError(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  void redeem();
+                }
+              }}
+              aria-label={t('redeem_placeholder')}
+            />
+            <button
+              className="btn amber"
+              disabled={voucherBusy || voucherInput.trim() === ''}
+              onClick={() => void redeem()}
+            >
+              {voucherBusy ? t('redeem_cta_busy') : t('redeem_cta')}
+            </button>
+          </div>
+          {voucherError && <p className="pay-note error">{voucherError}</p>}
+          {discount && (
+            <p className="pay-note">
+              {t('redeem_discount_applied', { percent: discount.percentOff })}
+            </p>
+          )}
         </section>
 
         <p className="back-link">

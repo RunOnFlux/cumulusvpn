@@ -61,7 +61,7 @@ export function startBroadcaster(d: BroadcasterDeps): LoopHandle {
       try {
         await d.chain.broadcast(built.hex);
         d.log.info(
-          { payment: row.id, rail: row.rail, months: row.months, txid: built.txid },
+          { payment: row.id, rail: row.rail, days: row.days, txid: built.txid },
           'broadcast payment tx',
         );
       } catch (e) {

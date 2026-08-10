@@ -108,6 +108,20 @@ export const th: Catalog = {
   upgrade_activating_hint: 'คุณปิดหน้านี้ได้เลย — การเปิดใช้งานจะเสร็จสมบูรณ์เอง',
   upgrade_activated_cta: 'กลับไปที่เชื่อมต่อ →',
 
+  redeem_eyebrow: 'มีโค้ดไหม?',
+  redeem_lede:
+    'แลกรับบัตรกำนัลหรือโค้ดโปรโมชัน โค้ดเวลาฟรีจะเปิดใช้งานบนเครือข่าย Flux สำหรับอุปกรณ์นี้ ส่วนโค้ดส่วนลดจะใช้กับการชำระเงินด้วยบัตรด้านบน',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'แลกรับ',
+  redeem_cta_busy: 'กำลังตรวจสอบ…',
+  redeem_discount_applied:
+    'ใช้ส่วนลด {percent}% แล้ว — จ่ายด้วยบัตรด้านบน แล้วส่วนลดจะถูกรวมไว้ในหน้าชำระเงิน',
+  redeem_err_invalid: 'โค้ดนี้ไม่ถูกต้อง โปรดตรวจสอบการพิมพ์แล้วลองอีกครั้ง',
+  redeem_err_expired: 'โค้ดนี้หมดอายุแล้ว',
+  redeem_err_exhausted: 'โค้ดนี้ถูกใช้ครบแล้ว',
+  redeem_err_already: 'อุปกรณ์นี้ได้แลกรับโค้ดนี้ไปแล้ว',
+  redeem_err_later: 'การแลกรับโค้ดใช้งานไม่ได้ชั่วคราว — โปรดลองอีกครั้งในอีกไม่กี่นาที',
+
   split_summary_title: 'ขั้นสูง: split tunneling',
   split_tier_pill: 'พรีเมียม · ตัวเลือก',
   split_lede:

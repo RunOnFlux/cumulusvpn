@@ -108,6 +108,20 @@ export const vi: Catalog = {
   upgrade_activating_hint: 'Bạn có thể đóng trang này — quá trình kích hoạt sẽ tự hoàn tất.',
   upgrade_activated_cta: 'Quay lại Kết nối →',
 
+  redeem_eyebrow: 'Bạn có mã?',
+  redeem_lede:
+    'Đổi voucher hoặc mã khuyến mãi. Mã thời gian miễn phí được kích hoạt trên mạng Flux cho thiết bị này; mã giảm giá áp dụng cho phần thanh toán bằng thẻ ở trên.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Đổi mã',
+  redeem_cta_busy: 'Đang kiểm tra…',
+  redeem_discount_applied:
+    'Đã áp dụng giảm {percent}% — thanh toán bằng thẻ ở trên và mức giảm sẽ được tính sẵn khi thanh toán.',
+  redeem_err_invalid: 'Mã đó không hợp lệ. Kiểm tra lỗi gõ phím và thử lại.',
+  redeem_err_expired: 'Mã này đã hết hạn.',
+  redeem_err_exhausted: 'Mã này đã được dùng hết.',
+  redeem_err_already: 'Thiết bị này đã đổi mã này rồi.',
+  redeem_err_later: 'Tính năng đổi mã tạm thời không khả dụng — vui lòng thử lại sau vài phút.',
+
   split_summary_title: 'Nâng cao: split tunneling',
   split_tier_pill: 'PREMIUM · TÙY CHỌN',
   split_lede:

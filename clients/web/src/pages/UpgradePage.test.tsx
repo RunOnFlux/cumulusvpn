@@ -8,10 +8,12 @@ import { UpgradePage } from './UpgradePage';
 
 const checkoutMock = vi.hoisted(() => vi.fn());
 const statusMock = vi.hoisted(() => vi.fn());
+const redeemMock = vi.hoisted(() => vi.fn());
 vi.mock('@cumulusvpn/core', async (importOriginal) => ({
   ...(await importOriginal<typeof CoreModule>()),
   createStripeCheckout: checkoutMock,
   paymentStatus: statusMock,
+  redeemVoucher: redeemMock,
 }));
 
 const keypair: Keypair = {
@@ -47,6 +49,7 @@ function renderPage(params = new URLSearchParams()) {
 beforeEach(() => {
   checkoutMock.mockReset();
   statusMock.mockReset();
+  redeemMock.mockReset();
   localStorage.clear();
 });
 
@@ -151,5 +154,81 @@ describe('UpgradePage card checkout', () => {
     renderPage(new URLSearchParams('session=cs_999'));
     // Poll targets the override code, not the browser keypair's.
     expect(statusMock).toHaveBeenCalledWith(expect.anything(), override, expect.anything());
+  });
+});
+
+describe('UpgradePage voucher redemption', () => {
+  it('redeems a grant code and switches to the activation panel', async () => {
+    redeemMock.mockResolvedValue({ type: 'grant_days', days: 7, state: 'pending' });
+    statusMock.mockResolvedValue({
+      code: ZERO_CODE,
+      payments: [
+        {
+          rail: 'voucher',
+          months: 0,
+          status: 'broadcast',
+          txid: 'vtx',
+          created_at: Math.floor(Date.now() / 1000),
+        },
+      ],
+    });
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('CVPN-XXXXX-XXXXX'), {
+      target: { value: 'CVPN-AAAAA-BBBBB' },
+    });
+    fireEvent.click(screen.getByText('Redeem'));
+    await waitFor(() => expect(screen.getByText('Activating your premium…')).toBeTruthy());
+    expect(redeemMock).toHaveBeenCalledWith(
+      expect.anything(),
+      { code: ZERO_CODE, voucher: 'CVPN-AAAAA-BBBBB' },
+      expect.anything(),
+    );
+  });
+
+  it('keeps a discount code and carries it into checkout', async () => {
+    redeemMock.mockResolvedValue({ type: 'stripe_discount', percent_off: 50 });
+    checkoutMock.mockResolvedValue({ url: 'https://checkout.stripe.com/c/z', session_id: 'cs_9' });
+    const assign = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, 'location', { value: { ...original, assign }, writable: true });
+
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('CVPN-XXXXX-XXXXX'), {
+      target: { value: 'HALFOFF99' },
+    });
+    fireEvent.click(screen.getByText('Redeem'));
+    await waitFor(() =>
+      expect(
+        screen.getByText(
+          '50% off applied — pay by card above and the discount is included at checkout.',
+        ),
+      ).toBeTruthy(),
+    );
+    fireEvent.click(screen.getByText('Pay with card'));
+    await waitFor(() => expect(checkoutMock).toHaveBeenCalled());
+    expect(checkoutMock.mock.calls[0]![1]).toMatchObject({ voucher: 'HALFOFF99' });
+    Object.defineProperty(window, 'location', { value: original, writable: true });
+  });
+
+  it('shows the taxonomy error for an already-redeemed code', async () => {
+    const { ApiError } = await import('@cumulusvpn/core');
+    redeemMock.mockRejectedValue(
+      new ApiError({ code: '409', name: 'already_redeemed', message: 'x' }),
+    );
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('CVPN-XXXXX-XXXXX'), {
+      target: { value: 'USEDCODE9' },
+    });
+    fireEvent.click(screen.getByText('Redeem'));
+    await waitFor(() =>
+      expect(screen.getByText('This device has already redeemed this code.')).toBeTruthy(),
+    );
+  });
+
+  it('prefills the box from a #/upgrade?voucher= deep link', () => {
+    renderPage(new URLSearchParams('voucher=CVPN-AAAAA-CCCCC'));
+    expect((screen.getByPlaceholderText('CVPN-XXXXX-XXXXX') as HTMLInputElement).value).toBe(
+      'CVPN-AAAAA-CCCCC',
+    );
   });
 });

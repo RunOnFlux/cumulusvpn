@@ -108,6 +108,20 @@ export const id: Catalog = {
   upgrade_activating_hint: 'Anda bisa menutup halaman ini — aktivasi selesai dengan sendirinya.',
   upgrade_activated_cta: 'Kembali ke Hubungkan →',
 
+  redeem_eyebrow: 'Punya kode?',
+  redeem_lede:
+    'Tukarkan voucher atau kode promo. Kode waktu gratis diaktifkan di jaringan Flux untuk perangkat ini; kode diskon berlaku untuk checkout kartu di atas.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Tukarkan',
+  redeem_cta_busy: 'Memeriksa…',
+  redeem_discount_applied:
+    'Diskon {percent}% diterapkan — bayar dengan kartu di atas dan diskon sudah termasuk saat checkout.',
+  redeem_err_invalid: 'Kode itu tidak valid. Periksa salah ketik dan coba lagi.',
+  redeem_err_expired: 'Kode ini sudah kedaluwarsa.',
+  redeem_err_exhausted: 'Kode ini sudah terpakai sepenuhnya.',
+  redeem_err_already: 'Perangkat ini sudah menukarkan kode ini.',
+  redeem_err_later: 'Penukaran sementara tidak tersedia — silakan coba lagi dalam beberapa menit.',
+
   split_summary_title: 'Lanjutan: split tunneling',
   split_tier_pill: 'PREMIUM · OPSIONAL',
   split_lede:

@@ -72,7 +72,7 @@ function setup() {
     eventKey: 'in_w1',
     externalRef: 'sub',
     paymentCode: CODE,
-    months: 1,
+    days: 30,
     fluxZats: 20e8,
   });
   const key = treasuryKeyFromWif(WIF);

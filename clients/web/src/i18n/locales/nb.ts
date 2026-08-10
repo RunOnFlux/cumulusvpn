@@ -107,6 +107,20 @@ export const nb: Catalog = {
   upgrade_activating_hint: 'Du kan lukke denne siden — aktiveringen fullføres av seg selv.',
   upgrade_activated_cta: 'Tilbake til Koble til →',
 
+  redeem_eyebrow: 'Har du en kode?',
+  redeem_lede:
+    'Løs inn en verdikupong eller kampanjekode. Koder for gratistid aktiveres på Flux-nettverket for denne enheten; rabattkoder gjelder kortbetalingen ovenfor.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Løs inn',
+  redeem_cta_busy: 'Sjekker…',
+  redeem_discount_applied:
+    '{percent} % rabatt lagt til — betal med kort ovenfor, så er rabatten inkludert i betalingen.',
+  redeem_err_invalid: 'Den koden er ikke gyldig. Sjekk for skrivefeil og prøv igjen.',
+  redeem_err_expired: 'Denne koden er utløpt.',
+  redeem_err_exhausted: 'Denne koden er allerede brukt opp.',
+  redeem_err_already: 'Denne enheten har allerede løst inn denne koden.',
+  redeem_err_later: 'Innløsning er midlertidig utilgjengelig — prøv igjen om noen minutter.',
+
   split_summary_title: 'Avansert: split tunneling',
   split_tier_pill: 'PREMIUM · VALGFRITT',
   split_lede:

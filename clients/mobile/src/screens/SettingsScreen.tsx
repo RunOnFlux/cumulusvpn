@@ -2,7 +2,16 @@
  * Settings — connection preferences + about. Kept intentionally small: the
  * product is "one screen, one job", so this is prefs, not a control panel.
  */
-import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
 import { PoweredByFlux } from '../components/PoweredByFlux';
@@ -197,6 +206,19 @@ export function SettingsScreen({
 
         <Text style={styles.section}>About</Text>
         <InfoRow label="Version" value={`CumulusVPN ${APP_VERSION}`} />
+        {vpn.payment ? (
+          // Neutral device identifier (the payment code) — the handle a user
+          // takes to the website to redeem a voucher or get support. Shown on
+          // ALL builds; deliberately no purchase or redeem framing here
+          // (store guidelines prohibit in-app custom code redemption on iOS).
+          <Pressable
+            onLongPress={() => void Share.share({ message: vpn.payment!.code })}
+            accessibilityRole="text"
+            accessibilityLabel="Device code"
+          >
+            <InfoRow label="Device code" value={vpn.payment.code} mono />
+          </Pressable>
+        ) : null}
         <InfoRow
           label="Directory trust key"
           value={`${CVPN_DIRECTORY_PUBKEY.slice(0, 16)}…`}

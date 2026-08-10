@@ -108,6 +108,21 @@ export const nl: Catalog = {
   upgrade_activating_hint: 'Je kunt deze pagina sluiten — de activering wordt vanzelf afgerond.',
   upgrade_activated_cta: 'Terug naar Verbinden →',
 
+  redeem_eyebrow: 'Heb je een code?',
+  redeem_lede:
+    'Wissel een voucher of promocode in. Codes voor gratis tijd worden op het Flux-netwerk geactiveerd voor dit apparaat; kortingscodes gelden voor de kaartcheckout hierboven.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Inwisselen',
+  redeem_cta_busy: 'Controleren…',
+  redeem_discount_applied:
+    '{percent}% korting toegepast — betaal hierboven met kaart en de korting zit bij de checkout inbegrepen.',
+  redeem_err_invalid: 'Die code is niet geldig. Controleer op typefouten en probeer het opnieuw.',
+  redeem_err_expired: 'Deze code is verlopen.',
+  redeem_err_exhausted: 'Deze code is al volledig gebruikt.',
+  redeem_err_already: 'Dit apparaat heeft deze code al ingewisseld.',
+  redeem_err_later:
+    'Inwisselen is even niet beschikbaar — probeer het over een paar minuten opnieuw.',
+
   split_summary_title: 'Geavanceerd: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

@@ -25,11 +25,13 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useState } from 'react';
-import { walletDeepLink, walletDeepLinks } from '@cumulusvpn/core';
+import { ApiError, redeemVoucher, walletDeepLink, walletDeepLinks } from '@cumulusvpn/core';
 import type { Tier } from '@cumulusvpn/core';
+import { openRedeemOfferCodeAndroid, presentCodeRedemptionSheetIOS } from 'react-native-iap';
 import type { PaymentIdentity } from '../state/useVpn';
 import type { IapState } from '../state/useIap';
 import type { IapPlan } from '../lib/iap';
@@ -44,6 +46,8 @@ interface Props {
   readonly payment: PaymentIdentity | null;
   /** Crypto (FLUX) section visible — remote `inAppUpgrade` flag. */
   readonly cryptoEnabled: boolean;
+  /** In-app voucher redeem box visible — remote `voucherRedeem` flag (never iOS). */
+  readonly voucherEnabled: boolean;
   /** Store subscription section visible — remote `iapPurchase` flag. */
   readonly iap: IapState | null;
   readonly onClose: () => void;
@@ -82,6 +86,7 @@ export function UpgradeScreen({
   paidUntil,
   payment,
   cryptoEnabled,
+  voucherEnabled,
   iap,
   onClose,
 }: Props): React.JSX.Element {
@@ -154,6 +159,8 @@ export function UpgradeScreen({
       </View>
 
       {iap && !premium ? <SubscribeSection iap={iap} /> : null}
+      {voucherEnabled && payment ? <RedeemSection code={payment.code} /> : null}
+      {iap ? <StoreOfferCodeRow /> : null}
       {showCrypto ? <InAppPay payment={payment} premium={premium} /> : null}
     </ScrollView>
   );
@@ -297,6 +304,120 @@ function PlanCard({
       <Text style={styles.planLabel}>{label}</Text>
       <Text style={styles.planPrice}>{price ?? '—'}</Text>
       <Text style={styles.planUnit}>{unit}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * In-app redeem box for OUR voucher codes — direct-APK Android only (the
+ * `voucherRedeem` flag can never be true on iOS; Apple 3.1.1 prohibits
+ * custom unlock codes). A granted code settles on-chain; the app's normal
+ * tier polling flips premium within ~1 min of confirmation.
+ */
+function RedeemSection({ code }: { readonly code: string }): React.JSX.Element {
+  const [input, setInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [granted, setGranted] = useState<number | null>(null);
+
+  const redeem = async (): Promise<void> => {
+    if (busy || input.trim() === '') {
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const outcome = await redeemVoucher(fetch, { code, voucher: input.trim() });
+      if (outcome.type === 'grant_days') {
+        setGranted(outcome.days);
+      } else {
+        setError('This is a card-discount code — apply it at checkout on cumulusvpn.com.');
+      }
+    } catch (e) {
+      const slug = e instanceof ApiError ? e.slug : '';
+      setError(
+        slug === 'expired'
+          ? 'This code has expired.'
+          : slug === 'exhausted'
+            ? 'This code has already been fully used.'
+            : slug === 'already_redeemed'
+              ? 'This device has already redeemed this code.'
+              : slug === 'temporarily_unavailable' || slug === 'rate_limited'
+                ? 'Redemption is briefly unavailable — try again in a few minutes.'
+                : 'That code isn’t valid. Check for typos and try again.',
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (granted !== null) {
+    return (
+      <>
+        <Text style={styles.section}>Redeem a code</Text>
+        <View style={[styles.card, styles.iapLoading]}>
+          <ActivityIndicator color={color.amber} />
+          <Text style={styles.copy}>
+            {granted} day{granted === 1 ? '' : 's'} of Premium is activating on the decentralized
+            network — it unlocks on every gateway within a minute.
+          </Text>
+        </View>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Text style={styles.section}>Redeem a code</Text>
+      <TextInput
+        style={styles.redeemInput}
+        value={input}
+        onChangeText={(v) => {
+          setInput(v);
+          setError(null);
+        }}
+        placeholder="CVPN-XXXXX-XXXXX"
+        placeholderTextColor={color.inkFaint}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        onSubmitEditing={() => void redeem()}
+      />
+      <Pressable
+        onPress={() => void redeem()}
+        disabled={busy || input.trim() === ''}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.payBtn, (pressed || busy) && styles.payBtnPressed]}
+      >
+        <Text style={styles.payBtnLabel}>{busy ? 'Checking…' : 'Redeem'}</Text>
+      </Pressable>
+      {error ? <Text style={styles.walletError}>{error}</Text> : null}
+    </>
+  );
+}
+
+/**
+ * Store-sanctioned offer/promo code sheets — Apple's and Play's OWN code
+ * systems (configured in the consoles), not our voucher codes. Always legal
+ * to show alongside IAP; redemptions surface as ordinary store transactions
+ * through the existing purchase listener + reconcile path.
+ */
+function StoreOfferCodeRow(): React.JSX.Element {
+  const open = async (): Promise<void> => {
+    try {
+      if (Platform.OS === 'ios') {
+        await presentCodeRedemptionSheetIOS();
+      } else {
+        await openRedeemOfferCodeAndroid();
+      }
+    } catch {
+      // Sheet unavailable (old OS, no store session) — nothing to surface.
+    }
+  };
+  return (
+    <Pressable onPress={() => void open()} accessibilityRole="button" hitSlop={8}>
+      <Text style={[styles.link, styles.offerCodeRow]}>
+        {Platform.OS === 'ios' ? 'Redeem an offer code' : 'Redeem a Play promo code'}
+      </Text>
     </Pressable>
   );
 }
@@ -537,4 +658,16 @@ const styles = StyleSheet.create({
     marginTop: space.lg,
     justifyContent: 'center',
   },
+  redeemInput: {
+    backgroundColor: color.orbCoreOn,
+    borderColor: color.hairline,
+    borderWidth: 1,
+    borderRadius: radius.sm,
+    color: color.ink,
+    fontFamily: font.mono,
+    fontSize: 15,
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+  },
+  offerCodeRow: { textAlign: 'center', marginTop: space.lg },
 });

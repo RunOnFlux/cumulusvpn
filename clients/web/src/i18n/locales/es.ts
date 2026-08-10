@@ -108,6 +108,22 @@ export const es: Catalog = {
   upgrade_activating_hint: 'Puedes cerrar esta página — la activación se completa sola.',
   upgrade_activated_cta: 'Volver a Conectar →',
 
+  redeem_eyebrow: '¿Tienes un código?',
+  redeem_lede:
+    'Canjea un cupón o código promocional. Los códigos de tiempo gratis se activan en la red de Flux para este dispositivo; los códigos de descuento se aplican al pago con tarjeta de arriba.',
+  redeem_placeholder: 'CVPN-XXXXX-XXXXX',
+  redeem_cta: 'Canjear',
+  redeem_cta_busy: 'Comprobando…',
+  redeem_discount_applied:
+    '{percent}% de descuento aplicado — paga con tarjeta arriba y el descuento se incluye en el pago.',
+  redeem_err_invalid:
+    'Ese código no es válido. Revisa que no haya errores de escritura e inténtalo de nuevo.',
+  redeem_err_expired: 'Este código ha caducado.',
+  redeem_err_exhausted: 'Este código ya se ha usado por completo.',
+  redeem_err_already: 'Este dispositivo ya ha canjeado este código.',
+  redeem_err_later:
+    'El canje no está disponible por un momento — inténtalo de nuevo en unos minutos.',
+
   split_summary_title: 'Avanzado: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

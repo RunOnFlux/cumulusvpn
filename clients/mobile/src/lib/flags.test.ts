@@ -35,6 +35,7 @@ describe('resolveFlags', () => {
   it('DEFAULT_FLAGS has everything off', () => {
     expect(DEFAULT_FLAGS.inAppUpgrade).toBe(false);
     expect(DEFAULT_FLAGS.iapPurchase).toBe(false);
+    expect(DEFAULT_FLAGS.voucherRedeem).toBe(false);
   });
 });
 
@@ -59,13 +60,37 @@ describe('resolveFlags: iapPurchase', () => {
 
   it('the two purchase flags stay independent', () => {
     const both = { inAppUpgrade: { android: true }, iapPurchase: { ios: true } };
-    expect(resolveFlags(both, 'android')).toEqual({ inAppUpgrade: true, iapPurchase: false });
-    expect(resolveFlags(both, 'ios')).toEqual({ inAppUpgrade: false, iapPurchase: true });
+    expect(resolveFlags(both, 'android')).toEqual({
+      inAppUpgrade: true,
+      iapPurchase: false,
+      voucherRedeem: false,
+    });
+    expect(resolveFlags(both, 'ios')).toEqual({
+      inAppUpgrade: false,
+      iapPurchase: true,
+      voucherRedeem: false,
+    });
   });
 
   it('crypto UI still can NEVER be enabled on iOS even when IAP is on', () => {
     const doc2 = { inAppUpgrade: { ios: true }, iapPurchase: { ios: true } };
     expect(resolveFlags(doc2, 'ios').inAppUpgrade).toBe(false);
     expect(resolveFlags(doc2, 'ios').iapPurchase).toBe(true);
+  });
+});
+
+describe('resolveFlags: voucherRedeem', () => {
+  it('can NEVER be enabled on iOS (Apple 3.1.1: custom unlock codes)', () => {
+    const doc = { voucherRedeem: { android: true, ios: true } };
+    expect(resolveFlags(doc, 'ios').voucherRedeem).toBe(false);
+    expect(resolveFlags(doc, 'android').voucherRedeem).toBe(true);
+  });
+
+  it('is strict-true, per-platform, fail-closed like every flag', () => {
+    expect(resolveFlags({ voucherRedeem: { android: 'yes' } }, 'android').voucherRedeem).toBe(
+      false,
+    );
+    expect(resolveFlags({}, 'android').voucherRedeem).toBe(false);
+    expect(resolveFlags(null, 'android').voucherRedeem).toBe(false);
   });
 });
