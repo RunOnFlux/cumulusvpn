@@ -21,7 +21,10 @@ export type PaymentPlan = 'monthly' | 'annual';
 export type BridgePaymentStatus = 'pending' | 'broadcast' | 'confirmed' | 'failed';
 
 export interface BridgePayment {
-  readonly rail: 'stripe' | 'apple' | 'google';
+  readonly rail: 'stripe' | 'apple' | 'google' | 'voucher';
+  /** Entitlement granted, pro-rata by the day (a month is 30). */
+  readonly days: number;
+  /** Derived floor(days/30) — kept for older consumers. */
   readonly months: number;
   readonly status: BridgePaymentStatus;
   readonly txid: string | null;

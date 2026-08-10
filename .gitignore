@@ -58,6 +58,10 @@ clients/mobile/ios/.xcode.env.local
 *.pfx
 *.mobileprovision
 *.cer
+# …except the vendored Apple root CA the payments bridge verifies IAP
+# receipts against (public certificate, not a secret; CI's Docker build
+# COPYs bridge/certs and a fresh clone must be able to boot the Apple rail).
+!bridge/certs/*.cer
 *.certSigningRequest
 
 # Wrangler local dev state

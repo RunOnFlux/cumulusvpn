@@ -9,6 +9,7 @@
  */
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import rateLimit from '@fastify/rate-limit';
+import { createHash, timingSafeEqual } from 'node:crypto';
 
 import type { Config } from './config.js';
 import { isValidPaymentCode } from './codes.js';
@@ -94,12 +95,20 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
   const badRequest = (reply: FastifyReply, name: string, message: string): FastifyReply =>
     reply.code(400).send(err(400, name, message));
 
-  /** Bearer ADMIN_TOKEN gate for /internal endpoints. True = authorized. */
+  /**
+   * Bearer ADMIN_TOKEN gate for /internal endpoints. Constant-time via
+   * fixed-length SHA-256 digests (same approach as the dashboard worker) —
+   * a plain string compare short-circuits and leaks a timing side-channel.
+   */
+  const adminDigest = createHash('sha256').update(`Bearer ${cfg.adminToken}`).digest();
   const requireAdmin = (
     req: { headers: { authorization?: string | undefined } },
     reply: FastifyReply,
   ): boolean => {
-    if (req.headers.authorization !== `Bearer ${cfg.adminToken}`) {
+    const given = createHash('sha256')
+      .update(req.headers.authorization ?? '')
+      .digest();
+    if (!timingSafeEqual(given, adminDigest)) {
       void reply.code(401).send(err(401, 'unauthorized', 'bad token'));
       return false;
     }
@@ -483,6 +492,22 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
     if (b.type === 'grant_days' && value > 360) {
       return badRequest(reply, 'bad_request', 'grant value is capped at 360 days');
     }
+    const campaign = b.campaign ?? '';
+    if (!/^[\w][\w .:-]{0,39}$/.test(campaign) && campaign !== '') {
+      return badRequest(
+        reply,
+        'bad_request',
+        'campaign must be 1-40 chars: letters, digits, space, . : - _',
+      );
+    }
+    const maxRedemptions = b.max_redemptions === undefined ? 1 : Number(b.max_redemptions);
+    if (!Number.isInteger(maxRedemptions) || maxRedemptions < 1 || maxRedemptions > 100_000) {
+      return badRequest(reply, 'bad_request', 'max_redemptions must be an integer 1..100000');
+    }
+    const perCodeLimit = b.per_code_limit === undefined ? 1 : Number(b.per_code_limit);
+    if (!Number.isInteger(perCodeLimit) || perCodeLimit < 0 || perCodeLimit > 1000) {
+      return badRequest(reply, 'bad_request', 'per_code_limit must be an integer 0..1000');
+    }
     if (b.type === 'stripe_discount') {
       if (value > 100) {
         return badRequest(reply, 'bad_request', 'percent_off is capped at 100');
@@ -538,32 +563,26 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
     if (b.type === 'stripe_discount') {
       stripeIds = await d.stripe!.provisionDiscount(
         value,
-        b.campaign ?? '',
+        campaign,
         codes,
-        Number(b.max_redemptions) || 1,
+        maxRedemptions,
         expiresAt,
       );
     }
     const rows = deps.vouchers.createBatch(
-      {
-        type: b.type,
-        value,
-        ...(b.campaign !== undefined ? { campaign: b.campaign } : {}),
-        maxRedemptions: Number(b.max_redemptions) || 1,
-        perCodeLimit: b.per_code_limit === undefined ? 1 : Number(b.per_code_limit),
-        expiresAt,
-      },
+      { type: b.type, value, campaign, maxRedemptions, perCodeLimit, expiresAt },
       codes,
       stripeIds,
     );
+    // Treasury liability estimate. Discount vouchers ALSO settle on-chain
+    // (the discounted invoice grants the full plan) — surface the worst
+    // case (every redemption an annual plan) so a 100%-off campaign is
+    // never an unpriced mint; fiat revenue offsets it except at 100% off.
     const projectedZats =
       b.type === 'grant_days'
-        ? rows.length * (Number(b.max_redemptions) || 1) * zatsForDays(cfg.priceZats, value)
-        : 0;
-    req.log.info(
-      { count: rows.length, type: b.type, value, campaign: b.campaign ?? '' },
-      'vouchers created',
-    );
+        ? rows.length * maxRedemptions * zatsForDays(cfg.priceZats, value)
+        : rows.length * maxRedemptions * zatsForDays(cfg.priceZats, 360);
+    req.log.info({ count: rows.length, type: b.type, value, campaign }, 'vouchers created');
     return reply.send(
       ok({
         codes: rows.map((v) => displayCode(v.code)),

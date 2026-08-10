@@ -255,6 +255,12 @@
   function showEditor() { $('login').hidden = true; $('editor').hidden = false; loadFlags(); loadVoucherStats(); loadVouchers(); }
 
   // ---- vouchers (proxied to the payments bridge; dashboard token auth) ----
+  function esc(v) {
+    return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
   function vfetch(path, init) {
     init = init || {};
     init.headers = Object.assign({ authorization: 'Bearer ' + token }, init.headers || {});
@@ -271,9 +277,9 @@
   function loadVoucherStats() {
     vfetch('/stats').then(function (d) {
       var rows = (d.campaigns || []).map(function (c) {
-        return '<b>' + (c.campaign || '(no campaign)') + '</b> · ' + c.vouchers + ' codes · ' +
-          c.redemptions + ' redeemed · ' + c.days_granted + ' days granted (' +
-          Number(c.flux_spent).toFixed(2) + ' FLUX)';
+        return '<b>' + esc(c.campaign || '(no campaign)') + '</b> · ' + esc(c.vouchers) +
+          ' codes · ' + esc(c.redemptions) + ' redeemed · ' + esc(c.days_granted) +
+          ' days granted (' + Number(c.flux_spent).toFixed(2) + ' FLUX)';
       });
       $('voucher-stats').innerHTML = rows.length ? rows.join('<br/>') : 'No campaigns yet.';
     }).catch(function (e) { $('voucher-stats').textContent = 'Stats unavailable: ' + e.message; });
@@ -289,9 +295,10 @@
         vs.map(function (v) {
           var exp = v.expires_at ? new Date(v.expires_at * 1000).toLocaleDateString() : '—';
           var typ = v.type === 'grant_days' ? v.value + 'd free' : v.value + '% off';
-          return '<tr><td><code>' + v.display_code + '</code></td><td>' + typ + '</td><td>' +
-            (v.campaign || '—') + '</td><td>' + v.redemption_count + '/' + v.max_redemptions +
-            '</td><td>' + exp + '</td><td>' + v.status + '</td><td>' +
+          return '<tr><td><code>' + esc(v.display_code) + '</code></td><td>' + esc(typ) +
+            '</td><td>' + esc(v.campaign || '—') + '</td><td>' + esc(v.redemption_count) + '/' +
+            esc(v.max_redemptions) + '</td><td>' + esc(exp) + '</td><td>' + esc(v.status) +
+            '</td><td>' +
             (v.status === 'active'
               ? '<button class="btn ghost sm" data-revoke="' + v.id + '">Revoke</button>'
               : '') + '</td></tr>';
