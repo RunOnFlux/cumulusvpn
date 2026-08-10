@@ -39,23 +39,26 @@ defaults:
   # fall back to awg. Set false to make 443 free-for-all.
   tlsPremium: true
   # PUBLIC GHCR image (auto-built), no repoauth.
-  # Pinned to the VERSION TAG `0.2.0` (deliberate policy, 2026-08-04, was
+  # Pinned to the VERSION TAG `0.3.0` (deliberate policy, 2026-08-04, was
   # digest-pinned): the tag is treated as MUTABLE and rebuilt in place — the
   # same release flow 0.1.0 used. To ship a fix to the fleet WITHOUT touching
-  # the on-chain specs: move the git tag (delete + recreate v0.2.0 on the new
-  # commit + push) and gateway-image.yml republishes :0.2.0. Nodes pick the new
+  # the on-chain specs: move the git tag (delete + recreate v0.3.0 on the new
+  # commit + push) and gateway-image.yml republishes :0.3.0. Nodes pick the new
   # image up when they next pull (soft redeploy/reinstall/migration — a plain
   # restart may reuse the cached layer), so the fleet rolls forward gradually.
-  # Because the Version string stays "0.2.0" across rebuilds, tell builds apart
+  # Because the Version string stays "0.3.0" across rebuilds, tell builds apart
   # by `/v1/info.build_commit` (git short-SHA; the dashboard flags stale nodes).
   # Accepted tradeoff vs the digest pin: whoever can push to GHCR (or CI) can
   # change what the fleet runs without an on-chain act; the spec alone no longer
   # proves which bytes a node is running. Verify what the tag resolves to with:
-  #   docker buildx imagetools inspect ghcr.io/runonflux/cumulusvpn-gateway:0.2.0
-  # A BREAKING gateway (0.3.0) is a NEW tag: edit this line + re-register the
-  # specs — the desired friction for major changes.
-  # Note CI strips the leading "v", so tag v0.2.0 -> image :0.2.0, never :v0.2.0.
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.2.0'
+  #   docker buildx imagetools inspect ghcr.io/runonflux/cumulusvpn-gateway:0.3.0
+  # A BREAKING gateway (0.4.0) is a NEW tag: edit this line + roll the fleet
+  # with scripts/update-image.mjs — the desired friction for major changes.
+  # 0.3.0 (2026-08-10) carries the pro-rata day-grant entitlement rule
+  # (docs/04) — a backward-compatible superset, so mixed 0.2.0/0.3.0 fleets
+  # agree on every whole-month payment while the roll completes.
+  # Note CI strips the leading "v", so tag v0.3.0 -> image :0.3.0, never :v0.3.0.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.3.0'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:

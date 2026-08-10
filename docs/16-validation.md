@@ -90,25 +90,25 @@ cd gateway && go test ./... -race
 
 ## Stage B — Publish an image containing this code
 
-First bump the version the binary reports, or every 0.2.0 node self-describes as
+First bump the version the binary reports, or every 0.3.0 node self-describes as
 the previous release. `api.Version` is a **const**, so `-ldflags -X` cannot stamp
 it — the Go linker only patches string *variables*, and an `-X` against a const
 is silently dropped:
 
 ```go
 // gateway/internal/api/api.go
-const Version = "0.2.0"   // must match the tag you are about to cut
+const Version = "0.3.0"   // must match the tag you are about to cut
 ```
 
 Leave `MinClientVersion` alone: nothing enforces it, so bumping it only misleads.
 
 `.github/workflows/gateway-image.yml` then builds and pushes on a tag. Prefer the
 **semver-valid** form — `type=semver` only fires for a ref `semver.valid()`
-accepts, so `v0.2.0` yields `:0.2.0` *and* the floating `:0.2`, while
-`gateway-v0.2.0` matches only the `type=match` rule and yields `:0.2.0` alone.
+accepts, so `v0.3.0` yields `:0.3.0` *and* the floating `:0.3`, while
+`gateway-v0.3.0` matches only the `type=match` rule and yields `:0.3.0` alone.
 
 ```bash
-git tag v0.2.0 && git push origin v0.2.0
+git tag v0.3.0 && git push origin v0.3.0
 ```
 
 Two things to know before pushing the tag. The workflow's `on.push` carries both
