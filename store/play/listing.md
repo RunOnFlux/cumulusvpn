@@ -11,14 +11,22 @@ CumulusVPN: No-Log VPN
 ```
 Alternate (10): `CumulusVPN`
 
-## Short Description (max 80) — 77 chars
+## Short Description (max 80) — 79 chars
 ```
-Decentralized WireGuard VPN. No account, no logs. Free tier. Powered by Flux.
+Cumulus VPN — decentralized WireGuard. No account, no logs. Free, Flux-powered.
 ```
+Alternate (77, no spaced brand): `Decentralized WireGuard VPN. No account, no logs. Free tier. Powered by Flux.`
+
+Why it leads with the spaced "Cumulus VPN": Play has no keywords field, so title + short
+description + full description are the whole index, and the spaced form appeared in none of them —
+every mention was the compound `CumulusVPN`. Users who type "cumulus vpn" are searching for us by
+name, and that is the query we least want to miss. The title keeps the exact brand `CumulusVPN`,
+so both spellings are now covered.
 
 ## Full Description (max 4000)
 ```
-CumulusVPN is a decentralized VPN that protects your privacy by design — not just by promise.
+CumulusVPN (Cumulus VPN) is a decentralized VPN that protects your privacy by design — not just
+by promise.
 
 NO ACCOUNT, EVER
 No sign-up, no email, no password, no phone number. Install the app and it generates a private

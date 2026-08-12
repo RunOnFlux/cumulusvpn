@@ -26,13 +26,19 @@ Alternate (22): `No-account private VPN`
 No sign-up, no email, no logs. Generate a key, tap connect. Multi-hop routing means no single server ever sees both who you are and where you go.
 ```
 
-## Keywords (max 100, comma-separated, no spaces) — 82 chars
+## Keywords (max 100, comma-separated, no spaces) — 90 chars
 ```
-vpn,wireguard,privacy,no log,decentralized,flux,secure,tunnel,anonymous,wifi,proxy
+vpn,wireguard,privacy,no log,decentralized,flux,secure,tunnel,anonymous,wifi,proxy,cumulus
 ```
 Rationale: the app name and subtitle already carry "CumulusVPN / private / account", so keywords
 avoid repeating them (Apple indexes name+subtitle+keywords together). No competitor brand names
 (Apple rejects those).
+
+`cumulus` is the one deliberate exception. Apple indexes name+subtitle+keywords as one token set,
+and it is undocumented whether it splits the compound `CumulusVPN` into `cumulus` + `vpn`. If it
+does not, the very common query "cumulus vpn" matches only the `vpn` half and we lose our own
+brand search. The standalone token costs 8 of the 18 spare characters and removes that risk —
+`cumulus` is not a repeat of `cumulusvpn`, it is the token that might otherwise not exist.
 
 ## Support URL
 ```
