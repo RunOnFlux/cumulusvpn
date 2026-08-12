@@ -301,17 +301,26 @@
   (function () {
     var root = document.documentElement;
     var KEY = 'cumulusvpn-theme';
-    function current() {
+    /* Same cycle + icons as the web app: system (◐) → dark (☾) → light (☀). */
+    var ICON = { system: '◐', dark: '☾', light: '☀' };
+    function mode() {
       var attr = root.getAttribute('data-theme');
-      if (attr === 'light' || attr === 'dark') return attr;
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      return attr === 'light' || attr === 'dark' ? attr : 'system';
     }
     var btn = document.getElementById('themeToggle');
+    function paint() { if (btn) btn.textContent = ICON[mode()]; }
+    paint();
     if (btn) {
       btn.addEventListener('click', function () {
-        var next = current() === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', next);
-        try { localStorage.setItem(KEY, next); } catch (e) {}
+        var m = mode();
+        var next = m === 'system' ? 'dark' : m === 'dark' ? 'light' : 'system';
+        if (next === 'system') root.removeAttribute('data-theme');
+        else root.setAttribute('data-theme', next);
+        try {
+          if (next === 'system') localStorage.removeItem(KEY);
+          else localStorage.setItem(KEY, next);
+        } catch (e) {}
+        paint();
       });
     }
 

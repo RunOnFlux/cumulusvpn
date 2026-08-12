@@ -256,23 +256,25 @@
       :root[data-theme='dark'] .pbf .pbf-on-dark {
         display: inline;
       }
+      /* Same control style as the web app header (34x30, 9px radius, surface). */
       .theme-btn {
-        background: transparent;
+        background: var(--surface);
         border: 1px solid var(--line);
         color: var(--ink-2);
-        border-radius: 20px;
+        border-radius: 9px;
         width: 34px;
-        height: 34px;
+        height: 30px;
         cursor: pointer;
         display: inline-flex;
         align-items: center;
         justify-content: center;
+        font: inherit;
         font-size: 15px;
         line-height: 1;
       }
       .theme-btn:hover {
         color: var(--ink);
-        border-color: var(--ink-3);
+        border-color: var(--cyan);
       }
 
       /* ---- page hero ---- */
@@ -420,7 +422,7 @@
           min-height: 44px;
         }
         .theme-btn {
-          min-height: 40px;
+          height: 36px;
         }
         .top .pbf {
           display: none;
@@ -675,19 +677,28 @@
           var saved = localStorage.getItem(KEY);
           if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
         } catch (e) {}
-        function current() {
+        /* Same cycle + icons as the web app: system (◐) → dark (☾) → light (☀). */
+        var ICON = { system: '◐', dark: '☾', light: '☀' };
+        function mode() {
           var attr = root.getAttribute('data-theme');
-          if (attr === 'light' || attr === 'dark') return attr;
-          return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          return attr === 'light' || attr === 'dark' ? attr : 'system';
         }
         var btn = document.getElementById('themeToggle');
+        function paint() {
+          if (btn) btn.textContent = ICON[mode()];
+        }
+        paint();
         if (btn) {
           btn.addEventListener('click', function () {
-            var next = current() === 'dark' ? 'light' : 'dark';
-            root.setAttribute('data-theme', next);
+            var m = mode();
+            var next = m === 'system' ? 'dark' : m === 'dark' ? 'light' : 'system';
+            if (next === 'system') root.removeAttribute('data-theme');
+            else root.setAttribute('data-theme', next);
             try {
-              localStorage.setItem(KEY, next);
+              if (next === 'system') localStorage.removeItem(KEY);
+              else localStorage.setItem(KEY, next);
             } catch (e) {}
+            paint();
           });
         }
       })();

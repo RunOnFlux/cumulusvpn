@@ -127,10 +127,11 @@
   :root[data-theme="light"] .pbf .pbf-on-dark { display: none; }
   :root[data-theme="dark"] .pbf .pbf-on-light { display: none; }
   :root[data-theme="dark"] .pbf .pbf-on-dark { display: inline; }
-  .theme-btn { background: transparent; border: 1px solid var(--line); color: var(--ink-2); border-radius: 20px;
-    width: 34px; height: 34px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-    font-size: 15px; line-height: 1; }
-  .theme-btn:hover { color: var(--ink); border-color: var(--ink-3); }
+  /* Same control style as the web app header (34x30, 9px radius, surface). */
+  .theme-btn { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2); border-radius: 9px;
+    width: 34px; height: 30px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    font: inherit; font-size: 15px; line-height: 1; }
+  .theme-btn:hover { color: var(--ink); border-color: var(--cyan); }
 
   /* ---- buttons ---- */
   .btn { font: inherit; font-weight: 600; font-size: 15px; border-radius: 12px; padding: 13px 20px; cursor: pointer;
@@ -301,7 +302,7 @@
        untouched so the row still fits. */
     .top nav a { white-space: nowrap; padding: 9px 0; }
     .brand { min-height: 44px; }
-    .theme-btn { min-height: 40px; }
+    .theme-btn { height: 36px; }
     /* The footer already credits Flux; at ~7.2:1 this lockup is the widest
        thing in the bar and reads as a duplicate on a phone screen. */
     .top .pbf { display: none; }
@@ -309,7 +310,9 @@
        dropdown arrow. Scoped to `.top` deliberately: the base `.lang-select`
        rule is declared LATER in this stylesheet, so an equal-specificity
        selector here would lose to it and silently do nothing. */
-    .top .lang-select { max-width: 104px; font-size: 12px; padding: 0 6px; height: 36px; }
+    .top .lang-select { max-width: 92px; font-size: 11px; padding: 0 20px 0 4px; height: 36px;
+      background-position: right 6px center; }
+    [dir="rtl"] .top .lang-select { padding: 0 4px 0 20px; background-position: left 6px center; }
   }
 
   /* ===== "Signed sky" identity — shared with the web app ===== */
@@ -365,10 +368,16 @@
   }
 
   /* ---- language switcher + RTL ---- */
-  .lang-select { background: transparent; border: 1px solid var(--line); color: var(--ink-2);
-    border-radius: 20px; height: 34px; padding: 0 10px; font: inherit; font-size: 13px;
-    cursor: pointer; max-width: 132px; }
-  .lang-select:hover { color: var(--ink); border-color: var(--ink-3); }
+  /* Same control style as the web app header. The native dropdown arrow sits
+     flush against the right edge; replace it with an inset chevron (mid-slate
+     stroke reads on both light and dark surfaces). */
+  .lang-select { background: var(--surface); border: 1px solid var(--line); color: var(--ink-2);
+    border-radius: 9px; height: 30px; padding: 0 24px 0 8px; font: inherit; font-size: 12px;
+    cursor: pointer; max-width: 132px; appearance: none; -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%237E8FA0' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 9px center; background-size: 10px 6px; }
+  .lang-select:hover { color: var(--ink); border-color: var(--cyan); }
+  [dir="rtl"] .lang-select { padding: 0 8px 0 24px; background-position: left 9px center; }
   [dir="rtl"] .code, [dir="rtl"] .ip, [dir="rtl"] .stbar, [dir="rtl"] .stat .v,
   [dir="rtl"] .badge-flux { direction: ltr; unicode-bidi: isolate; }
   [dir="rtl"] .kpi .n, [dir="rtl"] .tier .price { unicode-bidi: plaintext; }
@@ -690,17 +699,26 @@
       var saved = localStorage.getItem(KEY);
       if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
     } catch (e) {}
-    function current() {
+    /* Same cycle + icons as the web app: system (◐) → dark (☾) → light (☀). */
+    var ICON = { system: '◐', dark: '☾', light: '☀' };
+    function mode() {
       var attr = root.getAttribute('data-theme');
-      if (attr === 'light' || attr === 'dark') return attr;
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      return attr === 'light' || attr === 'dark' ? attr : 'system';
     }
     var btn = document.getElementById('themeToggle');
+    function paint() { if (btn) btn.textContent = ICON[mode()]; }
+    paint();
     if (btn) {
       btn.addEventListener('click', function () {
-        var next = current() === 'dark' ? 'light' : 'dark';
-        root.setAttribute('data-theme', next);
-        try { localStorage.setItem(KEY, next); } catch (e) {}
+        var m = mode();
+        var next = m === 'system' ? 'dark' : m === 'dark' ? 'light' : 'system';
+        if (next === 'system') root.removeAttribute('data-theme');
+        else root.setAttribute('data-theme', next);
+        try {
+          if (next === 'system') localStorage.removeItem(KEY);
+          else localStorage.setItem(KEY, next);
+        } catch (e) {}
+        paint();
       });
     }
 
