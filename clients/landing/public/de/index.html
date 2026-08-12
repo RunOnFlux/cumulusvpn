@@ -289,8 +289,27 @@
     .hero .wrap { grid-template-columns: 1fr; gap: 48px; }
     .steps, .apps, .trust-grid { grid-template-columns: 1fr; }
     .tiers { grid-template-columns: 1fr; }
-    .top nav { display: none; }
     .hero h1 { font-size: clamp(32px, 9vw, 44px); }
+    /* The nav used to be `display:none` here, which left phones with no menu
+       at all. Keep it, on its own row, scrolling sideways instead of forcing
+       the bar wider than the viewport — the link labels are translated, so no
+       fixed width is safe across 26 locales. */
+    .top .wrap { flex-wrap: wrap; height: auto; padding-top: 9px; padding-bottom: 9px; }
+    .top nav { order: 3; width: 100%; gap: 18px; overflow-x: auto; scrollbar-width: none; }
+    .top nav::-webkit-scrollbar { display: none; }
+    /* Vertical padding only — 21px-tall links are hard to hit; widths are
+       untouched so the row still fits. */
+    .top nav a { white-space: nowrap; padding: 9px 0; }
+    .brand { min-height: 44px; }
+    .theme-btn { min-height: 40px; }
+    /* The footer already credits Flux; at ~7.2:1 this lockup is the widest
+       thing in the bar and reads as a duplicate on a phone screen. */
+    .top .pbf { display: none; }
+    /* Sized to the longest endonym, so `English` left a wide gap before the
+       dropdown arrow. Scoped to `.top` deliberately: the base `.lang-select`
+       rule is declared LATER in this stylesheet, so an equal-specificity
+       selector here would lose to it and silently do nothing. */
+    .top .lang-select { max-width: 104px; font-size: 12px; padding: 0 6px; height: 36px; }
   }
 
   /* ===== "Signed sky" identity — shared with the web app ===== */

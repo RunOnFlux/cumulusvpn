@@ -129,6 +129,16 @@
   footer .wrap { display:flex; justify-content:space-between; gap:16px; flex-wrap:wrap; align-items:center; }
 
   @media (max-width:920px){ .kpis{ grid-template-columns:repeat(2,1fr); } .countries{ grid-template-columns:1fr; } }
+  /* Phones: the top bar is a nowrap flex row, so anything that does not fit
+     widens the whole document. At 375px (SE/mini) .top-right ended at 381 and
+     the page scrolled sideways. The footer carries the same Flux lockup, so
+     dropping the header copy also removes a duplicate on a short screen. */
+  @media (max-width:560px){
+    .wrap { padding:0 16px; }
+    .top .wrap { height:54px; gap:10px; }
+    .top-right { gap:10px; }
+    .top .pbf { display:none; }
+  }
 </style>
 </head>
 <body>

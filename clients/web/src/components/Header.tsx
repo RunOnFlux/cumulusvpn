@@ -52,7 +52,7 @@ export function Header({ route, onNavigate, themeMode, onToggleTheme }: HeaderPr
             />
             <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)" />
           </svg>
-          CumulusVPN
+          <span className="brand-name">CumulusVPN</span>
         </a>
 
         <nav>

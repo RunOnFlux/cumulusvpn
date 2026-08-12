@@ -257,14 +257,6 @@ header.top {
   align-items: center;
   gap: 12px;
 }
-.badge-flux {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--ink-3);
-  border: 1px solid var(--line);
-  padding: 4px 9px;
-  border-radius: 20px;
-}
 
 /* Official "Powered by Flux" lockup — two art variants swapped by theme. */
 .pbf {
@@ -1081,11 +1073,75 @@ footer .wrap {
   .top nav {
     gap: 16px;
   }
-  .badge-flux {
+  /* The footer already carries the Flux lockup; two on one phone screen reads
+     as a duplicate, and at ~7.2:1 the art is the widest item in the bar. */
+  .top .pbf {
     display: none;
   }
   .page-head h1 {
     font-size: clamp(30px, 9vw, 40px);
+  }
+}
+
+/* Phones: the top bar is a nowrap flex row, so its min-content width sets the
+   document's. Anything that does not fit here pushes EVERY section wider than
+   the viewport, not just the header — hence the aggressive compaction. */
+@media (max-width: 560px) {
+  .wrap {
+    padding: 0 16px;
+  }
+  .top .wrap {
+    height: 54px;
+    gap: 10px;
+  }
+  .brand {
+    font-size: 16px;
+    gap: 8px;
+  }
+  .mark {
+    width: 22px;
+    height: 22px;
+  }
+  .top nav {
+    gap: 14px;
+    font-size: 13px;
+  }
+  .top-right {
+    gap: 8px;
+  }
+  .lang-select {
+    max-width: 92px;
+    font-size: 11px;
+    padding: 0 4px;
+  }
+  /* Tap targets: grow these vertically only, so nothing gets wider and the
+     bar still fits. The nav links were 20px tall and the brand link, once the
+     wordmark is hidden below, is only as big as the 22px mark. */
+  .top nav a {
+    padding: 12px 0;
+  }
+  .brand {
+    min-height: 44px;
+  }
+  .theme-toggle {
+    width: 34px;
+    height: 36px;
+  }
+  .lang-select {
+    height: 36px;
+  }
+  /* Copy buttons sat at 47x25 — too small to hit reliably next to a value. */
+  .field .val .cp {
+    min-height: 38px;
+    padding: 0 11px;
+  }
+  /* Drop the wordmark, keep the cloud mark as the home affordance — it buys
+     ~96px. Hidden across the whole phone range rather than at a tuned width:
+     the nav labels are translated, and `Подключение`/`Αναβάθμιση` are far wider
+     than `Connect`, so any threshold measured in English would overflow in
+     another locale. */
+  .brand-name {
+    display: none;
   }
 }
 

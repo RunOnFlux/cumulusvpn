@@ -392,6 +392,41 @@
         }
       }
 
+      /* This page had no mobile rule for the top bar at all, so brand + nav +
+         the Flux lockup summed to ~570px and pushed the whole document into
+         horizontal scroll on a phone. Same treatment as the other pages. */
+      @media (max-width: 900px) {
+        .top .wrap {
+          flex-wrap: wrap;
+          height: auto;
+          padding-top: 9px;
+          padding-bottom: 9px;
+        }
+        .top nav {
+          order: 3;
+          width: 100%;
+          gap: 18px;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .top nav::-webkit-scrollbar {
+          display: none;
+        }
+        .top nav a {
+          white-space: nowrap;
+          padding: 9px 0;
+        }
+        .brand {
+          min-height: 44px;
+        }
+        .theme-btn {
+          min-height: 40px;
+        }
+        .top .pbf {
+          display: none;
+        }
+      }
+
       /* ---- countries ---- */
       section.countries-sec {
         padding: 46px 0 24px;
