@@ -60,9 +60,11 @@
 7. **Free-tier knobs.** 100 KB/s confirmed? Daily GB cap on free? Stricter free port list?
    (Leaning: 100 KB/s + no cap + stricter ports.)
 
-8. **Fiat rail timing.** Every surviving dVPN added fiat. Do we add IAP/Play Billing in v1 mobile
-   or stay pure-FLUX for ideology + simplicity until traction? Leaning: pure FLUX at launch,
-   fiat within 6 months.
+8. ~~**Fiat rail timing.**~~ **Settled — fiat ships at launch, not after it.** Stripe card (plus
+   web Apple/Google Pay), Apple IAP and Play Billing all land through the payments bridge
+   (`docs/18-payments-bridge.md`), which settles fiat on-chain so the entitlement model is
+   untouched. FLUX stays first-class and cheapest (~$0.99 vs $1.99). Remaining work is operator
+   setup, not design.
 
 9. **Jurisdiction/entity** for the payment address, app ownership, abuse desk. Needs counsel.
 

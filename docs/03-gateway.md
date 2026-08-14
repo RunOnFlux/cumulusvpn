@@ -127,10 +127,26 @@ netstack PoC hits its gate, skip v0; if it slips, v0 buys time in market.
 
 ### Entitlement engine (chain scanner)
 See `04-payments.md` for the protocol. Implementation notes:
-- On boot: page through payment-address history (host node insight/daemon API, explorer fallback),
-  filter txs with valid `CVPN1:` OP_RETURN memos and amount ≥ `CVPN_PRICE_FLUX`, build
-  `keyhash → paid_until` map (payments stack: each valid payment appends 30 days,
-  capped at +24 months prepaid).
+- On boot: page through payment-address history (host node insight mirror at `:16127/explorer`,
+  public explorer as fallback), filter txs with valid `CVPN1:` OP_RETURN memos and amount ≥ one
+  day's worth of `CVPN_PRICE_FLUX`, build `keyhash → paid_until` map (payments stack pro-rata by
+  the day, capped at +24 months prepaid).
+  - The address-history source is probed once per process and remembered — a node lacking the
+    route would otherwise cost a failed request on every page of every poll — and a node that
+    starts failing drops back to the explorer and gets re-probed. A page that decodes but reports
+    nothing is treated as "route absent" rather than "no payments": guessing wrong there would
+    silently grant nobody premium.
+- **Snapshot** (`/data/entitle.state`, `CVPN_ENTITLE_STATE_FILE`): the map and its block cursor
+  are checkpointed — immediately when a grant lands, otherwise at most once a minute, and on
+  shutdown. A restart resumes from the cursor instead of replaying the whole address (thousands
+  of sequential pages on a busy address, serving free-only throughout), which matters because a
+  Flux app update redeploys every container.
+  - Unlike the peer cache this is **purely a cache**: every value is recomputable from chain, so
+    a missing, corrupt, or mismatched file just means a full rescan and is never fatal. The file
+    records the payment address and price it was derived under and is discarded if either
+    changed — repricing or repointing the fleet changes what every historical tx granted.
+  - Expired codes are pruned on write: `stack()` treats a past `paid_until` exactly like an
+    absent entry, so retaining them would only grow the file for the life of the deployment.
 - Then poll `getblockcount` every 15 s; on new block, scan its txs for the payment address.
   Optional 0-conf fast path via `getsingleaddressmempool` marks "pending" and unlocks premium
   optimistically ≤ 2 min, confirmed at 1 conf (30 s blocks make this nearly instant anyway).
@@ -145,6 +161,11 @@ See `04-payments.md` for the protocol. Implementation notes:
   secret). Decide in 08-open-questions.
 - Anti-abuse on enroll: per-IP rate limit + small PoW (hashcash-style, ~1 s of client work) —
   prevents peer-table exhaustion.
+  - The rate limit is a **token bucket** (burst 8, then one per 2 s), not a fixed window,
+    because many legitimate users share one address: a mobile carrier's CGNAT fronts thousands
+    of subscribers, and a hard one-per-2s rejected the second of them to open the app. The
+    sustained rate is unchanged, so an abuser gains only the bounded burst — each attempt still
+    costs a fresh PoW, and the peer-table ceiling is enforced separately.
 
 ### Abuse controls (see 06 for policy)
 - Outbound port policy: block 25/465/587 (SMTP) always; v1 launches with a conservative exit

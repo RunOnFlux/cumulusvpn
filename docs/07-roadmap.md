@@ -44,7 +44,12 @@ start the paperwork during M1), store-compliant payment flows.
 ## M7 — v1.5/v2 (post-launch, priority by demand)
 Payment-key privacy indirection → blind-signature vouchers (Mullvad-level unlinkability),
 WebSocket fallback transport, country-level specs where demand concentrates,
-IAP/Play Billing as fiat rail, multi-chain payment bridge.
+multi-chain payment bridge.
+
+**Pulled forward and shipped:** the fiat rails (Stripe card + web Apple/Google Pay, Apple IAP,
+Play Billing) landed early via the payments bridge — see `docs/18-payments-bridge.md`. Code is
+complete; what remains is operator setup (deploy the bridge, fund the treasury, create the store
+products) tracked in `store/*/readiness-checklist.md` §9–10.
 
 ## Split tunneling (`docs/17`) — phased across M5/M6 and beyond
 App/domain/IP inclusion-exclusion rules. No gateway or API change, so it rides the client
