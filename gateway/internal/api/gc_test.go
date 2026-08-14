@@ -11,7 +11,7 @@ import (
 // pow_test.go constructs one (no New, no ctx, no devices).
 func newGCServer() *Server {
 	return &Server{
-		enrollIP:     make(map[string]time.Time),
+		enrollIP:     make(map[string]*enrollBucket),
 		powSeen:      make(map[string]struct{}),
 		powSeenPrev:  make(map[string]struct{}),
 		powRotatedAt: time.Now(),
@@ -24,8 +24,9 @@ func newGCServer() *Server {
 func TestGCSweepsOnlyStaleEnrollIP(t *testing.T) {
 	s := newGCServer()
 	now := time.Now()
-	s.enrollIP["1.1.1.1"] = now.Add(-time.Minute) // long stale
-	s.enrollIP["2.2.2.2"] = now                   // fresh, inside the window
+	// A drained bucket long enough ago to have fully refilled, vs one just spent.
+	s.enrollIP["1.1.1.1"] = &enrollBucket{tokens: 0, last: now.Add(-time.Hour)}
+	s.enrollIP["2.2.2.2"] = &enrollBucket{tokens: 0, last: now}
 
 	s.gcOnce(now)
 
@@ -50,7 +51,8 @@ func TestGCSweepsOnlyStaleEnrollIP(t *testing.T) {
 func TestGCPreservesInWindowEnrollIP(t *testing.T) {
 	s := newGCServer()
 	now := time.Now()
-	s.enrollIP["3.3.3.3"] = now.Add(-time.Second) // 1s old, window is 2s
+	// Spent 1s ago with nothing banked: only half a token has accrued.
+	s.enrollIP["3.3.3.3"] = &enrollBucket{tokens: 0, last: now.Add(-time.Second)}
 
 	s.gcOnce(now)
 
@@ -124,39 +126,66 @@ func TestGCStopsOnContextCancel(t *testing.T) {
 	}
 }
 
-// allowEnroll had no coverage at all. Pins the window, per-IP independence, and
-// the subtle bit: a REJECTED call must not extend the window.
-func TestAllowEnrollWindow(t *testing.T) {
+// Pins the bucket: a burst is available up front, the sustained rate holds
+// after it, IPs are independent, and a REJECTED call is free.
+func TestAllowEnrollBucket(t *testing.T) {
 	s := newGCServer()
 
-	if !s.allowEnroll("9.9.9.9") {
-		t.Fatal("first enroll from an IP must be allowed")
+	// The whole burst is spendable back to back — this is the CGNAT case, where
+	// thousands of mobile subscribers share one address and a fixed window
+	// rejected everyone but the first to open the app.
+	for i := 0; i < enrollBurst; i++ {
+		if !s.allowEnroll("9.9.9.9") {
+			t.Fatalf("enroll %d of the burst was rejected", i+1)
+		}
 	}
 	if s.allowEnroll("9.9.9.9") {
-		t.Error("second enroll inside the window must be rejected")
+		t.Error("the burst must not be exceeded — sustained abuse is still limited")
 	}
 	if !s.allowEnroll("8.8.8.8") {
 		t.Error("a different IP must be independent")
 	}
 
-	// A rejection must not push the timestamp forward, so the window still
-	// expires relative to the last ACCEPTED enroll.
+	// A rejection must not push recovery back: tokens accrue continuously, so
+	// being turned away costs nothing.
 	s.mu.Lock()
-	last := s.enrollIP["9.9.9.9"]
+	before := s.enrollIP["9.9.9.9"].tokensAt(time.Now())
 	s.mu.Unlock()
 	_ = s.allowEnroll("9.9.9.9") // rejected
 	s.mu.Lock()
-	after := s.enrollIP["9.9.9.9"]
+	after := s.enrollIP["9.9.9.9"].tokensAt(time.Now())
 	s.mu.Unlock()
-	if !after.Equal(last) {
-		t.Error("a rejected enroll must not extend the rate-limit window")
+	if after < before {
+		t.Errorf("a rejected enroll consumed budget: %v -> %v", before, after)
 	}
 
-	// Past the window, the same IP is allowed again.
+	// One window later exactly one more enroll is available, not a fresh burst.
 	s.mu.Lock()
-	s.enrollIP["9.9.9.9"] = time.Now().Add(-2 * enrollWindow)
+	s.enrollIP["9.9.9.9"] = &enrollBucket{tokens: 0, last: time.Now().Add(-enrollWindow)}
 	s.mu.Unlock()
 	if !s.allowEnroll("9.9.9.9") {
-		t.Error("enroll must be allowed once the window has elapsed")
+		t.Error("a refilled token must be spendable")
+	}
+	if s.allowEnroll("9.9.9.9") {
+		t.Error("only one token accrues per window")
+	}
+}
+
+// The bucket must not hand out more than the burst no matter how long an IP
+// has been idle, or a dormant address would bank unlimited enrolls.
+func TestAllowEnrollBurstIsCapped(t *testing.T) {
+	s := newGCServer()
+	s.mu.Lock()
+	s.enrollIP["7.7.7.7"] = &enrollBucket{tokens: 0, last: time.Now().Add(-24 * time.Hour)}
+	s.mu.Unlock()
+
+	allowed := 0
+	for i := 0; i < enrollBurst*4; i++ {
+		if s.allowEnroll("7.7.7.7") {
+			allowed++
+		}
+	}
+	if allowed != enrollBurst {
+		t.Errorf("a day-idle IP got %d enrolls, want the burst cap of %d", allowed, enrollBurst)
 	}
 }
