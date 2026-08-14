@@ -1,0 +1,44 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0B1424"/>
+      <stop offset="0.55" stop-color="#0C2230"/>
+      <stop offset="1" stop-color="#0A2E30"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="600" cy="315" r="520" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#34E4DA" stop-opacity="0.18"/>
+      <stop offset="1" stop-color="#0FB9AE" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="cloud" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#7DF3EB"/>
+      <stop offset="0.5" stop-color="#34E4DA"/>
+      <stop offset="1" stop-color="#0FB9AE"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E8FFFC"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <ellipse cx="600" cy="315" rx="520" ry="380" fill="url(#glow)"/>
+
+  <!-- glyph centered above wordmark -->
+  <g transform="translate(496 96) scale(0.204)">
+    <g fill="url(#cloud)">
+      <circle cx="392" cy="556" r="104"/>
+      <circle cx="512" cy="486" r="146"/>
+      <circle cx="642" cy="532" r="118"/>
+      <circle cx="712" cy="588" r="78"/>
+      <rect x="326" y="556" width="452" height="132" rx="66"/>
+    </g>
+    <path d="M566 372 L430 566 L512 566 L470 700 L620 512 L534 512 Z" fill="url(#bolt)"/>
+  </g>
+
+  <text x="600" y="388" text-anchor="middle" font-family="'Helvetica Neue', Helvetica, Arial, sans-serif" font-weight="700"
+        font-size="96" letter-spacing="-3" fill="#F4FAFB">Cumulus<tspan fill="#34E4DA">VPN</tspan></text>
+  <text x="600" y="448" text-anchor="middle" font-family="'SF Mono','Menlo',monospace" font-weight="500"
+        font-size="25" letter-spacing="4" fill="#8FA5B0">DECENTRALIZED VPN · POWERED BY FLUX</text>
+  <text x="600" y="540" text-anchor="middle" font-family="'SF Mono','Menlo',monospace" font-weight="500"
+        font-size="22" letter-spacing="3" fill="#5A8A90">cumulusvpn.com</text>
+</svg>
