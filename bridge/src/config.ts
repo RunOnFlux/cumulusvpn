@@ -14,6 +14,8 @@ export interface StripeConfig {
   readonly priceAnnual: string;
   readonly successUrl: string;
   readonly cancelUrl: string;
+  /** Where Stripe's billing portal sends the customer back to. */
+  readonly portalReturnUrl: string;
 }
 
 export interface AppleConfig {
@@ -110,13 +112,18 @@ function loadStripe(env: NodeJS.ProcessEnv): StripeConfig | undefined {
       'config: STRIPE_SUCCESS_URL must contain the {CHECKOUT_SESSION_ID} placeholder',
     );
   }
+  const cancelUrl = required(env, 'STRIPE_CANCEL_URL');
   return {
     secretKey: required(env, 'STRIPE_SECRET_KEY'),
     webhookSecret: required(env, 'STRIPE_WEBHOOK_SECRET'),
     priceMonthly: required(env, 'STRIPE_PRICE_MONTHLY'),
     priceAnnual: required(env, 'STRIPE_PRICE_ANNUAL'),
     successUrl,
-    cancelUrl: required(env, 'STRIPE_CANCEL_URL'),
+    cancelUrl,
+    // Optional so existing deployments keep booting; the cancel URL is a sane
+    // landing spot (it already routes to #/upgrade without claiming a purchase
+    // just happened).
+    portalReturnUrl: env.STRIPE_PORTAL_RETURN_URL || cancelUrl,
   };
 }
 

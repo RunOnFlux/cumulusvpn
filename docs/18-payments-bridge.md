@@ -55,6 +55,30 @@ broadcast ─▶ confirmer: ≥1 conf → confirmed; expired unmined → back to
 
 - Monthly renewal = one 20-FLUX tx (stacks +30 d, per the entitlement rule);
   annual = one 240-FLUX tx = 12 months via the overpayment-multiples rule.
+- **Plan changes are prorated, because chain grants are not refundable.**
+  Switching plans puts a credit for the unused old plan and a charge for the
+  new one on ONE Stripe invoice — but the old plan's days are already settled
+  on chain. A full new grant on top would make the treasury pay for that
+  overlap twice, so an invoice carrying proration lines grants
+  `PLAN_DAYS × total_excluding_tax / list price` instead of the flat plan
+  (`daysForInvoice`). That numerator is net of both the proration credit and
+  any discount, and excludes tax — `subtotal` would be **pre**-discount and
+  would over-grant a discounted switch. monthly→annual lands near 344 days
+  rather than 360; annual→monthly nets to a credit and grants nothing (those
+  annual days are still running). Invoices with **no** proration lines are
+  untouched: a full plan, discounted or not — a promo buys a cheaper month,
+  never a shorter one.
+- **The plan is read from the invoice line's price id, never from
+  `cvpn_plan` metadata.** Stripe writes that metadata once at Checkout and
+  never rewrites it when a subscription's price changes, so after a portal
+  switch it names the plan the customer *left*. Sizing grants from it hands
+  an upgraded subscriber 30 days for a year's payment and a downgraded one a
+  fresh 360 days every month. `planForLines` takes the largest positive
+  line's price, with the metadata only as a fallback.
+- **Invoices settled from a credit balance grant nothing.** The only way a
+  customer acquires credit is a downgrade, whose unused value we already paid
+  out in full as irrevocable chain days; spending that credit again would buy
+  the same time twice. They are covered by the existing zero-amount skip.
 - Broadcasts are serialized through a single worker; our own 0-conf change
   is spendable, so bursts of renewals chain cleanly.
 - Refunds/chargebacks: **chain grants are irrevocable** — accepted, bounded
@@ -99,6 +123,9 @@ payment_code)` + the payments queue's `UNIQUE(rail, event_key)`.
   `voucher` to checkout). Errors: `invalid` / `expired` / `exhausted` /
   `already_redeemed` / `temporarily_unavailable`.
 - `POST /v1/stripe/checkout` `{payment_code, plan, voucher?}` → `{url, session_id}`
+- `POST /v1/stripe/portal` `{payment_code, session_id}` → `{url}` — a Stripe
+  billing-portal link (change card, switch plan, cancel). 404 `no_subscription`
+  when the session is unknown, has no customer, or is bound to another code.
 - `POST /v1/apple/verify` `{payment_code, signed_transaction}`
 - `POST /v1/google/verify` `{payment_code, purchase_token}`
 - `GET  /v1/payment/:code/status` → recent payments with
@@ -113,6 +140,25 @@ must contain `{CHECKOUT_SESSION_ID}` inside the hash query
 activation panel, and only preserves a desktop `?code=` hand-off, when the
 session comes back there. `STRIPE_CANCEL_URL` should be
 `…#/upgrade?canceled=1` so a canceled checkout keeps the hand-off code alive.
+
+### Why the portal is keyed on the Checkout Session, not the payment code
+
+The payment code is `base58(sha256(device pubkey))`, and a client hands that
+pubkey to **every gateway it enrolls with** — so any gateway operator can
+derive their users' codes. Authorizing a billing portal on the code alone
+would hand operators their users' billing email, card last-4, invoice history
+and a cancel button. The Checkout Session id never leaves the buyer's own
+browser, so it is the capability; the code is checked alongside it only to
+bind the two (one device's session cannot open another's portal).
+
+The consequence, and it is deliberate: **clearing browser storage loses the
+in-app management link**, because there is no account to recover it from. The
+web client keeps a `{code: session_id}` map in localStorage
+(`PAY_PORTAL_SESSIONS_STORAGE_KEY`), keyed by code so a desktop `?code=`
+hand-off manages the right device. Stripe's receipt emails carry the same
+portal link and stay the documented fallback — the UI says so when the portal
+call fails. Store subscribers (Apple/Google) never use this path: they manage
+in the App Store / Play, which the mobile Upgrade screen deep-links to.
 
 ## What this deliberately does NOT change
 

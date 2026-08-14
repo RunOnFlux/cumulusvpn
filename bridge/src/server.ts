@@ -260,6 +260,46 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
       },
     );
 
+    // Self-service management (cancel / change card / switch plan). The
+    // Checkout Session id is the capability here — see createPortalSession for
+    // why the payment code alone must never authorize this.
+    app.post(
+      '/v1/stripe/portal',
+      {
+        config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+        schema: {
+          body: {
+            type: 'object',
+            required: ['payment_code', 'session_id'],
+            properties: {
+              payment_code: { type: 'string', minLength: 20, maxLength: 40 },
+              session_id: { type: 'string', minLength: 10, maxLength: 200 },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { payment_code, session_id } = req.body as {
+          payment_code: string;
+          session_id: string;
+        };
+        if (!isValidPaymentCode(payment_code)) {
+          return badRequest(
+            reply,
+            'bad_code',
+            'payment_code is not a valid CumulusVPN payment code',
+          );
+        }
+        const url = await stripe.createPortalSession(session_id, payment_code);
+        if (url === null) {
+          return reply
+            .code(404)
+            .send(err(404, 'no_subscription', 'no card subscription found for this checkout'));
+        }
+        return reply.send(ok({ url }));
+      },
+    );
+
     app.post('/v1/stripe/webhook', { config: { rateLimit: false } }, async (req, reply) => {
       const signature = req.headers['stripe-signature'];
       if (typeof signature !== 'string' || !req.rawBody) {
@@ -445,6 +485,46 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
         pending_flux_needed: q.pendingZats / 1e8,
         oldest_unsettled_age_s: q.oldestUnsettledAge,
         low_balance: balanceFlux !== null && balanceFlux < d.cfg.minTreasuryFlux,
+      }),
+    );
+  });
+
+  /**
+   * Support lookup: everything the bridge knows about one payment code.
+   * Deliberately thin — subscriptions and settlement rows only. Card details,
+   * emails and names live at Stripe/Apple/Google and must not be mirrored
+   * here (the no-accounts promise), so a refund or a manual cancel is still
+   * done in the provider's own console; `external_id` is the handle for that.
+   */
+  app.get('/internal/subscriptions', { config: { rateLimit: false } }, async (req, reply) => {
+    if (!requireAdmin(req, reply)) {
+      return reply;
+    }
+    const { code } = req.query as { code?: string };
+    if (!code || !isValidPaymentCode(code)) {
+      return badRequest(reply, 'bad_code', 'code must be a valid CumulusVPN payment code');
+    }
+    return reply.send(
+      ok({
+        payment_code: code,
+        subscriptions: deps.subs.listForCode(code).map((s) => ({
+          rail: s.rail,
+          external_id: s.external_id,
+          plan: s.plan,
+          status: s.status,
+          stripe_customer_id: s.stripe_customer_id,
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+        })),
+        payments: deps.payments.byCode(code, 25).map((p) => ({
+          rail: p.rail,
+          days: p.days,
+          flux: p.flux_zats / 1e8,
+          status: p.status,
+          txid: p.txid,
+          created_at: p.created_at,
+          confirmed_at: p.confirmed_at,
+        })),
       }),
     );
   });

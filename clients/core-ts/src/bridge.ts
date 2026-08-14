@@ -103,6 +103,33 @@ export async function createStripeCheckout(
   );
 }
 
+/**
+ * Open a Stripe billing portal so a card subscriber can change their payment
+ * method, switch plan, or cancel. Redirect the user to the returned `url`.
+ *
+ * `sessionId` is the Checkout Session id from the purchase
+ * ({@link createStripeCheckout}, or the `?session=` the bridge redirects back
+ * with) and it is what AUTHORIZES the portal — the payment code alone must
+ * never be enough, because it is derived from the device pubkey that every
+ * gateway a client enrolls with receives. Callers should persist the session
+ * id locally at purchase time; there is no account to recover it from.
+ *
+ * Throws {@link ApiError} with slug `no_subscription` when the session is
+ * unknown, has no customer, or belongs to a different payment code.
+ */
+export async function openBillingPortal(
+  fetchImpl: FetchImpl,
+  params: { code: string; sessionId: string },
+  opts?: BridgeOptions,
+): Promise<{ url: string }> {
+  return bridgeFetch(
+    fetchImpl,
+    '/v1/stripe/portal',
+    postJson({ payment_code: params.code, session_id: params.sessionId }),
+    opts,
+  );
+}
+
 /** Outcome of redeeming a code: free time queued on-chain, or a discount to carry into checkout. */
 export type RedeemOutcome =
   | { type: 'grant_days'; days: number; state: 'pending' }

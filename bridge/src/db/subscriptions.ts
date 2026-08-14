@@ -13,6 +13,8 @@ export interface SubscriptionRow {
   readonly status: SubscriptionStatus;
   readonly created_at: number;
   readonly updated_at: number;
+  /** Stripe Customer id (stripe rail only; null until first seen). */
+  readonly stripe_customer_id: string | null;
 }
 
 const now = (): number => Math.floor(Date.now() / 1000);
@@ -20,16 +22,38 @@ const now = (): number => Math.floor(Date.now() / 1000);
 export class SubscriptionsRepo {
   constructor(private readonly db: Db) {}
 
-  upsert(rail: Rail, externalId: string, paymentCode: string, plan: Plan): void {
+  /**
+   * Record (or refresh) a subscription. `customerId` is Stripe-only and
+   * COALESCEd on update: a renewal that arrives without one must never wipe
+   * the id we already learned at checkout.
+   */
+  upsert(
+    rail: Rail,
+    externalId: string,
+    paymentCode: string,
+    plan: Plan,
+    customerId: string | null = null,
+  ): void {
     this.db
       .prepare(
-        `INSERT INTO subscriptions (rail, external_id, payment_code, plan, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 'active', ?, ?)
+        `INSERT INTO subscriptions (rail, external_id, payment_code, plan, status, created_at, updated_at, stripe_customer_id)
+         VALUES (?, ?, ?, ?, 'active', ?, ?, ?)
          ON CONFLICT (rail, external_id) DO UPDATE SET
            payment_code = excluded.payment_code, plan = excluded.plan,
-           status = 'active', updated_at = excluded.updated_at`,
+           status = 'active', updated_at = excluded.updated_at,
+           stripe_customer_id = COALESCE(excluded.stripe_customer_id, subscriptions.stripe_customer_id)`,
       )
-      .run(rail, externalId, paymentCode, plan, now(), now());
+      .run(rail, externalId, paymentCode, plan, now(), now(), customerId);
+  }
+
+  /**
+   * Every subscription bound to a payment code, newest first — the support
+   * lookup behind the dashboard's "who is this code?" panel.
+   */
+  listForCode(paymentCode: string): readonly SubscriptionRow[] {
+    return this.db
+      .prepare(`SELECT * FROM subscriptions WHERE payment_code = ? ORDER BY updated_at DESC`)
+      .all(paymentCode) as SubscriptionRow[];
   }
 
   get(rail: Rail, externalId: string): SubscriptionRow | undefined {
