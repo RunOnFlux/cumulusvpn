@@ -10,10 +10,10 @@ __metadata:
   resolution: "@cumulusvpn/deploy@workspace:."
   dependencies:
     "@eslint/js": "npm:10.0.1"
-    "@noble/curves": "npm:2.2.0"
-    "@noble/hashes": "npm:2.2.0"
-    "@scure/base": "npm:2.2.0"
-    eslint: "npm:10.8.0"
+    "@noble/curves": "npm:2.3.0"
+    "@noble/hashes": "npm:2.3.0"
+    "@scure/base": "npm:2.3.0"
+    eslint: "npm:10.8.1"
     globals: "npm:17.9.0"
     prettier: "npm:3.9.6"
     yaml: "npm:2.9.0"
@@ -137,26 +137,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:2.2.0":
-  version: 2.2.0
-  resolution: "@noble/curves@npm:2.2.0"
+"@noble/curves@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@noble/curves@npm:2.3.0"
   dependencies:
-    "@noble/hashes": "npm:2.2.0"
-  checksum: 10c0/e545d3bb03ebedd5c04c2cab81342d64f5ce8a4c1019cfe207f3dc69174bc0ad7cfb50effc31bfa8616b8340900f445dd053da7454190428857c4eedd3b51413
+    "@noble/hashes": "npm:2.3.0"
+  checksum: 10c0/c0a4bc7623c3eb291e16e721a5b7db593aa216b99d634218619ffab25bef057729e761a848883bbda6d114fd3445924241500d3c0f04851f810cebb8e8121882
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:2.2.0":
-  version: 2.2.0
-  resolution: "@noble/hashes@npm:2.2.0"
-  checksum: 10c0/cad8630c504d6b9271984f685cd0af9101b40988fc2dfbe17ccdf068a9941f95cc5c9957d89e9ca4b7ca94c15cb35f93510c5d53a09fbcc83ee503b93d0a1034
+"@noble/hashes@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@noble/hashes@npm:2.3.0"
+  checksum: 10c0/85651da4c1ea1db15fcacac7f38e4c4e6d60154cd116200b1002c198893bfad2733b31108352fde307126bab789f82f47b5bee8a12462b12f25fd0703aed7dce
   languageName: node
   linkType: hard
 
-"@scure/base@npm:2.2.0":
-  version: 2.2.0
-  resolution: "@scure/base@npm:2.2.0"
-  checksum: 10c0/30158ccf5da86b0f06928f1cfe24a29fbea22824adf6f8895222910cade1ad4fe7593958aacf563287e6b4c55746f47395178e7a4763b059c22d6ee8e6f76387
+"@scure/base@npm:2.3.0":
+  version: 2.3.0
+  resolution: "@scure/base@npm:2.3.0"
+  checksum: 10c0/538da122a8ef9a3f2951b912a8350ad73a1dd812fa99b0fc8617ace1a3200ccd6dfb6d3756c3f8fbc18780156baaf38a95c3e8512cb4af8d593b3bc4b8ee02e7
   languageName: node
   linkType: hard
 
@@ -299,9 +299,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:10.8.0":
-  version: 10.8.0
-  resolution: "eslint@npm:10.8.0"
+"eslint@npm:10.8.1":
+  version: 10.8.1
+  resolution: "eslint@npm:10.8.1"
   dependencies:
     "@eslint-community/eslint-utils": "npm:^4.8.0"
     "@eslint-community/regexpp": "npm:^4.12.2"
@@ -340,7 +340,7 @@ __metadata:
       optional: true
   bin:
     eslint: bin/eslint.js
-  checksum: 10c0/2dbc523578834088615f388e08418d2620b25655f7a398f6d415765fa2a3a25d6b8b43bd3293d40f977e12752323a841d52654a2648697a00c0102c9794bb3dc
+  checksum: 10c0/0c4720a43ef2052829db18e37aa79adb5f0a62137bdf4a4f8e9507bbbbf888ba0669fc03e4b7139d8f27b59b051bbbcd0a3988b068c30fa934a766d60a81f599
   languageName: node
   linkType: hard
 
