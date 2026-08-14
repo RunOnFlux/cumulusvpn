@@ -208,6 +208,16 @@ func run() error {
 	ent.OnChange(func(code string, premium bool) {
 		log.Printf("gateway: entitlement flip code=%s premium=%v", code, premium)
 	})
+	// Resume from the last checkpoint so a redeploy — which happens on every
+	// Flux app update — catches up incrementally instead of replaying the
+	// whole payment address and serving free-only for minutes. Any problem
+	// with the file just means a full scan, so it is never fatal.
+	ent.SetStatePath(cfg.EntitleStateFile)
+	if loaded, err := ent.Load(); err != nil {
+		log.Printf("gateway: entitlement snapshot unusable (%v); full rescan", err)
+	} else if loaded {
+		log.Printf("gateway: entitlement snapshot restored from %s", cfg.EntitleStateFile)
+	}
 	if err := ent.Backfill(ctx); err != nil {
 		// Non-fatal: start free-only, the poll loop backfills as it catches up.
 		log.Printf("gateway: entitlement backfill failed (%v); starting free-only", err)
