@@ -39,6 +39,16 @@ export const PAY_CODE_OVERRIDE_STORAGE_KEY = 'cvpn.paycode.override.v1';
 // flash an instant (false) "Confirmed!" for the checkout they just made.
 export const PAY_CHECKOUT_STARTED_STORAGE_KEY = 'cvpn.paycheckout.started.v1';
 
+// localStorage key for `{ [payment code]: checkout session id }` of completed
+// card purchases. The session id is the ONLY capability that opens a Stripe
+// billing portal (cancel / change card / switch plan): there are no accounts,
+// and the payment code cannot authorize it — gateways receive the pubkey it is
+// derived from, so operators could open their own users' portals. Keyed by
+// code because the desktop hand-off (`?code=`) manages a different device's
+// subscription from the same browser. Lost with the browser profile, which is
+// why Stripe's receipt emails stay the documented fallback.
+export const PAY_PORTAL_SESSIONS_STORAGE_KEY = 'cvpn.payportal.sessions.v1';
+
 // localStorage key under which the in-browser WireGuard keypair is persisted so
 // the payment code stays stable across the Connect and Upgrade pages.
 export const KEYPAIR_STORAGE_KEY = 'cvpn.keypair.v1';

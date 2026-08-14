@@ -97,7 +97,7 @@ export const it: Catalog = {
   upgrade_card_cta_busy: 'Apertura del checkout sicuro…',
   upgrade_card_error: 'Impossibile aprire il checkout. Riprova tra un momento.',
   upgrade_card_note:
-    "Si rinnova automaticamente; disdici quando vuoi dall'email di ricevuta Stripe. Pagare in FLUX qui sopra costa meno — il prezzo con carta copre le commissioni di elaborazione.",
+    'Si rinnova automaticamente; disdici o cambia piano quando vuoi in “Il tuo abbonamento” qui sotto, o dall’e-mail di ricevuta Stripe. Pagare in FLUX qui sopra costa meno — il prezzo con carta copre le commissioni di transazione.',
   upgrade_activating_title: 'Attivazione del tuo premium…',
   upgrade_state_pending: 'Pagamento ricevuto — prepariamo la tua attivazione sulla rete Flux.',
   upgrade_state_broadcast: 'Attivazione inviata alla rete Flux — in attesa di conferma.',
@@ -107,6 +107,16 @@ export const it: Catalog = {
     "Qualcosa è andato storto durante l'attivazione. Il tuo pagamento è al sicuro — riproviamo automaticamente e il tuo premium comparirà a breve.",
   upgrade_activating_hint: "Puoi chiudere questa pagina — l'attivazione si completa da sola.",
   upgrade_activated_cta: 'Torna a Connetti →',
+
+  manage_eyebrow: 'Il tuo abbonamento',
+  manage_lede:
+    'Aggiorna la carta, passa da mensile ad annuale o disdici. Apre il portale di fatturazione sicuro di Stripe.',
+  manage_none:
+    'Nessun abbonamento con carta è stato acquistato in questo browser. Se ti sei abbonato da un altro dispositivo, usa il link nell’e-mail di ricevuta Stripe, o l’App Store / Google Play se ti sei abbonato nell’app.',
+  manage_cta: 'Gestisci abbonamento',
+  manage_cta_busy: 'Apertura del portale di fatturazione…',
+  manage_err:
+    'Non è stato possibile aprire il portale di fatturazione da questo browser. Puoi sempre gestire o disdire dal link nell’e-mail di ricevuta Stripe.',
 
   redeem_eyebrow: 'Hai un codice?',
   redeem_lede:

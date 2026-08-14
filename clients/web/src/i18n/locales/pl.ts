@@ -102,7 +102,7 @@ export const pl: Catalog = {
   upgrade_card_cta_busy: 'Otwieranie bezpiecznej płatności…',
   upgrade_card_error: 'Nie udało się otworzyć płatności. Spróbuj ponownie za chwilę.',
   upgrade_card_note:
-    'Odnawia się automatycznie; zrezygnujesz w każdej chwili z e-maila z potwierdzeniem od Stripe. Płatność w FLUX powyżej jest tańsza — cena przy karcie pokrywa koszty obsługi płatności.',
+    'Odnawia się automatycznie; anuluj lub zmień plan w dowolnej chwili w sekcji „Twoja subskrypcja” poniżej albo przez e-mail z potwierdzeniem od Stripe. Płatność w FLUX powyżej jest tańsza — cena kartą pokrywa prowizje.',
   upgrade_activating_title: 'Aktywowanie twojej wersji premium…',
   upgrade_state_pending: 'Płatność otrzymana — przygotowujemy twoją aktywację w sieci Flux.',
   upgrade_state_broadcast: 'Aktywacja wysłana do sieci Flux — czekamy na potwierdzenie.',
@@ -112,6 +112,16 @@ export const pl: Catalog = {
     'Coś poszło nie tak podczas aktywacji. Twoja płatność jest bezpieczna — ponawiamy próbę automatycznie i wersja premium wkrótce się pojawi.',
   upgrade_activating_hint: 'Możesz zamknąć tę stronę — aktywacja dokończy się sama.',
   upgrade_activated_cta: 'Wróć do Połącz →',
+
+  manage_eyebrow: 'Twoja subskrypcja',
+  manage_lede:
+    'Zmień kartę, przełącz się między planem miesięcznym a rocznym lub anuluj. Otwiera bezpieczny portal rozliczeniowy Stripe.',
+  manage_none:
+    'W tej przeglądarce nie kupiono subskrypcji kartą. Jeśli subskrypcja została wykupiona na innym urządzeniu, skorzystaj z linku w e-mailu z potwierdzeniem od Stripe — albo z App Store / Google Play, jeśli wykupiono ją w aplikacji.',
+  manage_cta: 'Zarządzaj subskrypcją',
+  manage_cta_busy: 'Otwieranie portalu rozliczeniowego…',
+  manage_err:
+    'Nie udało się otworzyć portalu rozliczeniowego w tej przeglądarce. Zawsze możesz zarządzać subskrypcją lub ją anulować przez link w e-mailu z potwierdzeniem od Stripe.',
 
   redeem_eyebrow: 'Masz kod?',
   redeem_lede:

@@ -97,7 +97,7 @@ export const id: Catalog = {
   upgrade_card_cta_busy: 'Membuka checkout aman…',
   upgrade_card_error: 'Tidak dapat membuka checkout. Silakan coba lagi sebentar lagi.',
   upgrade_card_note:
-    'Diperpanjang otomatis; batalkan kapan saja dari email tanda terima Stripe. Membayar dengan FLUX di atas lebih murah — harga kartu menutup biaya pemrosesan.',
+    'Diperpanjang otomatis; batalkan atau ganti paket kapan saja di “Langgananmu” di bawah, atau lewat email tanda terima Stripe. Membayar dengan FLUX di atas lebih murah — harga kartu menutup biaya pemrosesan.',
   upgrade_activating_title: 'Mengaktifkan premium Anda…',
   upgrade_state_pending: 'Pembayaran diterima — menyiapkan aktivasi Anda di jaringan Flux.',
   upgrade_state_broadcast: 'Aktivasi dikirim ke jaringan Flux — menunggu konfirmasi.',
@@ -107,6 +107,16 @@ export const id: Catalog = {
     'Terjadi kesalahan saat mengaktifkan. Pembayaran Anda aman — kami mencoba lagi secara otomatis, dan premium Anda akan segera muncul.',
   upgrade_activating_hint: 'Anda bisa menutup halaman ini — aktivasi selesai dengan sendirinya.',
   upgrade_activated_cta: 'Kembali ke Hubungkan →',
+
+  manage_eyebrow: 'Langgananmu',
+  manage_lede:
+    'Perbarui kartumu, ganti antara bulanan dan tahunan, atau batalkan. Membuka portal penagihan aman dari Stripe.',
+  manage_none:
+    'Tidak ada langganan kartu yang dibeli di peramban ini. Jika kamu berlangganan di perangkat lain, gunakan tautan di email tanda terima Stripe — atau App Store / Google Play jika kamu berlangganan di aplikasi.',
+  manage_cta: 'Kelola langganan',
+  manage_cta_busy: 'Membuka portal penagihan…',
+  manage_err:
+    'Portal penagihan tidak dapat dibuka dari peramban ini. Kamu selalu bisa mengelola atau membatalkan lewat tautan di email tanda terima Stripe.',
 
   redeem_eyebrow: 'Punya kode?',
   redeem_lede:

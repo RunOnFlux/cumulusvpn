@@ -97,7 +97,7 @@ export const fi: Catalog = {
   upgrade_card_cta_busy: 'Avataan turvallista maksua…',
   upgrade_card_error: 'Maksua ei voitu avata. Yritä hetken kuluttua uudelleen.',
   upgrade_card_note:
-    'Uusiutuu automaattisesti; peruuta milloin tahansa Stripen kuittisähköpostista. FLUXilla maksaminen yllä on halvempaa — kortin hinta kattaa käsittelykulut.',
+    'Uusiutuu automaattisesti; peruuta tai vaihda tilaus milloin tahansa alta kohdasta ”Tilauksesi” tai Stripen kuittisähköpostista. FLUXilla maksaminen yllä on halvempaa — korttihinta kattaa käsittelykulut.',
   upgrade_activating_title: 'Aktivoidaan premiumiasi…',
   upgrade_state_pending: 'Maksu vastaanotettu — valmistellaan aktivointiasi Flux-verkossa.',
   upgrade_state_broadcast: 'Aktivointi lähetetty Flux-verkkoon — odotetaan vahvistusta.',
@@ -107,6 +107,16 @@ export const fi: Catalog = {
     'Aktivoinnissa meni jotain pieleen. Maksusi on turvassa — yritämme automaattisesti uudelleen, ja premiumisi ilmestyy pian.',
   upgrade_activating_hint: 'Voit sulkea tämän sivun — aktivointi valmistuu itsestään.',
   upgrade_activated_cta: 'Takaisin Yhdistä-sivulle →',
+
+  manage_eyebrow: 'Tilauksesi',
+  manage_lede:
+    'Päivitä korttisi, vaihda kuukausittaisen ja vuosittaisen välillä tai peruuta. Avaa Stripen suojatun laskutusportaalin.',
+  manage_none:
+    'Tässä selaimessa ei ole ostettu korttitilausta. Jos tilasit toisella laitteella, käytä Stripen kuittisähköpostin linkkiä — tai App Storea / Google Playta, jos tilasit sovelluksessa.',
+  manage_cta: 'Hallitse tilausta',
+  manage_cta_busy: 'Avataan laskutusportaalia…',
+  manage_err:
+    'Laskutusportaalia ei voitu avata tässä selaimessa. Voit aina hallita tilausta tai peruuttaa sen Stripen kuittisähköpostin linkistä.',
 
   redeem_eyebrow: 'Onko sinulla koodi?',
   redeem_lede:
