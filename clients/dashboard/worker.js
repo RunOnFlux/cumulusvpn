@@ -354,7 +354,13 @@ export default {
     // the bridge's own admin token (BRIDGE_ADMIN_TOKEN secret) never leaves
     // this Worker. Setup:
     //   wrangler secret put BRIDGE_ADMIN_TOKEN --config clients/dashboard/wrangler.jsonc
-    if (url.pathname.startsWith('/api/vouchers')) {
+    // `/api/subscriptions?code=` is the support lookup (which subscription
+    // does this device's payment code belong to, and did its settlements
+    // land) — same proxy, same token handling.
+    const bridgeRoute = ['/api/vouchers', '/api/subscriptions'].find((p) =>
+      url.pathname.startsWith(p),
+    );
+    if (bridgeRoute) {
       if (!(await tokenMatches(bearerToken(request), env.ADMIN_TOKEN))) {
         return jsonResponse({ error: 'unauthorized' }, {}, 401);
       }
@@ -362,7 +368,7 @@ export default {
         return jsonResponse({ error: 'bridge proxy not configured' }, {}, 503);
       }
       const upstream = new URL(
-        url.pathname.replace('/api/vouchers', '/internal/vouchers') + url.search,
+        url.pathname.replace(bridgeRoute, bridgeRoute.replace('/api/', '/internal/')) + url.search,
         env.BRIDGE_URL,
       );
       const init = {
