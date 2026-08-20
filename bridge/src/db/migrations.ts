@@ -143,4 +143,15 @@ export const MIGRATIONS: readonly string[] = [
   );
   CREATE INDEX voucher_redemptions_code ON voucher_redemptions (payment_code);
   `,
+  `
+  -- Migration 3: remember the Stripe Customer behind a subscription.
+  --
+  -- Subscription-mode Checkout always creates one, but we never stored it, so
+  -- there was no way to open a billing portal (cancel / change card / change
+  -- plan) or to answer "which subscription belongs to this code?" in support.
+  -- Nullable and backfilled lazily: any existing row picks the id up on its
+  -- next invoice.paid.
+  ALTER TABLE subscriptions ADD COLUMN stripe_customer_id TEXT;
+  CREATE INDEX subscriptions_code ON subscriptions (payment_code, updated_at DESC);
+  `,
 ];

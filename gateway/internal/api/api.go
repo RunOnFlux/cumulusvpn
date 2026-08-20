@@ -116,9 +116,9 @@ type Server struct {
 	nodePublicIP string // fallback endpoint IP from fluxnode hostinfo
 
 	mu       sync.Mutex
-	nextHost uint32               // rolling host part for 10.8.x.y assignment
-	enrollIP map[string]time.Time // per-IP last enroll (rate limit)
-	powSeen  map[string]struct{}  // spent PoW nonces, current generation
+	nextHost uint32                   // rolling host part for 10.8.x.y assignment
+	enrollIP map[string]*enrollBucket // per-IP enroll token bucket (rate limit)
+	powSeen  map[string]struct{}      // spent PoW nonces, current generation
 	// powSeenPrev is the previous nonce generation, kept readable so a nonce
 	// stays rejected across a rotation (see GC). Rotation is what bounds the
 	// replay guard's memory without timestamping every entry.
@@ -150,7 +150,7 @@ func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.M
 		info:         info,
 		nodePublicIP: nodePublicIP,
 		nextHost:     2, // .0.1 is the gateway, start clients at .0.2
-		enrollIP:     make(map[string]time.Time),
+		enrollIP:     make(map[string]*enrollBucket),
 		powSeen:      make(map[string]struct{}),
 		powSeenPrev:  make(map[string]struct{}),
 		powRotatedAt: time.Now(),
@@ -488,9 +488,14 @@ func (s *Server) SyncPremiumPeers(pubkey string, premium bool) {
 // the rotation period, so a spent PoW nonce stays rejected for between one and
 // two periods (see GC).
 const (
-	// enrollWindow is the per-source-IP enroll rate limit (see allowEnroll). The
-	// GC's sweep threshold is derived from it so the two can't drift apart.
-	enrollWindow  = 2 * time.Second
+	// enrollWindow is the sustained per-source-IP enroll rate (see allowEnroll):
+	// one token per window. The GC's sweep threshold is derived from it and
+	// enrollBurst so the three can't drift apart.
+	enrollWindow = 2 * time.Second
+	// enrollBurst is how many enrolls one IP may spend at once — the headroom
+	// that keeps a CGNAT address shared by thousands of mobile subscribers from
+	// rejecting everyone but the first to connect.
+	enrollBurst   = 8
 	gcInterval    = 30 * time.Second
 	powGeneration = 5 * time.Minute
 	// maxPowSeen caps live nonces so an enroll flood degrades into a SHORTER
@@ -506,9 +511,10 @@ const (
 // the per-IP enroll rate limiter and the spent-PoW-nonce replay guard. It runs
 // until ctx is cancelled; start it once from main (`go srv.GC(ctx)`).
 //
-// enrollIP: an entry older than the rate-limit window can no longer affect a
-// decision (allowEnroll takes the same branch for "stale" and "absent"), so
-// sweeping past 2× the window is provably behaviour-neutral.
+// enrollIP: a bucket that has refilled to full is indistinguishable from an
+// absent one — allowEnroll starts an unseen IP at full — so sweeping exactly
+// at full is provably behaviour-neutral. That takes enrollBurst × enrollWindow
+// of idle time, which is why the threshold is derived rather than a constant.
 //
 // powSeen: rotated in generations instead of timestamped per entry — an O(1)
 // swap that keeps the previous generation readable, so a nonce stays rejected
@@ -540,8 +546,8 @@ func (s *Server) gcOnce(now time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// Deleting during range is defined behaviour in Go.
-	for ip, last := range s.enrollIP {
-		if now.Sub(last) >= 2*enrollWindow {
+	for ip, b := range s.enrollIP {
+		if b.tokensAt(now) >= enrollBurst {
 			delete(s.enrollIP, ip)
 		}
 	}
@@ -587,16 +593,52 @@ func writeErr(w http.ResponseWriter, code int, name, msg string) {
 	})
 }
 
-// allowEnroll is a simple per-IP token: one enroll per IP per 2s window.
-// POC: replace with a proper per-IP token bucket + periodic map GC.
+// enrollBucket is one source IP's token bucket: `enrollBurst` tokens, one
+// refilled per `enrollWindow`.
+type enrollBucket struct {
+	tokens float64
+	last   time.Time
+}
+
+// tokensAt reports the balance at `now` without mutating, capped at the burst.
+func (b *enrollBucket) tokensAt(now time.Time) float64 {
+	if !now.After(b.last) {
+		return b.tokens
+	}
+	t := b.tokens + now.Sub(b.last).Seconds()/enrollWindow.Seconds()
+	if t > enrollBurst {
+		return enrollBurst
+	}
+	return t
+}
+
+// allowEnroll rate-limits enrollment per source IP: a burst of `enrollBurst`,
+// then a sustained one per `enrollWindow`.
+//
+// A bucket rather than a fixed window because **many legitimate users share an
+// IP**. Mobile carriers put thousands of subscribers behind one CGNAT address,
+// and a hard "one enroll per 2s per IP" rejected the second of them to open the
+// app — on the platform most of our users are on. The sustained rate is
+// unchanged, so an abuser gains only the burst, which is bounded, costs a fresh
+// PoW per attempt, and cannot exceed the separate peer-table ceiling.
+//
+// A rejected call is free: tokens accrue continuously, so being turned away
+// never pushes back the moment the next enroll succeeds.
 func (s *Server) allowEnroll(ip string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	now := time.Now()
-	if last, ok := s.enrollIP[ip]; ok && now.Sub(last) < enrollWindow {
+	b, ok := s.enrollIP[ip]
+	if !ok {
+		// An unseen IP is indistinguishable from a swept (full) one.
+		s.enrollIP[ip] = &enrollBucket{tokens: enrollBurst - 1, last: now}
+		return true
+	}
+	b.tokens, b.last = b.tokensAt(now), now
+	if b.tokens < 1 {
 		return false
 	}
-	s.enrollIP[ip] = now
+	b.tokens--
 	return true
 }
 

@@ -3,17 +3,23 @@ import type * as CoreModule from '@cumulusvpn/core';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Directory, Keypair } from '@cumulusvpn/core';
 import { LocaleProvider } from '../hooks/useLocale';
-import { PAY_CHECKOUT_STARTED_STORAGE_KEY, PAY_CODE_OVERRIDE_STORAGE_KEY } from '../config';
+import {
+  PAY_CHECKOUT_STARTED_STORAGE_KEY,
+  PAY_CODE_OVERRIDE_STORAGE_KEY,
+  PAY_PORTAL_SESSIONS_STORAGE_KEY,
+} from '../config';
 import { UpgradePage } from './UpgradePage';
 
 const checkoutMock = vi.hoisted(() => vi.fn());
 const statusMock = vi.hoisted(() => vi.fn());
 const redeemMock = vi.hoisted(() => vi.fn());
+const portalMock = vi.hoisted(() => vi.fn());
 vi.mock('@cumulusvpn/core', async (importOriginal) => ({
   ...(await importOriginal<typeof CoreModule>()),
   createStripeCheckout: checkoutMock,
   paymentStatus: statusMock,
   redeemVoucher: redeemMock,
+  openBillingPortal: portalMock,
 }));
 
 const keypair: Keypair = {
@@ -50,6 +56,7 @@ beforeEach(() => {
   checkoutMock.mockReset();
   statusMock.mockReset();
   redeemMock.mockReset();
+  portalMock.mockReset();
   localStorage.clear();
 });
 
@@ -230,5 +237,102 @@ describe('UpgradePage voucher redemption', () => {
     expect((screen.getByPlaceholderText('CVPN-XXXXX-XXXXX') as HTMLInputElement).value).toBe(
       'CVPN-AAAAA-CCCCC',
     );
+  });
+});
+
+describe('UpgradePage subscription management', () => {
+  it('explains where to go instead of offering a portal it cannot open', () => {
+    // The card note promises a "Your subscription" section by name, so the
+    // section always renders — it just has no button without a session.
+    renderPage();
+    expect(screen.getByText('Your subscription')).toBeTruthy();
+    expect(screen.getByText(/No card subscription was bought in this browser/)).toBeTruthy();
+    expect(screen.queryByText('Manage subscription')).toBeNull();
+  });
+
+  it('remembers the checkout session on return, then offers the portal', async () => {
+    statusMock.mockResolvedValue({ code: ZERO_CODE, payments: [] });
+    // The Stripe return is the only moment the session id is available.
+    renderPage(new URLSearchParams('session=cs_live_mgmt'));
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem(PAY_PORTAL_SESSIONS_STORAGE_KEY) ?? '{}')).toEqual({
+        [ZERO_CODE]: 'cs_live_mgmt',
+      }),
+    );
+
+    // A later plain visit finds it and shows the management card.
+    portalMock.mockResolvedValue({ url: 'https://billing.stripe.com/p/session/x' });
+    const assign = vi.fn();
+    const original = window.location;
+    Object.defineProperty(window, 'location', { value: { ...original, assign }, writable: true });
+    renderPage();
+    fireEvent.click(screen.getByText('Manage subscription'));
+    await waitFor(() =>
+      expect(assign).toHaveBeenCalledWith('https://billing.stripe.com/p/session/x'),
+    );
+    expect(portalMock).toHaveBeenCalledWith(
+      expect.anything(),
+      { code: ZERO_CODE, sessionId: 'cs_live_mgmt' },
+      expect.anything(),
+    );
+    Object.defineProperty(window, 'location', { value: original, writable: true });
+  });
+
+  it('scopes the stored session to its payment code (desktop hand-off)', async () => {
+    // A session bought for the DESKTOP code must not offer to manage the
+    // browser's own (unpaid) code from the same profile.
+    const override = '2bmMSbm88eN6MA6RuDiFKjNAZEuk';
+    statusMock.mockResolvedValue({ code: override, payments: [] });
+    renderPage(new URLSearchParams(`code=${override}&session=cs_live_desktop`));
+    await waitFor(() =>
+      expect(JSON.parse(localStorage.getItem(PAY_PORTAL_SESSIONS_STORAGE_KEY) ?? '{}')).toEqual({
+        [override]: 'cs_live_desktop',
+      }),
+    );
+    renderPage();
+    expect(screen.queryByText('Manage subscription')).toBeNull();
+  });
+
+  it('falls back to the receipt email when the portal cannot be opened', async () => {
+    localStorage.setItem(
+      PAY_PORTAL_SESSIONS_STORAGE_KEY,
+      JSON.stringify({ [ZERO_CODE]: 'cs_live_gone' }),
+    );
+    const { ApiError } = await import('@cumulusvpn/core');
+    portalMock.mockRejectedValue(
+      new ApiError({ code: '404', name: 'no_subscription', message: 'x' }),
+    );
+    renderPage();
+    fireEvent.click(screen.getByText('Manage subscription'));
+    await waitFor(() => expect(screen.getByText(/link in your Stripe receipt email/)).toBeTruthy());
+  });
+
+  it('survives a corrupt storage entry', () => {
+    localStorage.setItem(PAY_PORTAL_SESSIONS_STORAGE_KEY, 'not json');
+    renderPage();
+    expect(screen.queryByText('Manage subscription')).toBeNull();
+  });
+
+  it('ignores a junk ?session= instead of destroying a good stored id', async () => {
+    // The stored id is unrecoverable — there is no account to restore it
+    // from — so a crafted link must not be able to overwrite it.
+    statusMock.mockResolvedValue({ code: ZERO_CODE, payments: [] });
+    localStorage.setItem(
+      PAY_PORTAL_SESSIONS_STORAGE_KEY,
+      JSON.stringify({ [ZERO_CODE]: 'cs_live_real' }),
+    );
+    renderPage(new URLSearchParams('session=not-a-session'));
+    await waitFor(() => expect(statusMock).toHaveBeenCalled());
+    expect(JSON.parse(localStorage.getItem(PAY_PORTAL_SESSIONS_STORAGE_KEY) ?? '{}')).toEqual({
+      [ZERO_CODE]: 'cs_live_real',
+    });
+  });
+
+  it('does not offer a portal for an empty ?session=', () => {
+    // `?session=` parses to '' — non-null, so it used to render a button
+    // whose request the bridge rejects on its minLength schema.
+    statusMock.mockResolvedValue({ code: ZERO_CODE, payments: [] });
+    renderPage(new URLSearchParams('session='));
+    expect(screen.queryByText('Manage subscription')).toBeNull();
   });
 });

@@ -107,6 +107,13 @@ type Config struct {
 	// survivable in the same way KeyFile loss is.
 	PeerCacheFile string
 
+	// EntitleStateFile is where the chain-derived entitlement map and its
+	// block cursor are checkpointed, so a restart resumes scanning instead of
+	// replaying the whole payment history (minutes of free-only service on a
+	// busy address). Purely a cache: deleting it costs startup time, never
+	// entitlement, since every value is recomputable from the chain.
+	EntitleStateFile string
+
 	// ObfsEnable turns on the DPI-resistant AmneziaWG listener on WGObfsPort
 	// (docs/15-transports.md). Off by default; when off the gateway serves only
 	// vanilla WireGuard and does not advertise the obfuscated transport, so a
@@ -157,6 +164,7 @@ func Load() (*Config, error) {
 		AppName:            os.Getenv("FLUX_APP_NAME"),
 		KeyFile:            envStr("CVPN_KEY_FILE", "/data/server.key"),
 		PeerCacheFile:      envStr("CVPN_PEER_CACHE_FILE", "/data/peers.cache"),
+		EntitleStateFile:   envStr("CVPN_ENTITLE_STATE_FILE", "/data/entitle.state"),
 		GatewayFleetAllow:  envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
 		AllowPrivateEgress: envBool("CVPN_ALLOW_PRIVATE_EGRESS", false),
 		ObfsEnable:         envBool("CVPN_OBFS_ENABLE", false),

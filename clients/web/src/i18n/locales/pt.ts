@@ -97,7 +97,7 @@ export const pt: Catalog = {
   upgrade_card_cta_busy: 'Abrindo checkout seguro…',
   upgrade_card_error: 'Não foi possível abrir o checkout. Tente novamente em instantes.',
   upgrade_card_note:
-    'Renova automaticamente; cancele quando quiser pelo e-mail de recibo da Stripe. Pagar em FLUX acima sai mais barato — o preço no cartão cobre as taxas de processamento.',
+    'Renova automaticamente; cancele ou troque de plano quando quiser em “Sua assinatura” abaixo, ou pelo e-mail de recibo da Stripe. Pagar em FLUX acima sai mais barato — o preço no cartão cobre as taxas de processamento.',
   upgrade_activating_title: 'Ativando seu premium…',
   upgrade_state_pending: 'Pagamento recebido — preparando sua ativação na rede Flux.',
   upgrade_state_broadcast: 'Ativação enviada à rede Flux — aguardando confirmação.',
@@ -107,6 +107,16 @@ export const pt: Catalog = {
     'Algo deu errado na ativação. Seu pagamento está seguro — tentamos de novo automaticamente e seu premium aparecerá em breve.',
   upgrade_activating_hint: 'Você pode fechar esta página — a ativação termina sozinha.',
   upgrade_activated_cta: 'Voltar para Conectar →',
+
+  manage_eyebrow: 'Sua assinatura',
+  manage_lede:
+    'Atualize seu cartão, alterne entre mensal e anual ou cancele. Abre o portal de faturamento seguro da Stripe.',
+  manage_none:
+    'Nenhuma assinatura no cartão foi comprada neste navegador. Se você assinou em outro dispositivo, use o link no e-mail de recibo da Stripe, ou a App Store / Google Play se assinou pelo app.',
+  manage_cta: 'Gerenciar assinatura',
+  manage_cta_busy: 'Abrindo o portal de faturamento…',
+  manage_err:
+    'Não foi possível abrir o portal de faturamento neste navegador. Você sempre pode gerenciar ou cancelar pelo link no e-mail de recibo da Stripe.',
 
   redeem_eyebrow: 'Tem um código?',
   redeem_lede:

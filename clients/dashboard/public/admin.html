@@ -211,6 +211,29 @@
       <div id="voucher-list" class="hint">Loading…</div>
     </div>
   </div>
+
+  <div class="col">
+    <div class="sec">
+      <div class="sec-title">Subscriber lookup</div>
+    </div>
+    <div class="card">
+      <div class="hint" style="margin-bottom:10px">
+        Look a device up by the <b>payment code</b> it shows in Settings → About. Shows the
+        subscriptions bound to it and whether their on-chain settlements landed. There are no
+        accounts here — refunds and manual cancels are done in the Stripe / App Store / Play
+        console using the <code>external_id</code> below.
+      </div>
+      <div class="row"><div class="k">Payment code</div>
+        <input type="text" id="s-code" placeholder="27 base58 characters" />
+      </div>
+      <div class="foot">
+        <span class="updated"></span>
+        <button class="btn primary" id="s-lookup">Look up</button>
+      </div>
+      <div class="err" id="s-err"></div>
+      <div id="s-result" class="hint"></div>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -398,6 +421,58 @@
       toast('Saved', true);
     }).catch(function () { toast('Network error', false); });
   }
+
+  // ---- subscriber lookup (same bridge proxy, /api/subscriptions) ----
+  function lookupSubscriber() {
+    var code = $('s-code').value.trim();
+    $('s-err').textContent = '';
+    if (!code) { $('s-result').textContent = ''; return; }
+    $('s-result').textContent = 'Looking up…';
+    var init = { headers: { authorization: 'Bearer ' + token } };
+    fetch('/api/subscriptions?code=' + encodeURIComponent(code), init).then(function (r) {
+      if (r.status === 401) { signOut(); throw new Error('session expired'); }
+      return r.json().then(function (j) {
+        if (j && j.status === 'success') return j.data;
+        throw new Error((j && j.data && j.data.message) || (j && j.error) || ('HTTP ' + r.status));
+      });
+    }).then(function (d) {
+      var subs = d.subscriptions || [], pays = d.payments || [];
+      if (!subs.length && !pays.length) {
+        $('s-result').textContent = 'Nothing on record for that code (it may be a FLUX-only or unpaid device).';
+        return;
+      }
+      var html = '';
+      if (subs.length) {
+        html += '<h2>Subscriptions</h2><table style="width:100%;border-collapse:collapse;font-size:13px">' +
+          '<tr><th align="left">Rail</th><th align="left">Plan</th><th align="left">Status</th>' +
+          '<th align="left">external_id</th><th align="left">Updated</th></tr>' +
+          subs.map(function (s) {
+            return '<tr><td>' + esc(s.rail) + '</td><td>' + esc(s.plan) + '</td><td>' +
+              esc(s.status) + '</td><td><code>' + esc(s.external_id) + '</code>' +
+              (s.stripe_customer_id ? '<br/><code>' + esc(s.stripe_customer_id) + '</code>' : '') +
+              '</td><td>' + new Date(s.updated_at * 1000).toLocaleDateString() + '</td></tr>';
+          }).join('') + '</table>';
+      }
+      if (pays.length) {
+        html += '<h2>Settlements</h2><table style="width:100%;border-collapse:collapse;font-size:13px">' +
+          '<tr><th align="left">Rail</th><th align="left">Days</th><th align="left">FLUX</th>' +
+          '<th align="left">Status</th><th align="left">txid</th><th align="left">Created</th></tr>' +
+          pays.map(function (p) {
+            return '<tr><td>' + esc(p.rail) + '</td><td>' + esc(p.days) + '</td><td>' +
+              esc(Number(p.flux).toFixed(2)) + '</td><td>' + esc(p.status) + '</td><td><code>' +
+              esc(p.txid ? p.txid.slice(0, 16) + '…' : '—') + '</code></td><td>' +
+              new Date(p.created_at * 1000).toLocaleDateString() + '</td></tr>';
+          }).join('') + '</table>';
+      }
+      $('s-result').innerHTML = html;
+    }).catch(function (e) {
+      $('s-result').textContent = '';
+      $('s-err').textContent = e.message;
+    });
+  }
+
+  $('s-lookup').addEventListener('click', lookupSubscriber);
+  $('s-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') lookupSubscriber(); });
 
   $('signin').addEventListener('click', doLogin);
   $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });

@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Confidentialité par architecture</span>
     <h1>Politique de confidentialité</h1>
-    <p class="doc-meta">Dernière mise à jour : 16 juillet 2026 · En vigueur depuis : 16 juillet 2026</p>
+    <p class="doc-meta">Dernière mise à jour : 14 août 2026 · En vigueur depuis : 14 août 2026</p>
 
   <p class="doc-meta">Cette traduction est fournie à titre pratique ; la version anglaise sur cumulusvpn.com/privacy fait
       foi.</p>
@@ -104,8 +104,7 @@
         clé privée. Nous ne voyons que la clé publique, une chaîne à l'apparence aléatoire sans lien avec vous.</li>
       <li><strong>Les passerelles conservent l'état des pairs uniquement en RAM.</strong> Quand un serveur redémarre, cet état disparaît.
         Il n'y a aucune base de trafic à saisir, à assigner ou à faire fuiter.</li>
-      <li><strong>Les paiements sont optionnels et effectués en cryptomonnaie FLUX sur une blockchain publique.</strong> Nous
-        n'exploitons pas la blockchain, ne demandons pas de coordonnées bancaires et n'apprenons jamais votre nom à partir d'un paiement.</li>
+      <li><strong>Les paiements sont facultatifs.</strong> Vous pouvez payer en cryptomonnaie FLUX sur une blockchain publique, ou par carte, Apple Pay ou Google Pay via Stripe, Apple ou Google. Nous n’exploitons pas la blockchain, ne traitons ni ne stockons jamais vos données de carte, et n’apprenons jamais votre nom à partir d’un paiement.</li>
       <li><strong>Aucun traceur, aucun SDK publicitaire, aucune analyse qui vous identifie.</strong> Les apps ne contiennent aucun
         code publicitaire ni de pistage comportemental tiers.</li>
       <li><strong>Nous ne sommes pas une entreprise de données.</strong> Nous n'avons aucune donnée utilisateur à vendre, et nous n'en vendons pas.</li>
@@ -189,22 +188,16 @@
     <ul>
       <li><strong>Le paiement se fait sur le web ou sur ordinateur, pas dans les apps mobiles.</strong> Les apps mobiles
         ne contiennent pas d'écran d'achat ; elles affichent uniquement votre niveau actuel.</li>
-      <li>Vous envoyez du FLUX depuis <strong>votre propre wallet</strong> vers notre adresse de paiement publiée, en incluant un
-        court mémo dérivé de votre clé publique afin que le réseau puisse créditer la bonne clé. Nous ne
-        <strong>collectons</strong> ni numéros de carte, ni adresses de facturation, ni noms.</li>
+      <li>Vous pouvez envoyer des FLUX depuis <strong>votre propre portefeuille</strong> vers notre adresse de paiement publiée, avec un court mémo dérivé de votre clé publique afin que le réseau crédite la bonne clé. Si vous payez plutôt par carte ou via une boutique d’applications, ce prestataire collecte ces données selon sa propre politique de confidentialité et nous ne recevons qu’une confirmation. Dans tous les cas, nous ne collectons <strong>pas</strong> de numéros de carte, d’adresses de facturation ni de noms.</li>
       <li><strong>Les transactions blockchain sont publiques par nature.</strong> N'importe qui, y compris nous, peut voir sur le
         grand livre public qu'un paiement d'un certain montant a été effectué à notre adresse avec un mémo donné. Ce
         grand livre est exploité par la blockchain Flux, pas par nous. Nous ne relions pas cette transaction à votre
         identité réelle, et le mémo est dérivé de manière unidirectionnelle à partir de votre clé publique — il ne révèle ni votre
         clé ni votre trafic. Sachez que publier une transaction sur une blockchain publique est
         intrinsèquement public ; traitez la confidentialité de votre wallet en conséquence.</li>
-      <li>Le droit d'accès (si une clé est premium et jusqu'à quand) est calculé de manière déterministe à partir de la blockchain
-        publique et rattaché uniquement à la clé publique. Nous ne conservons aucun dossier de facturation client distinct avec votre
-        nom, parce que nous n'avons pas votre nom.</li>
+      <li>Le droit au service (si une clé est premium et jusqu’à quand) est calculé de façon déterministe à partir de la blockchain publique et rattaché uniquement à la clé publique. Pour les paiements par carte et dans l’application, nous stockons également le code de paiement et l’identifiant de transaction du prestataire, afin que les renouvellements soient crédités à la bonne clé. Nous ne conservons aucun dossier de facturation portant votre nom, puisque nous n’avons pas votre nom.</li>
     </ul>
-    <p>Si vous utilisez plus tard une option de paiement fiat intégrée à l'app proposée via l'App Store d'Apple ou Google Play
-      (si nous venions à en ajouter une), cette transaction est traitée par Apple ou Google selon leurs propres politiques de
-      confidentialité ; nous ne recevons que la confirmation nécessaire pour accorder le premium, jamais les données de votre carte de paiement.</p>
+    <p>Si vous vous abonnez via l’App Store d’Apple ou Google Play, cette transaction est traitée par Apple ou Google selon leurs propres politiques de confidentialité ; nous ne recevons que la confirmation nécessaire pour accorder le premium, pas les données de votre carte.</p>
 
     <h2>6. Assistance et contact volontaire</h2>
     <p>Si vous nous envoyez un e-mail (pour l'assistance ou un signalement d'abus), nous recevons ce que vous mettez dans cet e-mail — par

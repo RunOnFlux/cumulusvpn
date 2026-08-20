@@ -97,7 +97,7 @@ export const vi: Catalog = {
   upgrade_card_cta_busy: 'Đang mở trang thanh toán an toàn…',
   upgrade_card_error: 'Không mở được trang thanh toán. Vui lòng thử lại sau giây lát.',
   upgrade_card_note:
-    'Tự động gia hạn; hủy bất cứ lúc nào từ email biên nhận của Stripe. Thanh toán bằng FLUX ở trên rẻ hơn — giá khi trả bằng thẻ đã bao gồm phí xử lý.',
+    'Tự động gia hạn; huỷ hoặc đổi gói bất cứ lúc nào ở mục “Gói đăng ký của bạn” bên dưới, hoặc từ email biên nhận của Stripe. Thanh toán bằng FLUX ở trên rẻ hơn — giá thẻ đã bao gồm phí xử lý.',
   upgrade_activating_title: 'Đang kích hoạt premium của bạn…',
   upgrade_state_pending: 'Đã nhận thanh toán — đang chuẩn bị kích hoạt cho bạn trên mạng Flux.',
   upgrade_state_broadcast: 'Đã gửi kích hoạt lên mạng Flux — đang chờ xác nhận.',
@@ -107,6 +107,16 @@ export const vi: Catalog = {
     'Đã có lỗi trong quá trình kích hoạt. Khoản thanh toán của bạn vẫn an toàn — chúng tôi tự động thử lại và premium của bạn sẽ sớm xuất hiện.',
   upgrade_activating_hint: 'Bạn có thể đóng trang này — quá trình kích hoạt sẽ tự hoàn tất.',
   upgrade_activated_cta: 'Quay lại Kết nối →',
+
+  manage_eyebrow: 'Gói đăng ký của bạn',
+  manage_lede:
+    'Cập nhật thẻ, chuyển giữa gói tháng và gói năm, hoặc huỷ. Mở cổng thanh toán an toàn của Stripe.',
+  manage_none:
+    'Không có gói đăng ký bằng thẻ nào được mua trong trình duyệt này. Nếu bạn đã đăng ký trên thiết bị khác, hãy dùng liên kết trong email biên nhận của Stripe — hoặc App Store / Google Play nếu bạn đăng ký trong ứng dụng.',
+  manage_cta: 'Quản lý gói đăng ký',
+  manage_cta_busy: 'Đang mở cổng thanh toán…',
+  manage_err:
+    'Không thể mở cổng thanh toán từ trình duyệt này. Bạn luôn có thể quản lý hoặc huỷ bằng liên kết trong email biên nhận của Stripe.',
 
   redeem_eyebrow: 'Bạn có mã?',
   redeem_lede:

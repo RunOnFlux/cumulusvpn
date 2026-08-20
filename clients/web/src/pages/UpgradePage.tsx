@@ -1,7 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ApiError,
   createStripeCheckout,
+  openBillingPortal,
   paymentCode,
   redeemVoucher,
   walletDeepLink,
@@ -12,6 +13,7 @@ import {
   BRIDGE_URL,
   PAY_CHECKOUT_STARTED_STORAGE_KEY,
   PAY_CODE_OVERRIDE_STORAGE_KEY,
+  PAY_PORTAL_SESSIONS_STORAGE_KEY,
   PRICE_USD_ANNUAL,
   PRICE_USD_APPROX,
   PRICE_USD_MONTHLY,
@@ -72,6 +74,50 @@ function resolveCode(params: URLSearchParams, browserPub: string): string {
   }
 }
 
+/**
+ * Checkout sessions we have seen come back successfully, keyed by the payment
+ * code they paid for. This is the whole "account" behind self-service billing:
+ * with no login, the Checkout Session id is the only thing that can authorize
+ * a billing portal (see openBillingPortal), and only this browser ever had it.
+ */
+function readPortalSessions(): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(PAY_PORTAL_SESSIONS_STORAGE_KEY);
+    const parsed: unknown = raw === null ? null : JSON.parse(raw);
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {};
+    }
+    return parsed as Record<string, string>;
+  } catch {
+    // Private mode, or a hand-mangled entry — treat as "no subscription here".
+    return {};
+  }
+}
+
+/**
+ * Whether a `?session=` value is plausibly a Stripe Checkout Session id.
+ *
+ * Guards two things. An empty `?session=` reads as non-null and would render
+ * a Manage button whose request the bridge rejects outright. And because the
+ * stored id is unrecoverable — there is no account to restore it from — a
+ * crafted link would otherwise let anyone permanently overwrite a
+ * subscriber's real id with junk and kill their management path for good.
+ */
+function isCheckoutSessionId(value: string): boolean {
+  return value.startsWith('cs_') && value.length >= 10 && value.length <= 200;
+}
+
+function rememberPortalSession(code: string, sessionId: string): void {
+  try {
+    localStorage.setItem(
+      PAY_PORTAL_SESSIONS_STORAGE_KEY,
+      JSON.stringify({ ...readPortalSessions(), [code]: sessionId }),
+    );
+  } catch {
+    /* private mode — management falls back to the Stripe receipt email */
+  }
+}
+
 export function UpgradePage({ keypair, directory, params, onNavigateConnect }: UpgradePageProps) {
   const { t, rich } = useI18n();
   const session = params.get('session');
@@ -90,6 +136,46 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
   /** A discount code was validated — carried into checkout. */
   const [discount, setDiscount] = useState<{ code: string; percentOff: number } | null>(null);
   const phase = usePaymentStatus(code, session !== null || redeemed);
+  const [portalBusy, setPortalBusy] = useState(false);
+  const [portalError, setPortalError] = useState(false);
+  /** Checkout session for THIS code, if this browser bought the subscription. */
+  const portalSession = useMemo(() => {
+    if (session !== null && isCheckoutSessionId(session)) {
+      return session;
+    }
+    const stored = code === '' ? undefined : readPortalSessions()[code];
+    return stored !== undefined && isCheckoutSessionId(stored) ? stored : null;
+  }, [session, code]);
+
+  // A `?session=` return is the one moment the id exists; persist it against
+  // the code that was paid for (which may be the desktop hand-off code, not
+  // this browser's) so a later visit can still offer management.
+  useEffect(() => {
+    if (session !== null && code !== '' && isCheckoutSessionId(session)) {
+      rememberPortalSession(code, session);
+    }
+  }, [session, code]);
+
+  const openPortal = async (): Promise<void> => {
+    if (portalSession === null || portalBusy) {
+      return;
+    }
+    setPortalBusy(true);
+    setPortalError(false);
+    try {
+      const { url } = await openBillingPortal(
+        fetch.bind(window),
+        { code, sessionId: portalSession },
+        { baseUrl: BRIDGE_URL },
+      );
+      window.location.assign(url);
+    } catch {
+      // Includes `no_subscription` (session expired from Stripe's side, or the
+      // subscription is long gone) — the receipt-email fallback covers both.
+      setPortalError(true);
+      setPortalBusy(false);
+    }
+  };
 
   const selectPlan = (next: PaymentPlan): void => {
     setPlan(next);
@@ -291,6 +377,33 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
 
           {checkoutError && <p className="pay-note error">{t('upgrade_card_error')}</p>}
           <p className="pay-note">{t('upgrade_card_note')}</p>
+        </section>
+
+        {/*
+          Always rendered, because `upgrade_card_note` above promises this
+          section by name. Without a checkout session on file there is nothing
+          we can open — that is the common case for a first visit, and for a
+          subscriber on a fresh browser — so it explains where to go instead.
+        */}
+        <section className="card pay-card">
+          <div className="page-head center">
+            <span className="eyebrow">{t('manage_eyebrow')}</span>
+            <p className="lede">{portalSession === null ? t('manage_none') : t('manage_lede')}</p>
+          </div>
+          {portalSession !== null && (
+            <>
+              <div className="btn-row">
+                <button
+                  className="btn block"
+                  disabled={portalBusy}
+                  onClick={() => void openPortal()}
+                >
+                  {portalBusy ? t('manage_cta_busy') : t('manage_cta')}
+                </button>
+              </div>
+              {portalError && <p className="pay-note error">{t('manage_err')}</p>}
+            </>
+          )}
         </section>
 
         <section className="card pay-card">

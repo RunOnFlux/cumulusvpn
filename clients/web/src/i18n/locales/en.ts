@@ -103,7 +103,7 @@ export const en = {
   upgrade_card_cta_busy: 'Opening secure checkout…',
   upgrade_card_error: 'Could not open checkout. Please try again in a moment.',
   upgrade_card_note:
-    'Renews automatically; cancel anytime from the Stripe receipt email. Paying in FLUX above is cheaper — card pricing covers processing fees.',
+    'Renews automatically; cancel or switch plan anytime under “Your subscription” below, or from the Stripe receipt email. Paying in FLUX above is cheaper — card pricing covers processing fees.',
   upgrade_activating_title: 'Activating your premium…',
   upgrade_state_pending: 'Payment received — preparing your activation on the Flux network.',
   upgrade_state_broadcast: 'Activation sent to the Flux network — waiting for confirmation.',
@@ -112,6 +112,16 @@ export const en = {
     'Something went wrong while activating. Your payment is safe — we retry automatically, and your premium will appear shortly.',
   upgrade_activating_hint: 'You can close this page — activation completes on its own.',
   upgrade_activated_cta: 'Back to Connect →',
+
+  manage_eyebrow: 'Your subscription',
+  manage_lede:
+    'Update your card, switch between monthly and yearly, or cancel. Opens Stripe’s secure billing portal.',
+  manage_none:
+    'No card subscription was bought in this browser. If you subscribed on another device, use the link in your Stripe receipt email — or the App Store / Google Play if you subscribed in the app.',
+  manage_cta: 'Manage subscription',
+  manage_cta_busy: 'Opening billing portal…',
+  manage_err:
+    'Could not open the billing portal from this browser. You can always manage or cancel from the link in your Stripe receipt email.',
 
   redeem_eyebrow: 'Have a code?',
   redeem_lede:

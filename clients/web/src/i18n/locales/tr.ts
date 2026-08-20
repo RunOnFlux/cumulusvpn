@@ -97,7 +97,7 @@ export const tr: Catalog = {
   upgrade_card_cta_busy: 'Güvenli ödeme sayfası açılıyor…',
   upgrade_card_error: 'Ödeme sayfası açılamadı. Lütfen birazdan tekrar dene.',
   upgrade_card_note:
-    'Otomatik yenilenir; istediğin zaman Stripe makbuz e-postasından iptal edebilirsin. Yukarıda FLUX ile ödemek daha ucuz — kart fiyatı işlem ücretlerini karşılar.',
+    'Otomatik yenilenir; aşağıdaki “Aboneliğin” bölümünden ya da Stripe makbuz e-postandan istediğin zaman iptal edebilir veya plan değiştirebilirsin. Yukarıdan FLUX ile ödemek daha ucuz — kart fiyatı işlem ücretlerini karşılıyor.',
   upgrade_activating_title: 'Premium’un etkinleştiriliyor…',
   upgrade_state_pending: 'Ödeme alındı — Flux ağındaki etkinleştirmen hazırlanıyor.',
   upgrade_state_broadcast: 'Etkinleştirme Flux ağına gönderildi — onay bekleniyor.',
@@ -106,6 +106,16 @@ export const tr: Catalog = {
     'Etkinleştirme sırasında bir şeyler ters gitti. Ödemen güvende — otomatik olarak yeniden deniyoruz, premium’un kısa süre içinde görünecek.',
   upgrade_activating_hint: 'Bu sayfayı kapatabilirsin — etkinleştirme kendi kendine tamamlanır.',
   upgrade_activated_cta: 'Bağlan’a dön →',
+
+  manage_eyebrow: 'Aboneliğin',
+  manage_lede:
+    'Kartını güncelle, aylık ve yıllık arasında geçiş yap ya da iptal et. Stripe’ın güvenli faturalandırma portalını açar.',
+  manage_none:
+    'Bu tarayıcıda kartla alınmış bir abonelik yok. Başka bir cihazda abone olduysan Stripe makbuz e-postandaki bağlantıyı kullan — uygulama içinden abone olduysan App Store / Google Play üzerinden yönet.',
+  manage_cta: 'Aboneliği yönet',
+  manage_cta_busy: 'Faturalandırma portalı açılıyor…',
+  manage_err:
+    'Faturalandırma portalı bu tarayıcıdan açılamadı. Aboneliğini her zaman Stripe makbuz e-postandaki bağlantıdan yönetebilir veya iptal edebilirsin.',
 
   redeem_eyebrow: 'Kodun mu var?',
   redeem_lede:

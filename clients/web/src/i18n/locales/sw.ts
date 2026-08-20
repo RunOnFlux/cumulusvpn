@@ -97,7 +97,7 @@ export const sw: Catalog = {
   upgrade_card_cta_busy: 'Inafungua malipo salama…',
   upgrade_card_error: 'Haikuwezekana kufungua malipo. Jaribu tena baada ya muda mfupi.',
   upgrade_card_note:
-    'Yanajisasisha kiotomatiki; ghairi wakati wowote kupitia barua pepe ya risiti ya Stripe. Kulipa kwa FLUX hapo juu ni nafuu zaidi — bei ya kadi inajumuisha ada za uchakataji.',
+    'Hujiongeza kiotomatiki; ghairi au badilisha mpango wakati wowote katika “Usajili wako” hapa chini, au kupitia barua pepe ya risiti ya Stripe. Kulipa kwa FLUX hapo juu ni nafuu zaidi — bei ya kadi inagharamia ada za uchakataji.',
   upgrade_activating_title: 'Inawasha huduma yako ya premium…',
   upgrade_state_pending: 'Malipo yamepokelewa — inaandaa uwashaji wako kwenye mtandao wa Flux.',
   upgrade_state_broadcast: 'Uwashaji umetumwa kwenye mtandao wa Flux — inasubiri uthibitisho.',
@@ -107,6 +107,16 @@ export const sw: Catalog = {
     'Hitilafu imetokea wakati wa kuwasha. Malipo yako yako salama — tunajaribu tena kiotomatiki, na huduma yako ya premium itaonekana hivi karibuni.',
   upgrade_activating_hint: 'Unaweza kufunga ukurasa huu — uwashaji utakamilika wenyewe.',
   upgrade_activated_cta: 'Rudi kwenye Unganisha →',
+
+  manage_eyebrow: 'Usajili wako',
+  manage_lede:
+    'Sasisha kadi yako, badilisha kati ya kila mwezi na kila mwaka, au ghairi. Hufungua tovuti salama ya malipo ya Stripe.',
+  manage_none:
+    'Hakuna usajili wa kadi uliyonunuliwa kwenye kivinjari hiki. Kama ulijisajili kwenye kifaa kingine, tumia kiungo kilicho katika barua pepe ya risiti ya Stripe — au App Store / Google Play kama ulijisajili ndani ya programu.',
+  manage_cta: 'Dhibiti usajili',
+  manage_cta_busy: 'Inafungua tovuti ya malipo…',
+  manage_err:
+    'Haikuwezekana kufungua tovuti ya malipo kwenye kivinjari hiki. Unaweza kila wakati kudhibiti au kughairi kupitia kiungo kilicho katika barua pepe ya risiti ya Stripe.',
 
   redeem_eyebrow: 'Una msimbo?',
   redeem_lede:

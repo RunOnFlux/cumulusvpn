@@ -97,7 +97,7 @@ export const sv: Catalog = {
   upgrade_card_cta_busy: 'Öppnar säker betalning…',
   upgrade_card_error: 'Kunde inte öppna betalningen. Försök igen om en stund.',
   upgrade_card_note:
-    'Förnyas automatiskt; avsluta när som helst via Stripe-kvittot på e-post. Att betala i FLUX ovan är billigare — kortpriset täcker hanteringsavgifterna.',
+    'Förnyas automatiskt; säg upp eller byt plan när du vill under ”Din prenumeration” nedan, eller via Stripe-kvittot du fick via e-post. Att betala i FLUX ovan är billigare — kortpriset täcker transaktionsavgifterna.',
   upgrade_activating_title: 'Aktiverar ditt premium…',
   upgrade_state_pending: 'Betalning mottagen — förbereder din aktivering på Flux-nätverket.',
   upgrade_state_broadcast: 'Aktivering skickad till Flux-nätverket — väntar på bekräftelse.',
@@ -106,6 +106,16 @@ export const sv: Catalog = {
     'Något gick fel vid aktiveringen. Din betalning är säker — vi försöker igen automatiskt och ditt premium dyker upp inom kort.',
   upgrade_activating_hint: 'Du kan stänga den här sidan — aktiveringen slutförs av sig själv.',
   upgrade_activated_cta: 'Tillbaka till Anslut →',
+
+  manage_eyebrow: 'Din prenumeration',
+  manage_lede:
+    'Uppdatera ditt kort, växla mellan månads- och årsplan eller säg upp. Öppnar Stripes säkra faktureringsportal.',
+  manage_none:
+    'Ingen kortprenumeration köptes i den här webbläsaren. Om du prenumererade på en annan enhet, använd länken i Stripe-kvittot du fick via e-post — eller App Store / Google Play om du prenumererade i appen.',
+  manage_cta: 'Hantera prenumeration',
+  manage_cta_busy: 'Öppnar faktureringsportalen…',
+  manage_err:
+    'Det gick inte att öppna faktureringsportalen från den här webbläsaren. Du kan alltid hantera eller säga upp via länken i Stripe-kvittot du fick via e-post.',
 
   redeem_eyebrow: 'Har du en kod?',
   redeem_lede:

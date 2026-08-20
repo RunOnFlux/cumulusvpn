@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Personvern gjennom arkitektur</span>
     <h1>Personvernerklæring</h1>
-    <p class="doc-meta">Sist oppdatert: 16. juli 2026 · Gjeldende fra: 16. juli 2026</p>
+    <p class="doc-meta">Sist oppdatert: 14. august 2026 · Gjeldende fra: 14. august 2026</p>
 
   <p class="doc-meta">Denne oversettelsen er kun til bekvemmelighet; den engelske versjonen på cumulusvpn.com/privacy er gjeldende.</p>
   </div>
@@ -102,8 +102,7 @@
         private nøkkelen din. Vi ser bare noensinne en offentlig nøkkel, som er en tilfeldig utseende streng uten noen kobling til deg.</li>
       <li><strong>Gatewayer holder peer-tilstand kun i RAM.</strong> Når en server startes på nytt, er den tilstanden borte.
         Det finnes ingen trafikkdatabase å beslaglegge, innkalle som bevis, eller lekke.</li>
-      <li><strong>Betalinger er valgfrie og gjøres i kryptovalutaen FLUX på en offentlig blokkjede.</strong> Vi
-        driver ikke blokkjeden, tar ikke imot kortopplysninger, og finner aldri ut navnet ditt fra en betaling.</li>
+      <li><strong>Betaling er valgfritt.</strong> Du kan betale med kryptovalutaen FLUX på en offentlig blokkjede, eller med kort, Apple Pay eller Google Pay via Stripe, Apple eller Google. Vi drifter ikke blokkjeden, håndterer eller lagrer aldri kortopplysningene dine, og får aldri vite navnet ditt gjennom en betaling.</li>
       <li><strong>Ingen sporing, ingen reklame-SDK-er, ingen analyseverktøy som identifiserer deg.</strong> Appene inneholder ingen
         tredjeparts reklame- eller atferdssporingskode.</li>
       <li><strong>Vi er ikke en dataforretning.</strong> Vi har ingen brukerdata å selge, og vi selger ikke data.</li>
@@ -187,22 +186,16 @@
     <ul>
       <li><strong>Betaling skjer på web eller desktop, ikke inne i mobilappene.</strong> Mobilappene
         inneholder ingen kjøpsskjerm; de viser bare gjeldende nivå.</li>
-      <li>Du sender FLUX fra <strong>din egen lommebok</strong> til vår publiserte betalingsadresse, sammen med et
-        kort notat avledet fra den offentlige nøkkelen din, slik at nettverket kan kreditere riktig nøkkel. Vi
-        <strong>samler ikke inn</strong> kortnumre, fakturaadresser eller navn.</li>
+      <li>Du kan sende FLUX fra <strong>din egen lommebok</strong> til vår publiserte betalingsadresse, med en kort melding avledet av den offentlige nøkkelen din slik at nettverket krediterer riktig nøkkel. Betaler du i stedet med kort eller via en appbutikk, samler den betalingsleverandøren inn de opplysningene under sin egen personvernerklæring, og vi mottar bare en bekreftelse. Uansett samler vi <strong>ikke</strong> inn kortnumre, fakturaadresser eller navn.</li>
       <li><strong>Blokkjedetransaksjoner er offentlige av natur.</strong> Alle, oss inkludert, kan se i den
         offentlige hovedboken at en betaling av et gitt beløp ble gjort til adressen vår med et gitt notat. Denne
         hovedboken driftes av Flux-blokkjeden, ikke av oss. Vi knytter ikke den transaksjonen til din
         virkelige identitet, og notatet er avledet enveis fra den offentlige nøkkelen din — det avslører verken
         nøkkelen eller trafikken din. Vær oppmerksom på at det å publisere en transaksjon til en offentlig blokkjede
         i sin natur er offentlig; behandle personvernet til lommeboken din deretter.</li>
-      <li>Rettigheten (om en nøkkel er premium, og til når) beregnes deterministisk ut fra den offentlige
-        blokkjeden og knyttes kun til den offentlige nøkkelen. Vi lagrer ingen egen kundefaktureringspost med
-        navnet ditt i, fordi vi ikke har navnet ditt.</li>
+      <li>Rettigheten (om en nøkkel er premium og hvor lenge) beregnes deterministisk fra den offentlige blokkjeden og er knyttet bare til den offentlige nøkkelen. For kort- og app-betalinger lagrer vi i tillegg betalingskoden og leverandørens transaksjons-id, slik at fornyelser krediteres riktig nøkkel. Vi fører ingen egen faktureringsjournal med navnet ditt, fordi vi ikke har navnet ditt.</li>
     </ul>
-    <p>Hvis du senere bruker en fiat-betalingsmulighet i appen, tilbudt via Apples App Store eller Google Play
-      (skulle vi legge til én), behandles den transaksjonen av Apple eller Google under deres egne personvernerklæringer;
-      vi mottar kun bekreftelsen som trengs for å gi premium, ikke betalingskortdataene dine.</p>
+    <p>Hvis du abonnerer via Apples App Store eller Google Play, behandles transaksjonen av Apple eller Google under deres egne personvernerklæringer; vi mottar bare bekreftelsen som trengs for å gi premium, ikke kortopplysningene dine.</p>
 
     <h2>6. Support og frivillig kontakt</h2>
     <p>Hvis du sender oss en e-post (for support eller en misbruksmelding), mottar vi det du skriver i den e-posten — for

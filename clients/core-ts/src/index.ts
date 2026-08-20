@@ -19,6 +19,7 @@ export {
 export type { WalletScheme } from './paymentCode.js';
 export {
   createStripeCheckout,
+  openBillingPortal,
   verifyApplePurchase,
   verifyGooglePurchase,
   paymentStatus,

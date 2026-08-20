@@ -97,7 +97,7 @@ export const fr: Catalog = {
   upgrade_card_cta_busy: 'Ouverture du paiement sécurisé…',
   upgrade_card_error: "Impossible d'ouvrir le paiement. Veuillez réessayer dans un instant.",
   upgrade_card_note:
-    "Renouvelé automatiquement ; annulez à tout moment depuis l'e-mail de reçu Stripe. Payer en FLUX ci-dessus revient moins cher — le prix par carte couvre les frais de traitement.",
+    'Renouvellement automatique ; résiliez ou changez de formule quand vous voulez sous « Votre abonnement » ci-dessous, ou depuis l’e-mail de reçu Stripe. Payer en FLUX ci-dessus revient moins cher — le tarif carte couvre les frais de traitement.',
   upgrade_activating_title: 'Activation de votre premium…',
   upgrade_state_pending: 'Paiement reçu — préparation de votre activation sur le réseau Flux.',
   upgrade_state_broadcast: 'Activation envoyée au réseau Flux — en attente de confirmation.',
@@ -107,6 +107,16 @@ export const fr: Catalog = {
     "Un problème est survenu pendant l'activation. Votre paiement est en sécurité — nous réessayons automatiquement, et votre premium apparaîtra sous peu.",
   upgrade_activating_hint: "Vous pouvez fermer cette page — l'activation se termine toute seule.",
   upgrade_activated_cta: 'Retour à Connexion →',
+
+  manage_eyebrow: 'Votre abonnement',
+  manage_lede:
+    'Modifiez votre carte, passez du mensuel à l’annuel ou résiliez. Ouvre le portail de facturation sécurisé de Stripe.',
+  manage_none:
+    'Aucun abonnement par carte n’a été acheté dans ce navigateur. Si vous vous êtes abonné sur un autre appareil, utilisez le lien de l’e-mail de reçu Stripe, ou l’App Store / Google Play si l’abonnement a été pris dans l’application.',
+  manage_cta: 'Gérer l’abonnement',
+  manage_cta_busy: 'Ouverture du portail de facturation…',
+  manage_err:
+    'Impossible d’ouvrir le portail de facturation depuis ce navigateur. Vous pouvez toujours gérer ou résilier via le lien dans l’e-mail de reçu Stripe.',
 
   redeem_eyebrow: 'Vous avez un code ?',
   redeem_lede:

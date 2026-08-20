@@ -96,7 +96,7 @@ export const zh: Catalog = {
   upgrade_card_cta_busy: '正在打开安全结账页面…',
   upgrade_card_error: '无法打开结账页面。请稍后再试。',
   upgrade_card_note:
-    '自动续订；随时可通过 Stripe 收据邮件取消。上方用 FLUX 付款更便宜——银行卡价格包含了手续费。',
+    '自动续订；随时可在下方“你的订阅”中或通过 Stripe 收据邮件取消或更换套餐。上方用 FLUX 付款更便宜——银行卡价格包含了手续费。',
   upgrade_activating_title: '正在激活你的高级权限…',
   upgrade_state_pending: '已收到付款——正在为你准备 Flux 网络上的激活。',
   upgrade_state_broadcast: '激活已发送至 Flux 网络——等待确认中。',
@@ -105,6 +105,15 @@ export const zh: Catalog = {
     '激活时出了点问题。你的付款是安全的——我们会自动重试，你的高级权限很快就会出现。',
   upgrade_activating_hint: '你可以关闭此页面——激活会自行完成。',
   upgrade_activated_cta: '返回连接 →',
+
+  manage_eyebrow: '你的订阅',
+  manage_lede: '更换银行卡、在月付与年付之间切换，或取消订阅。将打开 Stripe 的安全账单门户。',
+  manage_none:
+    '此浏览器中没有购买过银行卡订阅。如果你在其他设备上订阅，请使用 Stripe 收据邮件中的链接；如果在应用内订阅，请前往 App Store / Google Play。',
+  manage_cta: '管理订阅',
+  manage_cta_busy: '正在打开账单门户…',
+  manage_err:
+    '无法在此浏览器中打开账单门户。你随时可以通过 Stripe 收据邮件中的链接管理或取消订阅。',
 
   redeem_eyebrow: '有兑换码？',
   redeem_lede:

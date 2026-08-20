@@ -97,7 +97,7 @@ export const de: Catalog = {
   upgrade_card_cta_busy: 'Sicherer Checkout wird geöffnet…',
   upgrade_card_error: 'Checkout konnte nicht geöffnet werden. Bitte versuche es gleich erneut.',
   upgrade_card_note:
-    'Verlängert sich automatisch; kündbar jederzeit über die Stripe-Quittungs-E-Mail. In FLUX oben zu zahlen ist günstiger — der Kartenpreis deckt die Abwicklungsgebühren.',
+    'Verlängert sich automatisch; kündige oder wechsle den Tarif jederzeit unter „Dein Abo“ weiter unten oder über die Stripe-Beleg-E-Mail. Die Zahlung in FLUX oben ist günstiger — der Kartenpreis deckt die Bearbeitungsgebühren.',
   upgrade_activating_title: 'Dein Premium wird aktiviert…',
   upgrade_state_pending: 'Zahlung erhalten — deine Aktivierung im Flux-Netzwerk wird vorbereitet.',
   upgrade_state_broadcast: 'Aktivierung ans Flux-Netzwerk gesendet — warten auf Bestätigung.',
@@ -108,6 +108,16 @@ export const de: Catalog = {
   upgrade_activating_hint:
     'Du kannst diese Seite schließen — die Aktivierung läuft von selbst weiter.',
   upgrade_activated_cta: 'Zurück zu Verbinden →',
+
+  manage_eyebrow: 'Dein Abo',
+  manage_lede:
+    'Karte ändern, zwischen monatlich und jährlich wechseln oder kündigen. Öffnet das sichere Abrechnungsportal von Stripe.',
+  manage_none:
+    'In diesem Browser wurde kein Kartenabo gekauft. Wenn du auf einem anderen Gerät abonniert hast, nutze den Link in der Stripe-Beleg-E-Mail — oder den App Store / Google Play, falls du in der App abonniert hast.',
+  manage_cta: 'Abo verwalten',
+  manage_cta_busy: 'Abrechnungsportal wird geöffnet…',
+  manage_err:
+    'Das Abrechnungsportal konnte in diesem Browser nicht geöffnet werden. Du kannst dein Abo jederzeit über den Link in der Stripe-Beleg-E-Mail verwalten oder kündigen.',
 
   redeem_eyebrow: 'Hast du einen Code?',
   redeem_lede:

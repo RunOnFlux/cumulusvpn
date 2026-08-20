@@ -96,7 +96,7 @@ export const ko: Catalog = {
   upgrade_card_cta_busy: '안전한 결제 페이지를 여는 중…',
   upgrade_card_error: '결제 페이지를 열 수 없습니다. 잠시 후 다시 시도해 주세요.',
   upgrade_card_note:
-    '자동으로 갱신되며, Stripe 영수증 이메일에서 언제든 해지할 수 있습니다. 위의 FLUX 결제가 더 저렴합니다 — 카드 가격에는 결제 처리 수수료가 포함되어 있습니다.',
+    '자동으로 갱신됩니다. 아래 “내 구독”에서 또는 Stripe 영수증 이메일에서 언제든지 해지하거나 요금제를 변경할 수 있습니다. 위에서 FLUX로 결제하면 더 저렴합니다 — 카드 가격에는 결제 수수료가 포함되어 있습니다.',
   upgrade_activating_title: '프리미엄을 활성화하는 중…',
   upgrade_state_pending: '결제가 접수되었습니다 — Flux 네트워크에서 활성화를 준비하고 있습니다.',
   upgrade_state_broadcast: '활성화가 Flux 네트워크로 전송되었습니다 — 확인을 기다리고 있습니다.',
@@ -105,6 +105,16 @@ export const ko: Catalog = {
     '활성화 중 문제가 발생했습니다. 결제는 안전합니다 — 자동으로 다시 시도하며, 프리미엄이 곧 표시됩니다.',
   upgrade_activating_hint: '이 페이지를 닫아도 됩니다 — 활성화는 저절로 완료됩니다.',
   upgrade_activated_cta: '연결로 돌아가기 →',
+
+  manage_eyebrow: '내 구독',
+  manage_lede:
+    '카드를 변경하거나 월간과 연간 요금제를 전환하거나 해지할 수 있습니다. Stripe의 안전한 결제 포털이 열립니다.',
+  manage_none:
+    '이 브라우저에서는 카드 구독을 구매한 적이 없습니다. 다른 기기에서 구독했다면 Stripe 영수증 이메일의 링크를, 앱에서 구독했다면 App Store / Google Play를 이용하세요.',
+  manage_cta: '구독 관리',
+  manage_cta_busy: '결제 포털을 여는 중…',
+  manage_err:
+    '이 브라우저에서 결제 포털을 열지 못했습니다. Stripe 영수증 이메일의 링크에서 언제든지 관리하거나 해지할 수 있습니다.',
 
   redeem_eyebrow: '코드가 있으신가요?',
   redeem_lede:

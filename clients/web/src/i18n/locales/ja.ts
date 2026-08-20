@@ -97,7 +97,7 @@ export const ja: Catalog = {
   upgrade_card_cta_busy: '安全な決済ページを開いています…',
   upgrade_card_error: '決済ページを開けませんでした。しばらくしてからもう一度お試しください。',
   upgrade_card_note:
-    '自動的に更新されます。Stripe の領収書メールからいつでも解約できます。上記の FLUX での支払いのほうが割安です — カード価格には決済手数料が含まれています。',
+    '自動更新されます。下の「あなたのサブスクリプション」または Stripe の領収書メールから、いつでも解約・プラン変更ができます。上の FLUX での支払いのほうが割安です — カード価格には手数料が含まれています。',
   upgrade_activating_title: 'プレミアムを有効化しています…',
   upgrade_state_pending: '支払いを受け取りました — Flux ネットワークでの有効化を準備しています。',
   upgrade_state_broadcast: '有効化を Flux ネットワークに送信しました — 確認を待っています。',
@@ -107,6 +107,16 @@ export const ja: Catalog = {
     '有効化の途中で問題が発生しました。支払いは安全です — 自動的に再試行するので、プレミアムはまもなく反映されます。',
   upgrade_activating_hint: 'このページは閉じてもかまいません — 有効化は自動で完了します。',
   upgrade_activated_cta: '接続に戻る →',
+
+  manage_eyebrow: 'あなたのサブスクリプション',
+  manage_lede:
+    'カードの変更、月額と年額の切り替え、解約ができます。Stripe の安全な請求ポータルが開きます。',
+  manage_none:
+    'このブラウザではカード決済のサブスクリプションを購入していません。他の端末で登録した場合は Stripe の領収書メールのリンクから、アプリ内で登録した場合は App Store / Google Play から管理してください。',
+  manage_cta: 'サブスクリプションを管理',
+  manage_cta_busy: '請求ポータルを開いています…',
+  manage_err:
+    'このブラウザから請求ポータルを開けませんでした。Stripe の領収書メールにあるリンクからいつでも管理・解約できます。',
 
   redeem_eyebrow: 'コードをお持ちですか？',
   redeem_lede:

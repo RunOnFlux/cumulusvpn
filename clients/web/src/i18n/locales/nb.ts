@@ -97,7 +97,7 @@ export const nb: Catalog = {
   upgrade_card_cta_busy: 'Åpner sikker betaling…',
   upgrade_card_error: 'Kunne ikke åpne betalingssiden. Prøv igjen om et øyeblikk.',
   upgrade_card_note:
-    'Fornyes automatisk; avbryt når som helst fra Stripe-kvitteringen på e-post. Å betale i FLUX ovenfor er billigere — kortprisen dekker transaksjonsgebyrene.',
+    'Fornyes automatisk; si opp eller bytt plan når som helst under «Abonnementet ditt» nedenfor, eller via kvitteringen fra Stripe på e-post. Å betale i FLUX ovenfor er billigere — kortprisen dekker transaksjonsgebyrene.',
   upgrade_activating_title: 'Aktiverer premium…',
   upgrade_state_pending: 'Betaling mottatt — forbereder aktiveringen din på Flux-nettverket.',
   upgrade_state_broadcast: 'Aktivering sendt til Flux-nettverket — venter på bekreftelse.',
@@ -106,6 +106,16 @@ export const nb: Catalog = {
     'Noe gikk galt under aktiveringen. Betalingen din er trygg — vi prøver automatisk på nytt, og premium dukker opp om kort tid.',
   upgrade_activating_hint: 'Du kan lukke denne siden — aktiveringen fullføres av seg selv.',
   upgrade_activated_cta: 'Tilbake til Koble til →',
+
+  manage_eyebrow: 'Abonnementet ditt',
+  manage_lede:
+    'Oppdater kortet, bytt mellom månedlig og årlig, eller si opp. Åpner Stripes sikre faktureringsportal.',
+  manage_none:
+    'Det ble ikke kjøpt noe kortabonnement i denne nettleseren. Hvis du abonnerte på en annen enhet, bruk lenken i kvitteringen fra Stripe på e-post — eller App Store / Google Play hvis du abonnerte i appen.',
+  manage_cta: 'Administrer abonnement',
+  manage_cta_busy: 'Åpner faktureringsportalen…',
+  manage_err:
+    'Faktureringsportalen kunne ikke åpnes fra denne nettleseren. Du kan alltid administrere eller si opp via lenken i kvitteringen fra Stripe på e-post.',
 
   redeem_eyebrow: 'Har du en kode?',
   redeem_lede:

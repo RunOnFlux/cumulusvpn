@@ -97,7 +97,7 @@ export const nl: Catalog = {
   upgrade_card_cta_busy: 'Beveiligde checkout wordt geopend…',
   upgrade_card_error: 'Kon de checkout niet openen. Probeer het zo opnieuw.',
   upgrade_card_note:
-    'Verlengt automatisch; opzeggen kan altijd via de Stripe-bevestigingsmail. Hierboven betalen in FLUX is goedkoper — de kaartprijs dekt de verwerkingskosten.',
+    'Wordt automatisch verlengd; opzeggen of van abonnement wisselen kan altijd onder “Je abonnement” hieronder, of via de Stripe-bon per e-mail. Betalen in FLUX hierboven is goedkoper — de kaartprijs dekt de transactiekosten.',
   upgrade_activating_title: 'Je premium wordt geactiveerd…',
   upgrade_state_pending: 'Betaling ontvangen — je activering op het Flux-netwerk wordt voorbereid.',
   upgrade_state_broadcast: 'Activering verzonden naar het Flux-netwerk — wachten op bevestiging.',
@@ -107,6 +107,16 @@ export const nl: Catalog = {
     'Er ging iets mis bij het activeren. Je betaling is veilig — we proberen het automatisch opnieuw en je premium verschijnt binnenkort.',
   upgrade_activating_hint: 'Je kunt deze pagina sluiten — de activering wordt vanzelf afgerond.',
   upgrade_activated_cta: 'Terug naar Verbinden →',
+
+  manage_eyebrow: 'Je abonnement',
+  manage_lede:
+    'Wijzig je kaart, wissel tussen maandelijks en jaarlijks, of zeg op. Opent het beveiligde facturatieportaal van Stripe.',
+  manage_none:
+    'In deze browser is geen kaartabonnement gekocht. Als je op een ander apparaat hebt geabonneerd, gebruik dan de link in de Stripe-bon per e-mail — of de App Store / Google Play als je in de app hebt geabonneerd.',
+  manage_cta: 'Abonnement beheren',
+  manage_cta_busy: 'Facturatieportaal openen…',
+  manage_err:
+    'Het facturatieportaal kon niet vanuit deze browser worden geopend. Je kunt altijd beheren of opzeggen via de link in de Stripe-bon per e-mail.',
 
   redeem_eyebrow: 'Heb je een code?',
   redeem_lede:

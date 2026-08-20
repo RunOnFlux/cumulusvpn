@@ -35,6 +35,9 @@ const (
 	period       = 30 * day
 	maxPrepaid   = 24 * period // cap: 24 months (720 days) of prepaid time from now
 	pollInterval = 15 * time.Second
+	// saveInterval throttles cursor-only snapshot writes; a poll that actually
+	// granted entitlement checkpoints immediately regardless.
+	saveInterval = time.Minute
 )
 
 // TxSource is the minimal chain interface entitle needs. internal/fluxnode's
@@ -64,6 +67,14 @@ type Engine struct {
 	mu        sync.RWMutex
 	paidUntil map[string]time.Time // code -> paid_until
 	lastBlock int64
+
+	// statePath, when set, persists paidUntil+lastBlock across restarts so a
+	// redeploy resumes from the stored cursor instead of replaying the whole
+	// payment history. See snapshot.go — it is a cache, never a source of
+	// truth. dirty marks state the current file does not yet reflect.
+	statePath string
+	dirty     bool
+	lastSaved time.Time
 
 	// onChange is called (code, premium) whenever a code's tier flips, so
 	// the limiter can be retuned. Set via OnChange before Start.
@@ -108,9 +119,15 @@ func (e *Engine) Tier(pubkeyB64 string) (premium bool, paidUntil time.Time) {
 	return pu.After(time.Now()), pu
 }
 
-// Backfill scans the full payment-address history at boot.
+// Backfill scans the payment-address history at boot, starting from the
+// cursor a loaded snapshot left behind (0 — the full history — when there is
+// none). Re-scanning from a snapshot cursor is safe by construction: grants
+// only ever extend paid_until, and every tx is idempotent under `stack`.
 func (e *Engine) Backfill(ctx context.Context) error {
-	txs, err := e.src.AddressTxs(ctx, e.address, 0)
+	e.mu.RLock()
+	from := e.lastBlock
+	e.mu.RUnlock()
+	txs, err := e.src.AddressTxs(ctx, e.address, from)
 	if err != nil {
 		return err
 	}
@@ -118,7 +135,12 @@ func (e *Engine) Backfill(ctx context.Context) error {
 	if h, err := e.src.BlockCount(ctx); err == nil {
 		e.mu.Lock()
 		e.lastBlock = h
+		e.dirty = true
 		e.mu.Unlock()
+	}
+	if err := e.Save(); err != nil {
+		// Losing the snapshot costs a rescan next boot, nothing more.
+		log.Printf("entitle: snapshot save: %v", err)
 	}
 	return nil
 }
@@ -131,10 +153,33 @@ func (e *Engine) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
+			// A clean shutdown is the cheapest moment to checkpoint: a Flux
+			// app update redeploys every container, and the cursor saved here
+			// is what turns the next boot into an incremental catch-up.
+			if err := e.Save(); err != nil {
+				log.Printf("entitle: snapshot save on shutdown: %v", err)
+			}
 			return
 		case <-t.C:
 			e.poll(ctx)
+			e.maybeSave()
 		}
+	}
+}
+
+// maybeSave checkpoints at most once a minute. The cursor advances on nearly
+// every poll, so writing each time would mean four disk writes a minute
+// forever for state that only costs a rescan to rebuild. Grants are the part
+// worth keeping promptly, and applyTxs saves those immediately.
+func (e *Engine) maybeSave() {
+	e.mu.RLock()
+	dirty, since := e.dirty, time.Since(e.lastSaved)
+	e.mu.RUnlock()
+	if !dirty || since < saveInterval {
+		return
+	}
+	if err := e.Save(); err != nil {
+		log.Printf("entitle: snapshot save: %v", err)
 	}
 }
 
@@ -155,14 +200,26 @@ func (e *Engine) poll(ctx context.Context) {
 		log.Printf("entitle: address txs: %v", err)
 		return
 	}
-	e.applyTxs(txs)
+	granted := e.applyTxs(txs)
 	e.mu.Lock()
 	e.lastBlock = height
+	e.dirty = true
 	e.mu.Unlock()
+	// Real entitlement changed — checkpoint now rather than waiting out the
+	// throttle, so a crash in the next minute cannot lose a paid grant's
+	// cursor and serve that user free until the rescan catches up.
+	if granted > 0 {
+		if err := e.Save(); err != nil {
+			log.Printf("entitle: snapshot save: %v", err)
+		}
+	}
 }
 
 // applyTxs folds a batch of (oldest-first) txs into the paid_until map.
-func (e *Engine) applyTxs(txs []Tx) {
+// Returns the number of grants applied, so callers can checkpoint the
+// snapshot promptly when real entitlement changed.
+func (e *Engine) applyTxs(txs []Tx) int {
+	granted := 0
 	for _, tx := range txs {
 		code, ok := ValidPayment(tx, e.address, e.priceFlux)
 		if !ok {
@@ -185,12 +242,15 @@ func (e *Engine) applyTxs(txs []Tx) {
 		wasPremium := e.paidUntil[code].After(time.Now())
 		e.paidUntil[code] = stack(e.paidUntil[code], days, tx.Time)
 		nowPremium := e.paidUntil[code].After(time.Now())
+		e.dirty = true
 		e.mu.Unlock()
+		granted++
 
 		if !wasPremium && nowPremium && e.onChange != nil {
 			e.onChange(code, true)
 		}
 	}
+	return granted
 }
 
 // stack applies a grant of `days` on top of an existing paid_until, capping
