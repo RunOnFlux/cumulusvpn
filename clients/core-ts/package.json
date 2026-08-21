@@ -28,16 +28,16 @@
     "format:check": "prettier --check \"src/**/*.{ts,tsx,json}\""
   },
   "dependencies": {
-    "@noble/curves": "2.2.0",
-    "@noble/hashes": "2.2.0",
-    "@scure/base": "2.2.0"
+    "@noble/curves": "2.3.0",
+    "@noble/hashes": "2.3.0",
+    "@scure/base": "2.3.0"
   },
   "devDependencies": {
-    "@vitest/coverage-v8": "4.1.10",
-    "eslint": "10.8.0",
+    "@vitest/coverage-v8": "4.1.11",
+    "eslint": "10.8.1",
     "prettier": "3.9.6",
     "typescript": "5.9.3",
-    "typescript-eslint": "8.66.0",
-    "vitest": "4.1.10"
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.11"
   }
 }
