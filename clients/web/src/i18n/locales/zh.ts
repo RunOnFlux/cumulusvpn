@@ -106,6 +106,15 @@ export const zh: Catalog = {
   upgrade_activating_hint: '你可以关闭此页面——激活会自行完成。',
   upgrade_activated_cta: '返回连接 →',
 
+  otherdev_eyebrow: '为其他设备付款？',
+  otherdev_lede:
+    '高级权限绑定到单台设备的密钥。若要在此为你的手机付款，请打开应用 → 设置 → 关于，复制其设备码。',
+  otherdev_placeholder: '设备码',
+  otherdev_apply: '使用此代码',
+  otherdev_active: '请核对它与该设备上显示的代码一致——输错的代码也可能有效，那会为错误的设备付款。',
+  otherdev_clear: '返回此浏览器（{code}…）',
+  otherdev_err: '这不是有效的设备码。请在要升级的设备上从 设置 → 关于 复制。',
+
   manage_eyebrow: '你的订阅',
   manage_lede: '更换银行卡、在月付与年付之间切换，或取消订阅。将打开 Stripe 的安全账单门户。',
   manage_none:

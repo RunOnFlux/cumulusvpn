@@ -108,6 +108,17 @@ export const fr: Catalog = {
   upgrade_activating_hint: "Vous pouvez fermer cette page — l'activation se termine toute seule.",
   upgrade_activated_cta: 'Retour à Connexion →',
 
+  otherdev_eyebrow: 'Vous payez pour un autre appareil ?',
+  otherdev_lede:
+    'Le premium est lié à la clé d’un appareil. Pour payer pour votre téléphone depuis ici, ouvrez l’application → Réglages → À propos et copiez son code d’appareil.',
+  otherdev_placeholder: 'Code d’appareil',
+  otherdev_apply: 'Utiliser ce code',
+  otherdev_active:
+    'Vérifiez qu’il correspond au code affiché sur cet appareil : un code mal saisi peut rester valide et paierait pour le mauvais appareil.',
+  otherdev_clear: 'Revenir à ce navigateur ({code}…)',
+  otherdev_err:
+    'Ce n’est pas un code d’appareil valide. Copiez-le depuis Réglages → À propos sur l’appareil à mettre à niveau.',
+
   manage_eyebrow: 'Votre abonnement',
   manage_lede:
     'Modifiez votre carte, passez du mensuel à l’annuel ou résiliez. Ouvre le portail de facturation sécurisé de Stripe.',

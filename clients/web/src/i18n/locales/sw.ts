@@ -108,6 +108,17 @@ export const sw: Catalog = {
   upgrade_activating_hint: 'Unaweza kufunga ukurasa huu — uwashaji utakamilika wenyewe.',
   upgrade_activated_cta: 'Rudi kwenye Unganisha →',
 
+  otherdev_eyebrow: 'Unalipia kifaa kingine?',
+  otherdev_lede:
+    'Premium imefungwa kwenye ufunguo wa kifaa kimoja. Ili kulipia simu yako kutoka hapa, fungua programu → Mipangilio → Kuhusu na unakili msimbo wa kifaa.',
+  otherdev_placeholder: 'Msimbo wa kifaa',
+  otherdev_apply: 'Tumia msimbo huu',
+  otherdev_active:
+    'Hakikisha unalingana na msimbo unaoonyeshwa kwenye kifaa hicho — msimbo uliokosewa unaweza bado kuwa sahihi na ukalipia kifaa kisicho sahihi.',
+  otherdev_clear: 'Rudi kwenye kivinjari hiki ({code}…)',
+  otherdev_err:
+    'Huo si msimbo halali wa kifaa. Unakili kutoka Mipangilio → Kuhusu kwenye kifaa unachotaka kuboresha.',
+
   manage_eyebrow: 'Usajili wako',
   manage_lede:
     'Sasisha kadi yako, badilisha kati ya kila mwezi na kila mwaka, au ghairi. Hufungua tovuti salama ya malipo ya Stripe.',

@@ -108,6 +108,17 @@ export const vi: Catalog = {
   upgrade_activating_hint: 'Bạn có thể đóng trang này — quá trình kích hoạt sẽ tự hoàn tất.',
   upgrade_activated_cta: 'Quay lại Kết nối →',
 
+  otherdev_eyebrow: 'Bạn đang trả cho thiết bị khác?',
+  otherdev_lede:
+    'Premium gắn với khoá của một thiết bị. Để trả cho điện thoại của bạn từ đây, mở ứng dụng → Cài đặt → Giới thiệu và sao chép mã thiết bị.',
+  otherdev_placeholder: 'Mã thiết bị',
+  otherdev_apply: 'Dùng mã này',
+  otherdev_active:
+    'Kiểm tra xem có khớp với mã hiển thị trên thiết bị đó không — mã gõ sai vẫn có thể hợp lệ và sẽ trả cho nhầm thiết bị.',
+  otherdev_clear: 'Quay lại trình duyệt này ({code}…)',
+  otherdev_err:
+    'Đó không phải mã thiết bị hợp lệ. Hãy sao chép từ Cài đặt → Giới thiệu trên thiết bị bạn muốn nâng cấp.',
+
   manage_eyebrow: 'Gói đăng ký của bạn',
   manage_lede:
     'Cập nhật thẻ, chuyển giữa gói tháng và gói năm, hoặc huỷ. Mở cổng thanh toán an toàn của Stripe.',

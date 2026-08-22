@@ -108,6 +108,17 @@ export const ja: Catalog = {
   upgrade_activating_hint: 'このページは閉じてもかまいません — 有効化は自動で完了します。',
   upgrade_activated_cta: '接続に戻る →',
 
+  otherdev_eyebrow: '別の端末の分を支払いますか？',
+  otherdev_lede:
+    'プレミアムは端末ごとの鍵に紐づきます。ここからスマートフォンの分を支払うには、アプリを開き → 設定 → このアプリについて で端末コードをコピーしてください。',
+  otherdev_placeholder: '端末コード',
+  otherdev_apply: 'このコードを使う',
+  otherdev_active:
+    'その端末に表示されているコードと一致するか確認してください。打ち間違えたコードも有効になり得るため、別の端末に支払ってしまう恐れがあります。',
+  otherdev_clear: 'このブラウザに戻す（{code}…）',
+  otherdev_err:
+    '有効な端末コードではありません。アップグレードしたい端末の 設定 → このアプリについて からコピーしてください。',
+
   manage_eyebrow: 'あなたのサブスクリプション',
   manage_lede:
     'カードの変更、月額と年額の切り替え、解約ができます。Stripe の安全な請求ポータルが開きます。',

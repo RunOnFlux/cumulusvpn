@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   appAccountToken,
+  isValidPaymentCode,
   paymentCode,
   paymentMemo,
   walletDeepLink,
@@ -109,5 +110,32 @@ describe('walletDeepLinks', () => {
       expect(uri).toContain('%3A');
       expect(uri).not.toContain(`CVPN1:${ZERO_CODE}`);
     }
+  });
+});
+
+describe('isValidPaymentCode', () => {
+  it('accepts a real derived code and rejects malformed ones', () => {
+    const code = paymentCode('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+    expect(isValidPaymentCode(code)).toBe(true);
+
+    // The rule is base58 of exactly 20 bytes — mirrors the bridge byte-for-byte,
+    // so anything the UI accepts the bridge must also accept.
+    expect(isValidPaymentCode('')).toBe(false);
+    expect(isValidPaymentCode('too-short')).toBe(false);
+    expect(isValidPaymentCode(code.slice(0, -2))).toBe(false); // decodes to 19
+    expect(isValidPaymentCode(code + 'x')).toBe(false); // decodes to 21
+    expect(isValidPaymentCode('1'.repeat(28))).toBe(false); // 28 zero bytes
+    expect(isValidPaymentCode(code.replace(/[a-km-zA-HJ-NP-Z]/, '0'))).toBe(false); // 0 not base58
+    expect(isValidPaymentCode(` ${code}`)).toBe(false); // untrimmed
+  });
+
+  it('cannot catch a mistyped-but-well-formed code', () => {
+    // base58 is not byte-aligned: dropping one character can still decode to
+    // exactly 20 bytes, i.e. a DIFFERENT valid code. Validation rejects
+    // malformed input, never a typo that happens to land on another key —
+    // which is why the UI must echo the code back for the user to confirm.
+    const code = paymentCode('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=');
+    expect(isValidPaymentCode(code.slice(0, -1))).toBe(true);
+    expect(code.slice(0, -1)).not.toBe(code);
   });
 });

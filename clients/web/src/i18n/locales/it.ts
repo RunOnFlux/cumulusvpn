@@ -108,6 +108,17 @@ export const it: Catalog = {
   upgrade_activating_hint: "Puoi chiudere questa pagina — l'attivazione si completa da sola.",
   upgrade_activated_cta: 'Torna a Connetti →',
 
+  otherdev_eyebrow: 'Stai pagando per un altro dispositivo?',
+  otherdev_lede:
+    'Il premium è legato alla chiave di un dispositivo. Per pagare per il tuo telefono da qui, apri l’app → Impostazioni → Info e copia il suo codice dispositivo.',
+  otherdev_placeholder: 'Codice dispositivo',
+  otherdev_apply: 'Usa questo codice',
+  otherdev_active:
+    'Controlla che corrisponda al codice mostrato su quel dispositivo: un codice digitato male può essere comunque valido e pagherebbe per quello sbagliato.',
+  otherdev_clear: 'Torna a questo browser ({code}…)',
+  otherdev_err:
+    'Questo non è un codice dispositivo valido. Copialo da Impostazioni → Info sul dispositivo che vuoi aggiornare.',
+
   manage_eyebrow: 'Il tuo abbonamento',
   manage_lede:
     'Aggiorna la carta, passa da mensile ad annuale o disdici. Apre il portale di fatturazione sicuro di Stripe.',

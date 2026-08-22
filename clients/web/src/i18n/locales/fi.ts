@@ -108,6 +108,17 @@ export const fi: Catalog = {
   upgrade_activating_hint: 'Voit sulkea tämän sivun — aktivointi valmistuu itsestään.',
   upgrade_activated_cta: 'Takaisin Yhdistä-sivulle →',
 
+  otherdev_eyebrow: 'Maksatko toisen laitteen puolesta?',
+  otherdev_lede:
+    'Premium on sidottu yhden laitteen avaimeen. Jos haluat maksaa puhelimestasi täältä, avaa sovellus → Asetukset → Tietoja ja kopioi sen laitekoodi.',
+  otherdev_placeholder: 'Laitekoodi',
+  otherdev_apply: 'Käytä tätä koodia',
+  otherdev_active:
+    'Tarkista, että se vastaa kyseisen laitteen näyttämää koodia — väärin kirjoitettu koodi voi silti olla kelvollinen ja maksaisi väärästä laitteesta.',
+  otherdev_clear: 'Takaisin tähän selaimeen ({code}…)',
+  otherdev_err:
+    'Tämä ei ole kelvollinen laitekoodi. Kopioi se kohdasta Asetukset → Tietoja siinä laitteessa, jonka haluat päivittää.',
+
   manage_eyebrow: 'Tilauksesi',
   manage_lede:
     'Päivitä korttisi, vaihda kuukausittaisen ja vuosittaisen välillä tai peruuta. Avaa Stripen suojatun laskutusportaalin.',

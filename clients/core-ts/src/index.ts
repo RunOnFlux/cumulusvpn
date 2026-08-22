@@ -10,6 +10,7 @@
 export { generateKeypair, publicKeyFromPrivate } from './keys.js';
 export {
   paymentCode,
+  isValidPaymentCode,
   paymentMemo,
   appAccountToken,
   walletDeepLink,

@@ -33,6 +33,29 @@ export function paymentMemo(publicKeyB64: string): string {
   return MEMO_PREFIX + paymentCode(publicKeyB64);
 }
 
+/**
+ * Whether a string is a well-formed CumulusVPN payment code.
+ *
+ * The rule mirrors the bridge's `isValidPaymentCode` and the gateway's own
+ * derivation byte-for-byte: base58btc of exactly 20 bytes. Kept here so a
+ * client can reject a mistyped code before spending a round trip — and, more
+ * importantly, so the two sides cannot drift apart into a state where the UI
+ * accepts something the bridge will refuse.
+ *
+ * @param code - Candidate payment code (e.g. pasted from Settings → About).
+ * @returns `true` if it decodes as base58 of exactly 20 bytes.
+ */
+export function isValidPaymentCode(code: string): boolean {
+  if (code.length < 20 || code.length > 40) {
+    return false;
+  }
+  try {
+    return base58.decode(code).length === 20;
+  } catch {
+    return false;
+  }
+}
+
 /** sha256 domain-separation prefix for the Apple appAccountToken derivation. */
 const APP_ACCOUNT_DOMAIN = 'cvpn-appaccount:';
 

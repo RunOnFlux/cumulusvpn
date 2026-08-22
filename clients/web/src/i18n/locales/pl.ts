@@ -113,6 +113,17 @@ export const pl: Catalog = {
   upgrade_activating_hint: 'Możesz zamknąć tę stronę — aktywacja dokończy się sama.',
   upgrade_activated_cta: 'Wróć do Połącz →',
 
+  otherdev_eyebrow: 'Płacisz za inne urządzenie?',
+  otherdev_lede:
+    'Premium jest powiązane z kluczem jednego urządzenia. Aby zapłacić stąd za telefon, otwórz aplikację → Ustawienia → Informacje i skopiuj jego kod urządzenia.',
+  otherdev_placeholder: 'Kod urządzenia',
+  otherdev_apply: 'Użyj tego kodu',
+  otherdev_active:
+    'Sprawdź, czy zgadza się z kodem pokazanym na tamtym urządzeniu — błędnie przepisany kod nadal może być poprawny i opłaciłby nie to urządzenie.',
+  otherdev_clear: 'Wróć do tej przeglądarki ({code}…)',
+  otherdev_err:
+    'To nie jest prawidłowy kod urządzenia. Skopiuj go z Ustawienia → Informacje na urządzeniu, które chcesz ulepszyć.',
+
   manage_eyebrow: 'Twoja subskrypcja',
   manage_lede:
     'Zmień kartę, przełącz się między planem miesięcznym a rocznym lub anuluj. Otwiera bezpieczny portal rozliczeniowy Stripe.',

@@ -108,6 +108,17 @@ export const pt: Catalog = {
   upgrade_activating_hint: 'Você pode fechar esta página — a ativação termina sozinha.',
   upgrade_activated_cta: 'Voltar para Conectar →',
 
+  otherdev_eyebrow: 'Pagando por outro dispositivo?',
+  otherdev_lede:
+    'O premium está vinculado à chave de um dispositivo. Para pagar pelo seu celular daqui, abra o app → Configurações → Sobre e copie o código do dispositivo.',
+  otherdev_placeholder: 'Código do dispositivo',
+  otherdev_apply: 'Usar este código',
+  otherdev_active:
+    'Confira se confere com o código exibido naquele dispositivo — um código digitado errado ainda pode ser válido e pagaria pelo dispositivo errado.',
+  otherdev_clear: 'Voltar para este navegador ({code}…)',
+  otherdev_err:
+    'Esse não é um código de dispositivo válido. Copie-o em Configurações → Sobre no dispositivo que você quer melhorar.',
+
   manage_eyebrow: 'Sua assinatura',
   manage_lede:
     'Atualize seu cartão, alterne entre mensal e anual ou cancele. Abre o portal de faturamento seguro da Stripe.',

@@ -113,6 +113,17 @@ export const en = {
   upgrade_activating_hint: 'You can close this page — activation completes on its own.',
   upgrade_activated_cta: 'Back to Connect →',
 
+  otherdev_eyebrow: 'Paying for another device?',
+  otherdev_lede:
+    'Premium is tied to one device key. To pay for your phone from here, open the app → Settings → About and copy its Device code.',
+  otherdev_placeholder: 'Device code',
+  otherdev_apply: 'Use this code',
+  otherdev_active:
+    'Check this matches the code shown on that device — a mistyped code can still be valid, and would pay for the wrong one.',
+  otherdev_clear: 'Back to this browser ({code}…)',
+  otherdev_err:
+    'That is not a valid device code. Copy it from Settings → About on the device you want to upgrade.',
+
   manage_eyebrow: 'Your subscription',
   manage_lede:
     'Update your card, switch between monthly and yearly, or cancel. Opens Stripe’s secure billing portal.',

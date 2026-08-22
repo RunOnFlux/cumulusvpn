@@ -106,6 +106,16 @@ export const ko: Catalog = {
   upgrade_activating_hint: '이 페이지를 닫아도 됩니다 — 활성화는 저절로 완료됩니다.',
   upgrade_activated_cta: '연결로 돌아가기 →',
 
+  otherdev_eyebrow: '다른 기기 요금을 결제하시나요?',
+  otherdev_lede:
+    '프리미엄은 기기 하나의 키에 연결됩니다. 여기서 휴대폰 요금을 결제하려면 앱을 열고 → 설정 → 정보에서 기기 코드를 복사하세요.',
+  otherdev_placeholder: '기기 코드',
+  otherdev_apply: '이 코드 사용',
+  otherdev_active:
+    '해당 기기에 표시된 코드와 일치하는지 확인하세요. 잘못 입력한 코드도 유효할 수 있어 엉뚱한 기기에 결제될 수 있습니다.',
+  otherdev_clear: '이 브라우저로 돌아가기({code}…)',
+  otherdev_err: '유효한 기기 코드가 아닙니다. 업그레이드하려는 기기의 설정 → 정보에서 복사하세요.',
+
   manage_eyebrow: '내 구독',
   manage_lede:
     '카드를 변경하거나 월간과 연간 요금제를 전환하거나 해지할 수 있습니다. Stripe의 안전한 결제 포털이 열립니다.',

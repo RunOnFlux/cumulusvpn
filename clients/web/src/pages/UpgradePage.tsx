@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ApiError,
   createStripeCheckout,
+  isValidPaymentCode,
   openBillingPortal,
   paymentCode,
   redeemVoucher,
@@ -121,8 +122,59 @@ function rememberPortalSession(code: string, sessionId: string): void {
 export function UpgradePage({ keypair, directory, params, onNavigateConnect }: UpgradePageProps) {
   const { t, rich } = useI18n();
   const session = params.get('session');
-  const code = useMemo(() => resolveCode(params, keypair.publicKey), [params, keypair.publicKey]);
+  /**
+   * A Device code pasted by hand, for paying from a desktop browser on behalf
+   * of a phone. Store-build apps cannot link here (external-purchase steering),
+   * so the code is transcribed from Settings → About; this is the only way a
+   * mobile user reaches web pricing.
+   *
+   * It rides the SAME localStorage override the desktop `?code=` hand-off uses,
+   * so it survives the Stripe round-trip. A genuinely plain visit clears it —
+   * deliberately, so a stale foreign code can never quietly collect a later
+   * payment. Failing back to this browser's own key is the safe direction.
+   */
+  const [manualCode, setManualCode] = useState<string | null>(null);
+  const code = useMemo(
+    () => manualCode ?? resolveCode(params, keypair.publicKey),
+    [manualCode, params, keypair.publicKey],
+  );
   const memo = code ? MEMO_PREFIX + code : '';
+  const ownCode = useMemo(() => {
+    try {
+      return paymentCode(keypair.publicKey);
+    } catch {
+      return '';
+    }
+  }, [keypair.publicKey]);
+  const [codeInput, setCodeInput] = useState('');
+  const [codeError, setCodeError] = useState(false);
+
+  const applyCode = (): void => {
+    const trimmed = codeInput.trim();
+    if (!isValidPaymentCode(trimmed)) {
+      setCodeError(true);
+      return;
+    }
+    setCodeError(false);
+    try {
+      localStorage.setItem(PAY_CODE_OVERRIDE_STORAGE_KEY, trimmed);
+    } catch {
+      /* private mode — the override still holds for this page view */
+    }
+    setManualCode(trimmed);
+    setCodeInput('');
+  };
+
+  const clearCode = (): void => {
+    setCodeError(false);
+    setCodeInput('');
+    try {
+      localStorage.removeItem(PAY_CODE_OVERRIDE_STORAGE_KEY);
+    } catch {
+      /* private mode */
+    }
+    setManualCode(null);
+  };
 
   const [plan, setPlan] = useState<PaymentPlan>('monthly');
   const [checkoutBusy, setCheckoutBusy] = useState(false);
@@ -377,6 +429,63 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
 
           {checkoutError && <p className="pay-note error">{t('upgrade_card_error')}</p>}
           <p className="pay-note">{t('upgrade_card_note')}</p>
+        </section>
+
+        {/*
+          Lets a phone user pay here. Store builds cannot link to the web
+          (Apple 3.1.1 external-purchase steering), so the Device code is
+          transcribed by hand from Settings → About.
+
+          The active code is echoed back deliberately: isValidPaymentCode
+          rejects malformed input but CANNOT catch a typo that still decodes
+          to 20 bytes — that lands on a different, valid key and would pay the
+          wrong device silently. Showing it is the only check left.
+        */}
+        <section className="card pay-card">
+          <div className="page-head center">
+            <span className="eyebrow">{t('otherdev_eyebrow')}</span>
+            <p className="lede">{t('otherdev_lede')}</p>
+          </div>
+          {manualCode === null ? (
+            <>
+              <div className="btn-row">
+                <input
+                  className="mono"
+                  style={{ flex: 1, padding: '12px', fontSize: '15px' }}
+                  value={codeInput}
+                  placeholder={t('otherdev_placeholder')}
+                  onChange={(e) => {
+                    setCodeInput(e.target.value);
+                    setCodeError(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      applyCode();
+                    }
+                  }}
+                  aria-label={t('otherdev_placeholder')}
+                />
+                <button
+                  className="btn amber"
+                  disabled={codeInput.trim() === ''}
+                  onClick={applyCode}
+                >
+                  {t('otherdev_apply')}
+                </button>
+              </div>
+              {codeError && <p className="pay-note error">{t('otherdev_err')}</p>}
+            </>
+          ) : (
+            <>
+              <p className="pay-note">{t('otherdev_active')}</p>
+              <CopyField label={t('otherdev_placeholder')} value={manualCode} />
+              <div className="btn-row">
+                <button className="btn block" onClick={clearCode}>
+                  {t('otherdev_clear', { code: ownCode.slice(0, 8) })}
+                </button>
+              </div>
+            </>
+          )}
         </section>
 
         {/*

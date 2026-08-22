@@ -107,6 +107,17 @@ export const sv: Catalog = {
   upgrade_activating_hint: 'Du kan stänga den här sidan — aktiveringen slutförs av sig själv.',
   upgrade_activated_cta: 'Tillbaka till Anslut →',
 
+  otherdev_eyebrow: 'Betalar du för en annan enhet?',
+  otherdev_lede:
+    'Premium är knutet till en enhets nyckel. Vill du betala för din telefon härifrån, öppna appen → Inställningar → Om och kopiera dess enhetskod.',
+  otherdev_placeholder: 'Enhetskod',
+  otherdev_apply: 'Använd den här koden',
+  otherdev_active:
+    'Kontrollera att den stämmer med koden på den enheten — en felskriven kod kan ändå vara giltig och skulle betala för fel enhet.',
+  otherdev_clear: 'Tillbaka till den här webbläsaren ({code}…)',
+  otherdev_err:
+    'Det är ingen giltig enhetskod. Kopiera den från Inställningar → Om på enheten du vill uppgradera.',
+
   manage_eyebrow: 'Din prenumeration',
   manage_lede:
     'Uppdatera ditt kort, växla mellan månads- och årsplan eller säg upp. Öppnar Stripes säkra faktureringsportal.',

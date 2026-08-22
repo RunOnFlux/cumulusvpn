@@ -107,6 +107,17 @@ export const nb: Catalog = {
   upgrade_activating_hint: 'Du kan lukke denne siden — aktiveringen fullføres av seg selv.',
   upgrade_activated_cta: 'Tilbake til Koble til →',
 
+  otherdev_eyebrow: 'Betaler du for en annen enhet?',
+  otherdev_lede:
+    'Premium er knyttet til nøkkelen til én enhet. Vil du betale for telefonen din herfra, åpne appen → Innstillinger → Om og kopier enhetskoden.',
+  otherdev_placeholder: 'Enhetskode',
+  otherdev_apply: 'Bruk denne koden',
+  otherdev_active:
+    'Sjekk at den stemmer med koden på den enheten — en feilskrevet kode kan fortsatt være gyldig og ville betale for feil enhet.',
+  otherdev_clear: 'Tilbake til denne nettleseren ({code}…)',
+  otherdev_err:
+    'Det er ikke en gyldig enhetskode. Kopier den under Innstillinger → Om på enheten du vil oppgradere.',
+
   manage_eyebrow: 'Abonnementet ditt',
   manage_lede:
     'Oppdater kortet, bytt mellom månedlig og årlig, eller si opp. Åpner Stripes sikre faktureringsportal.',

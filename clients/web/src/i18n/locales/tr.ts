@@ -107,6 +107,17 @@ export const tr: Catalog = {
   upgrade_activating_hint: 'Bu sayfayı kapatabilirsin — etkinleştirme kendi kendine tamamlanır.',
   upgrade_activated_cta: 'Bağlan’a dön →',
 
+  otherdev_eyebrow: 'Başka bir cihaz için mi ödüyorsun?',
+  otherdev_lede:
+    'Premium tek bir cihazın anahtarına bağlıdır. Telefonun için buradan ödeme yapmak istersen uygulamayı aç → Ayarlar → Hakkında ve cihaz kodunu kopyala.',
+  otherdev_placeholder: 'Cihaz kodu',
+  otherdev_apply: 'Bu kodu kullan',
+  otherdev_active:
+    'O cihazda görünen kodla eşleştiğini doğrula — yanlış yazılmış bir kod yine de geçerli olabilir ve yanlış cihaza ödeme yapar.',
+  otherdev_clear: 'Bu tarayıcıya dön ({code}…)',
+  otherdev_err:
+    'Bu geçerli bir cihaz kodu değil. Yükseltmek istediğin cihazda Ayarlar → Hakkında bölümünden kopyala.',
+
   manage_eyebrow: 'Aboneliğin',
   manage_lede:
     'Kartını güncelle, aylık ve yıllık arasında geçiş yap ya da iptal et. Stripe’ın güvenli faturalandırma portalını açar.',

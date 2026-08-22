@@ -109,6 +109,17 @@ export const de: Catalog = {
     'Du kannst diese Seite schließen — die Aktivierung läuft von selbst weiter.',
   upgrade_activated_cta: 'Zurück zu Verbinden →',
 
+  otherdev_eyebrow: 'Zahlst du für ein anderes Gerät?',
+  otherdev_lede:
+    'Premium hängt am Schlüssel eines Geräts. Um von hier aus für dein Telefon zu zahlen, öffne die App → Einstellungen → Info und kopiere den Gerätecode.',
+  otherdev_placeholder: 'Gerätecode',
+  otherdev_apply: 'Diesen Code verwenden',
+  otherdev_active:
+    'Prüfe, ob er mit dem Code auf jenem Gerät übereinstimmt — ein vertippter Code kann trotzdem gültig sein und würde das falsche Gerät bezahlen.',
+  otherdev_clear: 'Zurück zu diesem Browser ({code}…)',
+  otherdev_err:
+    'Das ist kein gültiger Gerätecode. Kopiere ihn unter Einstellungen → Info auf dem Gerät, das du upgraden willst.',
+
   manage_eyebrow: 'Dein Abo',
   manage_lede:
     'Karte ändern, zwischen monatlich und jährlich wechseln oder kündigen. Öffnet das sichere Abrechnungsportal von Stripe.',

@@ -108,6 +108,17 @@ export const nl: Catalog = {
   upgrade_activating_hint: 'Je kunt deze pagina sluiten — de activering wordt vanzelf afgerond.',
   upgrade_activated_cta: 'Terug naar Verbinden →',
 
+  otherdev_eyebrow: 'Betaal je voor een ander apparaat?',
+  otherdev_lede:
+    'Premium hangt aan de sleutel van één apparaat. Wil je hier voor je telefoon betalen, open dan de app → Instellingen → Over en kopieer de apparaatcode.',
+  otherdev_placeholder: 'Apparaatcode',
+  otherdev_apply: 'Deze code gebruiken',
+  otherdev_active:
+    'Controleer of dit overeenkomt met de code op dat apparaat — een verkeerd getypte code kan alsnog geldig zijn en betaalt dan het verkeerde apparaat.',
+  otherdev_clear: 'Terug naar deze browser ({code}…)',
+  otherdev_err:
+    'Dat is geen geldige apparaatcode. Kopieer hem via Instellingen → Over op het apparaat dat je wilt upgraden.',
+
   manage_eyebrow: 'Je abonnement',
   manage_lede:
     'Wijzig je kaart, wissel tussen maandelijks en jaarlijks, of zeg op. Opent het beveiligde facturatieportaal van Stripe.',

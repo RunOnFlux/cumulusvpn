@@ -336,3 +336,60 @@ describe('UpgradePage subscription management', () => {
     expect(screen.queryByText('Manage subscription')).toBeNull();
   });
 });
+
+describe('UpgradePage pay-for-another-device', () => {
+  const OTHER = '2bmMSbm88eN6MA6RuDiFKjNAZEuk';
+
+  it('retargets the FLUX memo and checkout to a pasted device code', async () => {
+    checkoutMock.mockResolvedValue({ url: 'https://checkout.stripe.com/c/z', session_id: 'cs_o' });
+    renderPage();
+    // Starts on the browser's own key.
+    expect(screen.getByText(`CVPN1:${ZERO_CODE}`)).toBeTruthy();
+
+    fireEvent.change(screen.getByPlaceholderText('Device code'), { target: { value: OTHER } });
+    fireEvent.click(screen.getByText('Use this code'));
+
+    // Memo, and therefore the QR and the chain payment, now target the phone.
+    expect(screen.getByText(`CVPN1:${OTHER}`)).toBeTruthy();
+    // ...and it rides the same override the desktop hand-off uses, so it
+    // survives the Stripe redirect.
+    expect(localStorage.getItem(PAY_CODE_OVERRIDE_STORAGE_KEY)).toBe(OTHER);
+
+    fireEvent.click(screen.getByText('Pay with card'));
+    await waitFor(() =>
+      expect(checkoutMock).toHaveBeenCalledWith(
+        expect.anything(),
+        { code: OTHER, plan: 'monthly' },
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('rejects a malformed code without retargeting anything', () => {
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('Device code'), { target: { value: 'nope' } });
+    fireEvent.click(screen.getByText('Use this code'));
+    expect(screen.getByText(/not a valid device code/)).toBeTruthy();
+    expect(screen.getByText(`CVPN1:${ZERO_CODE}`)).toBeTruthy();
+    expect(localStorage.getItem(PAY_CODE_OVERRIDE_STORAGE_KEY)).toBeNull();
+  });
+
+  it('echoes the active code back, because a typo can still be valid', () => {
+    // isValidPaymentCode cannot catch a mistyped-but-well-formed code — it
+    // lands on a different real key. Showing it is the only remaining check.
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('Device code'), { target: { value: OTHER } });
+    fireEvent.click(screen.getByText('Use this code'));
+    // CopyField renders the value in a span, next to the memo that embeds it.
+    expect(screen.getByText(OTHER)).toBeTruthy();
+  });
+
+  it('clears back to this browser', () => {
+    renderPage();
+    fireEvent.change(screen.getByPlaceholderText('Device code'), { target: { value: OTHER } });
+    fireEvent.click(screen.getByText('Use this code'));
+    fireEvent.click(screen.getByText(/Back to this browser/));
+    expect(screen.getByText(`CVPN1:${ZERO_CODE}`)).toBeTruthy();
+    expect(localStorage.getItem(PAY_CODE_OVERRIDE_STORAGE_KEY)).toBeNull();
+  });
+});

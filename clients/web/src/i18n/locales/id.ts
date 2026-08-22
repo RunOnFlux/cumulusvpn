@@ -108,6 +108,17 @@ export const id: Catalog = {
   upgrade_activating_hint: 'Anda bisa menutup halaman ini — aktivasi selesai dengan sendirinya.',
   upgrade_activated_cta: 'Kembali ke Hubungkan →',
 
+  otherdev_eyebrow: 'Membayar untuk perangkat lain?',
+  otherdev_lede:
+    'Premium terikat pada kunci satu perangkat. Untuk membayar ponselmu dari sini, buka aplikasi → Pengaturan → Tentang lalu salin kode perangkatnya.',
+  otherdev_placeholder: 'Kode perangkat',
+  otherdev_apply: 'Gunakan kode ini',
+  otherdev_active:
+    'Pastikan cocok dengan kode yang tampil di perangkat itu — kode yang salah ketik bisa tetap valid dan akan membayar perangkat yang keliru.',
+  otherdev_clear: 'Kembali ke peramban ini ({code}…)',
+  otherdev_err:
+    'Itu bukan kode perangkat yang valid. Salin dari Pengaturan → Tentang di perangkat yang ingin kamu tingkatkan.',
+
   manage_eyebrow: 'Langgananmu',
   manage_lede:
     'Perbarui kartumu, ganti antara bulanan dan tahunan, atau batalkan. Membuka portal penagihan aman dari Stripe.',

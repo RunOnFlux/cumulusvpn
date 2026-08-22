@@ -108,6 +108,17 @@ export const es: Catalog = {
   upgrade_activating_hint: 'Puedes cerrar esta página — la activación se completa sola.',
   upgrade_activated_cta: 'Volver a Conectar →',
 
+  otherdev_eyebrow: '¿Pagas por otro dispositivo?',
+  otherdev_lede:
+    'El premium está ligado a la clave de un dispositivo. Para pagar por tu teléfono desde aquí, abre la app → Ajustes → Acerca de y copia su código de dispositivo.',
+  otherdev_placeholder: 'Código de dispositivo',
+  otherdev_apply: 'Usar este código',
+  otherdev_active:
+    'Comprueba que coincide con el código que muestra ese dispositivo: un código mal escrito puede seguir siendo válido y pagaría por otro.',
+  otherdev_clear: 'Volver a este navegador ({code}…)',
+  otherdev_err:
+    'Ese no es un código de dispositivo válido. Cópialo desde Ajustes → Acerca de en el dispositivo que quieres mejorar.',
+
   manage_eyebrow: 'Tu suscripción',
   manage_lede:
     'Actualiza tu tarjeta, cambia entre mensual y anual o cancela. Se abre el portal de facturación seguro de Stripe.',
