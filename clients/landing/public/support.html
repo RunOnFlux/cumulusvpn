@@ -155,10 +155,7 @@
     <div class="faq">
       <details>
         <summary>How do I upgrade to premium?</summary>
-        <div class="answer"><p>Premium (full speed) is purchased on the web at
-          <a href="https://vpn.cumulusvpn.com">vpn.cumulusvpn.com</a> with FLUX from your own wallet. The
-          mobile app has no purchase screen — your device unlocks on its own about a minute after payment
-          confirms.</p></div>
+        <div class="answer"><p>On the web at <a href="https://vpn.cumulusvpn.com">vpn.cumulusvpn.com</a> — with FLUX from your own wallet (cheapest) or by card, Apple Pay or Google Pay. In the iOS and Android apps you can subscribe through Apple or Google instead. Your device unlocks on its own about a minute after payment confirms.</p></div>
       </details>
       <details>
         <summary>What is FLUX and how do I get it?</summary>
@@ -167,9 +164,7 @@
       </details>
       <details>
         <summary>How does my device unlock?</summary>
-        <div class="answer"><p>Your entitlement is computed from the public blockchain and keyed to your
-          public key, so every gateway flips your key to full speed within about a minute — on all servers
-          at once, for 30&nbsp;days.</p></div>
+        <div class="answer"><p>Your entitlement is computed from the public blockchain and keyed to your public key, so every gateway flips that key to full speed within about a minute — on all servers at once, for 30&nbsp;days. It unlocks the one device holding that key, not your account.</p></div>
       </details>
       <details>
         <summary>Can I prepay several months?</summary>
@@ -179,6 +174,14 @@
       <details>
         <summary>Do you take credit cards?</summary>
         <div class="answer"><p>Yes. On the web, cards, Apple&nbsp;Pay and Google&nbsp;Pay are handled by Stripe; in the apps you can subscribe through Apple or Google. The processor holds your payment details — we never see them, and there is still no account. Paying in FLUX from your own wallet stays the cheapest option.</p></div>
+      </details>
+      <details>
+        <summary>I paid — why is my other device still slow?</summary>
+        <div class="answer"><p>Premium is tied to a single device key, not to a person, because there is no account to attach it to. Each device generates its own key and needs its own payment. To pay for a phone from your computer, open the app → Settings → About, copy the Device code, and paste it into the box on the upgrade page.</p></div>
+      </details>
+      <details>
+        <summary>I sent FLUX with the wrong message, or too little. What now?</summary>
+        <div class="answer"><p>Nothing is lost, but it will not unlock on its own. A payment only grants premium if it carries your exact <mono>CVPN1:</mono> code and covers at least one day. Email support with the transaction id and the Device code from Settings → About, and we will credit it by hand — you will be asked to prove you hold the key. Automated claiming is on the roadmap.</p></div>
       </details>
     </div>
   </section>

@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — VPN descentralizada na Flux Cloud",
-    "index_desc": "VPN privada com um toque na rede Flux. Sem contas, sem registros, sem e-mail. Grátis para sempre a 100 KB/s — velocidade máxima por $0.99/mês, pago em FLUX direto da sua própria carteira.",
+    "index_desc": "VPN privada com um toque na rede Flux. Sem contas, sem registros, sem e-mail. Grátis para sempre a 100 KB/s — velocidade total a partir de US$&nbsp;0,99/mês em FLUX, ou US$&nbsp;1,99 no cartão.",
     "index_social_title": "CumulusVPN — Internet privada, sem conta, sem registros.",
-    "index_social_desc": "VPN descentralizada na Flux Cloud. Rodando na RunOnFlux. Grátis a 100 KB/s, velocidade máxima por $0.99/mês em FLUX.",
+    "index_social_desc": "VPN descentralizada na Flux Cloud. Powered by RunOnFlux. Grátis a 100 KB/s, velocidade total a partir de US$&nbsp;0,99/mês em FLUX ou US$&nbsp;1,99 no cartão.",
     "jsonld_offer_free": "Grátis para sempre a 100 KB/s. Sem conta, sem e-mail.",
     "jsonld_offer_premium": "Velocidade máxima, por mês, pago em FLUX direto da sua própria carteira.",
     "support_title": "Suporte — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Não. A CumulusVPN protege você de espionagem na rede local, registros do provedor de internet e\n          restrições geográficas, mas não é um software de anonimato como o Tor. Deixamos isso claro.",
     "g3_h": "Premium &amp; pagamento",
     "q11": "Como faço upgrade para premium?",
-    "a11": "Premium (velocidade máxima) é comprado na web em\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> com FLUX da sua própria carteira. O\n          app mobile não tem tela de compra — seu dispositivo se desbloqueia sozinho cerca de um minuto depois que o pagamento\n          é confirmado.",
+    "a11": "Na web, em <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — com FLUX da sua própria carteira (mais barato) ou no cartão, Apple Pay ou Google Pay. Nos apps de iOS e Android você pode assinar pela Apple ou pelo Google. Seu dispositivo é liberado sozinho cerca de um minuto após o pagamento confirmar.",
     "q12": "O que é FLUX e como eu consigo?",
     "a12": "FLUX é a criptomoeda da rede Flux. Compre em uma corretora e guarde\n          numa carteira como Zelcore ou SSP, e pague de lá.",
     "q13": "Como meu dispositivo desbloqueia?",
-    "a13": "Seu direito de acesso é calculado a partir da blockchain pública e vinculado à sua\n          chave pública, então cada gateway libera velocidade máxima para sua chave em cerca de um minuto — em todos os servidores\n          de uma vez, por 30&nbsp;dias.",
+    "a13": "Seu direito ao serviço é calculado a partir do blockchain público e vinculado à sua chave pública, então cada gateway coloca essa chave em velocidade total em cerca de um minuto — em todos os servidores ao mesmo tempo, por 30&nbsp;dias. Ele libera o dispositivo que tem essa chave, não a sua conta.",
     "q14": "Posso pagar vários meses adiantado?",
     "a14": "Sim. Envie um múltiplo do valor mensal e os meses extras se acumulam (até\n          24).",
     "q15": "Vocês aceitam cartão de crédito?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Comunidade",
     "ch_community_p": "Comunidade no Discord / Telegram para dicas e anúncios.",
     "ch_social_h": "Redes sociais",
-    "ch_social_p": "Siga no X para notas de lançamento e status."
+    "ch_social_p": "Siga no X para notas de lançamento e status.",
+    "q21": "Paguei — por que meu outro dispositivo continua lento?",
+    "a21": "O premium está ligado à chave de um único dispositivo, não a uma pessoa, porque não existe conta para associá-lo. Cada dispositivo gera a própria chave e precisa do próprio pagamento. Para pagar por um celular a partir do computador, abra o app → Configurações → Sobre, copie o código do dispositivo e cole na caixa da página de upgrade.",
+    "q22": "Enviei FLUX com a mensagem errada, ou de menos. E agora?",
+    "a22": "Nada se perde, mas não vai liberar sozinho. Um pagamento só concede premium se levar o seu código <mono>CVPN1:</mono> exato e cobrir pelo menos um dia. Escreva ao suporte com o id da transação e o código do dispositivo em Configurações → Sobre, e creditaremos manualmente — será pedido que você prove que possui a chave. A reivindicação automática está no roteiro."
   },
   "privacy": {
     "eyebrow": "Privacidade pela arquitetura",

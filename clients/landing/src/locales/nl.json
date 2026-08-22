@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Gedecentraliseerde VPN op Flux Cloud",
-    "index_desc": "VPN met één tik, privé, op het Flux-netwerk. Geen accounts, geen logs, geen e-mail. Voor altijd gratis op 100 KB/s — volle snelheid voor $0.99/maand, betaald in FLUX vanuit je eigen wallet.",
+    "index_desc": "Privé-VPN met één tik op het Flux-netwerk. Geen accounts, geen logs, geen e-mail. Voor altijd gratis op 100 KB/s — volle snelheid vanaf $0,99/maand in FLUX, of $1,99 met kaart.",
     "index_social_title": "CumulusVPN — Privé internet, geen account, geen logs.",
-    "index_social_desc": "Gedecentraliseerde VPN op Flux Cloud. Aangedreven door RunOnFlux. Gratis op 100 KB/s, volle snelheid voor $0.99/maand in FLUX.",
+    "index_social_desc": "Gedecentraliseerde VPN op Flux Cloud. Powered by RunOnFlux. Gratis op 100 KB/s, volle snelheid vanaf $0,99/maand in FLUX of $1,99 met kaart.",
     "jsonld_offer_free": "Voor altijd gratis op 100 KB/s. Geen account, geen e-mail.",
     "jsonld_offer_premium": "Volle snelheid, per maand, betaald in FLUX vanuit je eigen wallet.",
     "support_title": "Support — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Nee. CumulusVPN beschermt je tegen meekijken op het lokale netwerk, logging door je provider en\n          geobeperkingen, maar het is geen anonimiteitssoftware zoals Tor. Dat zeggen we duidelijk.",
     "g3_h": "Premium &amp; betaling",
     "q11": "Hoe upgrade ik naar premium?",
-    "a11": "Premium (volle snelheid) koop je op het web via\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> met FLUX uit je eigen wallet. De\n          mobiele app heeft geen aankoopscherm — je apparaat ontgrendelt vanzelf ongeveer een minuut nadat de betaling\n          is bevestigd.",
+    "a11": "Op het web via <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — met FLUX uit je eigen wallet (goedkoopst) of met kaart, Apple Pay of Google Pay. In de iOS- en Android-apps kun je in plaats daarvan via Apple of Google abonneren. Je apparaat komt ongeveer een minuut na bevestiging van de betaling vanzelf vrij.",
     "q12": "Wat is FLUX en hoe kom ik eraan?",
     "a12": "FLUX is de cryptovaluta van het Flux-netwerk. Koop het op een exchange en bewaar\n          het in een wallet zoals Zelcore of SSP, en betaal dan vandaaruit.",
     "q13": "Hoe ontgrendelt mijn apparaat?",
-    "a13": "Je recht wordt berekend uit de publieke blockchain en gekoppeld aan je\n          publieke sleutel, zodat elke gateway je sleutel binnen ongeveer een minuut op volle snelheid zet — op alle servers\n          tegelijk, voor 30&nbsp;dagen.",
+    "a13": "Je aanspraak wordt berekend uit de openbare blockchain en is gekoppeld aan je publieke sleutel, dus elke gateway zet die sleutel binnen ongeveer een minuut op volle snelheid — op alle servers tegelijk, 30&nbsp;dagen lang. Het ontgrendelt het ene apparaat met die sleutel, niet je account.",
     "q14": "Kan ik meerdere maanden vooruitbetalen?",
     "a14": "Ja. Stuur een veelvoud van het maandbedrag en de extra maanden stapelen (tot\n          24).",
     "q15": "Accepteren jullie creditcards?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Community",
     "ch_community_p": "Discord-/Telegram-community voor tips en aankondigingen.",
     "ch_social_h": "Social",
-    "ch_social_p": "Volg ons op X voor release notes en status."
+    "ch_social_p": "Volg ons op X voor release notes en status.",
+    "q21": "Ik heb betaald — waarom is mijn andere apparaat nog traag?",
+    "a21": "Premium hangt aan de sleutel van één apparaat, niet aan een persoon, want er is geen account om het aan te koppelen. Elk apparaat maakt zijn eigen sleutel en heeft zijn eigen betaling nodig. Wil je vanaf je computer voor een telefoon betalen, open dan de app → Instellingen → Over, kopieer de apparaatcode en plak die in het veld op de upgradepagina.",
+    "q22": "Ik stuurde FLUX met het verkeerde bericht, of te weinig. Wat nu?",
+    "a22": "Er gaat niets verloren, maar het komt niet vanzelf vrij. Een betaling geeft alleen premium als ze je exacte <mono>CVPN1:</mono>-code draagt en minstens één dag dekt. Mail support met het transactie-id en de apparaatcode uit Instellingen → Over; wij boeken het handmatig bij — je wordt gevraagd te bewijzen dat je de sleutel hebt. Automatisch claimen staat op de planning."
   },
   "privacy": {
     "eyebrow": "Privacy door architectuur",

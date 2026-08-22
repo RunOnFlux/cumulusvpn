@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Decentraliserat VPN på Flux Cloud",
-    "index_desc": "Privat VPN med en knapptryckning på Flux-nätverket. Inga konton, inga loggar, ingen e-post. Gratis för alltid vid 100 KB/s — full hastighet för $0.99/månad, betalt i FLUX från din egen plånbok.",
+    "index_desc": "Privat VPN med ett tryck på Flux-nätverket. Inga konton, inga loggar, ingen e-post. Gratis för alltid i 100 KB/s — full hastighet från 0,99&nbsp;$/månad i FLUX, eller 1,99&nbsp;$ med kort.",
     "index_social_title": "CumulusVPN — Privat internet, inget konto, inga loggar.",
-    "index_social_desc": "Decentraliserat VPN på Flux Cloud. Drivs av RunOnFlux. Gratis vid 100 KB/s, full hastighet för $0.99/månad i FLUX.",
+    "index_social_desc": "Decentraliserat VPN på Flux Cloud. Powered by RunOnFlux. Gratis i 100 KB/s, full hastighet från 0,99&nbsp;$/månad i FLUX eller 1,99&nbsp;$ med kort.",
     "jsonld_offer_free": "Gratis för alltid vid 100 KB/s. Inget konto, ingen e-post.",
     "jsonld_offer_premium": "Full hastighet, per månad, betalt i FLUX från din egen plånbok.",
     "support_title": "Support — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Nej. CumulusVPN skyddar dig mot avlyssning på det lokala nätverket, loggning av din internetleverantör och\n          geobegränsningar, men det är inte anonymitetsprogramvara som Tor. Vi säger det rakt ut.",
     "g3_h": "Premium &amp; betalning",
     "q11": "Hur uppgraderar jag till premium?",
-    "a11": "Premium (full hastighet) köps på webben på\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> med FLUX från din egen plånbok. Mobilappen har ingen köpskärm — din enhet låses upp av sig själv ungefär en minut efter att betalningen\n          bekräftats.",
+    "a11": "På webben på <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — med FLUX från din egen plånbok (billigast) eller med kort, Apple Pay eller Google Pay. I iOS- och Android-apparna kan du i stället prenumerera via Apple eller Google. Din enhet låses upp av sig själv ungefär en minut efter att betalningen bekräftats.",
     "q12": "Vad är FLUX och hur skaffar jag det?",
     "a12": "FLUX är kryptovalutan i Flux-nätverket. Köp den på en börs och förvara\n          den i en plånbok som Zelcore eller SSP, och betala sedan därifrån.",
     "q13": "Hur låses min enhet upp?",
-    "a13": "Din rättighet beräknas från den publika blockkedjan och knyts till din\n          publika nyckel, så varje gateway ställer om din nyckel till full hastighet inom ungefär en minut — på alla servrar\n          samtidigt, i 30&nbsp;dagar.",
+    "a13": "Din rättighet beräknas från den publika blockkedjan och är kopplad till din publika nyckel, så varje gateway växlar den nyckeln till full hastighet på ungefär en minut — på alla servrar samtidigt, i 30&nbsp;dagar. Det låser upp den enda enhet som har nyckeln, inte ditt konto.",
     "q14": "Kan jag förbetala flera månader?",
     "a14": "Ja. Skicka en multipel av månadsbeloppet så staplas de extra månaderna (upp till\n          24).",
     "q15": "Tar ni kreditkort?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Community",
     "ch_community_p": "Discord-/Telegram-community för tips och tillkännagivanden.",
     "ch_social_h": "Socialt",
-    "ch_social_p": "Följ med på X för versionsnoteringar och status."
+    "ch_social_p": "Följ med på X för versionsnoteringar och status.",
+    "q21": "Jag har betalat — varför är min andra enhet fortfarande långsam?",
+    "a21": "Premium är knutet till en enda enhets nyckel, inte till en person, eftersom det inte finns något konto att knyta det till. Varje enhet skapar sin egen nyckel och behöver sin egen betalning. Vill du betala för en telefon från datorn, öppna appen → Inställningar → Om, kopiera enhetskoden och klistra in den i fältet på uppgraderingssidan.",
+    "q22": "Jag skickade FLUX med fel meddelande, eller för lite. Vad gör jag nu?",
+    "a22": "Inget går förlorat, men det låses inte upp av sig självt. En betalning ger bara premium om den bär din exakta <mono>CVPN1:</mono>-kod och täcker minst en dag. Mejla supporten med transaktions-id och enhetskoden från Inställningar → Om, så krediterar vi manuellt — du kommer att behöva visa att du har nyckeln. Automatisk hantering är planerad."
   },
   "privacy": {
     "eyebrow": "Integritet genom arkitektur",

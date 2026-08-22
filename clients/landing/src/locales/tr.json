@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Flux Cloud üzerinde merkeziyetsiz VPN",
-    "index_desc": "Flux ağında tek dokunuşla özel VPN. Hesap yok, kayıt yok, e-posta yok. 100 KB/s hızında sonsuza dek ücretsiz — tam hız için ayda $0.99, kendi cüzdanından FLUX ile ödenir.",
+    "index_desc": "Flux ağında tek dokunuşla özel VPN. Hesap yok, günlük yok, e-posta yok. 100 KB/s ile sonsuza dek ücretsiz — tam hız FLUX ile 0,99&nbsp;$/aydan başlar ya da kartla 1,99&nbsp;$.",
     "index_social_title": "CumulusVPN — Özel internet, hesap yok, kayıt yok.",
-    "index_social_desc": "Flux Cloud üzerinde merkeziyetsiz VPN. RunOnFlux desteğiyle. 100 KB/s'de ücretsiz, FLUX ile ayda $0.99 karşılığında tam hız.",
+    "index_social_desc": "Flux Cloud üzerinde merkeziyetsiz VPN. Powered by RunOnFlux. 100 KB/s ücretsiz, tam hız FLUX ile 0,99&nbsp;$/aydan ya da kartla 1,99&nbsp;$.",
     "jsonld_offer_free": "100 KB/s'de sonsuza dek ücretsiz. Hesap yok, e-posta yok.",
     "jsonld_offer_premium": "Tam hız, aylık, kendi cüzdanından FLUX ile ödenir.",
     "support_title": "Destek — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Hayır. CumulusVPN seni yerel ağ gözetiminden, ISS kayıtlarından ve coğrafi kısıtlamalardan korur, ama Tor gibi bir anonimlik yazılımı değildir. Bunu açıkça söylüyoruz.",
     "g3_h": "Premium &amp; ödeme",
     "q11": "Premium'a nasıl yükseltirim?",
-    "a11": "Premium (tam hız), kendi cüzdanından FLUX ile <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> üzerinden web'de satın alınır. Mobil uygulamanın satın alma ekranı yoktur — ödeme onaylandıktan yaklaşık bir dakika sonra cihazın kendiliğinden açılır.",
+    "a11": "Web’de <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> adresinden — kendi cüzdanından FLUX ile (en ucuzu) ya da kartla, Apple Pay veya Google Pay ile. iOS ve Android uygulamalarında bunun yerine Apple ya da Google üzerinden abone olabilirsin. Cihazın, ödeme onaylandıktan yaklaşık bir dakika sonra kendiliğinden açılır.",
     "q12": "FLUX nedir, nasıl edinirim?",
     "a12": "FLUX, Flux ağının kripto para birimidir. Bir borsadan satın al ve Zelcore veya SSP gibi bir cüzdanda tut, sonra oradan öde.",
     "q13": "Cihazım nasıl açılır?",
-    "a13": "Hak tanımlaman, herkese açık blok zincirinden hesaplanır ve açık anahtarına bağlanır, böylece her gateway anahtarını yaklaşık bir dakika içinde tam hıza çevirir — tüm sunucularda aynı anda, 30&nbsp;gün boyunca.",
+    "a13": "Hak sahipliğin herkese açık blok zincirinden hesaplanır ve açık anahtarına bağlıdır; her ağ geçidi o anahtarı yaklaşık bir dakika içinde tam hıza geçirir — tüm sunucularda aynı anda, 30&nbsp;gün boyunca. Bu, o anahtarı taşıyan tek cihazın kilidini açar, hesabının değil.",
     "q14": "Birkaç ayı önceden ödeyebilir miyim?",
     "a14": "Evet. Aylık tutarın katını gönder, ekstra aylar üst üste birikir (24'e kadar).",
     "q15": "Kredi kartı kabul ediyor musunuz?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Topluluk",
     "ch_community_p": "İpuçları ve duyurular için Discord / Telegram topluluğu.",
     "ch_social_h": "Sosyal",
-    "ch_social_p": "Sürüm notları ve durum için X'te bizi takip et."
+    "ch_social_p": "Sürüm notları ve durum için X'te bizi takip et.",
+    "q21": "Ödeme yaptım — diğer cihazım neden hâlâ yavaş?",
+    "a21": "Premium tek bir cihazın anahtarına bağlıdır, kişiye değil; çünkü bağlanacak bir hesap yok. Her cihaz kendi anahtarını üretir ve kendi ödemesine ihtiyaç duyar. Bilgisayarından bir telefon için ödeme yapmak istersen uygulamayı aç → Ayarlar → Hakkında, cihaz kodunu kopyala ve yükseltme sayfasındaki kutuya yapıştır.",
+    "q22": "FLUX’u yanlış mesajla ya da eksik gönderdim. Şimdi ne olacak?",
+    "a22": "Hiçbir şey kaybolmaz ama kendiliğinden açılmaz. Bir ödeme yalnızca tam <mono>CVPN1:</mono> kodunu taşıyor ve en az bir günü karşılıyorsa premium verir. Destek ekibine işlem kimliğiyle ve Ayarlar → Hakkında bölümündeki cihaz koduyla yaz; elle işleyelim — anahtarın sende olduğunu kanıtlaman istenecek. Otomatik talep yol haritasında."
   },
   "privacy": {
     "eyebrow": "Mimariyle gizlilik",

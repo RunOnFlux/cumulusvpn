@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Dezentrales VPN auf Flux Cloud",
-    "index_desc": "VPN mit einem Fingertipp im Flux-Netzwerk. Kein Konto, keine Logs, keine E-Mail. Für immer kostenlos bei 100 KB/s — volle Geschwindigkeit für $0.99/Monat, bezahlt in FLUX aus deiner eigenen Wallet.",
+    "index_desc": "Ein-Tipp-VPN im Flux-Netzwerk. Keine Konten, keine Logs, keine E-Mail. Für immer kostenlos mit 100 KB/s — volle Geschwindigkeit ab 0,99&nbsp;$/Monat in FLUX oder 1,99&nbsp;$ per Karte.",
     "index_social_title": "CumulusVPN — Privates Internet, kein Konto, keine Logs.",
-    "index_social_desc": "Dezentrales VPN auf Flux Cloud. Betrieben mit RunOnFlux. Kostenlos bei 100 KB/s, volle Geschwindigkeit für $0.99/Monat in FLUX.",
+    "index_social_desc": "Dezentrales VPN auf Flux Cloud. Powered by RunOnFlux. Kostenlos mit 100 KB/s, volle Geschwindigkeit ab 0,99&nbsp;$/Monat in FLUX oder 1,99&nbsp;$ per Karte.",
     "jsonld_offer_free": "Für immer kostenlos bei 100 KB/s. Kein Konto, keine E-Mail.",
     "jsonld_offer_premium": "Volle Geschwindigkeit, pro Monat, bezahlt in FLUX aus deiner eigenen Wallet.",
     "support_title": "Support — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Nein. CumulusVPN schützt dich vor Mitlesen im lokalen Netzwerk, ISP-Protokollierung und\n          Geo-Sperren, ist aber keine Anonymitätssoftware wie Tor. Das sagen wir klar und deutlich.",
     "g3_h": "Premium &amp; Zahlung",
     "q11": "Wie upgrade ich auf Premium?",
-    "a11": "Premium (volle Geschwindigkeit) wird im Web unter\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> mit FLUX aus deiner eigenen Wallet gekauft. Die\n          mobile App hat keinen Kaufbildschirm — dein Gerät schaltet sich von selbst frei, etwa eine Minute nachdem die Zahlung\n          bestätigt ist.",
+    "a11": "Im Web unter <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — mit FLUX aus deiner eigenen Wallet (am günstigsten) oder per Karte, Apple Pay oder Google Pay. In den iOS- und Android-Apps kannst du stattdessen über Apple oder Google abonnieren. Dein Gerät schaltet sich etwa eine Minute nach Zahlungsbestätigung von selbst frei.",
     "q12": "Was ist FLUX, und wie bekomme ich es?",
     "a12": "FLUX ist die Kryptowährung des Flux-Netzwerks. Kaufe es an einer Börse und halte\n          es in einer Wallet wie Zelcore oder SSP, und zahle dann von dort aus.",
     "q13": "Wie schaltet sich mein Gerät frei?",
-    "a13": "Dein Anspruch wird aus der öffentlichen Blockchain berechnet und ist an deinen\n          öffentlichen Schlüssel gebunden, sodass jedes Gateway deinen Schlüssel innerhalb von etwa einer Minute auf volle Geschwindigkeit schaltet — auf allen Servern\n          gleichzeitig, für 30&nbsp;Tage.",
+    "a13": "Deine Berechtigung wird aus der öffentlichen Blockchain berechnet und hängt an deinem öffentlichen Schlüssel — jedes Gateway schaltet diesen Schlüssel binnen etwa einer Minute auf volle Geschwindigkeit, auf allen Servern gleichzeitig, für 30&nbsp;Tage. Freigeschaltet wird das eine Gerät mit diesem Schlüssel, nicht dein Konto.",
     "q14": "Kann ich mehrere Monate im Voraus bezahlen?",
     "a14": "Ja. Sende ein Vielfaches des Monatsbetrags, und die zusätzlichen Monate stapeln sich (bis zu\n          24).",
     "q15": "Nehmt ihr Kreditkarten an?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Community",
     "ch_community_p": "Discord-/Telegram-Community für Tipps und Ankündigungen.",
     "ch_social_h": "Social",
-    "ch_social_p": "Folge uns auf X für Release Notes und Status."
+    "ch_social_p": "Folge uns auf X für Release Notes und Status.",
+    "q21": "Ich habe bezahlt — warum ist mein anderes Gerät noch langsam?",
+    "a21": "Premium hängt am Schlüssel eines einzelnen Geräts, nicht an einer Person, denn es gibt kein Konto, an das man es hängen könnte. Jedes Gerät erzeugt seinen eigenen Schlüssel und braucht seine eigene Zahlung. Um vom Computer aus für ein Telefon zu zahlen, öffne die App → Einstellungen → Info, kopiere den Gerätecode und füge ihn auf der Upgrade-Seite in das Feld ein.",
+    "q22": "Ich habe FLUX mit falscher Nachricht oder zu wenig gesendet. Was nun?",
+    "a22": "Nichts ist verloren, aber es schaltet sich nicht von selbst frei. Eine Zahlung gewährt Premium nur, wenn sie deinen exakten <mono>CVPN1:</mono>-Code trägt und mindestens einen Tag abdeckt. Schreib dem Support mit der Transaktions-ID und dem Gerätecode aus Einstellungen → Info; wir buchen es von Hand — du wirst gebeten, den Besitz des Schlüssels nachzuweisen. Automatisches Einlösen ist geplant."
   },
   "privacy": {
     "eyebrow": "Datenschutz durch Architektur",

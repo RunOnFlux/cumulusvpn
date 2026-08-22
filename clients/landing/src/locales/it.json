@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — VPN decentralizzata su Flux Cloud",
-    "index_desc": "VPN privata con un tocco sulla rete Flux. Senza account, senza log, senza email. Gratis per sempre a 100 KB/s — piena velocità per $0.99/mese, pagato in FLUX dal tuo stesso wallet.",
+    "index_desc": "VPN privata con un tocco sulla rete Flux. Nessun account, nessun log, nessuna e-mail. Gratis per sempre a 100 KB/s — velocità piena da 0,99&nbsp;$/mese in FLUX, o 1,99&nbsp;$ con carta.",
     "index_social_title": "CumulusVPN — Internet privato, senza account, senza log.",
-    "index_social_desc": "VPN decentralizzata su Flux Cloud. Basata su RunOnFlux. Gratis a 100 KB/s, piena velocità per $0.99/mese in FLUX.",
+    "index_social_desc": "VPN decentralizzata su Flux Cloud. Powered by RunOnFlux. Gratis a 100 KB/s, velocità piena da 0,99&nbsp;$/mese in FLUX o 1,99&nbsp;$ con carta.",
     "jsonld_offer_free": "Gratis per sempre a 100 KB/s. Senza account, senza email.",
     "jsonld_offer_premium": "Piena velocità, al mese, pagato in FLUX dal tuo stesso wallet.",
     "support_title": "Supporto — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "No. CumulusVPN ti protegge dallo spionaggio sulla rete locale, dal logging dell'ISP e dalle\n          restrizioni geografiche, ma non è un software di anonimato come Tor. Lo diciamo chiaramente.",
     "g3_h": "Premium &amp; pagamento",
     "q11": "Come faccio l'upgrade a premium?",
-    "a11": "Premium (piena velocità) si acquista sul web su\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> con FLUX dal tuo stesso wallet. L'\n          app mobile non ha una schermata di acquisto — il tuo dispositivo si sblocca da solo circa un minuto dopo che il pagamento\n          viene confermato.",
+    "a11": "Sul web, su <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — con FLUX dal tuo portafoglio (l’opzione più economica) oppure con carta, Apple Pay o Google Pay. Nelle app iOS e Android puoi abbonarti tramite Apple o Google. Il tuo dispositivo si sblocca da solo circa un minuto dopo la conferma del pagamento.",
     "q12": "Cos'è FLUX e come lo ottengo?",
     "a12": "FLUX è la criptovaluta della rete Flux. Acquistalo su un exchange e tienilo\n          in un wallet come Zelcore o SSP, quindi paga da lì.",
     "q13": "Come si sblocca il mio dispositivo?",
-    "a13": "Il tuo diritto d'accesso viene calcolato dalla blockchain pubblica ed è collegato alla tua\n          chiave pubblica, quindi ogni gateway porta la tua chiave a piena velocità entro circa un minuto — su tutti i server\n          contemporaneamente, per 30&nbsp;giorni.",
+    "a13": "Il tuo diritto al servizio è calcolato dalla blockchain pubblica ed è legato alla tua chiave pubblica: ogni gateway porta quella chiave alla velocità piena in circa un minuto, su tutti i server insieme, per 30&nbsp;giorni. Sblocca il singolo dispositivo che possiede quella chiave, non il tuo account.",
     "q14": "Posso pagare in anticipo più mesi?",
     "a14": "Sì. Invia un multiplo dell'importo mensile e i mesi extra si accumulano (fino a\n          24).",
     "q15": "Accettate carte di credito?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Community",
     "ch_community_p": "Community Discord / Telegram per consigli e annunci.",
     "ch_social_h": "Social",
-    "ch_social_p": "Seguici su X per le note di rilascio e lo stato del servizio."
+    "ch_social_p": "Seguici su X per le note di rilascio e lo stato del servizio.",
+    "q21": "Ho pagato: perché l’altro dispositivo è ancora lento?",
+    "a21": "Il premium è legato alla chiave di un singolo dispositivo, non a una persona, perché non esiste un account a cui associarlo. Ogni dispositivo genera la propria chiave e richiede il proprio pagamento. Per pagare per un telefono dal computer, apri l’app → Impostazioni → Info, copia il codice dispositivo e incollalo nel campo della pagina di upgrade.",
+    "q22": "Ho inviato FLUX con il messaggio sbagliato, o troppo pochi. E adesso?",
+    "a22": "Non si perde nulla, ma non si sbloccherà da solo. Un pagamento concede il premium solo se porta il tuo codice <mono>CVPN1:</mono> esatto e copre almeno un giorno. Scrivi all’assistenza con l’id della transazione e il codice dispositivo da Impostazioni → Info: lo accrediteremo a mano e ti verrà chiesto di dimostrare che possiedi la chiave. La richiesta automatica è in programma."
   },
   "privacy": {
     "eyebrow": "Privacy per architettura",

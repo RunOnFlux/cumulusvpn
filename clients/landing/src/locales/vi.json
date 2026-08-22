@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — VPN phi tập trung trên Flux Cloud",
-    "index_desc": "VPN riêng tư một chạm trên mạng Flux. Không tài khoản, không log, không email. Miễn phí mãi mãi ở 100 KB/s — tốc độ tối đa chỉ $0.99/tháng, thanh toán bằng FLUX từ chính ví của bạn.",
+    "index_desc": "VPN riêng tư chỉ một chạm trên mạng Flux. Không tài khoản, không nhật ký, không email. Miễn phí mãi mãi ở 100 KB/s — tốc độ tối đa từ 0,99&nbsp;$/tháng bằng FLUX, hoặc 1,99&nbsp;$ bằng thẻ.",
     "index_social_title": "CumulusVPN — Internet riêng tư, không tài khoản, không log.",
-    "index_social_desc": "VPN phi tập trung trên Flux Cloud. Vận hành bởi RunOnFlux. Miễn phí ở 100 KB/s, tốc độ tối đa chỉ $0.99/tháng bằng FLUX.",
+    "index_social_desc": "VPN phi tập trung trên Flux Cloud. Được hỗ trợ bởi RunOnFlux. Miễn phí ở 100 KB/s, tốc độ tối đa từ 0,99&nbsp;$/tháng bằng FLUX hoặc 1,99&nbsp;$ bằng thẻ.",
     "jsonld_offer_free": "Miễn phí mãi mãi ở 100 KB/s. Không tài khoản, không email.",
     "jsonld_offer_premium": "Tốc độ tối đa, hằng tháng, thanh toán bằng FLUX từ chính ví của bạn.",
     "support_title": "Hỗ trợ — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Không. CumulusVPN bảo vệ bạn khỏi việc bị theo dõi trên mạng cục bộ, ISP ghi log, và\n          hạn chế theo khu vực địa lý, nhưng nó không phải phần mềm ẩn danh như Tor. Chúng tôi nói rõ điều này.",
     "g3_h": "Cao cấp &amp; thanh toán",
     "q11": "Làm thế nào để nâng cấp lên premium?",
-    "a11": "Premium (tốc độ tối đa) được mua trên web tại\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> bằng FLUX từ chính ví của bạn.\n          Ứng dụng di động không có màn hình mua hàng — thiết bị của bạn tự mở khóa khoảng một phút sau khi thanh toán\n          được xác nhận.",
+    "a11": "Trên web tại <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — bằng FLUX từ ví của chính bạn (rẻ nhất) hoặc bằng thẻ, Apple Pay hay Google Pay. Trong ứng dụng iOS và Android, bạn có thể đăng ký qua Apple hoặc Google. Thiết bị của bạn tự mở khoá khoảng một phút sau khi thanh toán được xác nhận.",
     "q12": "FLUX là gì và làm sao để có nó?",
     "a12": "FLUX là loại tiền mã hóa của mạng Flux. Hãy mua nó trên một sàn giao dịch và giữ\n          trong một ví như Zelcore hoặc SSP, sau đó thanh toán từ đó.",
     "q13": "Thiết bị của tôi mở khóa như thế nào?",
-    "a13": "Quyền lợi của bạn được tính toán từ blockchain công khai và gắn với\n          khóa công khai của bạn, vì vậy mọi gateway sẽ chuyển khóa của bạn sang tốc độ tối đa trong khoảng một phút — trên tất cả\n          máy chủ cùng lúc, trong 30&nbsp;ngày.",
+    "a13": "Quyền của bạn được tính từ blockchain công khai và gắn với khoá công khai của bạn, nên mọi gateway chuyển khoá đó sang tốc độ tối đa trong khoảng một phút — trên tất cả máy chủ cùng lúc, trong 30&nbsp;ngày. Nó mở khoá đúng một thiết bị đang giữ khoá đó, không phải tài khoản của bạn.",
     "q14": "Tôi có thể trả trước nhiều tháng không?",
     "a14": "Có. Gửi một bội số của số tiền hàng tháng và các tháng dư sẽ được cộng dồn (tối đa\n          24).",
     "q15": "Các bạn có nhận thẻ tín dụng không?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Cộng đồng",
     "ch_community_p": "Cộng đồng Discord / Telegram để trao đổi mẹo và thông báo.",
     "ch_social_h": "Mạng xã hội",
-    "ch_social_p": "Theo dõi trên X để biết ghi chú phát hành và trạng thái."
+    "ch_social_p": "Theo dõi trên X để biết ghi chú phát hành và trạng thái.",
+    "q21": "Tôi đã trả tiền — sao thiết bị kia vẫn chậm?",
+    "a21": "Premium gắn với khoá của một thiết bị duy nhất, không phải với một người, vì không có tài khoản nào để gắn vào. Mỗi thiết bị tạo khoá riêng và cần khoản thanh toán riêng. Để trả cho điện thoại từ máy tính, mở ứng dụng → Cài đặt → Giới thiệu, sao chép mã thiết bị và dán vào ô trên trang nâng cấp.",
+    "q22": "Tôi gửi FLUX kèm nội dung sai, hoặc thiếu tiền. Giờ thì sao?",
+    "a22": "Không mất gì cả, nhưng nó sẽ không tự mở khoá. Một khoản thanh toán chỉ cấp premium nếu mang đúng mã <mono>CVPN1:</mono> của bạn và đủ ít nhất một ngày. Hãy email cho bộ phận hỗ trợ kèm mã giao dịch và mã thiết bị trong Cài đặt → Giới thiệu, chúng tôi sẽ ghi có thủ công — bạn sẽ được yêu cầu chứng minh mình giữ khoá. Việc tự động hoá đang nằm trong kế hoạch."
   },
   "privacy": {
     "eyebrow": "Quyền riêng tư từ kiến trúc",

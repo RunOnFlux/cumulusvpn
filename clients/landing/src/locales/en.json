@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Decentralized VPN on Flux Cloud",
-    "index_desc": "One-tap private VPN on the Flux network. No accounts, no logs, no email. Free forever at 100 KB/s — full speed for $0.99/month, paid in FLUX from your own wallet.",
+    "index_desc": "One-tap private VPN on the Flux network. No accounts, no logs, no email. Free forever at 100 KB/s — full speed from $0.99/month in FLUX, or $1.99 by card.",
     "index_social_title": "CumulusVPN — Private internet, no account, no logs.",
-    "index_social_desc": "Decentralized VPN on Flux Cloud. Powered by RunOnFlux. Free at 100 KB/s, full speed for $0.99/month in FLUX.",
+    "index_social_desc": "Decentralized VPN on Flux Cloud. Powered by RunOnFlux. Free at 100 KB/s, full speed from $0.99/month in FLUX or $1.99 by card.",
     "jsonld_offer_free": "Free forever at 100 KB/s. No account, no email.",
     "jsonld_offer_premium": "Full speed, per month, paid in FLUX from your own wallet.",
     "support_title": "Support — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "No. CumulusVPN protects you from local-network snooping, ISP logging, and\n          geo-restrictions, but it is not anonymity software like Tor. We say so plainly.",
     "g3_h": "Premium &amp; payment",
     "q11": "How do I upgrade to premium?",
-    "a11": "Premium (full speed) is purchased on the web at\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> with FLUX from your own wallet. The\n          mobile app has no purchase screen — your device unlocks on its own about a minute after payment\n          confirms.",
+    "a11": "On the web at <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — with FLUX from your own wallet (cheapest) or by card, Apple Pay or Google Pay. In the iOS and Android apps you can subscribe through Apple or Google instead. Your device unlocks on its own about a minute after payment confirms.",
     "q12": "What is FLUX and how do I get it?",
     "a12": "FLUX is the cryptocurrency of the Flux network. Buy it on an exchange and hold\n          it in a wallet such as Zelcore or SSP, then pay from there.",
     "q13": "How does my device unlock?",
-    "a13": "Your entitlement is computed from the public blockchain and keyed to your\n          public key, so every gateway flips your key to full speed within about a minute — on all servers\n          at once, for 30&nbsp;days.",
+    "a13": "Your entitlement is computed from the public blockchain and keyed to your public key, so every gateway flips that key to full speed within about a minute — on all servers at once, for 30&nbsp;days. It unlocks the one device holding that key, not your account.",
     "q14": "Can I prepay several months?",
     "a14": "Yes. Send a multiple of the monthly amount and the extra months stack (up to\n          24).",
     "q15": "Do you take credit cards?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Community",
     "ch_community_p": "Discord / Telegram community for tips and announcements.",
     "ch_social_h": "Social",
-    "ch_social_p": "Follow along on X for release notes and status."
+    "ch_social_p": "Follow along on X for release notes and status.",
+    "q21": "I paid — why is my other device still slow?",
+    "a21": "Premium is tied to a single device key, not to a person, because there is no account to attach it to. Each device generates its own key and needs its own payment. To pay for a phone from your computer, open the app → Settings → About, copy the Device code, and paste it into the box on the upgrade page.",
+    "q22": "I sent FLUX with the wrong message, or too little. What now?",
+    "a22": "Nothing is lost, but it will not unlock on its own. A payment only grants premium if it carries your exact <mono>CVPN1:</mono> code and covers at least one day. Email support with the transaction id and the Device code from Settings → About, and we will credit it by hand — you will be asked to prove you hold the key. Automated claiming is on the roadmap."
   },
   "privacy": {
     "eyebrow": "Privacy by architecture",

@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — VPN isiyo na kituo kimoja kwenye Flux Cloud",
-    "index_desc": "VPN ya faragha kwa mguso mmoja kwenye mtandao wa Flux. Hakuna akaunti, hakuna kumbukumbu, hakuna barua pepe. Bure milele kwa 100 KB/s — kasi kamili kwa $0.99/mwezi, ukilipa kwa FLUX kutoka pochi yako mwenyewe.",
+    "index_desc": "VPN ya faragha kwa mguso mmoja kwenye mtandao wa Flux. Hakuna akaunti, hakuna kumbukumbu, hakuna barua pepe. Bure milele kwa 100 KB/s — kasi kamili kuanzia $0.99 kwa mwezi kwa FLUX, au $1.99 kwa kadi.",
     "index_social_title": "CumulusVPN — Intaneti ya faragha, bila akaunti, bila kumbukumbu.",
-    "index_social_desc": "VPN isiyo na kituo kimoja kwenye Flux Cloud. Inaendeshwa na RunOnFlux. Bure kwa 100 KB/s, kasi kamili kwa $0.99/mwezi kwa FLUX.",
+    "index_social_desc": "VPN isiyo na kituo kikuu kwenye Flux Cloud. Inaendeshwa na RunOnFlux. Bure kwa 100 KB/s, kasi kamili kuanzia $0.99 kwa mwezi kwa FLUX au $1.99 kwa kadi.",
     "jsonld_offer_free": "Bure milele kwa 100 KB/s. Hakuna akaunti, hakuna barua pepe.",
     "jsonld_offer_premium": "Kasi kamili, kila mwezi, ukilipa kwa FLUX kutoka pochi yako mwenyewe.",
     "support_title": "Msaada — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Hapana. CumulusVPN inakukinga dhidi ya udukuzi wa mtandao wa karibu, uwekaji kumbukumbu wa mtoa huduma wa intaneti, na vizuizi vya kijiografia, lakini si programu ya kutokujulikana kama Tor. Tunasema hivyo waziwazi.",
     "g3_h": "Premium &amp; malipo",
     "q11": "Ninaboreshaje kuwa premium?",
-    "a11": "Premium (kasi kamili) inanunuliwa kwenye wavuti kwa <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> kwa FLUX kutoka pochi yako mwenyewe. Programu ya simu haina skrini ya kununua — kifaa chako kinafunguka chenyewe dakika moja hivi baada ya malipo kuthibitishwa.",
+    "a11": "Kwenye wavuti katika <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — kwa FLUX kutoka pochi yako mwenyewe (nafuu zaidi) au kwa kadi, Apple Pay au Google Pay. Katika programu za iOS na Android unaweza kujisajili kupitia Apple au Google. Kifaa chako hujifungua chenyewe takriban dakika moja baada ya malipo kuthibitishwa.",
     "q12": "FLUX ni nini na ninaipataje?",
     "a12": "FLUX ni sarafu ya kripto ya mtandao wa Flux. Inunue kwenye soko la kubadilishana kisha uihifadhi kwenye pochi kama Zelcore au SSP, kisha ulipe kutoka huko.",
     "q13": "Kifaa changu kinafunguaje?",
-    "a13": "Uhalali wako unahesabiwa kutoka kwenye mnyororo wa vizuizi wa umma na kuunganishwa na ufunguo wako wa umma, hivyo kila lango hubadilisha ufunguo wako kuwa kasi kamili ndani ya dakika moja hivi — kwenye seva zote kwa wakati mmoja, kwa siku&nbsp;30.",
+    "a13": "Haki yako hukokotolewa kutoka blockchain ya umma na imefungwa kwenye ufunguo wako wa umma, hivyo kila lango hubadilisha ufunguo huo kuwa kasi kamili ndani ya takriban dakika moja — kwenye seva zote kwa pamoja, kwa siku 30. Hufungua kile kifaa kimoja chenye ufunguo huo, si akaunti yako.",
     "q14": "Je, ninaweza kulipa miezi kadhaa mapema?",
     "a14": "Ndiyo. Tuma kizidishi cha kiasi cha kila mwezi na miezi ya ziada itarundikana (hadi 24).",
     "q15": "Je, mnapokea kadi za mkopo?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Jumuiya",
     "ch_community_p": "Jumuiya ya Discord / Telegram kwa vidokezo na matangazo.",
     "ch_social_h": "Mitandao ya Kijamii",
-    "ch_social_p": "Tufuate kwenye X kwa maelezo ya matoleo na hali."
+    "ch_social_p": "Tufuate kwenye X kwa maelezo ya matoleo na hali.",
+    "q21": "Nimelipa — kwa nini kifaa changu kingine bado ni cha polepole?",
+    "a21": "Premium imefungwa kwenye ufunguo wa kifaa kimoja, si kwa mtu, kwa sababu hakuna akaunti ya kuiunganisha nayo. Kila kifaa hutengeneza ufunguo wake na kinahitaji malipo yake. Ili kulipia simu kutoka kwenye kompyuta yako, fungua programu → Mipangilio → Kuhusu, nakili msimbo wa kifaa na ubandike kwenye kisanduku cha ukurasa wa kuboresha.",
+    "q22": "Nilituma FLUX na ujumbe usio sahihi, au pungufu. Sasa je?",
+    "a22": "Hakuna kinachopotea, lakini hakitajifungua chenyewe. Malipo hutoa premium tu yakiwa na msimbo wako kamili wa <mono>CVPN1:</mono> na kugharamia angalau siku moja. Wasiliana na msaada ukiwa na kitambulisho cha muamala na msimbo wa kifaa kutoka Mipangilio → Kuhusu, nasi tutaiweka kwa mkono — utaombwa kuthibitisha kuwa unamiliki ufunguo. Udai wa kiotomatiki upo kwenye mipango."
   },
   "privacy": {
     "eyebrow": "Faragha kwa muundo",

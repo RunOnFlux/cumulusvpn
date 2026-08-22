@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Zdecentralizowany VPN na Flux Cloud",
-    "index_desc": "Prywatny VPN jednym dotknięciem w sieci Flux. Bez kont, bez logów, bez e-maila. Zawsze za darmo przy 100 KB/s — pełna prędkość za $0.99/miesiąc, płatne w FLUX z własnego portfela.",
+    "index_desc": "Prywatny VPN jednym dotknięciem w sieci Flux. Bez kont, bez logów, bez e-maila. Zawsze za darmo przy 100 KB/s — pełna prędkość od 0,99&nbsp;$/miesiąc w FLUX lub 1,99&nbsp;$ kartą.",
     "index_social_title": "CumulusVPN — Prywatny internet, bez konta, bez logów.",
-    "index_social_desc": "Zdecentralizowany VPN na Flux Cloud. Obsługiwane przez RunOnFlux. Za darmo przy 100 KB/s, pełna prędkość za $0.99/miesiąc w FLUX.",
+    "index_social_desc": "Zdecentralizowany VPN w Flux Cloud. Powered by RunOnFlux. Za darmo przy 100 KB/s, pełna prędkość od 0,99&nbsp;$/miesiąc w FLUX lub 1,99&nbsp;$ kartą.",
     "jsonld_offer_free": "Zawsze za darmo przy 100 KB/s. Bez konta, bez e-maila.",
     "jsonld_offer_premium": "Pełna prędkość, miesięcznie, płatne w FLUX z własnego portfela.",
     "support_title": "Pomoc — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Nie. CumulusVPN chroni cię przed podsłuchiwaniem w sieci lokalnej, logowaniem przez dostawcę internetu i ograniczeniami geograficznymi, ale nie jest oprogramowaniem do anonimowości takim jak Tor. Mówimy o tym wprost.",
     "g3_h": "Premium &amp; płatności",
     "q11": "Jak ulepszyć do premium?",
-    "a11": "Premium (pełną prędkość) kupujesz w przeglądarce na <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> za FLUX z własnego portfela. Aplikacja mobilna nie ma ekranu zakupu — twoje urządzenie odblokuje się samo mniej więcej minutę po potwierdzeniu płatności.",
+    "a11": "W przeglądarce pod adresem <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — w FLUX z własnego portfela (najtaniej) albo kartą, Apple Pay lub Google Pay. W aplikacjach na iOS i Androida możesz wykupić subskrypcję przez Apple lub Google. Twoje urządzenie odblokuje się samo mniej więcej minutę po potwierdzeniu płatności.",
     "q12": "Czym jest FLUX i jak go zdobyć?",
     "a12": "FLUX to kryptowaluta sieci Flux. Kup ją na giełdzie i przechowuj w portfelu takim jak Zelcore lub SSP, a następnie zapłać stamtąd.",
     "q13": "Jak odblokowuje się moje urządzenie?",
-    "a13": "Twoje uprawnienie jest obliczane na podstawie publicznego blockchaina i powiązane z twoim kluczem publicznym, więc każda bramka przełącza twój klucz na pełną prędkość w ciągu około minuty — na wszystkich serwerach naraz, na 30&nbsp;dni.",
+    "a13": "Twoje uprawnienie wyliczane jest z publicznego blockchaina i powiązane z Twoim kluczem publicznym, więc każdy gateway przełącza ten klucz na pełną prędkość w około minutę — na wszystkich serwerach naraz, na 30&nbsp;dni. Odblokowuje to jedno urządzenie z tym kluczem, nie Twoje konto.",
     "q14": "Czy mogę zapłacić z góry za kilka miesięcy?",
     "a14": "Tak. Wyślij wielokrotność miesięcznej kwoty, a dodatkowe miesiące będą się kumulować (do 24).",
     "q15": "Czy przyjmujecie karty kredytowe?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Społeczność",
     "ch_community_p": "Społeczność na Discordzie / Telegramie — porady i ogłoszenia.",
     "ch_social_h": "Social media",
-    "ch_social_p": "Śledź nas na X — informacje o wydaniach i status."
+    "ch_social_p": "Śledź nas na X — informacje o wydaniach i status.",
+    "q21": "Zapłaciłem — dlaczego moje drugie urządzenie nadal jest wolne?",
+    "a21": "Premium jest powiązane z kluczem jednego urządzenia, a nie z osobą, bo nie ma konta, do którego można by je przypisać. Każde urządzenie generuje własny klucz i wymaga własnej płatności. Aby zapłacić za telefon z komputera, otwórz aplikację → Ustawienia → Informacje, skopiuj kod urządzenia i wklej go w pole na stronie ulepszenia.",
+    "q22": "Wysłałem FLUX z błędną wiadomością albo za mało. Co teraz?",
+    "a22": "Nic nie przepada, ale nie odblokuje się samo. Płatność przyznaje premium tylko wtedy, gdy niesie dokładnie Twój kod <mono>CVPN1:</mono> i pokrywa co najmniej jeden dzień. Napisz do wsparcia, podając identyfikator transakcji i kod urządzenia z Ustawienia → Informacje — zaksięgujemy to ręcznie, a Ty zostaniesz poproszony o wykazanie, że posiadasz klucz. Automatyczne zgłaszanie jest w planach."
   },
   "privacy": {
     "eyebrow": "Prywatność dzięki architekturze",

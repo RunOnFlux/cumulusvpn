@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Decentraliseret VPN på Flux Cloud",
-    "index_desc": "Privat VPN med ét tryk på Flux-netværket. Ingen konti, ingen logs, ingen e-mail. Gratis for altid ved 100 KB/s — fuld hastighed for $0.99/måned, betalt i FLUX fra din egen tegnebog.",
+    "index_desc": "Privat VPN med ét tryk på Flux-netværket. Ingen konti, ingen logs, ingen e-mail. Gratis for altid ved 100 KB/s — fuld hastighed fra 0,99&nbsp;$/måned i FLUX eller 1,99&nbsp;$ med kort.",
     "index_social_title": "CumulusVPN — Privat internet, ingen konto, ingen logning.",
-    "index_social_desc": "Decentraliseret VPN på Flux Cloud. Drevet af RunOnFlux. Gratis ved 100 KB/s, fuld hastighed for $0.99/måned i FLUX.",
+    "index_social_desc": "Decentraliseret VPN på Flux Cloud. Powered by RunOnFlux. Gratis ved 100 KB/s, fuld hastighed fra 0,99&nbsp;$/måned i FLUX eller 1,99&nbsp;$ med kort.",
     "jsonld_offer_free": "Gratis for altid ved 100 KB/s. Ingen konto, ingen e-mail.",
     "jsonld_offer_premium": "Fuld hastighed, pr. måned, betalt i FLUX fra din egen tegnebog.",
     "support_title": "Support — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Nej. CumulusVPN beskytter dig mod aflytning på det lokale netværk, ISP-logning og\n          geobegrænsninger, men det er ikke anonymitetssoftware som Tor. Det siger vi klart og tydeligt.",
     "g3_h": "Premium &amp; betaling",
     "q11": "Hvordan opgraderer jeg til premium?",
-    "a11": "Premium (fuld hastighed) købes på nettet på\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> med FLUX fra din egen tegnebog. Mobilappen har ingen købsskærm — din enhed låser selv op cirka et minut efter, at betalingen er\n          bekræftet.",
+    "a11": "På nettet på <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — med FLUX fra din egen wallet (billigst) eller med kort, Apple Pay eller Google Pay. I iOS- og Android-apperne kan du i stedet abonnere via Apple eller Google. Din enhed låses op af sig selv cirka et minut efter, betalingen er bekræftet.",
     "q12": "Hvad er FLUX, og hvordan får jeg det?",
     "a12": "FLUX er kryptovalutaen i Flux-netværket. Køb det på en børs, og opbevar\n          det i en tegnebog som Zelcore eller SSP, og betal så derfra.",
     "q13": "Hvordan låser min enhed op?",
-    "a13": "Din berettigelse beregnes ud fra den offentlige blockchain og er knyttet til din\n          offentlige nøgle, så hver gateway sætter din nøgle på fuld hastighed inden for omkring et minut — på alle servere\n          på én gang, i 30&nbsp;dage.",
+    "a13": "Din rettighed beregnes ud fra den offentlige blockchain og er knyttet til din offentlige nøgle, så hver gateway sætter den nøgle på fuld hastighed på cirka et minut — på alle servere på én gang, i 30&nbsp;dage. Det låser den ene enhed op, der har nøglen, ikke din konto.",
     "q14": "Kan jeg forudbetale flere måneder?",
     "a14": "Ja. Send et multiplum af det månedlige beløb, og de ekstra måneder lægges oveni (op til\n          24).",
     "q15": "Tager I kreditkort?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Community",
     "ch_community_p": "Discord-/Telegram-community til tips og bekendtgørelser.",
     "ch_social_h": "Socialt",
-    "ch_social_p": "Følg med på X for versionsnoter og status."
+    "ch_social_p": "Følg med på X for versionsnoter og status.",
+    "q21": "Jeg har betalt — hvorfor er min anden enhed stadig langsom?",
+    "a21": "Premium er knyttet til én enheds nøgle, ikke til en person, for der er ingen konto at knytte det til. Hver enhed laver sin egen nøgle og kræver sin egen betaling. Vil du betale for en telefon fra computeren, så åbn appen → Indstillinger → Om, kopiér enhedskoden og indsæt den i feltet på opgraderingssiden.",
+    "q22": "Jeg sendte FLUX med forkert besked eller for lidt. Hvad nu?",
+    "a22": "Intet går tabt, men det låser ikke op af sig selv. En betaling giver kun premium, hvis den bærer din præcise <mono>CVPN1:</mono>-kode og dækker mindst én dag. Skriv til support med transaktions-id og enhedskoden fra Indstillinger → Om, så krediterer vi manuelt — du vil blive bedt om at bevise, at du har nøglen. Automatisk håndtering er på vej."
   },
   "privacy": {
     "eyebrow": "Privatliv gennem arkitektur",

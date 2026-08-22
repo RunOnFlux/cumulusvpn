@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — VPN Terdesentralisasi di Flux Cloud",
-    "index_desc": "VPN pribadi satu-tap di jaringan Flux. Tanpa akun, tanpa log, tanpa email. Gratis selamanya di 100 KB/s — kecepatan penuh hanya $0.99/bulan, dibayar dengan FLUX langsung dari wallet Anda sendiri.",
+    "index_desc": "VPN privat sekali ketuk di jaringan Flux. Tanpa akun, tanpa log, tanpa email. Gratis selamanya di 100 KB/s — kecepatan penuh mulai $0,99/bulan dengan FLUX, atau $1,99 dengan kartu.",
     "index_social_title": "CumulusVPN — Internet pribadi, tanpa akun, tanpa log.",
-    "index_social_desc": "VPN terdesentralisasi di Flux Cloud. Didukung oleh RunOnFlux. Gratis di 100 KB/s, kecepatan penuh $0.99/bulan dengan FLUX.",
+    "index_social_desc": "VPN terdesentralisasi di Flux Cloud. Didukung RunOnFlux. Gratis di 100 KB/s, kecepatan penuh mulai $0,99/bulan dengan FLUX atau $1,99 dengan kartu.",
     "jsonld_offer_free": "Gratis selamanya di 100 KB/s. Tanpa akun, tanpa email.",
     "jsonld_offer_premium": "Kecepatan penuh, per bulan, dibayar dengan FLUX dari wallet Anda sendiri.",
     "support_title": "Bantuan — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Tidak. CumulusVPN melindungi Anda dari penyadapan jaringan lokal, pencatatan log oleh ISP, dan pembatasan geografis, tapi ini bukan perangkat lunak anonimitas seperti Tor. Kami mengatakannya dengan jelas.",
     "g3_h": "Premium &amp; pembayaran",
     "q11": "Bagaimana cara upgrade ke premium?",
-    "a11": "Premium (kecepatan penuh) dibeli di web pada <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> dengan FLUX dari wallet Anda sendiri. Aplikasi mobile tidak memiliki layar pembelian — perangkat Anda terbuka dengan sendirinya sekitar semenit setelah pembayaran dikonfirmasi.",
+    "a11": "Di web pada <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — dengan FLUX dari dompetmu sendiri (paling murah) atau dengan kartu, Apple Pay, atau Google Pay. Di aplikasi iOS dan Android kamu bisa berlangganan lewat Apple atau Google. Perangkatmu terbuka sendiri sekitar satu menit setelah pembayaran dikonfirmasi.",
     "q12": "Apa itu FLUX dan bagaimana cara mendapatkannya?",
     "a12": "FLUX adalah mata uang kripto jaringan Flux. Beli di exchange dan simpan di wallet seperti Zelcore atau SSP, lalu bayar dari sana.",
     "q13": "Bagaimana perangkat saya terbuka?",
-    "a13": "Hak akses Anda dihitung dari blockchain publik dan terkait dengan kunci publik Anda, sehingga setiap gateway mengubah kunci Anda ke kecepatan penuh dalam waktu sekitar semenit — di semua server sekaligus, selama 30&nbsp;hari.",
+    "a13": "Hakmu dihitung dari blockchain publik dan terikat pada kunci publikmu, jadi setiap gateway menaikkan kunci itu ke kecepatan penuh dalam sekitar satu menit — di semua server sekaligus, selama 30&nbsp;hari. Itu membuka satu perangkat yang memegang kunci tersebut, bukan akunmu.",
     "q14": "Bisakah saya membayar di muka untuk beberapa bulan?",
     "a14": "Ya. Kirim kelipatan dari jumlah bulanan dan bulan tambahan akan menumpuk (hingga 24).",
     "q15": "Apakah Anda menerima kartu kredit?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Komunitas",
     "ch_community_p": "Komunitas Discord / Telegram untuk tips dan pengumuman.",
     "ch_social_h": "Sosial",
-    "ch_social_p": "Ikuti kami di X untuk catatan rilis dan status."
+    "ch_social_p": "Ikuti kami di X untuk catatan rilis dan status.",
+    "q21": "Saya sudah membayar — kenapa perangkat saya yang lain masih lambat?",
+    "a21": "Premium terikat pada kunci satu perangkat, bukan pada orang, karena tidak ada akun untuk mengaitkannya. Setiap perangkat membuat kuncinya sendiri dan butuh pembayarannya sendiri. Untuk membayar ponsel dari komputermu, buka aplikasi → Pengaturan → Tentang, salin kode perangkat, lalu tempel di kotak pada halaman upgrade.",
+    "q22": "Saya mengirim FLUX dengan pesan salah, atau kurang. Sekarang bagaimana?",
+    "a22": "Tidak ada yang hilang, tetapi tidak akan terbuka sendiri. Pembayaran hanya memberi premium jika membawa kode <mono>CVPN1:</mono> milikmu secara persis dan menutupi setidaknya satu hari. Kirim email ke dukungan dengan id transaksi dan kode perangkat dari Pengaturan → Tentang, dan kami akan mengkreditkannya manual — kamu akan diminta membuktikan bahwa kunci itu milikmu. Klaim otomatis ada dalam rencana."
   },
   "privacy": {
     "eyebrow": "Privasi lewat arsitektur",

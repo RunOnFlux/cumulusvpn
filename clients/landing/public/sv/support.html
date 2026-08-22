@@ -155,9 +155,7 @@
     <div class="faq">
       <details>
         <summary>Hur uppgraderar jag till premium?</summary>
-        <div class="answer"><p>Premium (full hastighet) köps på webben på
-          <a href="https://vpn.cumulusvpn.com">vpn.cumulusvpn.com</a> med FLUX från din egen plånbok. Mobilappen har ingen köpskärm — din enhet låses upp av sig själv ungefär en minut efter att betalningen
-          bekräftats.</p></div>
+        <div class="answer"><p>På webben på <a href="https://vpn.cumulusvpn.com">vpn.cumulusvpn.com</a> — med FLUX från din egen plånbok (billigast) eller med kort, Apple Pay eller Google Pay. I iOS- och Android-apparna kan du i stället prenumerera via Apple eller Google. Din enhet låses upp av sig själv ungefär en minut efter att betalningen bekräftats.</p></div>
       </details>
       <details>
         <summary>Vad är FLUX och hur skaffar jag det?</summary>
@@ -166,9 +164,7 @@
       </details>
       <details>
         <summary>Hur låses min enhet upp?</summary>
-        <div class="answer"><p>Din rättighet beräknas från den publika blockkedjan och knyts till din
-          publika nyckel, så varje gateway ställer om din nyckel till full hastighet inom ungefär en minut — på alla servrar
-          samtidigt, i 30&nbsp;dagar.</p></div>
+        <div class="answer"><p>Din rättighet beräknas från den publika blockkedjan och är kopplad till din publika nyckel, så varje gateway växlar den nyckeln till full hastighet på ungefär en minut — på alla servrar samtidigt, i 30&nbsp;dagar. Det låser upp den enda enhet som har nyckeln, inte ditt konto.</p></div>
       </details>
       <details>
         <summary>Kan jag förbetala flera månader?</summary>
@@ -178,6 +174,14 @@
       <details>
         <summary>Tar ni kreditkort?</summary>
         <div class="answer"><p>Ja. På webben hanteras kort, Apple&nbsp;Pay och Google&nbsp;Pay av Stripe; i apparna kan du prenumerera via Apple eller Google. Betalleverantören håller dina betaluppgifter — vi ser dem aldrig, och det finns fortfarande inget konto. Att betala i FLUX från din egen plånbok är fortfarande billigast.</p></div>
+      </details>
+      <details>
+        <summary>Jag har betalat — varför är min andra enhet fortfarande långsam?</summary>
+        <div class="answer"><p>Premium är knutet till en enda enhets nyckel, inte till en person, eftersom det inte finns något konto att knyta det till. Varje enhet skapar sin egen nyckel och behöver sin egen betalning. Vill du betala för en telefon från datorn, öppna appen → Inställningar → Om, kopiera enhetskoden och klistra in den i fältet på uppgraderingssidan.</p></div>
+      </details>
+      <details>
+        <summary>Jag skickade FLUX med fel meddelande, eller för lite. Vad gör jag nu?</summary>
+        <div class="answer"><p>Inget går förlorat, men det låses inte upp av sig självt. En betalning ger bara premium om den bär din exakta <mono>CVPN1:</mono>-kod och täcker minst en dag. Mejla supporten med transaktions-id och enhetskoden från Inställningar → Om, så krediterar vi manuellt — du kommer att behöva visa att du har nyckeln. Automatisk hantering är planerad.</p></div>
       </details>
     </div>
   </section>

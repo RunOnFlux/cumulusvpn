@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — VPN décentralisé sur Flux Cloud",
-    "index_desc": "VPN privé en un geste sur le réseau Flux. Sans compte, sans journaux, sans e-mail. Gratuit à vie à 100 KB/s — pleine vitesse pour $0.99/mois, payé en FLUX depuis votre propre wallet.",
+    "index_desc": "VPN privé en un geste sur le réseau Flux. Sans compte, sans journaux, sans e-mail. Gratuit pour toujours à 100 KB/s — pleine vitesse à partir de 0,99&nbsp;$/mois en FLUX, ou 1,99&nbsp;$ par carte.",
     "index_social_title": "CumulusVPN — Internet privé, sans compte, sans journaux.",
-    "index_social_desc": "VPN décentralisé sur Flux Cloud. Propulsé par RunOnFlux. Gratuit à 100 KB/s, pleine vitesse pour $0.99/mois en FLUX.",
+    "index_social_desc": "VPN décentralisé sur Flux Cloud. Propulsé par RunOnFlux. Gratuit à 100 KB/s, pleine vitesse à partir de 0,99&nbsp;$/mois en FLUX ou 1,99&nbsp;$ par carte.",
     "jsonld_offer_free": "Gratuit à vie à 100 KB/s. Sans compte, sans e-mail.",
     "jsonld_offer_premium": "Pleine vitesse, par mois, payé en FLUX depuis votre propre wallet.",
     "support_title": "Assistance — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Non. CumulusVPN vous protège de l'espionnage sur le réseau local, de la journalisation par le FAI et des\n          restrictions géographiques, mais ce n'est pas un logiciel d'anonymat comme Tor. Nous le disons clairement.",
     "g3_h": "Premium &amp; paiement",
     "q11": "Comment passer en premium ?",
-    "a11": "Le premium (pleine vitesse) s'achète sur le web à l'adresse\n          <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> avec du FLUX depuis votre propre wallet. L'\n          app mobile n'a pas d'écran d'achat — votre appareil se débloque tout seul environ une minute après la confirmation\n          du paiement.",
+    "a11": "Sur le web, à <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — en FLUX depuis votre propre portefeuille (le moins cher) ou par carte, Apple Pay ou Google Pay. Dans les applications iOS et Android, vous pouvez vous abonner via Apple ou Google. Votre appareil se débloque tout seul environ une minute après la confirmation du paiement.",
     "q12": "Qu'est-ce que le FLUX et comment s'en procurer ?",
     "a12": "Le FLUX est la cryptomonnaie du réseau Flux. Achetez-en sur une plateforme d'échange et conservez-le\n          dans un wallet comme Zelcore ou SSP, puis payez depuis là.",
     "q13": "Comment mon appareil se débloque-t-il ?",
-    "a13": "Votre droit d'accès est calculé à partir de la blockchain publique et rattaché à votre\n          clé publique, si bien que chaque passerelle fait passer votre clé à pleine vitesse en environ une minute — sur tous les serveurs\n          à la fois, pendant 30&nbsp;jours.",
+    "a13": "Votre droit au service est calculé depuis la blockchain publique et rattaché à votre clé publique : chaque passerelle bascule cette clé en pleine vitesse en une minute environ, sur tous les serveurs à la fois, pendant 30&nbsp;jours. Cela débloque l’appareil qui détient cette clé, pas votre compte.",
     "q14": "Puis-je prépayer plusieurs mois ?",
     "a14": "Oui. Envoyez un multiple du montant mensuel et les mois supplémentaires se cumulent (jusqu'à\n          24).",
     "q15": "Acceptez-vous les cartes bancaires ?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Communauté",
     "ch_community_p": "Communauté Discord / Telegram pour les astuces et les annonces.",
     "ch_social_h": "Réseaux sociaux",
-    "ch_social_p": "Suivez-nous sur X pour les notes de version et le statut."
+    "ch_social_p": "Suivez-nous sur X pour les notes de version et le statut.",
+    "q21": "J’ai payé — pourquoi mon autre appareil est-il toujours lent ?",
+    "a21": "Le premium est lié à la clé d’un seul appareil, pas à une personne, car il n’existe aucun compte auquel le rattacher. Chaque appareil génère sa propre clé et nécessite son propre paiement. Pour payer pour un téléphone depuis votre ordinateur, ouvrez l’application → Réglages → À propos, copiez le code d’appareil et collez-le dans le champ de la page de mise à niveau.",
+    "q22": "J’ai envoyé des FLUX avec le mauvais message, ou trop peu. Que faire ?",
+    "a22": "Rien n’est perdu, mais cela ne se débloquera pas tout seul. Un paiement n’accorde le premium que s’il porte votre code <mono>CVPN1:</mono> exact et couvre au moins un jour. Écrivez au support avec l’identifiant de la transaction et le code d’appareil visible dans Réglages → À propos ; nous le créditerons à la main et il vous sera demandé de prouver que vous détenez la clé. La réclamation automatisée est prévue."
   },
   "privacy": {
     "eyebrow": "Confidentialité par architecture",

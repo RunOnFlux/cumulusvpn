@@ -1,9 +1,9 @@
 {
   "meta": {
     "index_title": "CumulusVPN — Hajautettu VPN Flux Cloudissa",
-    "index_desc": "Yhden napautuksen yksityinen VPN Flux-verkossa. Ei tilejä, ei lokeja, ei sähköpostia. Ilmainen ikuisesti nopeudella 100 KB/s — täysi nopeus $0.99/kk, maksettuna FLUXilla omasta lompakostasi.",
+    "index_desc": "Yksityinen VPN yhdellä napautuksella Flux-verkossa. Ei tilejä, ei lokeja, ei sähköpostia. Ilmainen ikuisesti 100 KB/s — täysi nopeus alkaen 0,99&nbsp;$/kk FLUXina tai 1,99&nbsp;$ kortilla.",
     "index_social_title": "CumulusVPN — Yksityinen internet, ei tiliä, ei lokeja.",
-    "index_social_desc": "Hajautettu VPN Flux Cloudissa. RunOnFluxin voimin. Ilmainen nopeudella 100 KB/s, täysi nopeus $0.99/kk FLUXilla.",
+    "index_social_desc": "Hajautettu VPN Flux Cloudissa. Powered by RunOnFlux. Ilmainen 100 KB/s, täysi nopeus alkaen 0,99&nbsp;$/kk FLUXina tai 1,99&nbsp;$ kortilla.",
     "jsonld_offer_free": "Ilmainen ikuisesti nopeudella 100 KB/s. Ei tiliä, ei sähköpostia.",
     "jsonld_offer_premium": "Täysi nopeus, kuukausittain, maksettuna FLUXilla omasta lompakostasi.",
     "support_title": "Tuki — CumulusVPN",
@@ -146,11 +146,11 @@
     "a10": "Ei. CumulusVPN suojaa sinua paikallisverkon urkinnalta, operaattorin lokitukselta ja maarajoituksilta, mutta se ei ole anonymiteettiohjelmisto kuten Tor. Sanomme tämän suoraan.",
     "g3_h": "Premium &amp; maksaminen",
     "q11": "Miten päivitän premiumiin?",
-    "a11": "Premium (täysi nopeus) ostetaan verkossa osoitteessa <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> FLUXilla omasta lompakostasi. Mobiilisovelluksessa ei ole ostonäkymää — laitteesi avautuu itsestään noin minuutin kuluttua maksun vahvistumisesta.",
+    "a11": "Verkossa osoitteessa <a href=\"https://vpn.cumulusvpn.com\">vpn.cumulusvpn.com</a> — FLUXilla omasta lompakostasi (edullisin) tai kortilla, Apple Paylla tai Google Paylla. iOS- ja Android-sovelluksissa voit tilata Applen tai Googlen kautta. Laitteesi avautuu itsestään noin minuutti maksun vahvistumisen jälkeen.",
     "q12": "Mikä on FLUX ja miten hankin sitä?",
     "a12": "FLUX on Flux-verkon kryptovaluutta. Osta sitä pörssistä ja säilytä sitä lompakossa, kuten Zelcoressa tai SSP:ssä, ja maksa sitten sieltä.",
     "q13": "Miten laitteeni avautuu?",
-    "a13": "Oikeutesi lasketaan julkisesta lohkoketjusta ja sidotaan julkiseen avaimeesi, joten jokainen yhdyskäytävä avaa avaimesi täyteen nopeuteen noin minuutissa — kaikilla palvelimilla samanaikaisesti, 30&nbsp;päiväksi.",
+    "a13": "Käyttöoikeutesi lasketaan julkisesta lohkoketjusta ja se on sidottu julkiseen avaimeesi, joten jokainen yhdyskäytävä nostaa sen avaimen täyteen nopeuteen noin minuutissa — kaikilla palvelimilla yhtä aikaa, 30&nbsp;päiväksi. Se avaa sen yhden laitteen, jolla avain on, ei tiliäsi.",
     "q14": "Voinko maksaa useita kuukausia etukäteen?",
     "a14": "Kyllä. Lähetä kuukausisumman monikerta, niin ylimääräiset kuukaudet kasautuvat (enintään 24).",
     "q15": "Otatteko vastaan luottokortteja?",
@@ -174,7 +174,11 @@
     "ch_community_h": "Yhteisö",
     "ch_community_p": "Discord- ja Telegram-yhteisö vinkkejä ja tiedotteita varten.",
     "ch_social_h": "Sosiaalinen media",
-    "ch_social_p": "Seuraa meitä X:ssä julkaisutietoja ja tilannepäivityksiä varten."
+    "ch_social_p": "Seuraa meitä X:ssä julkaisutietoja ja tilannepäivityksiä varten.",
+    "q21": "Maksoin — miksi toinen laitteeni on yhä hidas?",
+    "a21": "Premium on sidottu yhden laitteen avaimeen, ei henkilöön, koska tiliä johon sen liittäisi ei ole. Jokainen laite luo oman avaimensa ja tarvitsee oman maksunsa. Jos haluat maksaa puhelimesta tietokoneelta, avaa sovellus → Asetukset → Tietoja, kopioi laitekoodi ja liitä se päivityssivun kenttään.",
+    "q22": "Lähetin FLUXia väärällä viestillä tai liian vähän. Mitä nyt?",
+    "a22": "Mitään ei katoa, mutta se ei avaudu itsestään. Maksu myöntää premiumin vain, jos se kantaa tarkan <mono>CVPN1:</mono>-koodisi ja kattaa vähintään yhden päivän. Lähetä tukeen sähköpostia, jossa on tapahtumatunnus ja laitekoodi kohdasta Asetukset → Tietoja, niin hyvitämme sen käsin — sinua pyydetään todistamaan, että avain on sinulla. Automaattinen käsittely on suunnitteilla."
   },
   "privacy": {
     "eyebrow": "Yksityisyys arkkitehtuurin ansiosta",
