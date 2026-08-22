@@ -11,6 +11,9 @@ coverage/
 .DS_Store
 .env
 .env.*
+# ...but the annotated example IS the onboarding doc — bridge/README.md
+# points at it, so it must be readable by anyone who clones.
+!.env.example
 peers.cache
 
 # SECRET — plaintext enterprise inner specs hold repoauth + real addresses; never commit

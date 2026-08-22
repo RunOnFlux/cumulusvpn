@@ -9,6 +9,12 @@
 {
   "name": "cumulusvpn",
   "main": "clients/web/worker.js",
+  // The SPA in clients/web/dist is gitignored, so it does not exist after a
+  // clone — it must be built before wrangler looks for assets.directory.
+  // Kept here rather than only in the Cloudflare dashboard: the dashboard's
+  // preview/branch config was empty, so every non-production build failed on
+  // a missing dist. In the file it cannot drift between environments.
+  "build": { "command": "yarn install && yarn build:web" },
   "compatibility_date": "2026-07-17",
   "assets": {
     "directory": "clients/web/dist",
