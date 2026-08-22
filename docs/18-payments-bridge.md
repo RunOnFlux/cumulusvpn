@@ -75,6 +75,11 @@ broadcast ─▶ confirmer: ≥1 conf → confirmed; expired unmined → back to
   an upgraded subscriber 30 days for a year's payment and a downgraded one a
   fresh 360 days every month. `planForLines` takes the largest positive
   line's price, with the metadata only as a fallback.
+- **Test-mode invoices never settle** unless `STRIPE_TEST_GRANTS=true`,
+  mirroring `APPLE_SANDBOX_GRANTS` / `GOOGLE_TEST_GRANTS`. They are verified
+  and bound like any other, just not paid out — otherwise a single `4242`
+  checkout against `sk_test_` broadcasts a real 20-FLUX tx and a testing
+  session drains the treasury.
 - **Invoices settled from a credit balance grant nothing.** The only way a
   customer acquires credit is a downgrade, whose unused value we already paid
   out in full as irrevocable chain days; spending that credit again would buy

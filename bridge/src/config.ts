@@ -16,6 +16,14 @@ export interface StripeConfig {
   readonly cancelUrl: string;
   /** Where Stripe's billing portal sends the customer back to. */
   readonly portalReturnUrl: string;
+  /**
+   * Whether TEST-mode Stripe invoices settle REAL chain payments. Default
+   * false, mirroring APPLE_SANDBOX_GRANTS / GOOGLE_TEST_GRANTS: a test
+   * checkout is verified and bound like any other, it just does not spend the
+   * treasury. Without this, running the bridge against sk_test_ and clicking
+   * through a 4242 checkout broadcasts a real 20-FLUX tx every time.
+   */
+  readonly testGrants: boolean;
 }
 
 export interface AppleConfig {
@@ -124,6 +132,7 @@ function loadStripe(env: NodeJS.ProcessEnv): StripeConfig | undefined {
     // landing spot (it already routes to #/upgrade without claiming a purchase
     // just happened).
     portalReturnUrl: env.STRIPE_PORTAL_RETURN_URL || cancelUrl,
+    testGrants: env.STRIPE_TEST_GRANTS === 'true',
   };
 }
 

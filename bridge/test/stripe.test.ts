@@ -21,6 +21,7 @@ const cfg: StripeConfig = {
   successUrl: 'https://vpn.cumulusvpn.com/#/upgrade?session={CHECKOUT_SESSION_ID}',
   cancelUrl: 'https://vpn.cumulusvpn.com/#/upgrade',
   portalReturnUrl: 'https://vpn.cumulusvpn.com/#/upgrade',
+  testGrants: false,
 };
 
 const nullLog = {
@@ -79,6 +80,7 @@ function invoicePaidEvent(
       object: {
         id: invoiceId,
         object: 'invoice',
+        livemode: true,
         amount_paid: amountPaid,
         created: 1_700_000_000,
         parent: {
@@ -282,6 +284,7 @@ function planChangeEvent(
       object: {
         id: invoiceId,
         object: 'invoice',
+        livemode: true,
         amount_paid: Math.max(0, net),
         subtotal: net,
         total_excluding_tax: net,
@@ -564,5 +567,57 @@ describe('stripe billing portal', () => {
     const { portalCalls } = stubPortal(rail2, session({ customer: null }));
     await expect(rail2.createPortalSession('cs_live_abc', CODE)).resolves.toBeNull();
     expect(portalCalls).toHaveLength(0);
+  });
+});
+
+describe('stripe test-mode grants', () => {
+  /** Same rail, but configured to settle test invoices on chain. */
+  function setupTestGrants(): { rail: StripeRail; payments: PaymentsRepo } {
+    const db = openDb(':memory:');
+    const payments = new PaymentsRepo(db);
+    const subs = new SubscriptionsRepo(db);
+    const vouchers = new VouchersRepo(db, payments, 20e8);
+    const rail = new StripeRail(
+      { ...cfg, testGrants: true },
+      20e8,
+      payments,
+      subs,
+      vouchers,
+      nullLog,
+    );
+    return { rail, payments };
+  }
+
+  function testModeInvoice(id: string, sub: string): object {
+    const ev = invoicePaidEvent(id, sub, 'monthly') as {
+      data: { object: Record<string, unknown> };
+    };
+    ev.data.object.livemode = false;
+    return ev;
+  }
+
+  it('binds the subscription but spends no treasury on a test-mode invoice', async () => {
+    // The trap: sk_test_ + one 4242 checkout would otherwise broadcast a real
+    // 20-FLUX tx, and a testing session drains the wallet unnoticed.
+    const { rail, payments, subs } = setup();
+    const { raw, sig } = signedEvent(testModeInvoice('in_test1', 'sub_t1'));
+    expect(await rail.handleWebhook(raw, sig)).toBe('invoice:test-mode');
+    expect(payments.byCode(CODE)).toHaveLength(0);
+    // ...but the binding is still recorded, exactly as the Apple rail does.
+    expect(subs.get('stripe', 'sub_t1')).toMatchObject({ payment_code: CODE });
+  });
+
+  it('does settle test invoices when STRIPE_TEST_GRANTS is on', async () => {
+    const { rail, payments } = setupTestGrants();
+    const { raw, sig } = signedEvent(testModeInvoice('in_test2', 'sub_t2'));
+    expect(await rail.handleWebhook(raw, sig)).toBe('invoice:queued');
+    expect(payments.byCode(CODE)[0]).toMatchObject({ days: 30 });
+  });
+
+  it('never affects live invoices', async () => {
+    const { rail, payments } = setup();
+    const { raw, sig } = signedEvent(invoicePaidEvent('in_live', 'sub_l1', 'monthly'));
+    expect(await rail.handleWebhook(raw, sig)).toBe('invoice:queued');
+    expect(payments.byCode(CODE)[0]).toMatchObject({ days: 30 });
   });
 });

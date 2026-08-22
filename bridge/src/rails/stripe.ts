@@ -235,6 +235,14 @@ export class StripeRail {
     const lines = await this.invoiceLines(invoice);
     const plan = this.planForLines(lines) ?? bound.plan;
     this.subs.upsert('stripe', subId, code, plan, customerId(invoice.customer));
+    // Test-mode invoices bind like any other but must not spend the treasury,
+    // mirroring APPLE_SANDBOX_GRANTS / GOOGLE_TEST_GRANTS. Without this a
+    // single 4242 checkout against sk_test_ broadcasts a real 20-FLUX tx, and
+    // a testing session drains the wallet quietly.
+    if (!invoice.livemode && !this.cfg.testGrants) {
+      this.log.info({ invoice: invoice.id }, 'stripe test-mode invoice verified (no chain grant)');
+      return 'invoice:test-mode';
+    }
     const days = await this.daysForInvoice(invoice, lines, plan);
     if (days < 1) {
       // A downgrade's credit exceeds the new charge: the old plan's days are
