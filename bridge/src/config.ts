@@ -167,7 +167,9 @@ function loadApple(env: NodeJS.ProcessEnv): AppleConfig | undefined {
   if (env.APPLE_APP_ID !== undefined && env.APPLE_APP_ID !== '') {
     appAppleId = Number(env.APPLE_APP_ID);
     if (!Number.isInteger(appAppleId) || appAppleId <= 0) {
-      throw new Error(`config: APPLE_APP_ID must be a positive integer (got "${env.APPLE_APP_ID}")`);
+      throw new Error(
+        `config: APPLE_APP_ID must be a positive integer (got "${env.APPLE_APP_ID}")`,
+      );
     }
   }
   if (environment === 'Production' && appAppleId === undefined) {

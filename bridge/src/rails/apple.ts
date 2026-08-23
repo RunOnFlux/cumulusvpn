@@ -172,7 +172,10 @@ export class AppleRail {
   ): AppleVerifyOutcome {
     const days = this.cfg.sandboxGrantDays;
     if (days <= 0) {
-      this.log.info({ transaction: transactionId }, 'apple sandbox purchase verified (no chain grant)');
+      this.log.info(
+        { transaction: transactionId },
+        'apple sandbox purchase verified (no chain grant)',
+      );
       return { accepted: true, reason: 'sandbox_verified', days: 0, sandbox: true };
     }
     const result = recordGrant(this.payments, this.priceZats, {

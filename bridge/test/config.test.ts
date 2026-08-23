@@ -36,15 +36,21 @@ describe('config: rail activation', () => {
   });
 });
 
+/** APPLE minus the app id — `delete` rather than rest-destructuring, which
+ *  would leave an unused binding the lint config rejects. */
+function withoutAppId(): NodeJS.ProcessEnv {
+  const env = { ...APPLE };
+  delete env.APPLE_APP_ID;
+  return env;
+}
+
 describe('config: APPLE_APP_ID', () => {
   it('is required for Production — the verifier cannot check payloads without it', () => {
-    const { APPLE_APP_ID: _omitted, ...noAppId } = APPLE;
-    expect(() => loadConfig(noAppId)).toThrow(/APPLE_APP_ID is required/);
+    expect(() => loadConfig(withoutAppId())).toThrow(/APPLE_APP_ID is required/);
   });
 
   it('is optional for Sandbox', () => {
-    const { APPLE_APP_ID: _omitted, ...noAppId } = APPLE;
-    const cfg = loadConfig({ ...noAppId, APPLE_ENVIRONMENT: 'Sandbox' });
+    const cfg = loadConfig({ ...withoutAppId(), APPLE_ENVIRONMENT: 'Sandbox' });
     expect(cfg.apple?.appAppleId).toBeUndefined();
   });
 

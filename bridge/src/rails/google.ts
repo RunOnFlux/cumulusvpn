@@ -201,7 +201,10 @@ export class GoogleRail {
       paymentCode: code,
       days,
     });
-    this.log.info({ order: orderId, days, result }, 'google test purchase verified (bounded probe grant)');
+    this.log.info(
+      { order: orderId, days, result },
+      'google test purchase verified (bounded probe grant)',
+    );
     return { accepted: true, reason: `test:${result}`, days, test: true };
   }
 
