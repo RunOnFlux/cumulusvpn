@@ -45,8 +45,11 @@ alternative, which is why the two paths stay strictly separated.
   review** — reviewers must be able to find the declared IAPs. After approval it serves as an
   **emergency kill switch only**; never toggle it for merchandising, and never leave it OFF
   through a review of an IAP build.
-- **`inAppUpgrade`** (old) still gates the crypto/FLUX UI: still hard-off on iOS at build
-  level, still **OFF for Play builds**. Direct-APK Android distribution only.
+- **`inAppUpgrade`** (old) still gates the crypto/FLUX UI and must stay **OFF for Play
+  builds**. Direct-APK Android distribution only. As of 2026-08-23 the iOS build-level
+  exclusion is gone, so this flag — not the binary — is the gate on both platforms.
+- **`voucherRedeem`** gates our own code-redeem box. Same rule as `inAppUpgrade` for Play:
+  the direct APK and the Play build are one binary, so keep it OFF while Play is live.
 
 ---
 

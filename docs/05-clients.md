@@ -108,8 +108,9 @@ settles each verified purchase/renewal as a FLUX-chain transaction with the buye
 changed**. Never present the store purchase as "buying crypto": the subscription IS the premium
 unlock; chain settlement is an internal mechanism. The subscribe UI is gated by the remote
 `iapPurchase` flag (per platform, fails closed OFF; must be ON through store review, kill
-switch afterwards); the old `inAppUpgrade` flag still gates the crypto UI (hard-off on iOS,
-OFF for Play builds, direct-APK only).
+switch afterwards); the old `inAppUpgrade` flag still gates the crypto UI (kept OFF for both
+store builds; direct-APK only). Since 2026-08-23 there is no build-level platform exclusion —
+all three flags are plain per-platform KV toggles, so those values are the whole gate.
 
 Purchase surface per platform:
 

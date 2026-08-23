@@ -4,12 +4,13 @@
  *
  *  - `iapPurchase` → SubscribeSection: auto-renewable store subscriptions
  *    via Apple IAP / Google Play Billing. Store-compliant by construction;
- *    the ONLY surface iOS builds ever render. Verified server-side by the
- *    payments bridge, which settles the entitlement on the Flux chain
+ *    normally the only surface an iOS build renders. Verified server-side by
+ *    the payments bridge, which settles the entitlement on the Flux chain
  *    (docs/18-payments-bridge.md).
  *  - `inAppUpgrade` → InAppPay: the FLUX crypto flow (QR + wallet hand-off)
- *    — direct-APK Android builds only, never iOS, a store violation if shown
- *    in store builds.
+ *    — intended for direct-APK Android builds; a store violation if shown in
+ *    a store build. Nothing in the binary prevents it from being enabled on
+ *    either platform any more, so the KV value is what keeps it off.
  *
  * With both flags off the app shows NO purchase UI anywhere — this screen is
  * unreachable (no upsell line, no tappable tier pill, no upgrade route).
@@ -309,10 +310,12 @@ function PlanCard({
 }
 
 /**
- * In-app redeem box for OUR voucher codes — direct-APK Android only (the
- * `voucherRedeem` flag can never be true on iOS; Apple 3.1.1 prohibits
- * custom unlock codes). A granted code settles on-chain; the app's normal
- * tier polling flips premium within ~1 min of confirmation.
+ * In-app redeem box for OUR voucher codes, gated by the `voucherRedeem` flag
+ * on whichever platforms it is enabled for. A granted code settles on-chain;
+ * the app's normal tier polling flips premium within ~1 min of confirmation.
+ *
+ * On Android the direct-APK and Play builds are the same binary, so the flag
+ * is the only thing separating them.
  */
 function RedeemSection({ code }: { readonly code: string }): React.JSX.Element {
   const [input, setInput] = useState('');
