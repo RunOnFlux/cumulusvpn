@@ -6,7 +6,7 @@ import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory.js';
 import { loadSplitPolicy, saveSplitPolicy } from '../lib/storage.js';
 
 /** App version — matches the release tag. */
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 interface Props {
   readonly autoConnect: boolean;
