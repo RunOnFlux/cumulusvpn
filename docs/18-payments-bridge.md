@@ -80,6 +80,19 @@ broadcast ─▶ confirmer: ≥1 conf → confirmed; expired unmined → back to
   and bound like any other, just not paid out — otherwise a single `4242`
   checkout against `sk_test_` broadcasts a real 20-FLUX tx and a testing
   session drains the treasury.
+- **Store sandbox/test purchases settle a bounded probe grant.** Full grants
+  stay off (`APPLE_SANDBOX_GRANTS` / `GOOGLE_TEST_GRANTS` default false) for
+  the same reason test-mode Stripe invoices do — the sandbox renewal clock is
+  accelerated, so a month renews in minutes and an idle test device would
+  drain the treasury. But granting *nothing* is its own failure: App Review
+  buys in the sandbox, and `store/app-store/app-review.md` tells the reviewer
+  premium activates within a minute. A reviewer following our own instructions
+  would watch the tier stay Free. `APPLE_SANDBOX_GRANT_DAYS` /
+  `GOOGLE_TEST_GRANT_DAYS` (default 1) settle a token amount instead, keyed by
+  `originalTransactionId` / `purchaseToken` — both constant for the life of a
+  subscription — so every renewal and every Restore Purchases collapses onto
+  one idempotency key. The worst case is one day's price per test
+  subscription, once, ever: 0.67 FLUX against a store rejection.
 - **Invoices settled from a credit balance grant nothing.** The only way a
   customer acquires credit is a downgrade, whose unused value we already paid
   out in full as irrevocable chain days; spending that credit again would buy

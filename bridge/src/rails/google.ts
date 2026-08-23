@@ -96,8 +96,7 @@ export class GoogleRail {
 
     const isTest = sub.testPurchase !== undefined && sub.testPurchase !== null;
     if (isTest && !this.cfg.testGrants) {
-      this.log.info({ order: orderId }, 'google test purchase verified (no chain grant)');
-      return { accepted: true, reason: 'test_verified', days, test: true };
+      return this.testGrant(purchaseToken, code, orderId);
     }
     const result = recordGrant(this.payments, this.priceZats, {
       rail: 'google',
@@ -174,6 +173,36 @@ export class GoogleRail {
     } catch {
       return false;
     }
+  }
+
+  /**
+   * Settle a license-tester purchase for a token amount, at most once per
+   * test subscription — the Play twin of AppleRail.sandboxGrant.
+   *
+   * Play's closed-testing track requires real testers to exercise the
+   * purchase flow, and a tester whose Premium never activates files a bug
+   * against a working build. Full grants are the wrong fix: test
+   * subscriptions renew on an accelerated clock too.
+   *
+   * purchaseToken is the key because it is stable across renewals of the
+   * same subscription (latestSuccessfulOrderId is not), so every RENEWED
+   * notification lands on the idempotency key recordGrant already enforces.
+   */
+  private testGrant(purchaseToken: string, code: string, orderId: string): GoogleVerifyOutcome {
+    const days = this.cfg.testGrantDays;
+    if (days <= 0) {
+      this.log.info({ order: orderId }, 'google test purchase verified (no chain grant)');
+      return { accepted: true, reason: 'test_verified', days: 0, test: true };
+    }
+    const result = recordGrant(this.payments, this.priceZats, {
+      rail: 'google',
+      eventKey: `test:${purchaseToken}`,
+      externalRef: purchaseToken,
+      paymentCode: code,
+      days,
+    });
+    this.log.info({ order: orderId, days, result }, 'google test purchase verified (bounded probe grant)');
+    return { accepted: true, reason: `test:${result}`, days, test: true };
   }
 
   private daysForBasePlan(basePlanId: string | null | undefined): number | null {

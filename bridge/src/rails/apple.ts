@@ -76,11 +76,7 @@ export class AppleRail {
     this.subs.upsert('apple', txn.originalTransactionId, code, plan);
     this.subs.mapAppleToken(expected, code);
     if (sandbox && !this.cfg.sandboxGrants) {
-      this.log.info(
-        { transaction: txn.transactionId },
-        'apple sandbox purchase verified (no chain grant)',
-      );
-      return { accepted: true, reason: 'sandbox_verified', days, sandbox: true };
+      return this.sandboxGrant(txn.transactionId, txn.originalTransactionId, code);
     }
     const result = recordGrant(this.payments, this.priceZats, {
       rail: 'apple',
@@ -135,10 +131,13 @@ export class AppleRail {
     if (days === null || !txn.transactionId) {
       return 'notification:bad-product';
     }
-    if (sandbox && !this.cfg.sandboxGrants) {
-      return 'notification:sandbox-skipped';
-    }
     this.subs.upsert('apple', txn.originalTransactionId, code, days === 360 ? 'annual' : 'monthly');
+    if (sandbox && !this.cfg.sandboxGrants) {
+      // Same one-per-subscription key as the client path, so an accelerated
+      // sandbox renewal storm settles zero additional times.
+      const out = this.sandboxGrant(txn.transactionId, txn.originalTransactionId, code);
+      return `notification:${out.reason}`;
+    }
     const result = recordGrant(this.payments, this.priceZats, {
       rail: 'apple',
       eventKey: txn.transactionId,
@@ -148,6 +147,46 @@ export class AppleRail {
     });
     this.log.info({ type, transaction: txn.transactionId, result }, 'apple notification grant');
     return `notification:${result}`;
+  }
+
+  /**
+   * Settle a sandbox purchase for a token amount, at most once per test
+   * subscription.
+   *
+   * App Review buys in the sandbox, and store/app-store/app-review.md tells
+   * the reviewer premium activates within a minute. Granting nothing there
+   * fails the reviewer's own scripted test. Granting in full is not the
+   * answer either: the sandbox clock renews a monthly subscription every few
+   * minutes, so full grants would drain the treasury for as long as a tester
+   * leaves a device alone.
+   *
+   * The key is originalTransactionId, not transactionId — it is constant for
+   * the life of a subscription, so every renewal and every Restore Purchases
+   * collapses onto the one idempotency key recordGrant already enforces.
+   * Worst case per test subscription is sandboxGrantDays, once, ever.
+   */
+  private sandboxGrant(
+    transactionId: string,
+    originalTransactionId: string,
+    code: string,
+  ): AppleVerifyOutcome {
+    const days = this.cfg.sandboxGrantDays;
+    if (days <= 0) {
+      this.log.info({ transaction: transactionId }, 'apple sandbox purchase verified (no chain grant)');
+      return { accepted: true, reason: 'sandbox_verified', days: 0, sandbox: true };
+    }
+    const result = recordGrant(this.payments, this.priceZats, {
+      rail: 'apple',
+      eventKey: `sandbox:${originalTransactionId}`,
+      externalRef: originalTransactionId,
+      paymentCode: code,
+      days,
+    });
+    this.log.info(
+      { transaction: transactionId, days, result },
+      'apple sandbox purchase verified (bounded probe grant)',
+    );
+    return { accepted: true, reason: `sandbox:${result}`, days, sandbox: true };
   }
 
   private codeForTransaction(txn: JWSTransactionDecodedPayload): string | undefined {

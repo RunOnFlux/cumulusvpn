@@ -39,6 +39,15 @@ export interface AppleConfig {
    * not settled on chain.
    */
   readonly sandboxGrants: boolean;
+  /**
+   * Days granted for a sandbox purchase when `sandboxGrants` is off. App
+   * Review buys in the sandbox and app-review.md promises the reviewer that
+   * premium activates within a minute, so granting nothing there is a
+   * scripted rejection. Keyed by originalTransactionId, so a whole test
+   * subscription — every renewal, every restore — settles AT MOST once.
+   * 0 disables it entirely.
+   */
+  readonly sandboxGrantDays: number;
   readonly rootCaDir: string;
   readonly productMonthly: string;
   readonly productAnnual: string;
@@ -56,6 +65,13 @@ export interface GoogleConfig {
   readonly basePlanAnnual: string;
   /** Whether license-tester (test) purchases enqueue real chain payments. */
   readonly testGrants: boolean;
+  /**
+   * Days granted for a license-tester purchase when `testGrants` is off —
+   * the Play twin of AppleConfig.sandboxGrantDays. Keyed by purchaseToken,
+   * which is stable across renewals, so a tester's subscription settles AT
+   * MOST once. 0 disables it entirely.
+   */
+  readonly testGrantDays: number;
 }
 
 export interface Config {
@@ -144,12 +160,29 @@ function loadApple(env: NodeJS.ProcessEnv): AppleConfig | undefined {
   if (environment !== 'Production' && environment !== 'Sandbox') {
     throw new Error('config: APPLE_ENVIRONMENT must be Production or Sandbox');
   }
+  // SignedDataVerifier requires the numeric app id to verify PRODUCTION
+  // payloads and throws a library-internal error without it. Checking here
+  // turns "bridge won't boot, cryptic stack trace" into one clear line.
+  let appAppleId: number | undefined;
+  if (env.APPLE_APP_ID !== undefined && env.APPLE_APP_ID !== '') {
+    appAppleId = Number(env.APPLE_APP_ID);
+    if (!Number.isInteger(appAppleId) || appAppleId <= 0) {
+      throw new Error(`config: APPLE_APP_ID must be a positive integer (got "${env.APPLE_APP_ID}")`);
+    }
+  }
+  if (environment === 'Production' && appAppleId === undefined) {
+    throw new Error(
+      'config: APPLE_APP_ID is required when APPLE_ENVIRONMENT=Production ' +
+        '(App Store Connect > App Information > General > Apple ID)',
+    );
+  }
   return {
     bundleId: required(env, 'APPLE_BUNDLE_ID'),
-    appAppleId: env.APPLE_APP_ID ? Number(env.APPLE_APP_ID) : undefined,
+    appAppleId,
     environment,
     allowSandbox: env.APPLE_ALLOW_SANDBOX !== 'false',
     sandboxGrants: env.APPLE_SANDBOX_GRANTS === 'true',
+    sandboxGrantDays: grantDays(env, 'APPLE_SANDBOX_GRANT_DAYS'),
     rootCaDir: env.APPLE_ROOT_CA_DIR ?? new URL('../certs', import.meta.url).pathname,
     productMonthly: env.APPLE_PRODUCT_MONTHLY ?? 'cvpn.premium.monthly',
     productAnnual: env.APPLE_PRODUCT_ANNUAL ?? 'cvpn.premium.annual',
@@ -168,7 +201,26 @@ function loadGoogle(env: NodeJS.ProcessEnv): GoogleConfig | undefined {
     basePlanMonthly: env.GOOGLE_BASE_PLAN_MONTHLY ?? 'premium-monthly',
     basePlanAnnual: env.GOOGLE_BASE_PLAN_ANNUAL ?? 'premium-annual',
     testGrants: env.GOOGLE_TEST_GRANTS === 'true',
+    testGrantDays: grantDays(env, 'GOOGLE_TEST_GRANT_DAYS'),
   };
+}
+
+/**
+ * Days a sandbox/test purchase settles for. Default 1: one day costs
+ * price/30 (0.67 FLUX at 20) and can only ever be spent once per test
+ * subscription, which is a far cheaper failure than a store rejection.
+ * Capped at 30 — a probe grant is not a way to hand out free months.
+ */
+function grantDays(env: NodeJS.ProcessEnv, key: string): number {
+  const raw = env[key];
+  if (raw === undefined || raw === '') {
+    return 1;
+  }
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0 || n > 30) {
+    throw new Error(`config: ${key} must be an integer 0..30 (got "${raw}")`);
+  }
+  return n;
 }
 
 /** Parse and validate the whole config from process.env. Throws on any gap. */
