@@ -110,7 +110,9 @@
         <b>⚠ Store-compliance:</b> turning <code>inAppUpgrade</code> <b>on</b> shows the in-app FLUX
         purchase UI (QR + wallet). <b>Do not enable it for a build that is under, or has passed,
         App&nbsp;Store / Google&nbsp;Play review</b> — a post-review behaviour change is a policy
-        violation. Direct-APK / web / testing builds only.
+        violation. Direct-APK / web / testing builds only. These toggles are now the <i>only</i>
+        gate on both platforms — the app no longer excludes iOS in code, so a flip here reaches
+        an App&nbsp;Store build on its next launch.
       </div>
 
       <h2>inAppUpgrade</h2>
@@ -144,17 +146,19 @@
 
       <h2>voucherRedeem</h2>
       <p class="hint">
-        In-app voucher redeem box (our codes). Direct-APK Android only — keep <b>OFF while a
-        Play build is live</b> (same binary). iOS is excluded at build level (Apple 3.1.1
-        forbids custom unlock codes); iOS users redeem on the web or via Apple offer codes.
+        In-app voucher redeem box (our codes), per platform. On Android the direct APK and the
+        Play build are the <b>same binary</b>, so this is the only thing separating them — keep it
+        <b>OFF while a Play build is live</b>. Both toggles are live: nothing is excluded at build
+        level any more, so whether a code box is acceptable in a store build is your call to make
+        per platform, and it takes effect on next app launch.
       </p>
       <div class="row">
         <div class="k">Android <small>direct APK only</small></div>
         <label class="sw"><input type="checkbox" id="vr-android" /><span class="track"></span><span class="knob"></span></label>
       </div>
       <div class="row">
-        <div class="k">iOS <small>build-level off — toggle has no effect</small></div>
-        <label class="sw"><input type="checkbox" id="vr-ios" disabled /><span class="track"></span><span class="knob"></span></label>
+        <div class="k">iOS <small>App Store build</small></div>
+        <label class="sw"><input type="checkbox" id="vr-ios" /><span class="track"></span><span class="knob"></span></label>
       </div>
 
       <div class="foot">
@@ -210,10 +214,8 @@
       <h2>Recent codes</h2>
       <div id="voucher-list" class="hint">Loading…</div>
     </div>
-  </div>
 
-  <div class="col">
-    <div class="sec">
+    <div class="dash-head" style="margin-top:28px">
       <div class="sec-title">Subscriber lookup</div>
     </div>
     <div class="card">
@@ -405,7 +407,7 @@
     var body = {
       inAppUpgrade: { android: $('t-android').checked, ios: $('t-ios').checked },
       iapPurchase: { android: $('iap-android').checked, ios: $('iap-ios').checked },
-      voucherRedeem: { android: $('vr-android').checked, ios: false },
+      voucherRedeem: { android: $('vr-android').checked, ios: $('vr-ios').checked },
     };
     fetch('/api/flags', {
       method: 'POST',
