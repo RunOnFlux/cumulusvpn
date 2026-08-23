@@ -2,7 +2,7 @@
   "name": "cumulusvpn",
   "version": "0.1.0",
   "private": true,
-  "description": "CumulusVPN — decentralized VPN on Flux Cloud (monorepo)",
+  "description": "CumulusVPN \u2014 decentralized VPN on Flux Cloud (monorepo)",
   "packageManager": "yarn@4.5.0",
   "workspaces": [
     "clients/core-ts",
@@ -20,6 +20,7 @@
     "format:check": "prettier --check \"*.{json,md}\" \".github/**/*.{yml,yaml,md}\"",
     "format:check:workspaces": "yarn workspaces foreach -Apt run format:check",
     "check": "yarn format:check && yarn format:check:workspaces && yarn lint && yarn typecheck && yarn test",
+    "check:all": "bash scripts/check-all.sh",
     "deploy:landing": "node clients/landing/build.mjs --check && npx wrangler deploy --config clients/landing/wrangler.jsonc"
   },
   "devDependencies": {
