@@ -46,7 +46,7 @@ interface Props {
   readonly payment: PaymentIdentity | null;
   /** Crypto (FLUX) section visible — remote `inAppUpgrade` flag. */
   readonly cryptoEnabled: boolean;
-  /** In-app voucher redeem box visible — remote `voucherRedeem` flag (never iOS). */
+  /** In-app voucher redeem box visible — remote `voucherRedeem` flag. */
   readonly voucherEnabled: boolean;
   /** Store subscription section visible — remote `iapPurchase` flag. */
   readonly iap: IapState | null;

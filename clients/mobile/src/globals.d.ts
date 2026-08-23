@@ -15,7 +15,8 @@ declare const __APP_VERSION__: string;
  * Inlined as a literal `false` unless the bundle was built with
  * `CVPN_SCREENSHOT=1`, so every `if (__SCREENSHOT_MODE__)` branch is dead code
  * the minifier strips. A store build therefore cannot contain the demo data or
- * reach the demo path — this is a build-time gate, not a runtime flag, for the
- * same reason PURCHASE_UI_PLATFORMS is (see src/lib/flags.ts).
+ * reach the demo path. This one stays a build-time gate on purpose: demo data
+ * must be impossible to reach in a shipped binary, whereas the purchase
+ * surfaces in src/lib/flags.ts are operator decisions and live in KV.
  */
 declare const __SCREENSHOT_MODE__: boolean;

@@ -118,15 +118,25 @@
 
 > **Update 2026-08-09 — Apple IAP adopted.** The iOS build now sells two auto-renewable
 > subscriptions via StoreKit 2 (see §9). Everything below about the **crypto/FLUX** purchase
-> surface (`inAppUpgrade`) remains true and in force — the crypto UI stays hard-off on iOS at
-> build level. The new IAP subscribe UI is a separate surface, gated by the new `iapPurchase`
-> remote flag (fails closed OFF; must be ON through review — see §9). On iOS the app shows
-> ONLY the IAP surface: zero FLUX/crypto/price/web-purchase mentions (3.1.1/3.1.3).
+> surface (`inAppUpgrade`) remains true and in force. The IAP subscribe UI is a separate
+> surface, gated by the `iapPurchase` remote flag (fails closed OFF; must be ON through
+> review — see §9). On iOS the app must show ONLY the IAP surface: zero FLUX/crypto/price/
+> web-purchase mentions (3.1.1/3.1.3).
+>
+> **Update 2026-08-23 — the build-level iOS exclusion was removed.** `resolveFlags` no longer
+> filters by platform; all three flags are plain per-platform KV toggles on iOS and Android,
+> and `voucherRedeem` on iOS is now settable too. Read this as a deliberate trade: the
+> protection below is now **operational, not structural**. A KV misconfiguration — or anyone
+> with the dashboard password — can put the crypto UI into a live App Store build at its next
+> launch, which is the exact condition that caused the 1.0.2 (15) rejection. The KV values are
+> the control; keep `inAppUpgrade.ios` false and re-check it before every submission.
 
-- [x] ✅ **Crypto purchase UI is hard-OFF on iOS at build level** (resolved 2026-07-30 after the
-  1.0.2 (15) rejection under 3.1.1). `resolveFlags` in `clients/mobile/src/lib/flags.ts` only
-  honors `inAppUpgrade` for platforms in `PURCHASE_UI_PLATFORMS` (= android only), so a remote
-  KV flip can NEVER enable purchase UI on iOS. When the flag is off the app now shows **no
+- [x] ✅ **Crypto purchase UI is OFF on iOS** (resolved 2026-07-30 after the 1.0.2 (15)
+  rejection under 3.1.1). Enforcement changed on 2026-08-23: it was a build-level allowlist in
+  `clients/mobile/src/lib/flags.ts` that made a remote flip impossible; it is now the
+  `inAppUpgrade.ios` KV flag alone, which fails closed but IS flippable. **Verify it reads
+  false before every submission** — this is a checklist item now, not an invariant. When the
+  flag is off the app shows **no
   purchase surface at all**: no upgrade route (`App.tsx`), no upsell line / tappable tier pill
   (`ConnectScreen`), a non-interactive plan status row (`SettingsScreen`), and the former
   "manage on the web" copy (steps + URL + FLUX price) is deleted from `UpgradeScreen` — the

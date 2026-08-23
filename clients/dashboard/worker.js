@@ -260,9 +260,12 @@ async function fleet() {
 // The mobile app fetches GET /api/flags at launch (same JSON shape as the repo's
 // flags.json). Writes go through POST /api/flags, gated by the ADMIN_TOKEN secret.
 const FLAGS_KEY = 'flags';
-// Every per-platform flag the apps understand (see repo flags.json):
-//   inAppUpgrade — crypto/FLUX purchase UI (direct-APK Android only)
-//   iapPurchase  — store-billing subscription UI (must be ON before store review)
+// Every per-platform flag the apps understand (see repo flags.json). Each is
+// {android, ios} and is the ONLY gate — the apps no longer exclude a platform
+// at build level, so what is set here is what ships:
+//   inAppUpgrade  — crypto/FLUX purchase UI (direct-APK / testing builds only)
+//   iapPurchase   — store-billing subscription UI (must be ON before store review)
+//   voucherRedeem — our own code-redeem box (Play build shares the APK binary)
 const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase', 'voucherRedeem'];
 // Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
 const DEFAULT_FLAGS = Object.fromEntries(

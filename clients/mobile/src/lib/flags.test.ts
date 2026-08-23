@@ -12,10 +12,13 @@ describe('resolveFlags', () => {
     expect(resolveFlags(doc, 'web').inAppUpgrade).toBe(false);
   });
 
-  it('can NEVER be enabled on iOS, even when the remote doc says true', () => {
-    // Build-level kill switch: App Store builds must not grow purchase UI from
-    // a remote flip (guideline 3.1.1 + post-review behavior change).
+  it('honours the remote doc on iOS too — no build-level allowlist', () => {
+    // iOS was once excluded in code, so changing the decision meant shipping a
+    // binary. The per-platform KV key is the gate now; it still fails closed.
     expect(resolveFlags({ inAppUpgrade: { android: true, ios: true } }, 'ios').inAppUpgrade).toBe(
+      true,
+    );
+    expect(resolveFlags({ inAppUpgrade: { android: true, ios: false } }, 'ios').inAppUpgrade).toBe(
       false,
     );
   });
@@ -72,18 +75,22 @@ describe('resolveFlags: iapPurchase', () => {
     });
   });
 
-  it('crypto UI still can NEVER be enabled on iOS even when IAP is on', () => {
+  it('crypto and store billing are independently settable on iOS', () => {
     const doc2 = { inAppUpgrade: { ios: true }, iapPurchase: { ios: true } };
-    expect(resolveFlags(doc2, 'ios').inAppUpgrade).toBe(false);
+    expect(resolveFlags(doc2, 'ios').inAppUpgrade).toBe(true);
     expect(resolveFlags(doc2, 'ios').iapPurchase).toBe(true);
+    const iapOnly = { inAppUpgrade: { ios: false }, iapPurchase: { ios: true } };
+    expect(resolveFlags(iapOnly, 'ios').inAppUpgrade).toBe(false);
+    expect(resolveFlags(iapOnly, 'ios').iapPurchase).toBe(true);
   });
 });
 
 describe('resolveFlags: voucherRedeem', () => {
-  it('can NEVER be enabled on iOS (Apple 3.1.1: custom unlock codes)', () => {
+  it('is remote-controlled on iOS as well as android', () => {
     const doc = { voucherRedeem: { android: true, ios: true } };
-    expect(resolveFlags(doc, 'ios').voucherRedeem).toBe(false);
+    expect(resolveFlags(doc, 'ios').voucherRedeem).toBe(true);
     expect(resolveFlags(doc, 'android').voucherRedeem).toBe(true);
+    expect(resolveFlags({ voucherRedeem: { ios: false } }, 'ios').voucherRedeem).toBe(false);
   });
 
   it('is strict-true, per-platform, fail-closed like every flag', () => {

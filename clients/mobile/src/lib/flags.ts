@@ -7,51 +7,24 @@
  * for ANY reason, every flag defaults to OFF — the safe state (no purchase
  * UI anywhere). The endpoint returns the same JSON shape as the repo's
  * flags.json (the documented default / KV seed).
+ *
+ * Every flag is remote-controlled on BOTH platforms. There is deliberately no
+ * build-level platform allowlist: iOS used to be excluded from the crypto and
+ * voucher surfaces in code, which meant the only way to change that decision
+ * was to ship a new binary. The per-platform KV keys already express it —
+ * `{"voucherRedeem":{"ios":false}}` is the same gate, editable in seconds,
+ * and it fails closed when the fetch fails. The operator owns the
+ * store-compliance call per platform; see the warnings in the admin UI.
  */
 import { Platform } from 'react-native';
 
 const FLAGS_URL = 'https://dashboard.cumulusvpn.com/api/flags';
 
-/**
- * Platforms whose builds are allowed to show the CRYPTO purchase UI (QR +
- * wallet hand-off) AT ALL. iOS is excluded at build level, not just by the
- * remote flag: every iOS build goes through the App Store, where a crypto
- * purchase surface violates guideline 3.1.1 — and flipping behavior on
- * remotely after review is itself a violation. Keeping iOS out of this set
- * means a KV misconfiguration can never resurface that UI there. Android
- * stays remote-controlled because direct-APK (off-store) builds legitimately
- * use the flow — but it must stay OFF in KV while the Play build is live,
- * since both are the same binary.
- */
-const PURCHASE_UI_PLATFORMS: ReadonlySet<string> = new Set(['android']);
-
-/**
- * Platforms whose builds may show the STORE-BILLING purchase UI (Apple IAP /
- * Google Play Billing subscriptions). Unlike the crypto flow, this UI is
- * store-compliant by construction — the remote flag is a rollout/kill
- * switch, not a compliance shield. It must be ON in KV BEFORE a build
- * containing it is submitted for review (reviewers must be able to find the
- * declared subscriptions), and can be flipped off afterwards if the bridge
- * has an outage.
- */
-const IAP_PLATFORMS: ReadonlySet<string> = new Set(['ios', 'android']);
-
-/**
- * Platforms whose builds may show the in-app VOUCHER REDEEM box (our own
- * codes). iOS is excluded at build level: Apple 3.1.1 prohibits custom
- * unlock mechanisms (license keys/codes) regardless of IAP presence — iOS
- * users redeem on the web (Device code in Settings) or via Apple's own
- * offer-code sheet, which is store-sanctioned and always allowed. Android
- * stays remote-controlled: direct-APK builds only; keep OFF in KV while a
- * Play build is live (same binary, and Play policy matches Apple's).
- */
-const VOUCHER_REDEEM_PLATFORMS: ReadonlySet<string> = new Set(['android']);
-
 export interface Flags {
   /**
    * In-app FLUX upgrade (QR + wallet deep-link + pay-to details). When OFF —
-   * the default, and always the case on iOS — the app shows no crypto
-   * purchase UI: no wallet hand-off, no FLUX price, no pay-to details.
+   * the default — the app shows no crypto purchase UI: no wallet hand-off,
+   * no FLUX price, no pay-to details.
    */
   readonly inAppUpgrade: boolean;
   /**
@@ -63,9 +36,9 @@ export interface Flags {
   readonly iapPurchase: boolean;
   /**
    * In-app voucher/promo-code redeem box for OUR codes. When OFF — the
-   * default, and always the case on iOS — no code-entry surface renders.
-   * The store-sanctioned offer-code sheets (Apple/Play) are NOT gated by
-   * this flag; they ride with `iapPurchase`.
+   * default — no code-entry surface renders. The store-sanctioned offer-code
+   * sheets (Apple/Play) are NOT gated by this flag; they ride with
+   * `iapPurchase`.
    */
   readonly voucherRedeem: boolean;
 }
@@ -92,9 +65,9 @@ function platformFlag(json: unknown, key: string, os: string): boolean {
 /** Resolve the flags a parsed JSON doc grants for `os`. Unknown shape → all OFF. */
 export function resolveFlags(json: unknown, os: string): Flags {
   return {
-    inAppUpgrade: PURCHASE_UI_PLATFORMS.has(os) && platformFlag(json, 'inAppUpgrade', os),
-    iapPurchase: IAP_PLATFORMS.has(os) && platformFlag(json, 'iapPurchase', os),
-    voucherRedeem: VOUCHER_REDEEM_PLATFORMS.has(os) && platformFlag(json, 'voucherRedeem', os),
+    inAppUpgrade: platformFlag(json, 'inAppUpgrade', os),
+    iapPurchase: platformFlag(json, 'iapPurchase', os),
+    voucherRedeem: platformFlag(json, 'voucherRedeem', os),
   };
 }
 
