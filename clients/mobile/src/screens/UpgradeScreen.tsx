@@ -180,8 +180,8 @@ function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Elemen
     return (
       <View style={styles.card}>
         <Text style={styles.copy}>
-          Subscribed — full speed is unlocked on every gateway. Manage or cancel any time in your
-          store account.
+          Subscribed — this device now gets full speed on every server. Manage or cancel any time
+          in your store account.
         </Text>
       </View>
     );
@@ -205,8 +205,8 @@ function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Elemen
         <View style={[styles.card, styles.iapLoading]}>
           <ActivityIndicator color={color.amber} />
           <Text style={styles.copy}>
-            Activating on the decentralized network… full speed unlocks on every gateway within a
-            minute. You can leave this screen.
+            Activating on the decentralized network… this device unlocks full speed on every
+            server within a minute. You can leave this screen.
           </Text>
         </View>
       ) : iap.phase === 'pending_store' ? (
@@ -247,8 +247,9 @@ function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Elemen
 
           <Text style={styles.note}>
             Auto-renews until cancelled; cancel any time in your store account. Payment is handled
-            by the store — we never see your card. Premium is activated on the Flux blockchain, tied
-            only to this device’s anonymous key.
+            by the store — we never see your card. Because there is no account to attach it to,
+            premium unlocks full speed on every server for THIS device; another device needs its
+            own subscription.
           </Text>
           <View style={styles.legalRow}>
             <Pressable onPress={() => iap.restore()} accessibilityRole="button" hitSlop={8}>

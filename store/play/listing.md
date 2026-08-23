@@ -62,7 +62,8 @@ anonymity software like Tor, and we say so plainly. No overselling.
 PREMIUM, IF YOU WANT IT
 Premium speed is an optional in-app subscription — $1.99/month or $14.99/year, billed through
 Google Play. Cancel anytime in your Play subscriptions. The free tier never expires, and no
-purchase is ever required to use the VPN.
+purchase is ever required to use the VPN. Because there is no account, premium applies to the
+device you buy it on rather than to a person, so a second device needs its own subscription.
 
 Powered by Flux Cloud. Privacy that is structural, not a slogan.
 

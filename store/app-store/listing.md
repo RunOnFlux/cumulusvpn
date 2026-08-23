@@ -114,6 +114,16 @@ gateway failover keep you online.
 FREE TIER FOREVER
 Every install includes a genuinely free tier — no trial, no card, no account.
 
+PREMIUM, IF YOU WANT IT
+Premium lifts the speed cap and gives you full speed on every server in the network. It is an
+optional auto-renewable subscription — Premium Monthly at $1.99/month, or Premium Annual at
+$14.99/year — and the free tier never expires if you skip it. Because there is no account,
+premium applies to the device you buy it on rather than to a person, so a second device needs
+its own subscription. Cancel any time in your App Store subscriptions.
+
+Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+Privacy Policy: https://cumulusvpn.com/privacy
+
 RUN ON A DECENTRALIZED NETWORK
 CumulusVPN servers run as apps on the Flux decentralized cloud, hosted in commercial
 datacenters by independent operators — not on a single company's servers. It is a different,
