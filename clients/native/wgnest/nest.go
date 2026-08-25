@@ -25,6 +25,7 @@ package wgnest
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"net/netip"
 	"strconv"
@@ -228,6 +229,41 @@ func (t *NestedTunnel) Stats() (rxBytes, txBytes, lastHandshakeSec int64) {
 		}
 	}
 	return rxBytes, txBytes, lastHandshakeSec
+}
+
+// Rebind reopens the tunnel's real UDP socket on the current default network
+// and clears every peer's cached source address, so the next keepalive leaves
+// from the new interface.
+//
+// This is the client half of WireGuard roaming. The server half already works:
+// a gateway updates a peer's endpoint from any authenticated packet, so the
+// moment one datagram arrives from the new address the session continues. What
+// does NOT happen by itself is the client noticing — the socket stays bound to
+// the interface that has gone away, so nothing is ever sent and the tunnel
+// blackholes with the OS still reporting it up. Callers wire this to a
+// platform network-change signal (Android ConnectivityManager, iOS
+// NEProvider/NWPathMonitor).
+//
+// Only the device that owns a REAL socket is rebound. In a nested tunnel that
+// is the outer device; the inner one's Bind is a UDP conn on the outer
+// netstack (see bind.go), which has no OS socket to reopen and whose peer
+// endpoint never changes. Rebinding it would tear down a working conn to
+// re-dial the same address.
+//
+// Safe to call when nothing changed: BindUpdate closes and reopens on the same
+// port, which costs a few milliseconds and one lost keepalive at worst. It is
+// NOT useful for the wg-tls transport, whose device points at a local bridge —
+// the socket that actually broke there is the bridge's TCP connection, which
+// only a reconnect can repair.
+func (t *NestedTunnel) Rebind() error {
+	dev := t.outer
+	if dev == nil {
+		dev = t.inner
+	}
+	if dev == nil {
+		return errors.New("wgnest: tunnel is closed")
+	}
+	return dev.BindUpdate()
 }
 
 // Close tears the tunnel down.

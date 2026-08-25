@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Network
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -42,6 +43,14 @@ class CumulusObfsVpnService : VpnService() {
 
     /** Route text for the ongoing notification; blank = generic copy. */
     private var notifText: String = ""
+
+    /**
+     * Watches for a roam. Started once the tunnel is up, stopped in teardown.
+     * See [onNetworkChanged] for why the two transports react differently.
+     */
+    private val netWatcher: NetworkWatcher by lazy {
+        NetworkWatcher(this) { network -> onNetworkChanged(network) }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -202,6 +211,7 @@ class CumulusObfsVpnService : VpnService() {
             // Go owns the fd now and closes it on Wgmobile.stop.
             fdOwnedByGo = true
             activeHandle = handle
+            netWatcher.start()
             Log.i(TAG, "wgnest single-hop up: server=$wgServerIp:$wgPort tls=${tlsSni != null} handle=$handle")
         } finally {
             if (!fdOwnedByGo) {
@@ -215,12 +225,64 @@ class CumulusObfsVpnService : VpnService() {
     }
 
     /**
+     * React to the device changing default network.
+     *
+     * Two transports, two answers, because they break differently.
+     *
+     * **awg / vanilla (UDP)** — only the client's socket is stale. Rebinding
+     * reopens it on the new interface and clears the peer's cached source
+     * address, so the next keepalive (every 15s) leaves from the new address
+     * and the gateway relearns the endpoint. The session, its keys and its
+     * counters all survive; nothing re-handshakes.
+     *
+     * **wg-tls** — rebinding is useless. That device points at 127.0.0.1 and
+     * the socket that actually died is [WgTlsBridge]'s TCP connection to the
+     * relay, which cannot migrate between networks and has no reconnect. The
+     * honest response is to report the drop and let the app's existing
+     * auto-reconnect rebuild the bridge, exactly as it would for any other
+     * unexpected drop. That costs a fresh TLS handshake, which is the price of
+     * carrying WireGuard over TCP.
+     *
+     * `setUnderlyingNetworks` is set in both cases: it tells the platform which
+     * network the VPN actually runs over, which keeps system connectivity
+     * reporting (and anything keyed off it) honest.
+     */
+    private fun onNetworkChanged(network: Network?) {
+        setUnderlyingNetworks(if (network != null) arrayOf(network) else null)
+
+        val h = handle
+        if (h == 0L) {
+            return // torn down while the callback was in flight
+        }
+        if (tlsBridge != null) {
+            Log.i(TAG, "roam on wg-tls — reconnecting (the relay's TCP cannot follow)")
+            stopRequested = true
+            Thread {
+                teardown()
+                CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_DISCONNECTED)
+                stopSelf()
+            }.start()
+            return
+        }
+        try {
+            Wgmobile.rebind(h)
+            Log.i(TAG, "roam — UDP socket rebound, handle=$h")
+        } catch (t: Throwable) {
+            // The new network was not usable yet. Another callback follows when
+            // it is; a failed rebind leaves the old socket closed, which the
+            // next one reopens.
+            Log.w(TAG, "rebind after roam failed", t)
+        }
+    }
+
+    /**
      * Stop the Go device / TLS bridge / tun — the JNI half of teardown, which
      * can block; only ever call it off the main thread. Synchronized so a
      * threaded stop can't interleave with a replace-before-reconnect.
      */
     @Synchronized
     private fun stopDataPlane() {
+        netWatcher.stop()
         val h = handle
         handle = 0
         activeHandle = 0

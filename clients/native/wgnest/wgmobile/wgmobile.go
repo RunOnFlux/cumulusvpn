@@ -149,6 +149,31 @@ func Stop(handle int64) {
 	}
 }
 
+// Rebind reopens the tunnel's UDP socket on the current default network after
+// the device has roamed (Wi-Fi to cellular, one Wi-Fi to another). Call it from
+// the platform's network-change callback: Android's ConnectivityManager
+// default-network callback, iOS's NEProvider.defaultPath observation.
+//
+// Without it a roam leaves the socket bound to an interface that no longer
+// exists — the OS keeps reporting the VPN as connected while nothing can flow.
+// The gateway needs no help: it relearns a peer's endpoint from the first
+// authenticated packet, so the tunnel resumes as soon as one keepalive gets out
+// from the new address.
+//
+// An unknown or already-stopped handle is a no-op, not an error: a network
+// change can race a teardown, and the caller has nothing useful to do about it.
+// Returns an error only when the rebind itself failed, which on Android means
+// the new network was not actually usable yet — the next callback will follow.
+func Rebind(handle int64) error {
+	mu.Lock()
+	t := byID[handle]
+	mu.Unlock()
+	if t == nil {
+		return nil
+	}
+	return t.Rebind()
+}
+
 // GetStats returns the tunnel's live counters as the CSV string
 // "rxBytes,txBytes,lastHandshakeSec" (or "0,0,0" for an unknown/closed handle).
 // A CSV keeps the gomobile surface to a plain string — no struct binding — and

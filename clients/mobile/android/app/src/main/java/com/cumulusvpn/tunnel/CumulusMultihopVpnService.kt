@@ -5,6 +5,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.net.Network
 import android.net.VpnService
 import android.os.Build
 import android.os.ParcelFileDescriptor
@@ -47,6 +48,11 @@ class CumulusMultihopVpnService : VpnService() {
 
     /** Route text for the ongoing notification; blank = generic copy. */
     private var notifText: String = ""
+
+    /** Rebinds the OUTER device's socket when the phone changes network. */
+    private val netWatcher: NetworkWatcher by lazy {
+        NetworkWatcher(this) { network -> onNetworkChanged(network) }
+    }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
@@ -191,6 +197,7 @@ class CumulusMultihopVpnService : VpnService() {
             entryObfs,
         )
         activeHandle = handle
+        netWatcher.start()
         Log.i(TAG, "nested tunnel up: entry=$entryIp:$entryPort exit=$exitIp obfs=${entryObfs.isNotEmpty()} handle=$handle")
     }
 
@@ -200,7 +207,38 @@ class CumulusMultihopVpnService : VpnService() {
      * stop can't interleave with a replace-before-reconnect.
      */
     @Synchronized
+    /**
+     * React to the device changing default network.
+     *
+     * A nested tunnel has exactly one real socket — the OUTER device's, to the
+     * entry gateway. (The inner device's Bind is a UDP conn on the outer
+     * netstack, so it has no OS socket and its endpoint never moves.) Rebinding
+     * that one socket is enough for both hops: the inner session rides the
+     * outer tunnel, so it never notices the roam at all.
+     *
+     * There is no wg-tls case to handle here — multi-hop obfuscates the entry
+     * hop with AmneziaWG over UDP and never uses the TLS relay.
+     *
+     * The route exclusion that keeps the outer socket out of its own tunnel is
+     * pinned to the entry gateway's IP, which a roam does not change, so the
+     * bypass stays correct across the rebind and the tun needs no rebuild.
+     */
+    private fun onNetworkChanged(network: Network?) {
+        setUnderlyingNetworks(if (network != null) arrayOf(network) else null)
+        val h = handle
+        if (h == 0L) {
+            return
+        }
+        try {
+            Wgmobile.rebind(h)
+            Log.i(TAG, "roam — outer socket rebound, handle=$h")
+        } catch (t: Throwable) {
+            Log.w(TAG, "rebind after roam failed", t)
+        }
+    }
+
     private fun stopDataPlane() {
+        netWatcher.stop()
         val h = handle
         handle = 0
         activeHandle = 0

@@ -38,6 +38,12 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     // device dials its local UDP endpoint). nil for vanilla/awg.
     private var tlsBridge: WgTlsBridge?
 
+    // Roam detection. See `startPathMonitor()` for what a roam does to a tunnel
+    // and why the two transports need different answers.
+    private var pathMonitor: NWPathMonitor?
+    private let pathQueue = DispatchQueue(label: "com.cumulusvpn.tunnel.path")
+    private var lastPathInterfaces: [NWInterface]?
+
     // Called by the OS when the user (or the app) starts the tunnel.
     override func startTunnel(
         options _: [String: NSObject]?,
@@ -155,6 +161,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             return
         }
         self.handle = h
+        self.startPathMonitor()
         self.log.log("single-hop up: server=\(serverIp, privacy: .public) handle=\(h)")
         completionHandler(nil)
         #else
@@ -232,6 +239,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
                 return
             }
             self.handle = h
+            self.startPathMonitor()
             self.log.log("nested tunnel up: entry=\(entryIp, privacy: .public) exit=\(exitIp, privacy: .public) handle=\(h)")
             completionHandler(nil)
             #else
@@ -241,10 +249,87 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         }
     }
 
+    /// Watch for the device changing network and repair the tunnel.
+    ///
+    /// WireGuard roams by design, but only the server half is free: a gateway
+    /// relearns a peer's endpoint from any authenticated packet, so a session
+    /// resumes the moment one datagram arrives from the new address. The client
+    /// half is not free. Its UDP socket stays bound to the interface that went
+    /// away, so nothing is ever sent and the gateway never learns anything —
+    /// while iOS keeps the tunnel "connected" because the utun is still up. The
+    /// app's auto-reconnect watches for a disconnect that never comes.
+    ///
+    /// Interfaces, not `path.status`, are what we compare. A Wi-Fi to cellular
+    /// switch keeps the path `.satisfied` throughout; only the interface list
+    /// changes. Watching status alone would miss the most common roam there is.
+    private func startPathMonitor() {
+        let monitor = NWPathMonitor()
+        pathMonitor = monitor
+        monitor.pathUpdateHandler = { [weak self] path in
+            guard let self else { return }
+            guard path.status == .satisfied else { return }
+            let interfaces = path.availableInterfaces
+            defer { self.lastPathInterfaces = interfaces }
+            guard let previous = self.lastPathInterfaces else {
+                return // first callback describes the network we started on
+            }
+            if previous.map(\.name) == interfaces.map(\.name) {
+                return
+            }
+            self.log.log("roam: \(previous.map(\.name).joined(separator: ","), privacy: .public) -> \(interfaces.map(\.name).joined(separator: ","), privacy: .public)")
+            self.handleRoam()
+        }
+        monitor.start(queue: pathQueue)
+    }
+
+    private func stopPathMonitor() {
+        pathMonitor?.cancel()
+        pathMonitor = nil
+        lastPathInterfaces = nil
+    }
+
+    /// Two transports, two answers, because they break differently.
+    ///
+    /// **vanilla / awg (UDP)** — only the client's socket is stale. `Rebind`
+    /// reopens it on the new interface and clears the peer's cached source
+    /// address, so the next keepalive (every 15s) leaves from the new address
+    /// and the gateway relearns the endpoint. Keys, session and counters all
+    /// survive; nothing re-handshakes.
+    ///
+    /// **wg-tls** — rebinding is useless. That device points at 127.0.0.1 and
+    /// the socket that actually died is the bridge's TCP connection to the
+    /// relay, which cannot migrate between networks. Tearing the tunnel down is
+    /// the honest response: iOS reports the disconnect, and the app's existing
+    /// auto-reconnect rebuilds the bridge exactly as it would after any other
+    /// unexpected drop.
+    private func handleRoam() {
+        guard handle != 0 else { return }
+        if tlsBridge != nil {
+            log.log("roam on wg-tls — cancelling so the app reconnects (the relay's TCP cannot follow)")
+            cancelTunnelWithError(nil)
+            return
+        }
+        #if canImport(Wgnest)
+        // Package-level Go funcs bind as C functions, so the error arrives via
+        // an out-param plus a Bool — the same shape as WgmobileStartSingle
+        // above, not a Swift `throws`.
+        var err: NSError?
+        let ok = WgmobileRebind(handle, &err)
+        if !ok || err != nil {
+            // The new interface was not usable yet; a further path update
+            // follows when it is.
+            log.error("rebind after roam failed: \(String(describing: err), privacy: .public)")
+        } else {
+            log.log("roam — UDP socket rebound, handle=\(self.handle)")
+        }
+        #endif
+    }
+
     override func stopTunnel(
         with _: NEProviderStopReason,
         completionHandler: @escaping () -> Void
     ) {
+        stopPathMonitor()
         #if canImport(Wgnest)
         if handle != 0 {
             WgmobileStop(handle)
