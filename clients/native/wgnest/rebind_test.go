@@ -73,8 +73,15 @@ func peerServer(t *testing.T, serverPrivB64, clientPubB64 string, serverIP, clie
 	}
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelError, "srv "))
 	t.Cleanup(dev.Close)
+	// NO listen_port here, deliberately. Setting it makes handleDeviceLine call
+	// BindUpdate in the MIDDLE of the IpcSet (uapi.go:284), which starts receive
+	// goroutines that read device.headers.* while the same operation is still
+	// writing those fields in mergeWithDevice (uapi.go:737) — an unsynchronised
+	// read/write inside amneziawg-go that the race detector rightly flags.
+	// Up() binds too (upLocked -> BindUpdate), by which point the merge is done,
+	// so leaving the port out gets an ephemeral port with no race.
 	cfg := fmt.Sprintf(
-		"private_key=%s\nlisten_port=0\npublic_key=%s\nallowed_ip=%s/32\n",
+		"private_key=%s\npublic_key=%s\nallowed_ip=%s/32\n",
 		hexOf(t, serverPrivB64), hexOf(t, clientPubB64), clientIP,
 	)
 	if err := dev.IpcSet(cfg); err != nil {

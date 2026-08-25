@@ -255,6 +255,15 @@ func (t *NestedTunnel) Stats() (rxBytes, txBytes, lastHandshakeSec int64) {
 // NOT useful for the wg-tls transport, whose device points at a local bridge —
 // the socket that actually broke there is the bridge's TCP connection, which
 // only a reconnect can repair.
+//
+// Must not overlap an IpcSet on the same device. BindUpdate starts receive
+// goroutines that read the device's obfuscation headers, and IpcSetOperation
+// writes those same fields without holding a lock against them — so a rebind
+// racing a config change is a data race inside amneziawg-go, not merely a
+// surprising ordering. Callers get this for free by starting their
+// network-change watcher only AFTER Start/StartSingle has returned, which is
+// what both mobile services do; anything that reconfigures a live device would
+// have to serialise against this.
 func (t *NestedTunnel) Rebind() error {
 	dev := t.outer
 	if dev == nil {
