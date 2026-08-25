@@ -71,6 +71,9 @@ func peerServer(t *testing.T, serverPrivB64, clientPubB64 string, serverIP, clie
 	if err != nil {
 		t.Fatalf("server netstack: %v", err)
 	}
+	// Same reason as nest.go: netstack queues an EventUp that NewDevice's reader
+	// would turn into an Up() racing the IpcSet below.
+	drainPendingUp(tun)
 	dev := device.NewDevice(tun, conn.NewDefaultBind(), device.NewLogger(device.LogLevelError, "srv "))
 	t.Cleanup(dev.Close)
 	// NO listen_port here, deliberately. Setting it makes handleDeviceLine call

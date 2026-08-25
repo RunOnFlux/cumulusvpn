@@ -73,6 +73,33 @@ type NestedTunnel struct {
 	outer *device.Device
 }
 
+// drainPendingUp consumes a tun.EventUp that a device implementation queued at
+// construction, BEFORE the event can reach a wireguard-go device.
+//
+// netstack.CreateNetTUN posts EventUp on its last line, so the event is already
+// buffered when it returns. device.NewDevice then starts RoutineTUNEventReader,
+// which reads it and calls device.Up() — on its own goroutine, concurrently
+// with the IpcSet the caller is making right afterwards. Up() binds and starts
+// the receive routines, and those read the device's AmneziaWG obfuscation
+// headers while IpcSetOperation.mergeWithDevice is still writing them. Nothing
+// synchronises the two: it is a genuine data race inside amneziawg-go, on the
+// entry hop's obfuscation state, at exactly the moment the first handshake goes
+// out.
+//
+// Swallowing the event is safe because it only ever triggers a bring-up we
+// perform ourselves, in order, a few lines later. Later events (an MTU update)
+// still reach the device. A tun with no queued event — the phones' OS fd, via
+// CreateUnmonitoredTUNFromFD, which posts nothing — falls straight through.
+func drainPendingUp(t tun.Device) {
+	for {
+		select {
+		case <-t.Events():
+		default:
+			return
+		}
+	}
+}
+
 // Start brings up the nested tunnel. `clientPrivB64` is the client's WireGuard
 // private key (base64), shared by both hops. `innerTun` is the tun the real
 // 0.0.0.0/0 traffic flows over (caller-owned). `logLevel` is a device.LogLevel*.
@@ -111,6 +138,8 @@ func Start(clientPrivB64 string, entry, exit Gateway, innerTun tun.Device, logLe
 	if err != nil {
 		return nil, fmt.Errorf("outer netstack: %w", err)
 	}
+	// Before NewDevice, or its event reader races the IpcSet below.
+	drainPendingUp(outerTun)
 	outer := device.NewDevice(outerTun, conn.NewDefaultBind(), device.NewLogger(logLevel, "outer "))
 	// Obfuscation (if any) applies to the ENTRY hop only; the device-level obfs
 	// UAPI goes between private_key and the peer's public_key.
@@ -180,6 +209,9 @@ func StartSingle(clientPrivB64 string, gw Gateway, t tun.Device, logLevel int) (
 	if err != nil {
 		return nil, fmt.Errorf("server key: %w", err)
 	}
+	// No-op for the phones' OS fd (it queues no events); load-bearing when the
+	// caller passes a netstack tun, as the tests do.
+	drainPendingUp(t)
 	dev := device.NewDevice(t, conn.NewDefaultBind(), device.NewLogger(logLevel, "wg "))
 	tOwned = true // dev.Close() now owns t
 	// Device-level obfs UAPI (if any) sits between private_key and the peer.
