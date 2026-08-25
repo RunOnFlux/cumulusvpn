@@ -281,6 +281,33 @@ function hopsConflict(style: RouteStyle, a: string | null, b: string | null): bo
   return false;
 }
 
+/**
+ * WireGuard's own REJECT_AFTER_TIME: once a session has gone this long without
+ * a handshake its keys are dead and no traffic can pass, whatever the OS says
+ * about the tunnel.
+ *
+ * The threshold cannot be tightened much. A healthy tunnel's handshake age
+ * sawtooths between 0 and ~120s (REKEY_AFTER_TIME) — keepalives count as sends,
+ * so a rekey is attempted about every two minutes. Anything below that would
+ * tear down working tunnels on the ordinary rekey sawtooth. 180s is the first
+ * value that is unambiguously dead rather than merely idle, and the margin on
+ * top absorbs clock skew between the device and the counter.
+ */
+const HANDSHAKE_DEAD_SEC = 200;
+
+/**
+ * True when a tunnel the OS still calls "connected" has actually stopped
+ * working. Requires a handshake to have happened at least once: a fresh tunnel
+ * legitimately reports 0 until the first one lands, and the connect watchdog —
+ * not this — owns that window.
+ */
+export function isTunnelDead(s: { state: string; lastHandshake: number }): boolean {
+  if (s.state !== 'connected' || s.lastHandshake <= 0) {
+    return false;
+  }
+  return Math.floor(Date.now() / 1000) - s.lastHandshake > HANDSHAKE_DEAD_SEC;
+}
+
 export function useVpn(): VpnModel & VpnActions {
   const [keypair, setKeypair] = useState<Keypair | null>(null);
   const [countries, setCountries] = useState<readonly Country[]>([]);
@@ -336,6 +363,8 @@ export function useVpn(): VpnModel & VpnActions {
   // distinguish an unexpected drop from a user disconnect, for auto-reconnect.
   const wantConnectedRef = useRef(false);
   const wasConnectedRef = useRef(false);
+  // Guards the staleness backstop: one stop per connected session, never a loop.
+  const staleRef = useRef(false);
   /** POST_NOTIFICATIONS asked this session (Android 13+); never re-prompt. */
   const notifPermAskedRef = useRef(false);
 
@@ -640,6 +669,7 @@ export function useVpn(): VpnModel & VpnActions {
     }
     if (state !== 'connected') {
       lastSampleRef.current = null;
+      staleRef.current = false;
       setSpeed({ down: 0, up: 0 });
       return undefined;
     }
@@ -651,6 +681,23 @@ export function useVpn(): VpnModel & VpnActions {
           return;
         }
         setStatus(s);
+        if (!staleRef.current && isTunnelDead(s)) {
+          // Backstop for a roam the native layer could not repair. The tunnel
+          // services rebind their socket on a network change, which fixes the
+          // common case in under a second — but a rebind can fail (the new
+          // interface not up yet), and some breakages raise no callback at all:
+          // a DHCP renewal on the SAME interface, a NAT rebind, or the gateway
+          // simply dying. In every one of those the OS still reports the VPN as
+          // connected, so nothing else here would ever notice.
+          //
+          // Stop the tunnel WITHOUT touching wantConnected/wasConnected, so the
+          // native state event lands as an ordinary unexpected drop and the
+          // auto-reconnect effect below picks it up — including its
+          // avoidGateway() call, which is what moves us off a dead node.
+          staleRef.current = true;
+          void CumulusTunnel.stopTunnel().catch(() => undefined);
+          return;
+        }
         const t = Date.now();
         const prev = lastSampleRef.current;
         if (prev) {
