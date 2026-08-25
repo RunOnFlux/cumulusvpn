@@ -197,6 +197,19 @@ jobs:
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev \
             libayatana-appindicator3-dev librsvg2-dev
 
+      # Tauri's build script resolves the declared sidecar as a resource and
+      # fails the build if the binary is absent, so the crate cannot even be
+      # type-checked without it. desktop-release does the same thing before it
+      # builds; this is a pure-Go, CGO-off cross-build, so it is cheap.
+      - name: Setup Go (for the wireguard-go sidecar)
+        uses: actions/setup-go@v7
+        with:
+          go-version: '1.25'
+
+      - name: Build the wireguard-go sidecar
+        working-directory: ${{ github.workspace }}
+        run: bash clients/desktop/scripts/fetch-wireguard-go.sh x86_64-unknown-linux-gnu
+
       - name: Cache cargo
         uses: actions/cache@v4
         with:
