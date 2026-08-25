@@ -11,6 +11,7 @@ pub mod routing;
 pub mod tlsbridge;
 pub mod wggo;
 
+use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::Mutex;
 
 use serde::Serialize;
@@ -211,6 +212,10 @@ struct Inner {
     /// device, so they need no tracking.)
     bypass_routes: Vec<String>,
     backend: Backend,
+    /// Source address the OS last chose for the entry gateway. A change means
+    /// the machine roamed (different Wi-Fi, dock/undock, cellular tether) and
+    /// the sidecar's socket is now bound to an interface that has gone.
+    local_src: Option<IpAddr>,
     /// Last stats we successfully polled, so a transient UAPI hiccup doesn't
     /// zero the counters in the UI.
     rx_bytes: u64,
@@ -234,6 +239,91 @@ impl Inner {
 }
 
 /// The single owner of tunnel state; registered as Tauri managed state.
+impl Inner {
+    /// Notice that the machine changed network, and put the tunnel back.
+    ///
+    /// Laptops roam as much as phones — a different Wi-Fi, undocking Ethernet,
+    /// tethering — and WireGuard does not recover on its own. The gateway half
+    /// is automatic (it relearns a peer's endpoint from any authenticated
+    /// packet), but the client's socket stays bound to the interface that went
+    /// away, so nothing is ever sent and nothing is ever relearned. The OS keeps
+    /// the interface up throughout, so no error is raised and the UI still says
+    /// connected while no traffic moves.
+    ///
+    /// Two transports, two answers, matching the mobile clients:
+    ///
+    /// * **vanilla / awg** — only the socket is stale. Rebinding reopens it on
+    ///   the new interface; the session, keys and counters all survive.
+    /// * **wg-tls** — the socket that died is `ClientBridge`'s TCP connection to
+    ///   the relay, which cannot migrate and has no reconnect. Rebinding a
+    ///   device pointed at the local bridge would achieve nothing, so the tunnel
+    ///   is failed instead and the UI's auto-reconnect rebuilds it.
+    ///
+    /// In multi-hop only the OUTER (entry) sidecar holds a socket on the
+    /// physical network. The inner one reaches the exit through the outer
+    /// tunnel, whose interface a roam does not disturb.
+    fn repair_after_roam(&mut self) {
+        let Some(endpoint) = self.endpoint.clone() else {
+            return;
+        };
+        let Some(src) = local_source_for(&endpoint) else {
+            // No route to the gateway at all right now — mid-switch, or simply
+            // offline. Leave the recorded address alone so the NEXT poll, once a
+            // route exists, compares against where we were and still sees the
+            // change.
+            return;
+        };
+        let previous = self.local_src.replace(src);
+        // `is_none_or` would read better but is stable only since 1.82; the
+        // crate declares rust-version = 1.77.
+        match previous {
+            Some(p) if p != src => {}
+            // First observation, or nothing moved.
+            _ => return,
+        }
+
+        if self.bridge.is_some() {
+            self.state = TunnelState::Error;
+            self.error = Some("network changed — reconnecting".into());
+            return;
+        }
+        // Outer device for multi-hop, the only device for single-hop.
+        if let Some(sidecar) = self.sidecar.as_ref() {
+            if let Err(e) = sidecar.rebind() {
+                // The new interface may not be usable yet. Clear the recorded
+                // address so the next poll treats this as a fresh change and
+                // tries again, rather than deciding nothing moved.
+                self.local_src = previous;
+                self.error = Some(format!("rebind after network change failed: {e}"));
+            }
+        }
+    }
+}
+
+/// The address the OS would send from to reach `endpoint`, or `None` if it has
+/// no route there.
+///
+/// Connecting a UDP socket sends nothing — it only asks the kernel to pick a
+/// route and bind a source address — so this is a free question to ask on every
+/// status poll. It answers the one that matters: the gateway keeps a host route
+/// on the PHYSICAL interface (that is what stops the tunnel carrying its own
+/// packets), so the source address for it tracks the real network and changes
+/// exactly when the machine roams.
+///
+/// Parsed as a `SocketAddr` rather than resolved, so a poll can never block on
+/// DNS. Our endpoints are always literal IPs.
+fn local_source_for(endpoint: &str) -> Option<IpAddr> {
+    let addr: SocketAddr = endpoint.parse().ok()?;
+    let bind = if addr.is_ipv4() {
+        "0.0.0.0:0"
+    } else {
+        "[::]:0"
+    };
+    let sock = UdpSocket::bind(bind).ok()?;
+    sock.connect(addr).ok()?;
+    Some(sock.local_addr().ok()?.ip())
+}
+
 pub struct TunnelManager {
     inner: Mutex<Inner>,
 }
@@ -252,6 +342,7 @@ impl TunnelManager {
                 endpoint: None,
                 assigned_ip: None,
                 country: None,
+                local_src: None,
                 error: None,
                 sidecar: None,
                 exit_sidecar: None,
@@ -637,6 +728,7 @@ impl TunnelManager {
     pub fn status(&self) -> TunnelStatus {
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
         if inner.state == TunnelState::Up {
+            inner.repair_after_roam();
             // For multi-hop the real transfer counters live on the inner (exit)
             // device — all payload traffic flows through it; the outer only
             // carries the encapsulated tunnel. Fall back to the single-hop
@@ -693,6 +785,7 @@ impl TunnelManager {
             endpoint: None,
             assigned_ip: None,
             country: None,
+            local_src: None,
             error: None,
             sidecar: None,
             exit_sidecar: None,
@@ -705,5 +798,38 @@ impl TunnelManager {
             last_handshake: None,
         };
         Ok(inner.snapshot())
+    }
+}
+
+#[cfg(test)]
+mod roam_tests {
+    use super::*;
+
+    #[test]
+    fn local_source_for_finds_a_route_to_a_public_address() {
+        // No packet is sent — connect() only makes the kernel choose a route —
+        // so this works offline-ish and never blocks. On a machine with any
+        // route at all it must yield the source address that route would use.
+        let src = local_source_for("1.1.1.1:51820");
+        assert!(src.is_some(), "expected a source address for a routable IP");
+        assert!(
+            !src.unwrap().is_unspecified(),
+            "0.0.0.0 is not a real source"
+        );
+    }
+
+    #[test]
+    fn local_source_for_rejects_anything_that_is_not_a_literal_endpoint() {
+        // Parsed, never resolved: a hostname here would put DNS on the status
+        // poll's path and could block the UI.
+        assert!(local_source_for("gateway.example.com:51820").is_none());
+        assert!(local_source_for("not-an-endpoint").is_none());
+        assert!(local_source_for("").is_none());
+    }
+
+    #[test]
+    fn local_source_for_handles_ipv6_endpoints() {
+        // Must not panic or bind the v4 wildcard for a v6 endpoint.
+        let _ = local_source_for("[2606:4700:4700::1111]:51820");
     }
 }

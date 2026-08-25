@@ -191,6 +191,10 @@ pub struct WgStats {
     pub tx_bytes: u64,
     /// Unix seconds of the latest handshake, or `None` if none yet.
     pub last_handshake: Option<i64>,
+    /// The UDP port the sidecar is actually bound to. Needed to rebind it:
+    /// the config usually asks for an ephemeral port, so the only way to learn
+    /// which one wireguard-go got is to read it back.
+    pub listen_port: Option<u16>,
 }
 
 /// Parse the `key=value` UAPI `get=1` response into transfer stats.
@@ -207,6 +211,7 @@ pub fn parse_uapi_get(response: &str) -> WgStats {
                 let secs: i64 = value.parse().unwrap_or(0);
                 stats.last_handshake = if secs > 0 { Some(secs) } else { None };
             }
+            "listen_port" => stats.listen_port = value.parse().ok().filter(|p| *p != 0),
             _ => {}
         }
     }
@@ -572,6 +577,33 @@ impl Sidecar {
         Ok(parse_uapi_get(&reply))
     }
 
+    /// Reopen the sidecar's UDP socket on whatever the default route is now.
+    ///
+    /// The desktop client drives a wireguard-go SIDECAR over UAPI, so there is
+    /// no in-process `BindUpdate` to call as there is on mobile. Re-sending the
+    /// port the device is already bound to is the equivalent: `handleDeviceLine`
+    /// runs `BindUpdate()` for any `listen_port=` line, with no early return
+    /// when the value is unchanged (device/uapi.go), which closes the socket and
+    /// reopens it on the current interface, clearing each peer's cached source
+    /// address on the way.
+    ///
+    /// The port has to be read back rather than assumed: our configs ask for an
+    /// ephemeral port, so the number only exists inside the sidecar. A device
+    /// that reports no port has not finished coming up, and rebinding it would
+    /// be meaningless — hence the `Ok(false)`.
+    pub fn rebind(&self) -> Result<bool, TunnelError> {
+        let Some(port) = self.stats()?.listen_port else {
+            return Ok(false);
+        };
+        let reply = self.uapi_exchange(&format!("set=1\nlisten_port={port}\n\n"))?;
+        if !reply.contains("errno=0") {
+            return Err(TunnelError::Uapi(
+                "listen_port rebind rejected by wireguard-go",
+            ));
+        }
+        Ok(true)
+    }
+
     /// Kill the sidecar and remove its interface. wireguard-go tears the TUN
     /// device down on exit; the routes it required are cleaned by the caller.
     pub fn kill(mut self) -> Result<(), TunnelError> {
@@ -594,7 +626,7 @@ impl Drop for Sidecar {
 
 #[cfg(test)]
 mod obfs_tests {
-    use super::WgConfig;
+    use super::{parse_uapi_get, WgConfig};
 
     // 32 zero bytes, standard base64 — valid input for b64_to_hex.
     const KEY: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
@@ -625,5 +657,26 @@ mod obfs_tests {
         let cfg = WgConfig::parse(&conf).expect("parse");
         assert!(cfg.obfs.is_empty());
         assert!(!cfg.to_uapi_set().unwrap().contains("jc="));
+    }
+
+    #[test]
+    fn parse_uapi_get_reads_the_bound_port() {
+        // rebind() has to send back the port the device actually got, and our
+        // configs ask for an ephemeral one — so the only source of truth is the
+        // `get=1` reply.
+        let stats = parse_uapi_get("listen_port=51820\nrx_bytes=10\ntx_bytes=20\nerrno=0\n");
+        assert_eq!(stats.listen_port, Some(51820));
+        assert_eq!(stats.rx_bytes, 10);
+        assert_eq!(stats.tx_bytes, 20);
+    }
+
+    #[test]
+    fn parse_uapi_get_treats_port_zero_as_absent() {
+        // A device that has not finished coming up reports 0. Rebinding to port
+        // 0 would move it to a DIFFERENT ephemeral port, silently changing the
+        // source the gateway has learned.
+        assert_eq!(parse_uapi_get("listen_port=0\nerrno=0\n").listen_port, None);
+        assert_eq!(parse_uapi_get("errno=0\n").listen_port, None);
+        assert_eq!(parse_uapi_get("listen_port=junk\n").listen_port, None);
     }
 }
