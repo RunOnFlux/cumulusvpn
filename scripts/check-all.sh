@@ -67,6 +67,27 @@ if [ -d clients/native/wgnest ]; then
   echo
 fi
 
+# The desktop's Rust half, likewise invisible to the npm loop. Its `cargo test`
+# had been failing to COMPILE for some time (an rcgen field rename) with nothing
+# reporting it, which is exactly what this is for. Clippy is left out: the crate
+# carries pre-existing dead-code and arity lints that would drown the signal.
+if [ -d clients/desktop/src-tauri ] && command -v cargo >/dev/null; then
+  echo "── clients/desktop/src-tauri (rust)"
+  for entry in "format:cargo fmt --check" "check:cargo check --quiet" "test:cargo test --quiet"; do
+    label=${entry%%:*}
+    step=${entry#*:}
+    printf '   %-13s ' "$label"
+    if out=$(cd clients/desktop/src-tauri && eval "$step" 2>&1); then
+      echo "ok"
+    else
+      echo "FAIL"
+      printf '%s\n' "$out" | sed 's/^/      /' | tail -15
+      failed+=("desktop-rust:$label")
+    fi
+  done
+  echo
+fi
+
 echo
 if [ ${#failed[@]} -eq 0 ]; then
   echo "all checks passed"

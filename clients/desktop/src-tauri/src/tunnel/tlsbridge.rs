@@ -292,7 +292,9 @@ mod tests {
     fn spawn_echo_relay() -> (String, ()) {
         let ck = rcgen::generate_simple_self_signed(vec!["localhost".to_string()]).unwrap();
         let cert_der = ck.cert.der().clone();
-        let key_der = rustls::pki_types::PrivateKeyDer::Pkcs8(ck.key_pair.serialize_der().into());
+        // rcgen 0.14 renamed CertifiedKey.key_pair -> signing_key.
+        let key_der =
+            rustls::pki_types::PrivateKeyDer::Pkcs8(ck.signing_key.serialize_der().into());
         let (addr_tx, addr_rx) = std::sync::mpsc::channel();
         std::thread::spawn(move || {
             let rt = tokio::runtime::Runtime::new().unwrap();
