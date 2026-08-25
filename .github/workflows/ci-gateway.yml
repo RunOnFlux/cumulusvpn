@@ -1,15 +1,23 @@
 name: ci-gateway
 
-# Go CI for the CumulusVPN gateway.
+# Go CI for both of the repo's Go modules: the gateway, and the wgnest tunnel
+# core the mobile apps embed.
+#
+# wgnest was uncovered until 2026-08-25. android-release.yml references it, but
+# only to run `gomobile bind` on a tag — it never ran a test, so the code that
+# IS the mobile data plane (two stacked wireguard-go devices, the roam rebind)
+# could break on main and nothing would say so.
 on:
   push:
     branches: [main]
     paths:
       - 'gateway/**'
+      - 'clients/native/**'
       - '.github/workflows/ci-gateway.yml'
   pull_request:
     paths:
       - 'gateway/**'
+      - 'clients/native/**'
       - '.github/workflows/ci-gateway.yml'
 
 permissions:
@@ -21,11 +29,19 @@ concurrency:
 
 jobs:
   gateway:
-    name: build & test
+    name: build & test (${{ matrix.name }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: gateway
+            dir: gateway
+          - name: wgnest
+            dir: clients/native/wgnest
     defaults:
       run:
-        working-directory: gateway
+        working-directory: ${{ matrix.dir }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -34,7 +50,7 @@ jobs:
         uses: actions/setup-go@v7
         with:
           go-version: '1.25'
-          cache-dependency-path: gateway/go.sum
+          cache-dependency-path: ${{ matrix.dir }}/go.sum
 
       # gofmt is authoritative; fail the build if anything is unformatted.
       - name: gofmt
