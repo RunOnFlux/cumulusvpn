@@ -55,7 +55,22 @@ const STEALTH_CODES = ['de'];
 const FLUX_API = 'https://api.runonflux.io';
 const CONTROL_PORT = 51821;
 const RELAY_PORT = 443;
-const PROBE_TIMEOUT_MS = 6000;
+const PROBE_TIMEOUT_MS = 4000;
+/**
+ * How many gateway probes may be in flight at once.
+ *
+ * A Worker sustains only a handful of simultaneous outbound connections; past
+ * that they queue, and a queued socket can burn its whole timeout before it
+ * even connects. That is the failure this replaces — the sweep opened one
+ * socket per gateway and then reported the losers as offline.
+ *
+ * Six is deliberately below where the trouble starts rather than tuned to it.
+ * Sweep duration is no longer user-visible (see the /api/fleet handler), so
+ * buying accuracy with time is the right trade every time.
+ */
+const PROBE_CONCURRENCY = 6;
+/** Same, for the Flux API placement lookups that feed the probe list. */
+const LOCATION_CONCURRENCY = 6;
 
 /** Public IPv4 literal only — hardens the probe against a poisoned Flux-API
  *  response steering us at private/reserved hosts. Rejects zero-padded (octal)
@@ -195,6 +210,35 @@ async function tcpOpen(host, port, timeoutMs) {
   }
 }
 
+/**
+ * Map `fn` over `items` with at most `limit` calls in flight.
+ *
+ * The fleet sweep used to be `Promise.all` over every gateway, which opened
+ * ~139 TCP sockets from one Worker invocation. A Worker sustains nowhere near
+ * that many, so most probes hit their timeout and the page reported healthy
+ * nodes as offline — 16, then 48, then 2 across consecutive sweeps, while every
+ * one of those "offline" nodes answered a direct probe with 200. A monitoring
+ * page that invents outages is worse than no page, because it is consulted
+ * first and believed during exactly the incidents it fabricates.
+ *
+ * Order is preserved, and a rejecting `fn` would reject the whole call — but
+ * `probe` is written never to throw, which is what keeps one bad gateway from
+ * emptying the map.
+ */
+async function mapPool(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const runner = async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      out[i] = await fn(items[i], i);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, runner));
+  return out;
+}
+
 /** Probe one gateway's /v1/info (and, for stealth, its 443 relay); never throws. */
 async function probe(ip, cc, spec, tier) {
   const inst = { ip, cc, spec, tier, up: false };
@@ -225,13 +269,18 @@ async function fleet() {
     ...COUNTRY_CODES.map((cc) => ({ cc, spec: `cumulusvpn${cc}`, tier: 'standard' })),
     ...STEALTH_CODES.map((cc) => ({ cc, spec: `cumulusvpntls${cc}`, tier: 'stealth' })),
   ];
-  const perSpec = await Promise.all(
-    groups.map(async ({ cc, spec, tier }) => {
-      const ips = await locations(spec);
-      return Promise.all(ips.map((ip) => probe(ip, cc.toUpperCase(), spec, tier)));
-    }),
+  // Resolve every spec's placements first, then probe the flattened list. Two
+  // bounded passes rather than nested Promise.all: nesting made the real
+  // in-flight count the PRODUCT of the two fan-outs, which is how one page load
+  // came to open a socket per gateway all at once.
+  const perSpec = await mapPool(groups, LOCATION_CONCURRENCY, async ({ cc, spec, tier }) => {
+    const ips = await locations(spec);
+    return ips.map((ip) => ({ ip, cc: cc.toUpperCase(), spec, tier }));
+  });
+  const targets = perSpec.flat();
+  const instances = await mapPool(targets, PROBE_CONCURRENCY, (t) =>
+    probe(t.ip, t.cc, t.spec, t.tier),
   );
-  const instances = perSpec.flat();
 
   // "latest" build = the most common build_commit among reachable instances, so
   // the page can flag stragglers on an older image (or with the field absent).
@@ -428,19 +477,37 @@ export default {
     if (url.pathname === '/api/fleet') {
       const cache = caches.default;
       const key = new Request(new URL('/api/fleet', url.origin).toString(), { method: 'GET' });
-      let resp = await cache.match(key);
-      if (!resp) {
+      const sweep = async () => {
         const data = await fleet();
-        resp = new Response(JSON.stringify(data), {
+        const fresh = new Response(JSON.stringify(data), {
           headers: {
             'content-type': 'application/json; charset=utf-8',
+            // Only how long the copy in cache is considered current; the
+            // handler decides what to SERVE, so this never gates a response.
             'cache-control': 'public, max-age=30',
             'access-control-allow-origin': '*',
           },
         });
-        ctx.waitUntil(cache.put(key, resp.clone()));
+        await cache.put(key, fresh.clone());
+        return fresh;
+      };
+
+      // Stale-while-revalidate. Probing the fleet is inherently slow — it is a
+      // hundred-odd round trips to gateways worldwide, deliberately run a few
+      // at a time so none of them are wrongly declared dead. Making a viewer
+      // wait for that is what pushed the old code into cranking concurrency up
+      // until the sweep started lying.
+      //
+      // A cached copy answers instantly and a refresh runs behind it, so how
+      // long a sweep takes stops being a constraint on the design. Worst case a
+      // viewer sees numbers one sweep old, on a page that already refreshes
+      // every 30s. Only a genuinely cold cache waits.
+      const cached = await cache.match(key);
+      if (cached) {
+        ctx.waitUntil(sweep().catch(() => undefined));
+        return cached;
       }
-      return resp;
+      return sweep();
     }
 
     return env.ASSETS.fetch(request);
