@@ -64,11 +64,17 @@ const PROBE_TIMEOUT_MS = 4000;
  * even connects. That is the failure this replaces — the sweep opened one
  * socket per gateway and then reported the losers as offline.
  *
- * Six is deliberately below where the trouble starts rather than tuned to it.
- * Sweep duration is no longer user-visible (see the /api/fleet handler), so
- * buying accuracy with time is the right trade every time.
+ * Sixteen: an order of magnitude below the ~139 that broke it, and measured
+ * against production rather than guessed. Six was the first safe value tried
+ * and swept in ~48s; because caches.default is per-datacenter, that whole cost
+ * lands on the first viewer at each edge location, which is too slow for a page
+ * people open when something is wrong. Local testing cannot settle this —
+ * wrangler serialises connect(), so 8, 16 and 32 all measured the same there.
+ *
+ * If accuracy ever regresses (nodes flapping "down" that answer a direct
+ * probe), this number is the first thing to lower.
  */
-const PROBE_CONCURRENCY = 6;
+const PROBE_CONCURRENCY = 16;
 /** Same, for the Flux API placement lookups that feed the probe list. */
 const LOCATION_CONCURRENCY = 6;
 /**
