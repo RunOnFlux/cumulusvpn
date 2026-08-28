@@ -64,17 +64,19 @@ const PROBE_TIMEOUT_MS = 4000;
  * even connects. That is the failure this replaces — the sweep opened one
  * socket per gateway and then reported the losers as offline.
  *
- * Sixteen: an order of magnitude below the ~139 that broke it, and measured
- * against production rather than guessed. Six was the first safe value tried
- * and swept in ~48s; because caches.default is per-datacenter, that whole cost
- * lands on the first viewer at each edge location, which is too slow for a page
- * people open when something is wrong. Local testing cannot settle this —
- * wrangler serialises connect(), so 8, 16 and 32 all measured the same there.
+ * Six, and measured rather than guessed. Sixteen was tried to cut the sweep
+ * time and immediately brought the original bug back in milder form: 11 of the
+ * 17 gateways it called offline answered a direct probe with 200. Only the six
+ * genuinely dead ones should have been listed.
  *
- * If accuracy ever regresses (nodes flapping "down" that answer a direct
- * probe), this number is the first thing to lower.
+ * So the ceiling is low, and lower than feels necessary. A slow sweep costs
+ * nothing now that no request waits for one; a fast sweep that invents outages
+ * costs the page its only purpose. Local testing cannot tune this — wrangler
+ * serialises connect(), so 8, 16 and 32 all measure identically there. Anything
+ * above six must be validated against production by direct-probing every
+ * gateway the sweep calls dead.
  */
-const PROBE_CONCURRENCY = 16;
+const PROBE_CONCURRENCY = 6;
 /** Same, for the Flux API placement lookups that feed the probe list. */
 const LOCATION_CONCURRENCY = 6;
 /**
@@ -518,9 +520,23 @@ export default {
       // A cached copy answers instantly and a refresh runs behind it, so how
       // long a sweep takes stops being a constraint on the design. Worst case a
       // viewer sees numbers one sweep old, on a page that already refreshes
-      // every 30s. Only a genuinely cold cache waits.
+      // every 30s. Nothing waits for a sweep, cold cache included.
       const cached = await cache.match(key);
-      if (cached) {
+      if (!cached) {
+        // Cold cache. caches.default is per-DATACENTER, so this is not a rare
+        // one-off — it is paid at every edge location the page is opened from,
+        // and a full sweep at this concurrency took 48s and 31s on two colos
+        // when it blocked. Kick it off and answer immediately instead: the page
+        // already retries a failed fetch on its 30s poll, and by then the cache
+        // is populated. Better a brief "retrying" than a minute of blank tab.
+        //
+        // Safe to rely on waitUntil here because a sweep demonstrably outlives
+        // the response — the background refresh below has been observed
+        // completing and resetting the data age in production.
+        ctx.waitUntil(sweep().catch(() => undefined));
+        return jsonResponse({ error: 'warming up', retry_after_s: 15 }, { 'retry-after': '15' }, 503);
+      }
+      {
         // Refresh only once the data has actually aged, or every viewer's poll
         // would launch its own sweep and they would stampede the gateways.
         let age = Infinity;
