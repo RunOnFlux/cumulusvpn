@@ -71,6 +71,12 @@ const PROBE_TIMEOUT_MS = 4000;
 const PROBE_CONCURRENCY = 6;
 /** Same, for the Flux API placement lookups that feed the probe list. */
 const LOCATION_CONCURRENCY = 6;
+/**
+ * How stale the fleet data may get before a request triggers a background
+ * refresh. Matches the page's own poll interval, so a viewer watching the page
+ * sees numbers that move about as often as they expect.
+ */
+const REFRESH_AFTER_MS = 30_000;
 
 /** Public IPv4 literal only — hardens the probe against a poisoned Flux-API
  *  response steering us at private/reserved hosts. Rejects zero-padded (octal)
@@ -482,9 +488,14 @@ export default {
         const fresh = new Response(JSON.stringify(data), {
           headers: {
             'content-type': 'application/json; charset=utf-8',
-            // Only how long the copy in cache is considered current; the
-            // handler decides what to SERVE, so this never gates a response.
-            'cache-control': 'public, max-age=30',
+            // Long on purpose. This is how long a copy remains SERVABLE, not
+            // how long it is considered current — staleness is judged from the
+            // payload's own generatedAt below. A short max-age here defeats the
+            // whole design: cache.match misses on an expired entry, so there is
+            // no stale copy left to answer with and the request blocks on a
+            // sweep. That is exactly what the first version of this did, and it
+            // cost ~30s on every other request.
+            'cache-control': 'public, max-age=600',
             'access-control-allow-origin': '*',
           },
         });
@@ -504,7 +515,18 @@ export default {
       // every 30s. Only a genuinely cold cache waits.
       const cached = await cache.match(key);
       if (cached) {
-        ctx.waitUntil(sweep().catch(() => undefined));
+        // Refresh only once the data has actually aged, or every viewer's poll
+        // would launch its own sweep and they would stampede the gateways.
+        let age = Infinity;
+        try {
+          const { generatedAt } = await cached.clone().json();
+          if (typeof generatedAt === 'number') age = Date.now() - generatedAt;
+        } catch {
+          // Unparseable cache entry — treat as ancient and re-sweep.
+        }
+        if (age > REFRESH_AFTER_MS) {
+          ctx.waitUntil(sweep().catch(() => undefined));
+        }
         return cached;
       }
       return sweep();
