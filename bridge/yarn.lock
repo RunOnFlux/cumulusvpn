@@ -26,6 +26,7 @@ __metadata:
   resolution: "@cumulusvpn/bridge@workspace:."
   dependencies:
     "@apple/app-store-server-library": "npm:3.1.0"
+    "@fastify/cors": "npm:11.3.0"
     "@fastify/rate-limit": "npm:11.2.0"
     "@noble/hashes": "npm:2.2.0"
     "@runonflux/utxo-lib": "npm:1.0.5"
@@ -117,6 +118,16 @@ __metadata:
     ajv-formats: "npm:^3.0.1"
     fast-uri: "npm:^4.0.0"
   checksum: 10c0/dfaa02348b07b2d245c2092ab96d606befe729710692852087287275eb2c67fa24eeb5561447cd16a91ec30c7ccbcb0df6c89bed63c09718c92cdfc7a322ce4b
+  languageName: node
+  linkType: hard
+
+"@fastify/cors@npm:11.3.0":
+  version: 11.3.0
+  resolution: "@fastify/cors@npm:11.3.0"
+  dependencies:
+    fastify-plugin: "npm:^6.0.0"
+    toad-cache: "npm:^3.7.0"
+  checksum: 10c0/2b37bdf7f5a6c48dd329aeb1ab213514515f285969acd803c72a75a044cb2b6c30077c5d09f4c72bcf4dd5ade00adb4d34696ea9dcc0ffc39bf95e6b76a8d4b0
   languageName: node
   linkType: hard
 

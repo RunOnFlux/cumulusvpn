@@ -8,6 +8,7 @@
  * verification failures (forged payloads) get 4xx.
  */
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
+import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import { createHash, timingSafeEqual } from 'node:crypto';
 
@@ -89,6 +90,27 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
       done(parseErr, undefined);
     }
   });
+
+  // CORS. The web app is on a different origin to the bridge, so every browser
+  // call to /v1 — checkout, portal, voucher redeem, payment status — is
+  // cross-origin and JSON-bodied, which means a preflight. With no OPTIONS
+  // handler Fastify 404s that preflight and the browser reports net::ERR_FAILED
+  // without ever sending the real request. Card checkout was dead on the web
+  // for exactly this reason, and no test caught it because the failure only
+  // exists in a browser: curl and the native apps ignore CORS entirely.
+  //
+  // Allowlisted, never `*`: these endpoints are unauthenticated by design (the
+  // payment code is the capability), so there is no reason to let an arbitrary
+  // page drive them on a visitor's behalf. An empty list registers nothing at
+  // all, leaving a browserless deployment exactly as it was.
+  if (cfg.corsOrigins.length > 0) {
+    await app.register(cors, {
+      origin: [...cfg.corsOrigins],
+      methods: ['GET', 'POST', 'OPTIONS'],
+      allowedHeaders: ['content-type'],
+      maxAge: 86_400,
+    });
+  }
 
   await app.register(rateLimit, { global: true, max: 120, timeWindow: '1 minute' });
 

@@ -96,6 +96,15 @@ export interface Config {
    * (they settle as whole price multiples, which every gateway honors).
    */
   readonly dayGrantsEnabled: boolean;
+  /**
+   * Browser origins allowed to call the public /v1 endpoints.
+   *
+   * Not optional decoration: the web app is on a DIFFERENT origin to the
+   * bridge, so every checkout, portal, voucher and status call from a browser
+   * is cross-origin. Without these headers the preflight 404s and the request
+   * dies as net::ERR_FAILED before it is ever sent.
+   */
+  readonly corsOrigins: readonly string[];
   readonly stripe: StripeConfig | undefined;
   readonly apple: AppleConfig | undefined;
   readonly google: GoogleConfig | undefined;
@@ -225,6 +234,37 @@ function grantDays(env: NodeJS.ProcessEnv, key: string): number {
   return n;
 }
 
+/**
+ * Origins permitted to call /v1 from a browser.
+ *
+ * Defaults to the origin of STRIPE_SUCCESS_URL rather than a hardcoded host.
+ * That URL is already required to point at the web app — Stripe redirects the
+ * buyer back to it — so the one value that MUST match the site is reused
+ * instead of introducing a second one that can silently disagree with it.
+ *
+ * CORS_ORIGINS overrides, comma-separated, for a deployment whose web app
+ * lives somewhere else (or to add a dev origin). An explicit empty string
+ * disables CORS entirely, which is right for a bridge no browser talks to.
+ */
+function corsOrigins(env: NodeJS.ProcessEnv): readonly string[] {
+  const raw = env.CORS_ORIGINS;
+  if (raw !== undefined) {
+    return raw
+      .split(',')
+      .map((o) => o.trim())
+      .filter((o) => o !== '');
+  }
+  const success = env.STRIPE_SUCCESS_URL;
+  if (!success) {
+    return [];
+  }
+  try {
+    return [new URL(success).origin];
+  } catch {
+    return [];
+  }
+}
+
 /** Parse and validate the whole config from process.env. Throws on any gap. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const priceFlux = num(env, 'PRICE_FLUX', 20);
@@ -247,6 +287,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     alertWebhookUrl: env.ALERT_WEBHOOK_URL || undefined,
     minTreasuryFlux: num(env, 'MIN_TREASURY_FLUX', 200),
     dayGrantsEnabled: env.DAY_GRANTS_ENABLED === 'true',
+    corsOrigins: corsOrigins(env),
     stripe: loadStripe(env),
     apple: loadApple(env),
     google: loadGoogle(env),
