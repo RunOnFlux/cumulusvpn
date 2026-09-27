@@ -146,8 +146,9 @@ at $0.99. (dVPN market clearing price is $1.50–4/mo — $0.99 still undercuts 
    64-char hash in OP_RETURN (Zelcore "message" field or raw tx). Scripted in `deploy/scripts/`.
 3. Renewals = paid app updates before `expire`. Automate with a cron + alerting (the one
    "ops" task that genuinely matters — if specs lapse, the network shrinks).
-4. Price-constant updates (`CVPN_PRICE_FLUX`) = app update; gateways watch their own spec via
-   `/apps/appspecifications/<name>` and hot-reload env-derived config.
+4. Price updates (`CVPN_PRICE_SCHEDULE` + `CVPN_PRICE_FLUX`) = free app update, run by
+   `deploy/scripts/reprice.mjs`; gateways re-read their own spec via
+   `/apps/appspecifications/<name>` every 5 min and hot-apply a new schedule (docs/04).
 
 ## Chain access from inside the gateway
 

@@ -6,6 +6,28 @@
 //   node scripts/update-image.mjs --only de,us    # just these countries
 //   node scripts/update-image.mjs --broadcast     # sign + submit (needs the owner key)
 //   node scripts/update-image.mjs --broadcast --wait   # ...and poll until it lands
+//   node scripts/update-image.mjs --price-only    # ONLY the price env, image untouched
+//   node scripts/update-image.mjs --allow-stale   # see "freshness" below
+//
+// Exits 2 when any app was REFUSED, failed to broadcast, or never confirmed —
+// so scripts/reprice.mjs (which runs this) cannot report a half-done fleet as done.
+//
+// PRICE
+// The price env (CVPN_PRICE_SCHEDULE + CVPN_PRICE_FLUX, docs/04) is owned here
+// too, from countries.yaml `price.schedule`, so every image roll also re-asserts
+// the canonical price. Three guards keep a price update from doing damage:
+//   - append-only: the on-chain schedule must be a prefix of the one we push.
+//     Anything else would re-judge payments already made (and means someone
+//     repriced from another checkout — find out before overwriting it).
+//   - capable image: a multi-entry schedule needs gateway >= MIN_SCHEDULE_IMAGE.
+//     An older image reads only CVPN_PRICE_FLUX and re-judges ALL history at
+//     it. Without --price-only the image rolls in the same update, which is the
+//     way to satisfy this.
+//   - freshness: a new price RISE that started more than STALE_ENTRY_BLOCKS ago
+//     is refused. Gateways without it kept quoting the old price since that
+//     height, and the grace window only covers those payers for 72 h. A stale
+//     DROP only ever favours payers, so it goes through. --allow-stale pushes a
+//     stale rise anyway (the fix when part of the fleet already carries it).
 //
 // WHY THIS EXISTS
 // Hand-editing 20+ specs is how the fleet drifted: countries.yaml said US had 6
@@ -46,6 +68,13 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
+import {
+  BLOCK_SECONDS,
+  formatSchedule,
+  priceEnv,
+  readPriceConfig,
+  scheduleFromEnv,
+} from './price.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const FLUX_API = process.env.FLUX_API ?? 'https://api.runonflux.io';
@@ -92,23 +121,97 @@ const MUTABLE = new Set(['repotag', 'environmentParameters', 'expire']);
  */
 const EXTEND_MARGIN = 480;
 
-/** The env vars this migration owns; everything else on-chain is preserved. */
-function desiredTransportEnv() {
-  const cfg = parseYaml(readFileSync(join(ROOT, 'countries.yaml'), 'utf8'));
-  const d = cfg.defaults ?? {};
-  const out = [];
-  if (d.obfs) out.push('CVPN_OBFS_ENABLE=1');
-  if (d.tls) out.push('CVPN_TLS_ENABLE=1');
-  if (d.tlsSni) out.push(`CVPN_TLS_SNI=${d.tlsSni}`);
-  return { env: out, image: d.repotag };
+/**
+ * A new schedule entry older than this (24 h) is refused — see PRICE above. Well
+ * inside the 72 h grace, so every payer quoted the old price in the meantime is
+ * still honoured once the entry lands.
+ */
+export const STALE_ENTRY_BLOCKS = (24 * 3600) / BLOCK_SECONDS;
+
+/** The first gateway release that judges payments by CVPN_PRICE_SCHEDULE. */
+export const MIN_SCHEDULE_IMAGE = '0.4.0';
+
+/** Whether a repotag's semver is at least MIN_SCHEDULE_IMAGE (unknown tags: no). */
+export function imageSupportsSchedule(repotag) {
+  const m = /:v?(\d+)\.(\d+)\.(\d+)$/.exec(repotag ?? '');
+  if (!m) return false;
+  const want = MIN_SCHEDULE_IMAGE.split('.').map(Number);
+  for (let i = 0; i < 3; i += 1) {
+    const v = Number(m[i + 1]);
+    if (v !== want[i]) return v > want[i];
+  }
+  return true;
 }
 
-/** Merge: drop any existing copy of the keys we own, then append ours, so the
- *  on-chain ordering of every unrelated variable survives untouched. */
-function mergeEnv(current, desired) {
-  const owned = new Set(desired.map((e) => e.split('=')[0]));
-  const kept = current.filter((e) => !owned.has(e.split('=')[0]));
-  return [...kept, ...desired];
+/** The env vars this migration owns; everything else on-chain is preserved. */
+function desiredEnv({ priceOnly }) {
+  const cfg = parseYaml(readFileSync(join(ROOT, 'countries.yaml'), 'utf8'));
+  const d = cfg.defaults ?? {};
+  const schedule = readPriceConfig(cfg).entries;
+  const out = priceEnv(schedule);
+  if (!priceOnly) {
+    if (d.obfs) out.push('CVPN_OBFS_ENABLE=1');
+    if (d.tls) out.push('CVPN_TLS_ENABLE=1');
+    if (d.tlsSni) out.push(`CVPN_TLS_SNI=${d.tlsSni}`);
+  }
+  return { env: out, image: d.repotag, schedule };
+}
+
+/**
+ * Why pushing `desired` onto an app whose live env is `liveEnv` would be unsafe,
+ * or null. `height` is the current chain height.
+ */
+export function priceRefusal(liveEnv, desired, height, { allowStale = false } = {}) {
+  let live;
+  try {
+    live = scheduleFromEnv(liveEnv);
+  } catch {
+    return null; // no readable price on-chain (never happens on a live app): nothing to protect
+  }
+  const prefix = live.every(
+    (e, i) => desired[i] && desired[i].from === e.from && desired[i].flux === e.flux,
+  );
+  if (!prefix || live.length > desired.length) {
+    return (
+      `on-chain price ${formatSchedule(live)} is not a prefix of ${formatSchedule(desired)} — ` +
+      'pushing it would re-judge past payments'
+    );
+  }
+  const staleRise = desired.find(
+    (e, i) =>
+      i >= live.length &&
+      i > 0 &&
+      e.flux > desired[i - 1].flux &&
+      height - e.from > STALE_ENTRY_BLOCKS,
+  );
+  if (staleRise && !allowStale) {
+    return (
+      `price rise ${staleRise.flux}@${staleRise.from} started ${height - staleRise.from} blocks ago ` +
+      `(> ${STALE_ENTRY_BLOCKS}): payers this app quoted the old price since then fall outside ` +
+      'the 72 h grace. Re-date it with scripts/reprice.mjs if no app carries it yet, else ' +
+      'pass --allow-stale'
+    );
+  }
+  return null;
+}
+
+/** Merge: a key we own is rewritten where it already sits (duplicates dropped),
+ *  a new one is appended, and every unrelated variable survives untouched — so
+ *  a one-value change (a reprice) is a one-line diff, not a reshuffle. */
+export function mergeEnv(current, desired) {
+  const want = new Map(desired.map((e) => [e.split('=')[0], e]));
+  const placed = new Set();
+  const out = [];
+  for (const e of current) {
+    const k = e.split('=')[0];
+    if (!want.has(k)) out.push(e);
+    else if (!placed.has(k)) {
+      out.push(want.get(k));
+      placed.add(k);
+    }
+  }
+  for (const [k, e] of want) if (!placed.has(k)) out.push(e);
+  return out;
 }
 
 /**
@@ -201,9 +304,11 @@ async function login(zelid, key, signMessage) {
 }
 
 async function main() {
-  const { env: transportEnv, image: defaultImage } = desiredTransportEnv();
-  const image = flag('image') ?? defaultImage;
-  if (!image)
+  const priceOnly = has('price-only');
+  const { env: ownedEnv, image: defaultImage, schedule } = desiredEnv({ priceOnly });
+  // --price-only never touches the image: each app keeps whatever it runs.
+  const image = priceOnly ? null : (flag('image') ?? defaultImage);
+  if (!priceOnly && !image)
     throw new Error('no target image (set defaults.repotag in countries.yaml or --image)');
 
   const only = flag('only')
@@ -224,8 +329,8 @@ async function main() {
 
   const height = await daemonHeight();
   console.log(`\nDaemon height: ${height}`);
-  console.log(`Target image:  ${image}`);
-  console.log(`Transport env: ${transportEnv.join('  ')}\n`);
+  console.log(`Target image:  ${image ?? '(unchanged — --price-only)'}`);
+  console.log(`Owned env:     ${ownedEnv.join('  ')}\n`);
 
   const ready = [];
   const skipped = [];
@@ -248,10 +353,29 @@ async function main() {
     delete current.hash;
     delete current.height;
 
+    const refusal = current.compose
+      .map((c) =>
+        priceRefusal(c.environmentParameters, schedule, height, { allowStale: has('allow-stale') }),
+      )
+      .find(Boolean);
+    if (refusal) {
+      skipped.push([name, `REFUSED — ${refusal}`]);
+      continue;
+    }
+
     const next = JSON.parse(JSON.stringify(current));
     for (const c of next.compose) {
-      c.repotag = image;
-      c.environmentParameters = mergeEnv(c.environmentParameters ?? [], transportEnv);
+      if (image) c.repotag = image;
+      c.environmentParameters = mergeEnv(c.environmentParameters ?? [], ownedEnv);
+    }
+    const incapable = next.compose.find((c) => !imageSupportsSchedule(c.repotag));
+    if (schedule.length > 1 && incapable) {
+      skipped.push([
+        name,
+        `REFUSED — ${incapable.repotag} predates price schedules (needs >= ${MIN_SCHEDULE_IMAGE}); ` +
+          'roll the image in the same update: run without --price-only',
+      ]);
+      continue;
     }
 
     // Re-express the subscription as blocks remaining so the expiration height
@@ -287,11 +411,16 @@ async function main() {
       changed,
       expiresAt,
       wasExpire: current.expire,
+      liveEnv: current.compose[0].environmentParameters,
     });
   }
 
-  for (const { name, from, next, changed, expiresAt, wasExpire } of ready) {
-    console.log(`✓ ${name.padEnd(18)} ${from} → ${image}`);
+  for (const { name, from, next, changed, expiresAt, wasExpire, liveEnv } of ready) {
+    if (image) console.log(`✓ ${name.padEnd(18)} ${from} → ${image}`);
+    else {
+      const was = formatSchedule(scheduleFromEnv(liveEnv));
+      console.log(`✓ ${name.padEnd(18)} price ${was} → ${formatSchedule(schedule)}  (${from})`);
+    }
     console.log(
       `  instances=${next.instances} (preserved) · expire ${wasExpire} → ${next.expire}` +
         ` (same expiry block ~${expiresAt}) · fields changed: ${changed.length}`,
@@ -299,6 +428,11 @@ async function main() {
   }
   for (const [name, why] of skipped) console.log(`· ${name.padEnd(18)} ${why}`);
   console.log(`\n${ready.length} spec(s) written to specs/update/`);
+  const refused = skipped.filter(([, why]) => why.startsWith('REFUSED')).map(([n]) => n);
+  if (refused.length) {
+    console.log(`REFUSED: ${refused.join(' ')}`);
+    process.exitCode = 2;
+  }
 
   if (!has('broadcast')) {
     console.log('Dry run — nothing was submitted. Re-run with --broadcast to apply.');
@@ -350,6 +484,7 @@ async function main() {
     const pending = await waitForLive(
       sent.map((s) => s.name),
       image,
+      ownedEnv,
     );
     stuck.push(...pending);
   }
@@ -360,6 +495,7 @@ async function main() {
   } else if (broadcast.length) {
     console.log('All confirmed live on-chain.');
   }
+  if (stuck.length || broadcast.length < ready.length) process.exitCode = 2;
   return;
 }
 
@@ -418,21 +554,25 @@ async function broadcastBatch(batch, nowHeight, { key, zelidauth, signMessage })
 /**
  * Wait for a batch to go permanent, returning whatever never did.
  *
- * Polls the on-chain spec rather than the message: the repotag flipping is the
- * outcome we actually want, and it only flips once the message has been paid for.
- * A batch that never confirms is reported, not retried here — re-running the tool
- * re-signs at a fresh height, which is the correct retry.
+ * Polls the on-chain spec rather than the message: the image and owned env
+ * flipping is the outcome we actually want, and it only flips once the message
+ * has been paid for. Both are checked — an env-only update (a reprice) leaves the
+ * repotag as it was, so the repotag alone would report success before anything
+ * landed. A batch that never confirms is reported, not retried here — re-running
+ * the tool re-signs at a fresh height, which is the correct retry.
  */
-async function waitForLive(names, image, minutes = 15) {
+async function waitForLive(names, image, env, minutes = 15) {
   const pending = new Set(names);
   const deadline = Date.now() + minutes * 60 * 1000;
+  const landed = (c) =>
+    (!image || c.repotag === image) && env.every((e) => c.environmentParameters?.includes(e));
   while (pending.size && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 30_000));
     for (const name of [...pending]) {
       try {
         const { data } = await getJson(`${FLUX_API}/apps/appspecifications/${name}`);
-        if (data?.compose?.every((c) => c.repotag === image)) {
-          console.log(`✓ ${name.padEnd(18)} live on ${image}`);
+        if (data?.compose?.length && data.compose.every(landed)) {
+          console.log(`✓ ${name.padEnd(18)} live${image ? ` on ${image}` : ''}`);
           pending.delete(name);
         }
       } catch {
@@ -444,7 +584,10 @@ async function waitForLive(names, image, minutes = 15) {
   return [...pending];
 }
 
-main().catch((e) => {
-  console.error(`update-image: ${e.message}`);
-  process.exit(1);
-});
+// Importable (tests, reprice.mjs) without running the CLI.
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  main().catch((e) => {
+    console.error(`update-image: ${e.message}`);
+    process.exit(1);
+  });
+}

@@ -39,8 +39,10 @@ e.g. CVPN1:3QJmnh8vzBqoQpuTGDsUCkbFyxVQ
 
 ### Payment rule (evaluated identically by every gateway)
 A tx grants entitlement iff:
-1. it pays `≥ CVPN_PRICE_FLUX / 30` — one day's worth — (price from app spec env, the single
-   source of truth all gateways share) to `CVPN_PAYMENT_ADDRESS`, and
+1. it pays `≥ price / 30` — one day's worth — to `CVPN_PAYMENT_ADDRESS`, where `price` is the
+   schedule's **effective price at the tx's own block height** (see "Price in FLUX vs $0.99"
+   below; the schedule lives in the app spec env, the single source of truth all gateways
+   share), and
 2. it carries exactly one valid `CVPN1:` memo, and
 3. it has ≥ 1 confirmation (30 s blocks; optional optimistic 0-conf unlock while pending).
 
@@ -54,12 +56,57 @@ Note the rule is retroactive at backfill: historical txs between `price/30` and 
 previously ignored as underpayment — grant their pro-rata days once a gateway runs this rule.
 
 ### Price in FLUX vs $0.99
-FLUX/USD moves; gateways must agree on one number without an oracle. Solution: the canonical price
-lives in the app spec env (`CVPN_PRICE_FLUX`), which every gateway reads from its own spec — one
-value, chain-anchored, owner-updated. Operational rule: retarget to ≈$0.99 when drift exceeds
-±25%. Grace rule so nobody pays the "old" price into a void: gateways accept the previous price
-constant for 72 h after a spec update (both values visible in spec history).
-Clients display: "Send **20 FLUX** (~$0.99) with this exact message."
+**Promise: paying in FLUX always costs under $0.99 per 30 days.** FLUX/USD moves and gateways
+must agree on one number without an oracle, so the price is an owner-updated, chain-anchored
+**schedule** in the app spec env, read identically by every gateway and the payments bridge:
+
+```
+CVPN_PRICE_SCHEDULE=20@0,12@2985997   # 20 FLUX until block 2985996, 12 FLUX from 2985997
+CVPN_PRICE_FLUX=12                    # latest price, for gateway images older than schedules
+```
+
+- **Prospective, never retroactive.** A tx is judged by the price in force at the height it was
+  *mined* at, so a reprice cannot change what any past payment granted. (The original single
+  `CVPN_PRICE_FLUX` constant re-judged all history at every backfill: a drop turned every old
+  month into more days, and a rise would have silently clawed days back from people who paid.)
+- **72 h grace.** For 8,640 blocks after a change, a tx is judged against the *lowest* price in
+  force during that window. After a drop the new price applies at once; after a rise, anyone
+  quoted the old price mid-flight still gets a full month. Grace only ever favours the payer.
+- **Append-only.** A reprice appends one entry a few blocks ahead of the tip. Editing an old
+  entry would re-judge history; the tooling refuses to push that
+  (`deploy/scripts/update-image.mjs`).
+- **Fast propagation.** Each gateway (≥ 0.4.0) re-reads its own spec every 5 min
+  (`/apps/appspecifications/$FLUX_APP_NAME` on the host node) and hot-applies a new schedule —
+  no need to wait hours for Flux to redeploy the container. Only *appended* entries are
+  hot-applied: one starting above the scan cursor is swapped in as-is; one that reached the node
+  after its start height rebuilds the map from height 0, and the rebuild is discarded if the
+  history it read is missing a tx the node already folded. A spec that *edits* existing entries
+  is never hot-applied (it would re-judge history fleet-wide within minutes); it takes effect at
+  the next redeploy. `reprice.mjs` dates new entries ~2 h ahead so every gateway has the entry
+  before it starts.
+- **Capable images only.** A pre-0.4.0 gateway reads only `CVPN_PRICE_FLUX` and re-judges all
+  history at it, so `update-image.mjs` refuses a multi-entry schedule on any app whose image
+  predates 0.4.0 — the reprice rolls image and price in one update.
+- **The bridge** sizes each fiat/voucher settlement at broadcast time from the same schedule: the
+  highest effective price anywhere in the window the tx can be mined in (tip … expiry), so a
+  settlement never lands short of the days it was bought for.
+
+**Keeping the promise.** `deploy/countries.yaml` holds the canonical schedule and a USD band
+(`floorUsd` $0.70, `targetUsd` $0.85, `ceilingUsd` $0.95). Hourly, `.github/workflows/price-watch.yml`
+checks the fleet's current price × median FLUX/USD (CoinGecko, Kraken, KuCoin, Gate.io) against
+the band, that all specs carry the same schedule, and that the served directory quotes it — and
+opens a `price-alert` issue with the exact fix when any of that fails. The fix is one command:
+
+```
+cd deploy && node scripts/reprice.mjs --usd 0.85 --apply --broadcast
+```
+
+which appends the entry, patches every gateway spec (free app updates, batched), re-signs the
+client directory, rebuilds the landing page, and prints the bridge env to set. The $0.95 ceiling
+plus a $0.85 target leave ~15% of FLUX appreciation before the next reprice is due.
+
+Clients display the live price with the ceiling: "Send **12 FLUX** (< $0.99) with this exact
+message."
 
 ### Wallet UX
 - Zelcore, SSP Wallet and the explorer all support OP_RETURN messages on sends ("message" field).

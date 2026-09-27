@@ -48,8 +48,9 @@
    node operators exclude exit-traffic apps? Strongly recommended before GA (see 06). Fallback:
    staticip/datacenter-only targeting.
 
-4. **Price constant mechanics.** Confirm `SVPN_PRICE_FLUX` in app-spec env as the oracle-free
-   canonical price (vs. embedding a rates-API with tolerance bands). Confirm 72 h dual-price grace.
+4. ~~**Price constant mechanics.**~~ **Resolved (2026-09):** an oracle-free, append-only
+   `CVPN_PRICE_SCHEDULE` in the app-spec env, judged at each tx's own height with a 72 h
+   lowest-price grace; an hourly off-chain watcher keeps it inside a USD band (docs/04).
 
 5. **Control API transport.** Self-signed TLS with pinning vs. HTTP + WG-key-signed responses
    (03). Leaning: signed-response scheme for v1 (simpler, no cert plumbing), TLS later.

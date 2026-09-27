@@ -1,0 +1,88 @@
+name: price-watch
+
+# Keeps the promise "paying in FLUX is always under $0.99 a month".
+#
+# Hourly, deploy/scripts/price-watch.mjs checks the fleet's current FLUX price
+# against live FLUX/USD (median of several venues) and the USD band in
+# deploy/countries.yaml, that every gateway spec carries the same price
+# schedule, and that the served web directory quotes it (docs/04).
+#
+# While it alerts, ONE open `price-alert` issue carries the latest report — its
+# body is refreshed each run rather than commented on, so an alert that lasts a
+# day notifies once, not 24 times. It closes itself only when a run CHECKED
+# everything and found it fine. An inconclusive run (a price API or FluxOS
+# down) leaves the issue alone and just warns, so outages neither page nor flap.
+# The job itself stays green in all three cases — the issue is the signal, and
+# a red scheduled run would email its author every hour. The fix is in the
+# report: `node scripts/reprice.mjs --flux <n> --apply --broadcast`.
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: price-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: FLUX price in band
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install
+
+      # 0 = fine, 1 = alert, 3 = inconclusive (see price-watch.mjs).
+      - name: Check price
+        id: watch
+        run: |
+          set +e
+          node scripts/price-watch.mjs --report "$RUNNER_TEMP/price-watch.md"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Inconclusive run
+        if: steps.watch.outputs.code != '0' && steps.watch.outputs.code != '1'
+        run: echo "::warning::price-watch could not check everything this run (code ${{ steps.watch.outputs.code }}); the alert issue is left as it was"
+
+      - name: Open or refresh the price alert
+        if: steps.watch.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create price-alert --color B60205 --description "FLUX price outside its USD band" --force
+          open=$(gh issue list --label price-alert --state open --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh issue edit "$open" --body-file "$RUNNER_TEMP/price-watch.md"
+          else
+            gh issue create --title "FLUX price needs attention" --label price-alert --body-file "$RUNNER_TEMP/price-watch.md"
+          fi
+
+      - name: Close a resolved price alert
+        if: steps.watch.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # No label yet (never alerted) is not an error worth a red run.
+          open=$(gh issue list --label price-alert --state open --json number --jq '.[].number' 2>/dev/null || true)
+          for n in $open; do
+            gh issue close "$n" --comment "Back in band: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          done

@@ -16,6 +16,8 @@ on:
   pull_request:
     paths:
       - 'bridge/**'
+      # the bridge's price tests run the gateway's cross-language vectors
+      - 'gateway/internal/price/testdata/**'
       - '.github/workflows/bridge-image.yml'
   workflow_dispatch:
 

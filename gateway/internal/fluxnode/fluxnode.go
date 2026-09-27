@@ -17,6 +17,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 )
@@ -145,7 +146,7 @@ func (c *Client) explorerGet(ctx context.Context, path string, out any) error {
 // daemon API and falling back to the explorer.
 func (c *Client) BlockCount(ctx context.Context) (int64, error) {
 	var height int64
-	if err := c.nodeGet(ctx, "/daemon/getblockcount", &height); err == nil {
+	if err := c.nodeGet(ctx, "/daemon/getblockcount", &height); err == nil && height > 0 {
 		return height, nil
 	}
 	// Insight fallback: /status?q=getInfo → {"info":{"blocks":N,...}}.
@@ -157,7 +158,44 @@ func (c *Client) BlockCount(ctx context.Context) (int64, error) {
 	if err := c.explorerGet(ctx, "/status?q=getInfo", &st); err != nil {
 		return 0, fmt.Errorf("fluxnode: blockcount: %w", err)
 	}
+	if st.Info.Blocks <= 0 {
+		// `{}` decodes to 0 with no error; a height of 0 is never real.
+		return 0, fmt.Errorf("fluxnode: blockcount: no height in explorer status")
+	}
 	return st.Info.Blocks, nil
+}
+
+// AppEnv returns the environment variables the host node's FluxOS currently
+// holds for app `name` — the on-chain spec, not this container's env, which is
+// frozen at the last (re)deploy. It is how a gateway notices an app update
+// (a reprice) within minutes rather than whenever its node gets round to a
+// redeploy, which takes hours and lands node by node.
+//
+// Only the v4+ `compose` layout is read: every CumulusVPN spec is v8, and an
+// enterprise spec (encrypted compose) simply yields no variables. Variables
+// from all components are merged, first occurrence winning.
+func (c *Client) AppEnv(ctx context.Context, name string) (map[string]string, error) {
+	var spec struct {
+		Compose []struct {
+			EnvironmentParameters []string `json:"environmentParameters"`
+		} `json:"compose"`
+	}
+	if err := c.nodeGet(ctx, "/apps/appspecifications/"+url.PathEscape(name), &spec); err != nil {
+		return nil, err
+	}
+	env := make(map[string]string)
+	for _, comp := range spec.Compose {
+		for _, kv := range comp.EnvironmentParameters {
+			k, v, ok := strings.Cut(kv, "=")
+			if !ok {
+				continue
+			}
+			if _, seen := env[k]; !seen {
+				env[k] = v
+			}
+		}
+	}
+	return env, nil
 }
 
 // insightTx is the subset of an insight-style transaction we care about.
@@ -199,12 +237,20 @@ const (
 	addrSrcExplorer
 )
 
-// AddressTxs pages through the transaction history of addr, oldest first,
-// returning only txs at height > afterHeight. Used by the entitlement scanner
-// both for the boot backfill and incremental polls.
+// AddressTxs pages through the CONFIRMED transaction history of addr, oldest
+// first, returning only txs at height > afterHeight, each txid once. Used by
+// the entitlement scanner both for the boot backfill and incremental polls.
+//
+// Insight lists mempool txs first with blockheight -1. Those are skipped, not
+// treated as "crossed the cursor": stopping there returned an empty history
+// whenever any payment was unconfirmed, and the scanner then advanced its
+// cursor past payments that HAD been mined. A tx arriving mid-paging shifts
+// the newest-first pages by one and repeats a boundary item — hence the
+// txid dedup.
 func (c *Client) AddressTxs(ctx context.Context, addr string, afterHeight int64) ([]AddressTx, error) {
 	const pageSize = 50
 	var out []AddressTx
+	seen := make(map[string]bool)
 	from := 0
 	for {
 		page, err := c.addrTxPage(ctx, addr, from, from+pageSize)
@@ -212,6 +258,13 @@ func (c *Client) AddressTxs(ctx context.Context, addr string, afterHeight int64)
 			return nil, fmt.Errorf("fluxnode: address txs: %w", err)
 		}
 		for _, tx := range page.Items {
+			if tx.Blockheight <= 0 {
+				continue // unconfirmed
+			}
+			if seen[tx.TxID] {
+				continue
+			}
+			seen[tx.TxID] = true
 			if tx.Blockheight <= afterHeight {
 				// Items are newest-first; once we cross the cursor we
 				// can stop paging entirely.

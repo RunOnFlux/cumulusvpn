@@ -57,7 +57,9 @@ deploy/
     register.sh    # verify → price → sign (ZelID) → /apps/appregister → pay w/ OP_RETURN hash
     renew.sh       # renew specs nearing expire, whole fleet; run from cron + alerting
     scale.sh       # bump a country's instances → regenerate → re-encrypt → re-register
-    price-update.sh# retarget CVPN_PRICE_FLUX across the fleet on FLUX/USD drift (72h grace)
+    reprice.mjs    # append a price-schedule entry → fleet specs, directory, landing (docs/04)
+    price-watch.mjs# hourly (CI): fleet price × FLUX/USD inside the countries.yaml USD band?
+    price.mjs      # the price schedule (shared vectors with gateway/internal/price)
   directory/
     directory.json         # UNSIGNED sample/template (committed)
     make-directory.mjs     # keygen | build | sign | verify — Ed25519-signed directory.json (node:crypto)

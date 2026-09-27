@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/runonflux/cumulusvpn-gateway/internal/price"
 )
 
 // snapshotVersion guards the on-disk format. Bump it whenever the meaning of
@@ -21,16 +23,34 @@ const snapshotVersion = 1
 // unlike the peer cache (wg.LoadPeerCache), losing this file costs startup
 // time, not data, so there is no read-only mode to protect here.
 //
-// Address and PriceFlux are stored so a snapshot cannot outlive the
+// Address and the price schedule are stored so a snapshot cannot outlive the
 // parameters it was derived under. Repointing the fleet at a new payment
-// address, or repricing, changes what every historical tx granted; replaying
-// from a stale cursor would silently keep the old answers.
+// address, or editing the price history, changes what historical txs granted;
+// replaying from a stale cursor would silently keep the old answers. A
+// schedule that merely APPENDS entries above the cursor is the one exception
+// — it re-judges nothing already folded (price.Schedule.Extends) — which is
+// what lets a normal reprice keep the snapshot instead of rescanning.
+//
+// PriceFlux is the flat price for a single-entry schedule — the only shape a
+// pre-schedule image understands, so a rollback on a flat fleet keeps its
+// snapshot. It is 0 for a multi-entry schedule on purpose: an older image
+// compares it to CVPN_PRICE_FLUX, rejects the file and rescans like every
+// other old-image node, instead of resuming from history derived under rules
+// it does not implement. Snapshots from before schedules carry only this
+// field and are read as a flat schedule.
+//
+// Seen/SeenFrom persist the overlap-dedup state (entitle.go overlapBlocks):
+// txids already folded near the cursor, complete above SeenFrom. A snapshot
+// without them predates the overlap; its cursor becomes the scan floor.
 type snapshot struct {
-	Version   int              `json:"version"`
-	Address   string           `json:"address"`
-	PriceFlux float64          `json:"price_flux"`
-	LastBlock int64            `json:"last_block"`
-	PaidUntil map[string]int64 `json:"paid_until"` // code -> unix seconds
+	Version       int              `json:"version"`
+	Address       string           `json:"address"`
+	PriceFlux     float64          `json:"price_flux"`
+	PriceSchedule string           `json:"price_schedule,omitempty"`
+	LastBlock     int64            `json:"last_block"`
+	PaidUntil     map[string]int64 `json:"paid_until"` // code -> unix seconds
+	Seen          map[string]int64 `json:"seen_txids"` // txid -> height; nil = pre-overlap file
+	SeenFrom      int64            `json:"seen_from"`
 }
 
 // SetStatePath enables snapshot persistence at path. Call before Load/Backfill;
@@ -45,7 +65,7 @@ func (e *Engine) SetStatePath(path string) {
 // free-only).
 //
 // Any problem — missing file, unreadable, wrong version, different payment
-// address or price — is reported as "not loaded" and leaves the engine empty,
+// address or price history — is reported as "not loaded" and leaves the engine empty,
 // so the caller's Backfill starts from 0 exactly as it always did. Callers
 // should log the reason but must not treat it as fatal.
 func (e *Engine) Load() (bool, error) {
@@ -69,20 +89,35 @@ func (e *Engine) Load() (bool, error) {
 	if s.Address != e.address {
 		return false, fmt.Errorf("entitle: snapshot is for address %q, configured %q", s.Address, e.address)
 	}
-	if s.PriceFlux != e.priceFlux {
-		return false, fmt.Errorf("entitle: snapshot priced at %g, configured %g", s.PriceFlux, e.priceFlux)
-	}
 	if s.LastBlock < 0 {
 		return false, fmt.Errorf("entitle: snapshot has negative last_block %d", s.LastBlock)
+	}
+	stored := price.Flat(s.PriceFlux)
+	if s.PriceSchedule != "" {
+		if stored, err = price.Parse(s.PriceSchedule); err != nil {
+			return false, fmt.Errorf("entitle: snapshot schedule: %w", err)
+		}
+	} else if !(s.PriceFlux > 0) {
+		return false, fmt.Errorf("entitle: snapshot has no price")
+	}
+	if !e.sched.Extends(stored, s.LastBlock) {
+		return false, fmt.Errorf("entitle: snapshot priced under %s, configured %s (cursor %d)",
+			stored, e.sched, s.LastBlock)
 	}
 
 	loaded := make(map[string]time.Time, len(s.PaidUntil))
 	for code, unix := range s.PaidUntil {
 		loaded[code] = time.Unix(unix, 0).UTC()
 	}
+	seen, seenFrom := s.Seen, s.SeenFrom
+	if seen == nil {
+		seen, seenFrom = make(map[string]int64), s.LastBlock
+	}
 	e.mu.Lock()
 	e.paidUntil = loaded
 	e.lastBlock = s.LastBlock
+	e.seen = seen
+	e.seenFrom = seenFrom
 	e.mu.Unlock()
 	return true, nil
 }
@@ -99,11 +134,19 @@ func (e *Engine) Save() error {
 	now := time.Now()
 	e.mu.RLock()
 	s := snapshot{
-		Version:   snapshotVersion,
-		Address:   e.address,
-		PriceFlux: e.priceFlux,
-		LastBlock: e.lastBlock,
-		PaidUntil: make(map[string]int64, len(e.paidUntil)),
+		Version:       snapshotVersion,
+		Address:       e.address,
+		PriceSchedule: e.sched.String(),
+		LastBlock:     e.lastBlock,
+		PaidUntil:     make(map[string]int64, len(e.paidUntil)),
+		Seen:          make(map[string]int64, len(e.seen)),
+		SeenFrom:      e.seenFrom,
+	}
+	if e.sched.Len() == 1 {
+		s.PriceFlux = e.sched.Latest()
+	}
+	for id, h := range e.seen {
+		s.Seen[id] = h
 	}
 	for code, pu := range e.paidUntil {
 		if pu.After(now) {

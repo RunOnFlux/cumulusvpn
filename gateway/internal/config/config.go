@@ -11,6 +11,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/runonflux/cumulusvpn-gateway/internal/price"
 )
 
 // Fixed ports. These are host-mapped 1:1 by the Flux app spec, so they are
@@ -39,9 +41,14 @@ const (
 
 // Config is the fully resolved gateway configuration.
 type Config struct {
-	// PriceFlux is the monthly price in FLUX (e.g. 20). Canonical value
-	// lives in the app spec env so all gateways agree without an oracle.
-	PriceFlux float64
+	// PriceSchedule is the monthly price in FLUX by block height (e.g. flat
+	// 20, or 20 until a height and 12 after). Canonical value lives in the app
+	// spec env so all gateways agree without an oracle; see ResolvePrice.
+	PriceSchedule price.Schedule
+	// PriceWarning is set when the legacy CVPN_PRICE_FLUX disagrees with the
+	// schedule's latest price — harmless to this build, but an older image on
+	// the same spec would charge that other price. Logged at startup.
+	PriceWarning string
 	// PaymentAddress is the transparent FLUX address payments are sent to.
 	PaymentAddress string
 	// DirectoryPubKey is the ed25519 public key (base64) that signs
@@ -152,7 +159,6 @@ type Config struct {
 // and validating required values.
 func Load() (*Config, error) {
 	cfg := &Config{
-		PriceFlux:          envFloat("CVPN_PRICE_FLUX", 0),
 		PaymentAddress:     os.Getenv("CVPN_PAYMENT_ADDRESS"),
 		DirectoryPubKey:    os.Getenv("CVPN_DIRECTORY_PUBKEY"),
 		FreeRateKBps:       envInt("CVPN_FREE_RATE_KBPS", 100),
@@ -188,9 +194,11 @@ func Load() (*Config, error) {
 		}
 	}
 
-	if cfg.PriceFlux <= 0 {
-		return nil, fmt.Errorf("config: CVPN_PRICE_FLUX is required and must be > 0")
+	sched, warn, err := ResolvePrice(os.Getenv)
+	if err != nil {
+		return nil, err
 	}
+	cfg.PriceSchedule, cfg.PriceWarning = sched, warn
 	if cfg.PaymentAddress == "" {
 		return nil, fmt.Errorf("config: CVPN_PAYMENT_ADDRESS is required")
 	}
@@ -235,14 +243,36 @@ func envBool(key string, def bool) bool {
 	return b
 }
 
-func envFloat(key string, def float64) float64 {
-	v := os.Getenv(key)
-	if v == "" {
-		return def
+// ResolvePrice derives the price schedule from env, read through get so the
+// same rule applies to the container env at boot and to the app spec the
+// gateway re-reads at runtime (cmd/gateway watchPriceSpec).
+//
+//   - CVPN_PRICE_SCHEDULE, when set, is canonical ("20@0,12@2215000").
+//   - Otherwise CVPN_PRICE_FLUX is a flat price for all of history — the
+//     legacy rule, and what every pre-schedule image still reads. A reprice
+//     therefore sets BOTH: the schedule for this build, and CVPN_PRICE_FLUX =
+//     its latest price so an older image on the same spec charges the same.
+func ResolvePrice(get func(string) string) (price.Schedule, string, error) {
+	legacy := strings.TrimSpace(get("CVPN_PRICE_FLUX"))
+	if raw := strings.TrimSpace(get("CVPN_PRICE_SCHEDULE")); raw != "" {
+		sched, err := price.Parse(raw)
+		if err != nil {
+			return price.Schedule{}, "", fmt.Errorf("config: CVPN_PRICE_SCHEDULE: %w", err)
+		}
+		var warn string
+		if legacy != "" {
+			if f, err := strconv.ParseFloat(legacy, 64); err != nil || f != sched.Latest() {
+				warn = fmt.Sprintf("CVPN_PRICE_FLUX=%s disagrees with CVPN_PRICE_SCHEDULE latest price %g; "+
+					"pre-schedule images on this spec charge the former", legacy, sched.Latest())
+			}
+		}
+		return sched, warn, nil
 	}
-	f, err := strconv.ParseFloat(v, 64)
-	if err != nil {
-		return def
+	// Through the schedule parser so both paths accept the same numbers (no
+	// "Inf" or "1e3"); a bare price is a one-entry schedule.
+	sched, err := price.Parse(legacy)
+	if err != nil || sched.Len() != 1 {
+		return price.Schedule{}, "", fmt.Errorf("config: CVPN_PRICE_FLUX is required and must be a positive number")
 	}
-	return f
+	return sched, "", nil
 }

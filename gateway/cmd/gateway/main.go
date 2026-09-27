@@ -21,6 +21,7 @@ import (
 	"github.com/runonflux/cumulusvpn-gateway/internal/fluxnode"
 	"github.com/runonflux/cumulusvpn-gateway/internal/geoip"
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
+	"github.com/runonflux/cumulusvpn-gateway/internal/price"
 	"github.com/runonflux/cumulusvpn-gateway/internal/tlsrelay"
 	"github.com/runonflux/cumulusvpn-gateway/internal/wg"
 )
@@ -37,8 +38,11 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("gateway %s starting: app=%q price=%.4f FLUX free=%dKB/s premium=%dMbit/s",
-		api.Version, cfg.AppName, cfg.PriceFlux, cfg.FreeRateKBps, cfg.PremiumRateMbps)
+	log.Printf("gateway %s starting: app=%q price=%s FLUX free=%dKB/s premium=%dMbit/s",
+		api.Version, cfg.AppName, cfg.PriceSchedule, cfg.FreeRateKBps, cfg.PremiumRateMbps)
+	if cfg.PriceWarning != "" {
+		log.Printf("gateway: WARNING: %s", cfg.PriceWarning)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -204,7 +208,7 @@ func run() error {
 
 	// --- entitlement engine (chain scanner) ---
 	chain := fluxnode.NewClient(cfg.NodeHostIP)
-	ent := entitle.New(chainAdapter{chain}, cfg.PaymentAddress, cfg.PriceFlux)
+	ent := entitle.New(chainAdapter{chain}, cfg.PaymentAddress, bootPriceSchedule(ctx, chain, cfg))
 	ent.OnChange(func(code string, premium bool) {
 		log.Printf("gateway: entitlement flip code=%s premium=%v", code, premium)
 	})
@@ -223,6 +227,7 @@ func run() error {
 		log.Printf("gateway: entitlement backfill failed (%v); starting free-only", err)
 	}
 	go ent.Run(ctx)
+	go watchPriceSpec(ctx, chain, cfg.AppName, ent)
 
 	// --- restore enrollments from the previous run ---
 	// Runs after every transport device exists (so restored peers land on all of
@@ -413,6 +418,88 @@ func addr(port int) string {
 		return v
 	}
 	return ":" + strconv.Itoa(port)
+}
+
+// priceSpecInterval is how often a gateway re-reads its own app spec for a
+// price change. Cheap (one local FluxOS call) and bounds how long a reprice
+// takes to reach this node: minutes, not the hours a redeploy can take.
+const priceSpecInterval = 5 * time.Minute
+
+// watchPriceSpec hot-reloads the price schedule from this app's on-chain spec.
+//
+// A reprice is an app update, and a Flux node only redeploys the container —
+// the only moment it would see new env — on its own periodic spec re-check,
+// which takes hours and lands node by node. Until then that gateway would
+// quote the old price and, after a drop, credit a new-price payment as a
+// fraction of a month. Re-reading the spec directly closes that window to
+// one interval. The engine decides whether the change needs a rescan
+// (entitle.Engine.Reprice); a spec it cannot parse is logged and ignored, so
+// the running schedule — the one this container booted with — stays.
+func watchPriceSpec(ctx context.Context, chain *fluxnode.Client, appName string, ent *entitle.Engine) {
+	if appName == "" {
+		return // not on Flux (local dev): there is no spec to watch
+	}
+	t := time.NewTicker(priceSpecInterval)
+	defer t.Stop()
+	var lastBad string
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		env, err := chain.AppEnv(ctx, appName)
+		if err != nil || len(env) == 0 {
+			continue // transient, or an encrypted spec: keep the boot env
+		}
+		sched, warn, err := config.ResolvePrice(func(k string) string { return env[k] })
+		if err == nil && !sched.HasPrefix(ent.Schedule()) {
+			err = fmt.Errorf("%s edits the running %s (re-judges past payments); applies at the next redeploy",
+				sched, ent.Schedule())
+		}
+		if err != nil {
+			if msg := err.Error(); msg != lastBad {
+				log.Printf("gateway: not hot-applying app-spec price: %v", err)
+				lastBad = msg
+			}
+			continue
+		}
+		lastBad = ""
+		if sched.Equal(ent.Schedule()) {
+			continue
+		}
+		log.Printf("gateway: app spec reprices %s -> %s", ent.Schedule(), sched)
+		if warn != "" {
+			log.Printf("gateway: WARNING: %s", warn)
+		}
+		ent.Reprice(sched)
+	}
+}
+
+// bootPriceSchedule is the schedule the engine starts under: the app's
+// on-chain spec when it is readable, else the container env.
+//
+// They differ after a hot reprice (watchPriceSpec) followed by a plain
+// restart: the env is frozen at the last redeploy, while the entitlement
+// snapshot was saved under the newer on-chain schedule. Starting from the
+// stale env would discard that snapshot, rescan everything, quote the old
+// price, and then rebuild again once the watcher caught up.
+func bootPriceSchedule(ctx context.Context, chain *fluxnode.Client, cfg *config.Config) price.Schedule {
+	if cfg.AppName == "" {
+		return cfg.PriceSchedule
+	}
+	c, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	env, err := chain.AppEnv(c, cfg.AppName)
+	if err != nil || len(env) == 0 {
+		return cfg.PriceSchedule
+	}
+	sched, _, err := config.ResolvePrice(func(k string) string { return env[k] })
+	if err != nil || sched.Equal(cfg.PriceSchedule) {
+		return cfg.PriceSchedule
+	}
+	log.Printf("gateway: app spec prices %s (container env %s); using the spec", sched, cfg.PriceSchedule)
+	return sched
 }
 
 // chainAdapter bridges *fluxnode.Client to entitle.TxSource, translating the

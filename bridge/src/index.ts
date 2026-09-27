@@ -37,6 +37,7 @@ const workers = [
     payments,
     key,
     paymentAddress: cfg.paymentAddress,
+    priceSchedule: cfg.priceSchedule,
     feeZats: cfg.feeZats,
     alerter,
     log: app.log,

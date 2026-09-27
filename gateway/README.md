@@ -71,7 +71,8 @@ chain-anchored source of truth all gateways share).
 
 | Var | Required | Default | Purpose |
 |---|---|---|---|
-| `CVPN_PRICE_FLUX` | yes | — | Monthly price in FLUX (e.g. `20`) |
+| `CVPN_PRICE_SCHEDULE` | no | — | Price per 30 days by block height, e.g. `20@0,12@2985997` (docs/04). Canonical when set; hot-reloaded from the app spec |
+| `CVPN_PRICE_FLUX` | yes, unless `CVPN_PRICE_SCHEDULE` | — | Flat monthly price in FLUX (e.g. `20`); with a schedule, set it to the schedule's latest price for older images |
 | `CVPN_PAYMENT_ADDRESS` | yes | — | Transparent FLUX address payments go to |
 | `CVPN_DIRECTORY_PUBKEY` | no | — | ed25519 key that signs `directory.json` (republished) |
 | `CVPN_FREE_RATE_KBPS` | no | `100` | Free-tier rate limit (KB/s) |

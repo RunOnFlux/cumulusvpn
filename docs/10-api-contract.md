@@ -73,6 +73,9 @@ Response `data`:
   "price_flux":      20
 }
 ```
+`price_flux` is the price quoted for the next block (the schedule entry in force there — see
+the entitlement rule below). `/v1/info` carries the same `price_flux` plus the full
+`price_schedule` string, so the fleet's price can be audited from outside.
 Errors: `bad_pubkey`, `bad_pow`, `rate_limited` (429, 1 enroll/IP/2s), `at_capacity`,
 `free_full`. Re-enrolling the same pubkey is idempotent (returns the existing assigned IP).
 
@@ -175,10 +178,14 @@ Signed by the directory key (`CVPN_DIRECTORY_PUBKEY`); clients ship the pubkey a
 
 ## Entitlement rule (server-side, deterministic from chain)
 
-A FLUX tx grants premium iff it pays `≥ price_flux/30` (one day's worth) to `payment_address`
+A FLUX tx grants premium iff it pays `≥ price/30` (one day's worth) to `payment_address`
 **and** carries exactly one valid `CVPN1:<code>` OP_RETURN memo **and** has ≥1 confirmation.
 Effect: `paid_until[code] = max(now, paid_until[code]) + days`, where
-`days = floor(30 × amount / price_flux)`, stacking, capped at now + 720 days (24 months).
+`days = floor(30 × amount / price)`, stacking, capped at now + 720 days (24 months).
+`price` is the effective price of the `CVPN_PRICE_SCHEDULE` at the tx's own block height —
+the lowest price in force during the preceding 8,640 blocks (72 h) — so repricing never
+re-judges a mined tx (docs/04 "Price in FLUX vs $0.99"; `gateway/internal/price`, with
+cross-language vectors in `gateway/internal/price/testdata/vectors.json`).
 Whole multiples of `price_flux` grant whole 30-day months exactly as before (pay 3× → 90 days);
 fractional amounts grant pro-rata days — the bridge's voucher settlements (docs/18) size their
 payout as `ceil(price_zats × days / 30)` zats so this floor never truncates a funded grant.

@@ -30,7 +30,7 @@ import (
 // Version is the gateway build version, surfaced in /v1/info. Keep it in step
 // with the released image tag by hand: it is a CONST, so the Dockerfile's
 // -ldflags -X cannot stamp it (the Go linker only patches string *variables*).
-const Version = "0.3.0"
+const Version = "0.4.0"
 
 // MinClientVersion is the oldest client the gateway will happily serve.
 //
@@ -86,6 +86,14 @@ type Info struct {
 	// peers and advertising capacity, and only loses them at the next restart.
 	// Additive and optional, so a 0.1.0 client that never reads it is unaffected.
 	PeersPersisted bool `json:"peers_persisted"`
+	// PriceFlux is what this gateway quotes for a 30-day month right now, and
+	// PriceSchedule the full schedule it judges payments by (internal/price).
+	// Public knowledge (both are on-chain in the app spec); served so the
+	// fleet's price can be audited from outside — a reprice has converged
+	// when every instance reports the same schedule. Additive, like
+	// PeersPersisted.
+	PriceFlux     float64 `json:"price_flux,omitempty"`
+	PriceSchedule string  `json:"price_schedule,omitempty"`
 }
 
 // ExtraTransport pairs an additional listener's device with the transport entry
@@ -312,7 +320,7 @@ func (s *Server) handleEnroll(w http.ResponseWriter, r *http.Request) {
 		DNS:            dnsServer,
 		PaymentAddress: s.cfg.PaymentAddress,
 		PaymentMemo:    "CVPN1:" + entitle.PaymentCode(req.PubKey),
-		PriceFlux:      s.cfg.PriceFlux,
+		PriceFlux:      s.ent.Quote(),
 	}
 	s.writeSigned(w, resp)
 }
@@ -426,6 +434,10 @@ func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 		load = 1
 	}
 	info.Load = load
+	if s.ent != nil {
+		info.PriceFlux = s.ent.Quote()
+		info.PriceSchedule = s.ent.Schedule().String()
+	}
 	s.writeSigned(w, info)
 }
 

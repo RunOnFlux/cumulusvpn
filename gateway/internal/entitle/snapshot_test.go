@@ -45,7 +45,7 @@ func TestSnapshotResumesFromCursor(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "entitle.state")
 	now := time.Now()
 
-	first := New(snapSource(code, now), "t1Pay", 20)
+	first := New(snapSource(code, now), "t1Pay", flat(20))
 	first.SetStatePath(path)
 	if loaded, err := first.Load(); loaded || err != nil {
 		t.Fatalf("cold start: loaded=%v err=%v, want false/nil", loaded, err)
@@ -60,7 +60,7 @@ func TestSnapshotResumesFromCursor(t *testing.T) {
 
 	// Restart: same address and price, so the snapshot is usable.
 	src2 := snapSource(code, now)
-	second := New(src2, "t1Pay", 20)
+	second := New(src2, "t1Pay", flat(20))
 	second.SetStatePath(path)
 	loaded, err := second.Load()
 	if err != nil || !loaded {
@@ -76,10 +76,11 @@ func TestSnapshotResumesFromCursor(t *testing.T) {
 	if err := second.Backfill(context.Background()); err != nil {
 		t.Fatalf("restart backfill: %v", err)
 	}
-	// The rescan must start at the stored cursor, not 0 — that is the entire
-	// saving (thousands of sequential explorer pages on a busy address).
-	if len(src2.afters) == 0 || src2.afters[0] != 500 {
-		t.Fatalf("restart rescanned from %v, want cursor 500", src2.afters)
+	// The rescan must start at the stored cursor (less the dedup overlap), not
+	// 0 — that is the entire saving (thousands of sequential explorer pages on
+	// a busy address).
+	if len(src2.afters) == 0 || src2.afters[0] != 500-overlapBlocks {
+		t.Fatalf("restart rescanned from %v, want cursor 500-%d", src2.afters, overlapBlocks)
 	}
 }
 
@@ -89,7 +90,7 @@ func TestSnapshotDiscardedWhenParametersChange(t *testing.T) {
 	now := time.Now()
 
 	seed := func(path string) {
-		e := New(snapSource(code, now), "t1Pay", 20)
+		e := New(snapSource(code, now), "t1Pay", flat(20))
 		e.SetStatePath(path)
 		if err := e.Backfill(context.Background()); err != nil {
 			t.Fatalf("seed backfill: %v", err)
@@ -111,7 +112,7 @@ func TestSnapshotDiscardedWhenParametersChange(t *testing.T) {
 			path := filepath.Join(dir, tc.name+".state")
 			seed(path)
 			src := snapSource(code, now)
-			e := New(src, tc.address, tc.price)
+			e := New(src, tc.address, flat(tc.price))
 			e.SetStatePath(path)
 			loaded, err := e.Load()
 			if loaded {
@@ -139,7 +140,7 @@ func TestSnapshotCorruptAndMissingAreNotFatal(t *testing.T) {
 		if err := os.WriteFile(path, []byte("{not json"), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		e := New(&countingSource{height: 9}, "t1Pay", 20)
+		e := New(&countingSource{height: 9}, "t1Pay", flat(20))
 		e.SetStatePath(path)
 		loaded, err := e.Load()
 		if loaded || err == nil {
@@ -152,7 +153,7 @@ func TestSnapshotCorruptAndMissingAreNotFatal(t *testing.T) {
 	})
 
 	t.Run("no state path", func(t *testing.T) {
-		e := New(&countingSource{height: 9}, "t1Pay", 20)
+		e := New(&countingSource{height: 9}, "t1Pay", flat(20))
 		loaded, err := e.Load()
 		if loaded || err != nil {
 			t.Fatalf("in-memory mode: loaded=%v err=%v", loaded, err)
@@ -173,7 +174,7 @@ func TestSnapshotDropsExpiredCodes(t *testing.T) {
 		height: 500,
 		txs:    []Tx{{TxID: "old", Height: 10, Time: stale, AmountTo: 20, Memos: []string{"CVPN1:" + code}}},
 	}
-	e := New(src, "t1Pay", 20)
+	e := New(src, "t1Pay", flat(20))
 	e.SetStatePath(path)
 	if err := e.Backfill(context.Background()); err != nil {
 		t.Fatalf("backfill: %v", err)

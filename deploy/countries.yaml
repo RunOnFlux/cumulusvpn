@@ -10,6 +10,23 @@
 
 owner: 196GJWyLxzAw3MirTT7Bqs2iGpUQio29GH # enterprise app-owner ZelID (must be on the enterprise whitelist)
 
+# Premium price in FLUX per 30 days (docs/04 "Price in FLUX vs $0.99").
+# `schedule` is the canonical CVPN_PRICE_SCHEDULE every gateway and the bridge
+# judge payments by: "<flux>@<from-height>,…". It is APPEND-ONLY — an entry
+# prices txs mined from its height on, so appending never touches a payment
+# already made, while editing an existing entry re-judges history. Never edit
+# it by hand: `node scripts/reprice.mjs` appends an entry and propagates it
+# (fleet specs, bridge env, signed directory, landing).
+# The USD band is the promise "paying in FLUX is always under $0.99":
+# scripts/price-watch.mjs (hourly, .github/workflows/price-watch.yml) alerts
+# when price × FLUX/USD leaves [floorUsd, ceilingUsd], and a reprice aims at
+# targetUsd so the next move has headroom.
+price:
+  schedule: '20'
+  floorUsd: 0.70
+  targetUsd: 0.85
+  ceilingUsd: 0.95
+
 defaults:
   instances: 3
   cpu: 1.0
@@ -57,8 +74,14 @@ defaults:
   # 0.3.0 (2026-08-10) carries the pro-rata day-grant entitlement rule
   # (docs/04) — a backward-compatible superset, so mixed 0.2.0/0.3.0 fleets
   # agree on every whole-month payment while the roll completes.
-  # Note CI strips the leading "v", so tag v0.3.0 -> image :0.3.0, never :v0.3.0.
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.3.0'
+  # 0.4.0 (2026-09-27) judges each payment by the price SCHEDULE in force at
+  # its own height (CVPN_PRICE_SCHEDULE, docs/04) and hot-reloads it from the
+  # spec. A new tag, not a 0.3.0 rebuild, because the fleet must agree on
+  # the rule: a 0.3.0 node reads only CVPN_PRICE_FLUX and re-judges all of
+  # history at it. update-image.mjs refuses a multi-entry schedule on any app
+  # whose image predates 0.4.0 (MIN_SCHEDULE_IMAGE), and rolls both together.
+  # Note CI strips the leading "v", so tag v0.4.0 -> image :0.4.0, never :v0.4.0.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.4.0'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:

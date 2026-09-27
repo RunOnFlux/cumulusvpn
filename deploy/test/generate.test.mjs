@@ -52,6 +52,10 @@ test('generate.mjs (open, default) expands countries.yaml into 12 beta v8 OPEN s
     // no explicit TLS port → the relay rides 51820/tcp).
     const de = JSON.parse(readFileSync(join(onchainDir, 'cumulusvpnde.json'), 'utf8'));
     const deEnv = de.compose[0].environmentParameters;
+    assert.ok(
+      deEnv.includes('CVPN_PRICE_FLUX=20') && deEnv.includes('CVPN_PRICE_SCHEDULE=20@0'),
+      'price env comes from countries.yaml price.schedule, as both variables',
+    );
     assert.ok(deEnv.includes('CVPN_OBFS_ENABLE=1'), 'standard advertises awg');
     assert.ok(deEnv.includes('CVPN_TLS_ENABLE=1'), 'standard advertises wg-tls');
     assert.ok(

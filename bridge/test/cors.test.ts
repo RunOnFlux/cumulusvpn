@@ -156,3 +156,15 @@ describe('cors: the browser preflight that broke card checkout', () => {
     await app.close();
   });
 });
+
+describe('health: the price schedule price-watch compares with the fleet', () => {
+  it('reports the configured schedule', async () => {
+    const app = await serverWith({
+      ...BASE_ENV,
+      PRICE_SCHEDULE: '20@0,12@2986297',
+      PRICE_FLUX: '12',
+    });
+    const res = await app.inject({ method: 'GET', url: '/v1/health' });
+    expect(res.json()).toMatchObject({ data: { price_schedule: '20@0,12@2986297' } });
+  });
+});

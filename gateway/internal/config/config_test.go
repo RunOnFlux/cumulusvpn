@@ -10,6 +10,7 @@ import (
 // the developer or CI has exported.
 var allCVPNEnv = []string{
 	"CVPN_PRICE_FLUX",
+	"CVPN_PRICE_SCHEDULE",
 	"CVPN_PAYMENT_ADDRESS",
 	"CVPN_DIRECTORY_PUBKEY",
 	"CVPN_FREE_RATE_KBPS",
@@ -50,8 +51,8 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil", err)
 	}
-	if cfg.PriceFlux != 4.5 {
-		t.Errorf("PriceFlux = %v, want 4.5", cfg.PriceFlux)
+	if got := cfg.PriceSchedule.String(); got != "4.5@0" {
+		t.Errorf("PriceSchedule = %v, want flat 4.5", got)
 	}
 	if cfg.PaymentAddress != "t1abcPaymentAddress" {
 		t.Errorf("PaymentAddress = %q", cfg.PaymentAddress)
@@ -99,8 +100,8 @@ func TestLoadEnvParsing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load() error = %v, want nil", err)
 	}
-	if cfg.PriceFlux != 9.99 {
-		t.Errorf("PriceFlux = %v, want 9.99", cfg.PriceFlux)
+	if got := cfg.PriceSchedule.String(); got != "9.99@0" {
+		t.Errorf("PriceSchedule = %v, want flat 9.99", got)
 	}
 	if cfg.DirectoryPubKey != "base64pubkey" {
 		t.Errorf("DirectoryPubKey = %q", cfg.DirectoryPubKey)
@@ -155,6 +156,13 @@ func TestLoadErrors(t *testing.T) {
 		{"zero price", map[string]string{"CVPN_PRICE_FLUX": "0", "CVPN_PAYMENT_ADDRESS": "t1x"}},
 		{"negative price", map[string]string{"CVPN_PRICE_FLUX": "-1", "CVPN_PAYMENT_ADDRESS": "t1x"}},
 		{"missing payment address", map[string]string{"CVPN_PRICE_FLUX": "4.5"}},
+		{"infinite legacy price", map[string]string{"CVPN_PRICE_FLUX": "Inf", "CVPN_PAYMENT_ADDRESS": "t1x"}},
+		{"exponent legacy price", map[string]string{"CVPN_PRICE_FLUX": "1e3", "CVPN_PAYMENT_ADDRESS": "t1x"}},
+		{"schedule in the legacy variable", map[string]string{"CVPN_PRICE_FLUX": "20@0,12@9", "CVPN_PAYMENT_ADDRESS": "t1x"}},
+		{"malformed schedule", map[string]string{
+			"CVPN_PRICE_SCHEDULE":  "20@0,12",
+			"CVPN_PAYMENT_ADDRESS": "t1x",
+		}},
 		{"bad egress port", map[string]string{
 			"CVPN_PRICE_FLUX":         "4.5",
 			"CVPN_PAYMENT_ADDRESS":    "t1x",
@@ -177,6 +185,42 @@ func TestLoadErrors(t *testing.T) {
 			clearEnv(t, tc.env)
 			if _, err := Load(); err == nil {
 				t.Errorf("Load() error = nil, want error")
+			}
+		})
+	}
+}
+
+func TestResolvePrice(t *testing.T) {
+	env := func(kv map[string]string) func(string) string {
+		return func(k string) string { return kv[k] }
+	}
+	cases := []struct {
+		name, want string
+		warn       bool
+		env        map[string]string
+	}{
+		{"legacy flat price", "20@0", false, map[string]string{"CVPN_PRICE_FLUX": "20"}},
+		{"schedule wins over the legacy price", "20@0,12@2215000", false, map[string]string{
+			"CVPN_PRICE_FLUX": "12", "CVPN_PRICE_SCHEDULE": "20@0,12@2215000",
+		}},
+		{"schedule alone", "20@0,12@9", false, map[string]string{"CVPN_PRICE_SCHEDULE": "20,12@9"}},
+		// Old images read CVPN_PRICE_FLUX, so a disagreement means the fleet
+		// charges two prices — worth a loud log, not a crash loop.
+		{"legacy price disagrees with the schedule", "20@0,12@9", true, map[string]string{
+			"CVPN_PRICE_FLUX": "20", "CVPN_PRICE_SCHEDULE": "20@0,12@9",
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			sched, warn, err := ResolvePrice(env(tc.env))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := sched.String(); got != tc.want {
+				t.Errorf("schedule = %s, want %s", got, tc.want)
+			}
+			if (warn != "") != tc.warn {
+				t.Errorf("warning = %q, want warning=%v", warn, tc.warn)
 			}
 		})
 	}

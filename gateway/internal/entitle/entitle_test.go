@@ -5,7 +5,13 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/runonflux/cumulusvpn-gateway/internal/price"
 )
+
+// flat is price.Flat under a name the tests' local `price` constants do not
+// shadow.
+func flat(p float64) price.Schedule { return price.Flat(p) }
 
 func TestMemoParse(t *testing.T) {
 	cases := []struct {
@@ -147,7 +153,7 @@ func TestEngineBackfillAndTier(t *testing.T) {
 		},
 	}
 
-	e := New(src, addr, price)
+	e := New(src, addr, flat(price))
 	flips := 0
 	e.OnChange(func(_ string, premium bool) {
 		if premium {
@@ -193,7 +199,7 @@ func TestExactMultipleOverpayFloatEpsilon(t *testing.T) {
 		// 3×20 that the float representation renders as just-below-60.
 		{TxID: "x", Height: 10, Time: now, AmountTo: 59.999999999999993, Memos: []string{"CVPN1:" + code}},
 	}}
-	e := New(src, addr, price)
+	e := New(src, addr, flat(price))
 	if err := e.Backfill(context.Background()); err != nil {
 		t.Fatal(err)
 	}
@@ -235,7 +241,7 @@ func TestBridgeFiatSettlement(t *testing.T) {
 		},
 	}
 
-	e := New(src, addr, price)
+	e := New(src, addr, flat(price))
 	if err := e.Backfill(context.Background()); err != nil {
 		t.Fatalf("backfill: %v", err)
 	}
@@ -280,7 +286,7 @@ func TestProRataDayGrants(t *testing.T) {
 			src := &mockSource{height: 10, txs: []Tx{
 				{TxID: "v", Height: 5, Time: now, AmountTo: tc.amount, Memos: []string{memo}},
 			}}
-			e := New(src, addr, price)
+			e := New(src, addr, flat(price))
 			if err := e.Backfill(context.Background()); err != nil {
 				t.Fatal(err)
 			}

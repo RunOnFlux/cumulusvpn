@@ -129,8 +129,14 @@ netstack PoC hits its gate, skip v0; if it slips, v0 buys time in market.
 See `04-payments.md` for the protocol. Implementation notes:
 - On boot: page through payment-address history (host node insight mirror at `:16127/explorer`,
   public explorer as fallback), filter txs with valid `CVPN1:` OP_RETURN memos and amount ≥ one
-  day's worth of `CVPN_PRICE_FLUX`, build `keyhash → paid_until` map (payments stack pro-rata by
-  the day, capped at +24 months prepaid).
+  day's worth of the price in force at each tx's height (`CVPN_PRICE_SCHEDULE`, docs/04), build
+  `keyhash → paid_until` map (payments stack pro-rata by the day, capped at +24 months prepaid).
+  The block height is read BEFORE the history and txs above it are left for the next poll.
+  Unconfirmed (mempool, `blockheight -1`) items are skipped, never treated as crossing the
+  cursor. Every scan re-reads 40 blocks below the cursor — the height comes from the host
+  daemon but history usually from the explorer, which can lag it — and a persisted set of
+  already-folded txids makes that re-read idempotent (also absorbing shallow reorgs and page
+  shifts). A grant is never applied twice.
   - The address-history source is probed once per process and remembered — a node lacking the
     route would otherwise cost a failed request on every page of every poll — and a node that
     starts failing drops back to the explorer and gets re-probed. A page that decodes but reports
@@ -177,7 +183,11 @@ See `04-payments.md` for the protocol. Implementation notes:
 - On boot, read `http://fluxnode.service:16101/hostinfo` → node public IP, geo
   (continent/country/region), benchmark scores → served at `/v1/info` and used to pick the
   advertised WG endpoint.
-- Watch own app spec (`/apps/appspecifications/$FLUX_APP_NAME`) for env changes (price updates).
+- Watch own app spec (`/apps/appspecifications/$FLUX_APP_NAME` on the host node, every 5 min)
+  for price changes and hot-apply appended entries (`watchPriceSpec`, docs/04) — a Flux
+  redeploy can take hours per node; this takes minutes. History edits and all other env changes
+  wait for the redeploy. At boot the engine starts from the on-chain spec's schedule when it
+  differs from the (frozen) container env.
 
 ## Container image
 - `FROM scratch` (or alpine for debuggability) + static Go binary. ~15–20 MB.

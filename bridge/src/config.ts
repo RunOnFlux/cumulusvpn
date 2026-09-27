@@ -6,6 +6,7 @@
  * once here and the raw value is never logged or re-exported anywhere —
  * keep it that way.
  */
+import { PriceSchedule } from './price.js';
 
 export interface StripeConfig {
   readonly secretKey: string;
@@ -79,6 +80,14 @@ export interface Config {
   readonly host: string;
   readonly dbPath: string;
   readonly paymentAddress: string;
+  /**
+   * The fleet's price schedule (PRICE_SCHEDULE, else a flat PRICE_FLUX) —
+   * must equal the gateways' CVPN_PRICE_SCHEDULE. The broadcaster sizes every
+   * settlement from it at broadcast time (src/price.ts).
+   */
+  readonly priceSchedule: PriceSchedule;
+  /** The schedule's latest price. Grant sizes recorded at queue time are
+   *  estimates at this price; the broadcaster re-sizes before it spends. */
   readonly priceFlux: number;
   readonly priceZats: number;
   readonly feeZats: number;
@@ -265,18 +274,48 @@ function corsOrigins(env: NodeJS.ProcessEnv): readonly string[] {
   }
 }
 
+/**
+ * PRICE_SCHEDULE when set, else PRICE_FLUX as a flat price (default 20). A
+ * PRICE_FLUX that disagrees with the schedule's latest price is refused: the
+ * two are set together from the same reprice, so a mismatch means one of
+ * them was edited by hand and the payouts would be sized off the wrong one.
+ */
+function loadPriceSchedule(env: NodeJS.ProcessEnv): PriceSchedule {
+  const raw = env.PRICE_SCHEDULE?.trim();
+  if (!raw) {
+    const flux = num(env, 'PRICE_FLUX', 20);
+    if (!(flux > 0)) {
+      throw new Error('config: PRICE_FLUX must be > 0');
+    }
+    return PriceSchedule.flat(flux);
+  }
+  let schedule: PriceSchedule;
+  try {
+    schedule = PriceSchedule.parse(raw);
+  } catch (e) {
+    throw new Error(`config: PRICE_SCHEDULE: ${e instanceof Error ? e.message : String(e)}`);
+  }
+  if (env.PRICE_FLUX !== undefined && env.PRICE_FLUX !== '') {
+    if (Number(env.PRICE_FLUX) !== schedule.latest()) {
+      throw new Error(
+        `config: PRICE_FLUX=${env.PRICE_FLUX} disagrees with PRICE_SCHEDULE latest price ${schedule.latest()}`,
+      );
+    }
+  }
+  return schedule;
+}
+
 /** Parse and validate the whole config from process.env. Throws on any gap. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
-  const priceFlux = num(env, 'PRICE_FLUX', 20);
-  if (priceFlux <= 0) {
-    throw new Error('config: PRICE_FLUX must be > 0');
-  }
+  const priceSchedule = loadPriceSchedule(env);
+  const priceFlux = priceSchedule.latest();
   const feeFlux = num(env, 'FEE_FLUX', 0.0001);
   const cfg: Config = {
     port: num(env, 'PORT', 8080),
     host: env.HOST ?? '0.0.0.0',
     dbPath: env.DB_PATH ?? '/data/bridge.db',
     paymentAddress: required(env, 'PAYMENT_ADDRESS'),
+    priceSchedule,
     priceFlux,
     priceZats: Math.round(priceFlux * 1e8),
     feeZats: Math.round(feeFlux * 1e8),

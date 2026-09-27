@@ -11,6 +11,7 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { latestPrice, scheduleFromEnv } from './price.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -92,6 +93,23 @@ function validateSpec(name, spec) {
         comp.environmentParameters.length === 0
       )
         fail(`${at}: open spec must inline environmentParameters (none found)`);
+      // Price: a schedule the gateway would refuse crash-loops the whole app, and a
+      // CVPN_PRICE_FLUX that disagrees with it makes pre-schedule images charge a
+      // different price than schedule-aware ones on the same spec (docs/04).
+      const env = comp.environmentParameters ?? [];
+      if (isOpen && env.length) {
+        const val = (k) => env.find((e) => e.startsWith(`${k}=`))?.slice(k.length + 1);
+        try {
+          const entries = scheduleFromEnv(env);
+          const flat = val('CVPN_PRICE_FLUX');
+          if (flat !== undefined && Number(flat) !== latestPrice(entries))
+            fail(
+              `${at}: CVPN_PRICE_FLUX=${flat} != CVPN_PRICE_SCHEDULE latest ${latestPrice(entries)}`,
+            );
+        } catch (e) {
+          fail(`${at}: price: ${e.message}`);
+        }
+      }
     });
   }
 

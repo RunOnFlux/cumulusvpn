@@ -32,7 +32,7 @@ fluxvpn/                        # monorepo (rename to cumulusvpn on the new GitH
 └── deploy/
     ├── countries.yaml          # fleet manifest (enterprise + datacenter, per-country)
     ├── specs/{template, plain/template}.json
-    └── scripts/                # generate · encrypt · register · renew · scale · price-update
+    └── scripts/                # generate · encrypt · register · renew · scale · reprice · price-watch
 ```
 
 Decisions locked (see 08): brand **CumulusVPN — Powered by RunOnFlux**, single domain

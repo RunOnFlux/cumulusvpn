@@ -1,0 +1,132 @@
+{
+  "//": "Cross-language contract for the FLUX price schedule. Read by gateway/internal/price (Go), bridge/test/price.test.ts and deploy/test/price.test.mjs; all three must agree on every line. grace_blocks is price.GraceBlocks.",
+  "grace_blocks": 8640,
+  "valid": [
+    {
+      "in": "20",
+      "canonical": "20@0",
+      "latest": 20,
+      "points": [
+        {
+          "h": 0,
+          "at": 20,
+          "effective": 20
+        },
+        {
+          "h": 99999999,
+          "at": 20,
+          "effective": 20
+        }
+      ]
+    },
+    {
+      "in": " 20@0 , 12@1000 , 16@50000 ",
+      "canonical": "20@0,12@1000,16@50000",
+      "latest": 16,
+      "points": [
+        {
+          "h": 999,
+          "at": 20,
+          "effective": 20
+        },
+        {
+          "h": 1000,
+          "at": 12,
+          "effective": 12
+        },
+        {
+          "h": 49999,
+          "at": 12,
+          "effective": 12
+        },
+        {
+          "h": 50000,
+          "at": 16,
+          "effective": 12
+        },
+        {
+          "h": 58639,
+          "at": 16,
+          "effective": 12
+        },
+        {
+          "h": 58640,
+          "at": 16,
+          "effective": 16
+        }
+      ]
+    },
+    {
+      "in": "10,12@1000,14@2000",
+      "canonical": "10@0,12@1000,14@2000",
+      "latest": 14,
+      "points": [
+        {
+          "h": 2000,
+          "at": 14,
+          "effective": 10
+        },
+        {
+          "h": 9640,
+          "at": 14,
+          "effective": 12
+        },
+        {
+          "h": 10640,
+          "at": 14,
+          "effective": 14
+        }
+      ]
+    },
+    {
+      "in": "20@0,12.5@2215000",
+      "canonical": "20@0,12.5@2215000",
+      "latest": 12.5,
+      "points": [
+        {
+          "h": 2215000,
+          "at": 12.5,
+          "effective": 12.5
+        }
+      ]
+    },
+    {
+      "in": "0.00000001,1234.5@9007199254740991",
+      "canonical": "0.00000001@0,1234.5@9007199254740991",
+      "latest": 1234.5,
+      "points": [
+        {
+          "h": 0,
+          "at": 1e-08,
+          "effective": 1e-08
+        }
+      ]
+    }
+  ],
+  "invalid": [
+    "",
+    " ",
+    "0",
+    "-1",
+    "abc",
+    "NaN",
+    "Inf",
+    "1e3",
+    ".5",
+    "5.",
+    "+5",
+    "0x10",
+    "20@5",
+    "20,12",
+    "20@0,12@0",
+    "20@0,12@100,16@50",
+    "20@0,12@-5",
+    "20@0,12@1.5",
+    "20@0,12@+100",
+    "20@0,",
+    "20@0,@100",
+    "12.123456789",
+    "1234567890",
+    "20@0,12@9007199254740992"
+  ]
+}

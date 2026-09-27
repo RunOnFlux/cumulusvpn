@@ -1,8 +1,11 @@
 package fluxnode
 
 import (
+	"context"
 	"encoding/hex"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"testing"
 )
@@ -134,5 +137,80 @@ func TestNormalizeTxNoAddrFilterOnlyMemos(t *testing.T) {
 	}
 	if got.AmountTo != 0 {
 		t.Errorf("AmountTo = %v, want 0 when addr filter empty", got.AmountTo)
+	}
+}
+
+// TestAppEnv reads a v8 spec the way the host node's FluxOS serves it: the
+// standard envelope, one compose component, KEY=VALUE strings.
+func TestAppEnv(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/apps/appspecifications/cumulusvpnde" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(`{"status":"success","data":{"name":"cumulusvpnde","version":8,
+			"compose":[{"name":"gateway","environmentParameters":[
+				"CVPN_PRICE_FLUX=12","CVPN_PRICE_SCHEDULE=20@0,12@2215000",
+				"CVPN_TLS_SNI=a=b","NOEQUALS","CVPN_PRICE_FLUX=99"]}]}}`))
+	}))
+	defer srv.Close()
+	c := NewClient("")
+	c.nodeBase = srv.URL
+
+	env, err := c.AppEnv(context.Background(), "cumulusvpnde")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := map[string]string{
+		"CVPN_PRICE_FLUX":     "12", // first occurrence wins
+		"CVPN_PRICE_SCHEDULE": "20@0,12@2215000",
+		"CVPN_TLS_SNI":        "a=b", // only the first '=' splits
+	}
+	if len(env) != len(want) {
+		t.Fatalf("env = %v, want %v", env, want)
+	}
+	for k, v := range want {
+		if env[k] != v {
+			t.Errorf("%s = %q, want %q", k, env[k], v)
+		}
+	}
+
+	if _, err := c.AppEnv(context.Background(), "nope"); err == nil {
+		t.Error("a missing app must be an error, not an empty env")
+	}
+}
+
+// TestAddressTxsSkipsMempoolAndDuplicates: insight puts unconfirmed txs first
+// (blockheight -1). Treating one as "crossed the cursor" returned an empty
+// history while mined payments sat behind it, and the scanner then moved its
+// cursor past them for good.
+func TestAddressTxsSkipsMempoolAndDuplicates(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/addrs/t1Pay/txs" {
+			http.NotFound(w, r)
+			return
+		}
+		// Newest first; "b" repeated as a page shift would repeat it.
+		_, _ = w.Write([]byte(`{"totalItems":5,"items":[
+			{"txid":"pending","blockheight":-1,"confirmations":0,"time":1},
+			{"txid":"c","blockheight":105,"confirmations":1,"time":1},
+			{"txid":"b","blockheight":103,"confirmations":3,"time":1},
+			{"txid":"b","blockheight":103,"confirmations":3,"time":1},
+			{"txid":"a","blockheight":99,"confirmations":7,"time":1}]}`))
+	}))
+	defer srv.Close()
+	c := NewClient("")
+	c.explorer = srv.URL
+
+	txs, err := c.AddressTxs(context.Background(), "t1Pay", 100)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, tx := range txs {
+		got = append(got, tx.TxID)
+	}
+	if want := []string{"b", "c"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("AddressTxs(100) = %v, want %v (oldest first, no mempool, no duplicates)", got, want)
 	}
 }

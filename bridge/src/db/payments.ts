@@ -75,6 +75,10 @@ export class PaymentsRepo {
    * durable BEFORE the tx first leaves the process, so a crash or lost
    * broadcast response can only ever delay this payment — never rebuild it
    * onto different inputs (which would double-pay once both txs mine).
+   *
+   * `fluxZats` pins the amount the tx actually pays: the value recorded at
+   * queue time is only an estimate, re-sized against the price schedule at
+   * broadcast (worker/broadcaster.ts).
    */
   markBroadcast(
     id: number,
@@ -82,13 +86,15 @@ export class PaymentsRepo {
     rawHex: string,
     expiryHeight: number,
     spentOutpoints: readonly { txid: string; vout: number }[],
+    fluxZats?: number,
   ): void {
     this.db.transaction(() => {
       this.db
         .prepare(
-          `UPDATE payments SET status = 'broadcast', txid = ?, raw_hex = ?, expiry_height = ?, broadcast_at = ?, last_error = NULL WHERE id = ?`,
+          `UPDATE payments SET status = 'broadcast', txid = ?, raw_hex = ?, expiry_height = ?, broadcast_at = ?, last_error = NULL,
+             flux_zats = COALESCE(?, flux_zats) WHERE id = ?`,
         )
-        .run(txid, rawHex, expiryHeight, now(), id);
+        .run(txid, rawHex, expiryHeight, now(), fluxZats ?? null, id);
       const ins = this.db.prepare(
         `INSERT OR IGNORE INTO spent_outpoints (txid, vout, spent_by, created_at) VALUES (?, ?, ?, ?)`,
       );

@@ -16,6 +16,7 @@ import { openDb } from '../src/db/db.js';
 import { PaymentsRepo } from '../src/db/payments.js';
 import type { ChainClient, TxInfo, Utxo } from '../src/flux/chain.js';
 import { treasuryKeyFromWif } from '../src/flux/tx.js';
+import { PriceSchedule } from '../src/price.js';
 import { Alerter } from '../src/worker/alerts.js';
 import { startBroadcaster } from '../src/worker/broadcaster.js';
 import { startConfirmer } from '../src/worker/confirmer.js';
@@ -98,6 +99,7 @@ describe('broadcaster write-ahead', () => {
         payments,
         key,
         paymentAddress: PAYMENT_ADDRESS,
+        priceSchedule: PriceSchedule.flat(20),
         feeZats: 10_000,
         alerter,
         log: nullLog,
@@ -125,6 +127,7 @@ describe('broadcaster write-ahead', () => {
         payments,
         key,
         paymentAddress: PAYMENT_ADDRESS,
+        priceSchedule: PriceSchedule.flat(20),
         feeZats: 10_000,
         alerter,
         log: nullLog,
@@ -148,6 +151,7 @@ describe('broadcaster write-ahead', () => {
         payments,
         key,
         paymentAddress: PAYMENT_ADDRESS,
+        priceSchedule: PriceSchedule.flat(20),
         feeZats: 10_000,
         alerter,
         log: nullLog,
@@ -158,6 +162,48 @@ describe('broadcaster write-ahead', () => {
     expect(payments.queueStats().pending).toBe(1);
     // Backed off, not immediately re-eligible.
     expect(payments.nextPending()).toBeUndefined();
+  });
+});
+
+describe('broadcaster sizing', () => {
+  // The queued flux_zats is an estimate; the gateways judge the tx by the
+  // price at its MINING height, so the broadcaster must re-size from days.
+  it('pays the schedule price at the tip, not the estimate recorded at queue time', async () => {
+    const { payments, key, alerter } = setup(); // queued at 20 FLUX for 30 days
+    const chain = fakeChain({ tip: 1000, utxos: [RICH_UTXO] });
+    await oneTick(() =>
+      startBroadcaster({
+        chain,
+        payments,
+        key,
+        paymentAddress: PAYMENT_ADDRESS,
+        priceSchedule: PriceSchedule.parse('20@0,12@500'),
+        feeZats: 10_000,
+        alerter,
+        log: nullLog,
+      }),
+    );
+    expect(payments.allBroadcast()[0]!.flux_zats).toBe(12e8);
+  });
+
+  it('covers a grace window closing before the tx can expire', async () => {
+    const { payments, key, alerter } = setup();
+    // Rise 12 -> 16 at 100: grace honours 12 until 100 + 8640. At tip 8730
+    // the tx may be mined at 8740+, past the window, so it must pay 16.
+    const chain = fakeChain({ tip: 8730, utxos: [RICH_UTXO] });
+    await oneTick(() =>
+      startBroadcaster({
+        chain,
+        payments,
+        key,
+        paymentAddress: PAYMENT_ADDRESS,
+        priceSchedule: PriceSchedule.parse('12@0,16@100'),
+        feeZats: 10_000,
+        alerter,
+        log: nullLog,
+      }),
+    );
+    expect(payments.allBroadcast()[0]!.flux_zats).toBe(16e8);
   });
 });
 

@@ -15,6 +15,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { parse as parseYaml } from 'yaml'; // yarn add yaml
+import { priceEnv, readPriceConfig } from './price.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -50,9 +51,12 @@ if (!['open', 'datacenter'].includes(variant)) {
 //   - CVPN_TLS_ENABLE=1  → WireGuard-over-TLS (wg-tls) on 51820/tcp (free TCP side of the WG port)
 // The 443 STEALTH group additionally sets CVPN_TLS_PORT=443 (opts.tlsPort) for censors that allow
 // only 443. A 0.1.0 gateway (or defaults.obfs/tls unset) advertises neither → behaves like today.
+//
+// The price comes from countries.yaml `price.schedule` (docs/04) as BOTH CVPN_PRICE_SCHEDULE, which
+// schedule-aware gateways judge payments by, and CVPN_PRICE_FLUX = its latest price for older images.
 function gatewayEnv(defaults, opts = {}) {
   const env = [
-    'CVPN_PRICE_FLUX=20',
+    ...priceEnv(priceCfg.entries),
     'CVPN_PAYMENT_ADDRESS=t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ',
     'CVPN_DIRECTORY_PUBKEY=1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=',
     'CVPN_FREE_RATE_KBPS=100',
@@ -78,6 +82,7 @@ function gatewayEnv(defaults, opts = {}) {
 
 const manifest = parseYaml(readFileSync(join(ROOT, 'countries.yaml'), 'utf8'));
 const { owner, defaults, countries } = manifest;
+const priceCfg = readPriceConfig(manifest);
 const wanted = countries.filter((c) => STAGES[c.stage ?? 'beta'] <= STAGES[stage]);
 
 mkdirSync(join(ROOT, 'specs', 'plain'), { recursive: true });

@@ -488,7 +488,16 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
 
   app.get('/v1/health', async (_req, reply) => {
     const q = d.payments.queueStats();
-    return reply.send(ok({ ok: true, queue_depth: q.pending + q.broadcast }));
+    // price_schedule is public (it is on-chain in every gateway spec) and lets
+    // deploy/scripts/price-watch.mjs catch a bridge left on an old schedule —
+    // it would settle fiat purchases at the wrong price (docs/04).
+    return reply.send(
+      ok({
+        ok: true,
+        queue_depth: q.pending + q.broadcast,
+        price_schedule: cfg.priceSchedule.toString(),
+      }),
+    );
   });
 
   app.get('/internal/treasury', { config: { rateLimit: false } }, async (req, reply) => {

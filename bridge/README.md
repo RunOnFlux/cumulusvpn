@@ -11,7 +11,7 @@ Stripe webhook ──┐
 Apple ASN v2  ───┼─▶ verify ─▶ payments queue (SQLite, idempotent)
 Play RTDN     ───┘                    │
                                       ▼
-                     broadcaster ─▶ FLUX tx: N×20 FLUX + OP_RETURN memo
+                     broadcaster ─▶ FLUX tx: days × price/30 FLUX + OP_RETURN memo
                                       │
                                       ▼
                      gateways' entitle scanner grants +N months
@@ -58,10 +58,14 @@ nothing secret is ever committed or baked into the image.
 | `GOOGLE_RTDN_AUDIENCE` / `GOOGLE_RTDN_EMAIL` | OIDC expectations for Pub/Sub pushes                                              | Cloud Console → Pub/Sub topic (set in Play Console → Monetization setup) → push subscription to `https://pay.cumulusvpn.com/v1/google/rtdn` with OIDC auth; audience = that URL, email = the push service account                                                                                             |
 | `ALERT_WEBHOOK_URL`                          | Where operator alerts go (optional)                                               | Discord/Slack incoming-webhook URL                                                                                                                                                                                                                                                                            |
 
-Non-secret but load-bearing: `PAYMENT_ADDRESS` + `PRICE_FLUX` must match the
-gateway fleet's `CVPN_PAYMENT_ADDRESS` / `CVPN_PRICE_FLUX`
-(deploy/specs/onchain/*), and `STRIPE_SUCCESS_URL` must keep the
-`{CHECKOUT_SESSION_ID}` placeholder (boot fails fast otherwise).
+Non-secret but load-bearing: `PAYMENT_ADDRESS` + `PRICE_SCHEDULE` (and
+`PRICE_FLUX` = its latest price) must match the gateway fleet's
+`CVPN_PAYMENT_ADDRESS` / `CVPN_PRICE_SCHEDULE` — `deploy/scripts/reprice.mjs`
+prints the exact lines after every reprice (docs/04 "Price in FLUX vs
+$0.99"). The broadcaster sizes each settlement from that schedule at broadcast
+time, so a payment queued across a reprice still lands on its full days. And
+`STRIPE_SUCCESS_URL` must keep the `{CHECKOUT_SESSION_ID}` placeholder (boot
+fails fast otherwise).
 
 ## First deploy, in order
 

@@ -21,6 +21,8 @@ export function makeSandbox() {
   mkdirSync(join(dir, 'directory'), { recursive: true });
   mkdirSync(join(dir, 'specs', 'onchain'), { recursive: true });
   mkdirSync(join(dir, 'specs', 'plain'), { recursive: true });
+  // Shared by generate/validate/update tooling; every script may import it.
+  copyFileSync(join(PKG, 'scripts', 'price.mjs'), join(dir, 'scripts', 'price.mjs'));
   return dir;
 }
 
