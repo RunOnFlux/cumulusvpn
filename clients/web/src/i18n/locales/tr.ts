@@ -76,7 +76,7 @@ export const tr: Catalog = {
   upgrade_title: 'Tam hıza yükselt',
   upgrade_lede:
     'Aşağıdaki mesajın tam olarak aynısıyla FLUX gönder. Her gateway chain’i tarar ve anahtarını ~1 dakika içinde açar — tüm sunucularda aynı anda, 30 gün boyunca. Hesap yok, kart yok, hiçbir zaman sahip olmadığını teslim edebilecek bir şirket yok.',
-  upgrade_usd_line: '≈ {usd} · 30 günde bir',
+  upgrade_usd_line: '< {usd} · 30 günde bir',
   upgrade_qr_caption: 'Zelcore / SSP Wallet ile tara',
   upgrade_field_address: 'Ödeme adresi',
   upgrade_field_message: 'Mesaj (zorunlu)',

@@ -76,7 +76,7 @@ export const ja: Catalog = {
   upgrade_title: 'フルスピードにアップグレード',
   upgrade_lede:
     '下記のメッセージをそのまま添えて FLUX を送金してください。各ゲートウェイがチェーンをスキャンし、~1 分ほどで鍵のロックを解除します — すべてのサーバーで同時に、30 日間有効です。アカウントもカードも不要で、持ってもいないものを引き渡せる会社もありません。',
-  upgrade_usd_line: '≈ {usd} · 30 日ごと',
+  upgrade_usd_line: '< {usd} · 30 日ごと',
   upgrade_qr_caption: 'Zelcore / SSP Wallet で読み取り',
   upgrade_field_address: '送金先アドレス',
   upgrade_field_message: 'メッセージ（必須）',

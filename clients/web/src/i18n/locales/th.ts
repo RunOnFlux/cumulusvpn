@@ -76,7 +76,7 @@ export const th: Catalog = {
   upgrade_title: 'อัปเกรดเป็นความเร็วเต็มสปีด',
   upgrade_lede:
     'ส่ง FLUX พร้อมข้อความที่ตรงกับด้านล่างนี้ทุกตัวอักษร ทุกเกตเวย์จะสแกน chain และปลดล็อกคีย์ของคุณภายใน ~1 นาที — บนเซิร์ฟเวอร์ทั้งหมดพร้อมกัน เป็นเวลา 30 วัน ไม่ต้องมีบัญชี ไม่ต้องมีบัตร ไม่มีบริษัทใดที่จะส่งมอบสิ่งที่มันไม่เคยมีได้',
-  upgrade_usd_line: '≈ {usd} · ต่อ 30 วัน',
+  upgrade_usd_line: '< {usd} · ต่อ 30 วัน',
   upgrade_qr_caption: 'สแกนด้วย Zelcore / SSP Wallet',
   upgrade_field_address: 'ที่อยู่สำหรับชำระเงิน',
   upgrade_field_message: 'ข้อความ (จำเป็น)',

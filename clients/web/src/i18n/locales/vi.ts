@@ -76,7 +76,7 @@ export const vi: Catalog = {
   upgrade_title: 'Nâng cấp lên tốc độ tối đa',
   upgrade_lede:
     'Gửi FLUX kèm đúng nội dung tin nhắn bên dưới. Mỗi gateway sẽ quét chain và mở khóa của bạn trong vòng ~1 phút — trên tất cả máy chủ cùng lúc, trong 30 ngày. Không cần tài khoản, không cần thẻ, không có công ty nào có thể trao ra thứ mà nó chưa từng nắm giữ.',
-  upgrade_usd_line: '≈ {usd} · mỗi 30 ngày',
+  upgrade_usd_line: '< {usd} · mỗi 30 ngày',
   upgrade_qr_caption: 'Quét bằng Zelcore / SSP Wallet',
   upgrade_field_address: 'Địa chỉ thanh toán',
   upgrade_field_message: 'Tin nhắn (bắt buộc)',

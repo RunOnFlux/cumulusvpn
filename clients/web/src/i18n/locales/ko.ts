@@ -75,7 +75,7 @@ export const ko: Catalog = {
   upgrade_title: '전체 속도로 업그레이드',
   upgrade_lede:
     '아래의 정확한 메시지와 함께 FLUX를 보내세요. 각 게이트웨이가 체인을 스캔해 ~1 분 안에 키를 잠금 해제하며 — 모든 서버에서 동시에, 30일 동안 적용됩니다. 계정도, 카드도, 가진 적 없는 것을 내줄 수 있는 회사도 필요 없습니다.',
-  upgrade_usd_line: '≈ {usd} · 30일마다',
+  upgrade_usd_line: '< {usd} · 30일마다',
   upgrade_qr_caption: 'Zelcore / SSP Wallet으로 스캔',
   upgrade_field_address: '결제 주소',
   upgrade_field_message: '메시지 (필수)',

@@ -82,7 +82,7 @@ export const en = {
   upgrade_title: 'Upgrade to full speed',
   upgrade_lede:
     'Send FLUX with the exact message below. Every gateway scans the chain and unlocks your key within ~1 minute — on all servers at once, for 30 days. No account, no card, no company that can hand over what it never had.',
-  upgrade_usd_line: '≈ {usd} · per 30 days',
+  upgrade_usd_line: '< {usd} · per 30 days',
   upgrade_qr_caption: 'Scan with Zelcore / SSP Wallet',
   upgrade_field_address: 'Pay to address',
   upgrade_field_message: 'Message (required)',

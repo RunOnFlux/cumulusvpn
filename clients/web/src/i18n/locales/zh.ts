@@ -75,7 +75,7 @@ export const zh: Catalog = {
   upgrade_title: '升级至全速',
   upgrade_lede:
     '按照下方的确切信息发送 FLUX。每个网关都会扫描区块链，并在 ~1 分钟内解锁你的密钥——同时在所有服务器生效，为期 30 天。无需账号，无需银行卡，没有任何公司能交出它从未拥有过的东西。',
-  upgrade_usd_line: '≈ {usd} · 每 30 天',
+  upgrade_usd_line: '< {usd} · 每 30 天',
   upgrade_qr_caption: '使用 Zelcore / SSP Wallet 扫描',
   upgrade_field_address: '付款地址',
   upgrade_field_message: '留言（必填）',

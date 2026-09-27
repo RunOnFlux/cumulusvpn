@@ -11,6 +11,16 @@ const SRC = join(ROOT, 'src');
 const PUB = join(ROOT, 'public');
 const ORIGIN = 'https://cumulusvpn.com';
 
+// The FLUX price is never typed into copy: %PRICE_FLUX% renders the price the
+// web app's signed directory quotes, so a reprice (deploy/scripts/reprice.mjs,
+// which re-signs that file and reruns this build) moves every locale at once.
+export function priceFlux() {
+  const dir = JSON.parse(readFileSync(join(ROOT, '..', 'web', 'public', 'directory.json'), 'utf8'));
+  const p = Number(dir.price_flux);
+  if (!(p > 0)) throw new Error('web/public/directory.json: no price_flux');
+  return String(p);
+}
+
 // Canonical registry — array order is switcher order. `og` is og:locale.
 export const LOCALES = [
   { code: 'en', endonym: 'English', og: 'en_US' },
@@ -68,7 +78,7 @@ function loadCatalogs() {
   return map;
 }
 
-export function render(templateText, locale, page, catalog, activeLocales) {
+export function render(templateText, locale, page, catalog, activeLocales, price) {
   let html = templateText.replace(/\{\{([a-z0-9_.]+)\}\}/g, (_, path) => {
     const val = catalog.get(path);
     if (typeof val !== 'string') throw new Error(`${locale.code}/${page.template}: missing catalog key ${path}`);
@@ -87,6 +97,7 @@ export function render(templateText, locale, page, catalog, activeLocales) {
       `<link rel="alternate" hreflang="x-default" href="${pageUrl('en', page.slug)}" />`,
     ].join('\n'),
     '%PAGE%': page.slug,
+    '%PRICE_FLUX%': price,
     '%LOCALE_OPTIONS%': activeLocales
       .map((l) => `<option value="${l.code}"${l.code === locale.code ? ' selected' : ''}>${l.endonym}</option>`)
       .join(''),
@@ -109,13 +120,14 @@ export function render(templateText, locale, page, catalog, activeLocales) {
 export function buildAll() {
   const catalogs = loadCatalogs();
   const active = LOCALES.filter((l) => catalogs.has(l.code));
+  const price = priceFlux();
   const out = new Map(); // relPath under public/ -> content
   for (const page of PAGES) {
     if (!existsSync(join(SRC, 'templates', page.template))) continue;
     const templateText = readFileSync(join(SRC, 'templates', page.template), 'utf8');
     for (const locale of active) {
       const rel = locale.code === 'en' ? page.out : `${locale.code}/${page.out}`;
-      out.set(rel, render(templateText, locale, page, catalogs.get(locale.code), active));
+      out.set(rel, render(templateText, locale, page, catalogs.get(locale.code), active, price));
     }
   }
   return { out, active, catalogs };

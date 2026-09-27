@@ -22,7 +22,7 @@ owner: 196GJWyLxzAw3MirTT7Bqs2iGpUQio29GH # enterprise app-owner ZelID (must be 
 # when price × FLUX/USD leaves [floorUsd, ceilingUsd], and a reprice aims at
 # targetUsd so the next move has headroom.
 price:
-  schedule: '20'
+  schedule: '20@0,12@2986310'
   floorUsd: 0.70
   targetUsd: 0.85
   ceilingUsd: 0.95

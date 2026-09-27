@@ -76,7 +76,7 @@ export const fi: Catalog = {
   upgrade_title: 'Päivitä täyteen nopeuteen',
   upgrade_lede:
     'Lähetä FLUXia alla olevalla täsmällisellä viestillä. Jokainen yhdyskäytävä skannaa ketjun ja avaa avaimesi noin ~1 minuutissa — kaikilla palvelimilla samanaikaisesti, 30 päiväksi. Ei tiliä, ei korttia, ei yritystä, joka voisi luovuttaa jotain, mitä sillä ei koskaan ollut.',
-  upgrade_usd_line: '≈ {usd} · 30 päivää kohti',
+  upgrade_usd_line: '< {usd} · 30 päivää kohti',
   upgrade_qr_caption: 'Skannaa Zelcorella / SSP Walletilla',
   upgrade_field_address: 'Maksuosoite',
   upgrade_field_message: 'Viesti (pakollinen)',

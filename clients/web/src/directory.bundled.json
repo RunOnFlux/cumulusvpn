@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "updated": "2026-08-06T09:18:04Z",
+  "updated": "2026-09-27T01:10:05Z",
   "payment_address": "t3disq3aZz8K3RLZL9zfkpP2UWNVV3hq4vZ",
-  "price_flux": 20,
+  "price_flux": 12,
   "specs": [
     "cumulusvpnae",
     "cumulusvpnat",
@@ -40,5 +40,5 @@
     }
   ],
   "sign_pubkey": "1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=",
-  "sig": "UI7E3DYzaLty/hd6UMOQtHsosLfLLwD8TbS6n1jahkZE6sVuuPYEFw86CgvUXyTSPwMFzaoYFevNEpUuo/1lAQ=="
+  "sig": "QL7zHv+FM3Cd5D4mtetTwv1NVBu5neFMcYODqZH7pQntVztyQnXGHeNhzOmE85ciQrQVdWTSbISVrasyl6ItDg=="
 }

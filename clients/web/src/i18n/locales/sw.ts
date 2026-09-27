@@ -76,7 +76,7 @@ export const sw: Catalog = {
   upgrade_title: 'Boresha upate kasi kamili',
   upgrade_lede:
     'Tuma FLUX ukitumia ujumbe hasa ulio hapa chini. Kila lango huchanganua mnyororo na kufungua ufunguo wako ndani ya ~1 dakika — kwenye seva zote kwa wakati mmoja, kwa siku 30. Hakuna akaunti, hakuna kadi, hakuna kampuni inayoweza kutoa kitu ambacho haikuwa nacho kamwe.',
-  upgrade_usd_line: '≈ {usd} · kwa kila siku 30',
+  upgrade_usd_line: '< {usd} · kwa kila siku 30',
   upgrade_qr_caption: 'Changanua kwa Zelcore / SSP Wallet',
   upgrade_field_address: 'Lipa kwenye anwani',
   upgrade_field_message: 'Ujumbe (unahitajika)',

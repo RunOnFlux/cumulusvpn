@@ -76,7 +76,7 @@ export const da: Catalog = {
   upgrade_title: 'Opgradér til fuld hastighed',
   upgrade_lede:
     'Send FLUX med den nøjagtige besked nedenfor. Hver gateway skanner kæden og låser din nøgle op inden for ~1 minut — på alle servere på én gang, i 30 dage. Ingen konto, intet kort, ingen virksomhed der kan udlevere det, den aldrig havde.',
-  upgrade_usd_line: '≈ {usd} · pr. 30 dage',
+  upgrade_usd_line: '< {usd} · pr. 30 dage',
   upgrade_qr_caption: 'Scan med Zelcore / SSP Wallet',
   upgrade_field_address: 'Betal til adresse',
   upgrade_field_message: 'Besked (påkrævet)',

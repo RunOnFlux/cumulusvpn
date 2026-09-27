@@ -76,7 +76,7 @@ export const nl: Catalog = {
   upgrade_title: 'Upgraden naar volle snelheid',
   upgrade_lede:
     'Stuur FLUX met precies het bericht hieronder. Elke gateway scant de chain en ontgrendelt je sleutel binnen ~1 minuut — op alle servers tegelijk, voor 30 dagen. Geen account, geen kaart, geen bedrijf dat kan afgeven wat het nooit had.',
-  upgrade_usd_line: '≈ {usd} · per 30 dagen',
+  upgrade_usd_line: '< {usd} · per 30 dagen',
   upgrade_qr_caption: 'Scan met Zelcore / SSP Wallet',
   upgrade_field_address: 'Betaaladres',
   upgrade_field_message: 'Bericht (verplicht)',

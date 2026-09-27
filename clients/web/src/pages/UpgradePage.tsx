@@ -16,7 +16,7 @@ import {
   PAY_CODE_OVERRIDE_STORAGE_KEY,
   PAY_PORTAL_SESSIONS_STORAGE_KEY,
   PRICE_USD_ANNUAL,
-  PRICE_USD_APPROX,
+  PRICE_USD_CAP,
   PRICE_USD_MONTHLY,
 } from '../config';
 import { useI18n } from '../hooks/useLocale';
@@ -364,7 +364,7 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
         <section className="card pay-card">
           <div className="amount">
             <div className="big mono">{price_flux} FLUX</div>
-            <div className="usd">{t('upgrade_usd_line', { usd: PRICE_USD_APPROX })}</div>
+            <div className="usd">{t('upgrade_usd_line', { usd: PRICE_USD_CAP })}</div>
           </div>
 
           <div className="pay-qr">

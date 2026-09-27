@@ -76,7 +76,7 @@ export const pt: Catalog = {
   upgrade_title: 'Upgrade para velocidade máxima',
   upgrade_lede:
     'Envie FLUX com a mensagem exata abaixo. Cada gateway escaneia a chain e desbloqueia sua chave em ~1 minuto — em todos os servidores de uma vez, por 30 dias. Sem conta, sem cartão, sem nenhuma empresa que possa entregar o que nunca teve.',
-  upgrade_usd_line: '≈ {usd} · a cada 30 dias',
+  upgrade_usd_line: '< {usd} · a cada 30 dias',
   upgrade_qr_caption: 'Escaneie com Zelcore / SSP Wallet',
   upgrade_field_address: 'Endereço de pagamento',
   upgrade_field_message: 'Mensagem (obrigatória)',

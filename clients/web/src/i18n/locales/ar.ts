@@ -89,7 +89,7 @@ export const ar: Catalog = {
   upgrade_title: 'الترقية إلى السرعة الكاملة',
   upgrade_lede:
     'أرسل FLUX مع الرسالة الدقيقة أدناه. تفحص كل بوابة السلسلة وتُطلق مفتاحك خلال ~1 دقيقة تقريبًا — على جميع الخوادم في آنٍ واحد، لمدة 30 يومًا. بلا حساب، بلا بطاقة، بلا شركة يمكنها تسليم ما لم تمتلكه قط.',
-  upgrade_usd_line: '≈ {usd} · لكل 30 يومًا',
+  upgrade_usd_line: '< {usd} · لكل 30 يومًا',
   upgrade_qr_caption: 'امسح ضوئيًا باستخدام Zelcore / SSP Wallet',
   upgrade_field_address: 'عنوان الدفع',
   upgrade_field_message: 'الرسالة (مطلوبة)',

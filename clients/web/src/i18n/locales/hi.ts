@@ -76,7 +76,7 @@ export const hi: Catalog = {
   upgrade_title: 'पूरी स्पीड के लिए अपग्रेड करें',
   upgrade_lede:
     'नीचे दिए गए सटीक मैसेज के साथ FLUX भेजें। हर गेटवे चेन स्कैन करता है और ~1 मिनट में आपकी कुंजी अनलॉक कर देता है — सभी सर्वर पर एक साथ, 30 दिनों के लिए। न कोई खाता, न कोई कार्ड, न कोई कंपनी जो वह सौंपे जो उसके पास कभी था ही नहीं।',
-  upgrade_usd_line: '≈ {usd} · हर 30 दिन',
+  upgrade_usd_line: '< {usd} · हर 30 दिन',
   upgrade_qr_caption: 'Zelcore / SSP Wallet से स्कैन करें',
   upgrade_field_address: 'भुगतान पता',
   upgrade_field_message: 'मैसेज (आवश्यक)',

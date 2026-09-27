@@ -76,7 +76,7 @@ export const id: Catalog = {
   upgrade_title: 'Upgrade ke kecepatan penuh',
   upgrade_lede:
     'Kirim FLUX dengan pesan persis seperti di bawah. Setiap gateway memindai chain dan membuka kunci Anda dalam ~1 menit — di semua server sekaligus, selama 30 hari. Tanpa akun, tanpa kartu, tanpa perusahaan yang bisa menyerahkan apa yang tidak pernah ia miliki.',
-  upgrade_usd_line: '≈ {usd} · per 30 hari',
+  upgrade_usd_line: '< {usd} · per 30 hari',
   upgrade_qr_caption: 'Pindai dengan Zelcore / SSP Wallet',
   upgrade_field_address: 'Alamat pembayaran',
   upgrade_field_message: 'Pesan (wajib)',

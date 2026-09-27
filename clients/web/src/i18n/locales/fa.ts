@@ -76,7 +76,7 @@ export const fa: Catalog = {
   upgrade_title: 'ارتقا به سرعت کامل',
   upgrade_lede:
     'FLUX را دقیقاً با پیام زیر ارسال کنید. هر دروازه زنجیره را اسکن می‌کند و کلید شما را ظرف ~1 دقیقه باز می‌کند — روی همه سرورها هم‌زمان، برای 30 روز. بدون حساب کاربری، بدون کارت، بدون هیچ شرکتی که بتواند چیزی را که هرگز نداشته تحویل دهد.',
-  upgrade_usd_line: '≈ {usd} · هر 30 روز',
+  upgrade_usd_line: '< {usd} · هر 30 روز',
   upgrade_qr_caption: 'با Zelcore / SSP Wallet اسکن کنید',
   upgrade_field_address: 'آدرس پرداخت',
   upgrade_field_message: 'پیام (الزامی)',
