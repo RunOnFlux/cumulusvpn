@@ -15,9 +15,13 @@ cd "$here"
 
 export PATH="$PATH:$(go env GOPATH)/bin"
 if ! command -v gomobile >/dev/null 2>&1; then
-  echo "installing gomobile + gobind…"
-  go install golang.org/x/mobile/cmd/gomobile@latest
-  go install golang.org/x/mobile/cmd/gobind@latest
+  # The x/mobile version go.mod pins (the one bind.go builds against), never
+  # @latest: the CLI must match the bind library, and @latest drifted to a
+  # release needing a newer Go than CI pins, failing mobile-v1.1.1's build.
+  mobile_ver="$(go list -m -f '{{.Version}}' golang.org/x/mobile)"
+  echo "installing gomobile + gobind ${mobile_ver}…"
+  go install "golang.org/x/mobile/cmd/gomobile@${mobile_ver}"
+  go install "golang.org/x/mobile/cmd/gobind@${mobile_ver}"
 fi
 
 out="$here/../../mobile/ios/Frameworks/Wgnest.xcframework"
