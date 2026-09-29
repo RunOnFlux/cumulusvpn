@@ -5,7 +5,13 @@
  * and the country grouping/sorting that drives the picker.
  */
 import type { GatewayInfo } from '@cumulusvpn/core';
-import { flagEmoji, latencyBand, groupByCountry, groupByLocation } from './gateways';
+import {
+  flagEmoji,
+  fleetPriceFlux,
+  latencyBand,
+  groupByCountry,
+  groupByLocation,
+} from './gateways';
 
 /** Build a minimal GatewayInfo for grouping tests. */
 function gw(partial: Partial<GatewayInfo> & Pick<GatewayInfo, 'ip' | 'country'>): GatewayInfo {
@@ -123,5 +129,32 @@ describe('groupByLocation', () => {
     ]);
     expect(rows.length).toBe(1);
     expect(rows[0]?.nodeCount).toBe(2);
+  });
+});
+
+describe('fleetPriceFlux', () => {
+  // price_flux is carried by gateway 0.4.0+ /v1/info; older nodes omit it.
+  const priced = (ip: string, price?: number) =>
+    ({
+      ...gw({ ip, country: 'DE' }),
+      ...(price === undefined ? {} : { price_flux: price }),
+    }) as GatewayInfo;
+
+  it('is the price the fleet quotes, before any connection', () => {
+    expect(fleetPriceFlux([priced('1', 12), priced('2', 12), priced('3', 12)])).toBe(12);
+  });
+
+  it('lets the majority outvote a lagging node', () => {
+    expect(fleetPriceFlux([priced('1', 12), priced('2', 12), priced('3', 20)])).toBe(12);
+  });
+
+  it('breaks a tie toward the higher price (overpaying only buys extra days)', () => {
+    expect(fleetPriceFlux([priced('1', 12), priced('2', 20)])).toBe(20);
+  });
+
+  it('ignores nodes that report no price, and is undefined when none do', () => {
+    expect(fleetPriceFlux([priced('1'), priced('2', 12)])).toBe(12);
+    expect(fleetPriceFlux([priced('1'), priced('2')])).toBeUndefined();
+    expect(fleetPriceFlux([])).toBeUndefined();
   });
 });

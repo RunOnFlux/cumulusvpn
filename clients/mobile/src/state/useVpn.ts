@@ -45,6 +45,7 @@ import {
 } from '../native/CumulusTunnel';
 import {
   discoverFleet,
+  fleetPriceFlux,
   groupByCountry,
   groupByLocation,
   localityOf,
@@ -328,6 +329,9 @@ export function useVpn(): VpnModel & VpnActions {
   const [discovering, setDiscovering] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [enrollment, setEnrollment] = useState<EnrollResponse | null>(null);
+  // Live price from the last discovery's signed /v1/info (fleetPriceFlux) —
+  // state, not the gatewaysRef, so Upgrade re-renders when it arrives.
+  const [fleetPrice, setFleetPrice] = useState<number | undefined>(undefined);
   const [routeStyle, setRouteStyleState] = useState<RouteStyle>('single');
   const [transportMode, setTransportModeState] = useState<TransportMode>('auto');
   const [entryCode, setEntryCode] = useState<string | null>(null);
@@ -471,17 +475,19 @@ export function useVpn(): VpnModel & VpnActions {
     if (!keypair) {
       return null;
     }
-    // Pay-to address + price come from the SIGNED DIRECTORY (bundled, always
-    // available) so Upgrade works before the user has ever connected. A live
-    // enrollment overrides them when present. (Previously this required an
-    // enrollment, so opening Upgrade before connecting showed nothing.)
+    // Pay-to address comes from the SIGNED DIRECTORY (bundled, always
+    // available) so Upgrade works before the user has ever connected; a live
+    // enrollment overrides it. The PRICE prefers what the fleet quotes live
+    // (discovery runs at launch, before any connect), then the enrolled
+    // gateway's quote, and only then the bundled directory — which is frozen
+    // at build time and went stale the moment FLUX was repriced (docs/04).
     return {
       code: paymentCode(keypair.publicKey),
       memo: paymentMemo(keypair.publicKey),
       address: enrollment?.payment_address ?? bundledDirectory.payment_address,
-      priceFlux: enrollment?.price_flux ?? bundledDirectory.price_flux,
+      priceFlux: fleetPrice ?? enrollment?.price_flux ?? bundledDirectory.price_flux,
     };
-  }, [keypair, enrollment]);
+  }, [keypair, enrollment, fleetPrice]);
 
   // ---- bootstrap: key + discovery ----------------------------------------
   // Latency pass, run AFTER first paint. Measuring each country's best gateway
@@ -525,6 +531,7 @@ export function useVpn(): VpnModel & VpnActions {
     try {
       const gateways = await discoverFleet();
       gatewaysRef.current = gateways;
+      setFleetPrice(fleetPriceFlux(gateways));
       // Paint the server list immediately (this dismisses the boot splash);
       // latency dots stream in from the background pass so first paint isn't
       // blocked on the ping round-trips.
@@ -575,6 +582,7 @@ export function useVpn(): VpnModel & VpnActions {
         const cached = await loadFleet();
         if (alive && cached) {
           gatewaysRef.current = cached.gateways;
+          setFleetPrice(fleetPriceFlux(cached.gateways));
           setCountries(groupByCountry(cached.gateways, cached.latencyByIp));
           setLocations(groupByLocation(cached.gateways, cached.latencyByIp));
         }

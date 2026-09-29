@@ -333,3 +333,35 @@ export async function measureLatency(gw: GatewayInfo): Promise<number | null> {
 export async function discoverFleet(): Promise<GatewayInfo[]> {
   return discoverGateways(bundledSpecs(), { nodes: [...seedNodeIps()] });
 }
+
+/**
+ * The FLUX price the fleet quotes right now, read from the discovered
+ * gateways' signed `/v1/info` — gateway 0.4.0+ reports `price_flux` there
+ * (docs/04). Discovery runs at launch, before any connection, so this is what
+ * lets Upgrade show the live price without connecting first; the bundled
+ * directory's price is only as fresh as the installed build.
+ *
+ * The majority value wins, so one lagging or misbehaving node cannot move the
+ * quote; a tie goes to the HIGHER price, because overpaying only ever buys
+ * extra days while an under-quote would sell a fraction of a month. Undefined
+ * when no gateway reports a price (a pre-0.4.0 fleet, or an old fleet cache).
+ */
+export function fleetPriceFlux(gateways: readonly GatewayInfo[]): number | undefined {
+  const votes = new Map<number, number>();
+  for (const g of gateways) {
+    // Not in the installed core's InfoResponse type yet; read it defensively.
+    const p = (g as GatewayInfo & { readonly price_flux?: unknown }).price_flux;
+    if (typeof p === 'number' && Number.isFinite(p) && p > 0) {
+      votes.set(p, (votes.get(p) ?? 0) + 1);
+    }
+  }
+  let best: number | undefined;
+  let bestVotes = 0;
+  for (const [price, n] of votes) {
+    if (n > bestVotes || (n === bestVotes && best !== undefined && price > best)) {
+      best = price;
+      bestVotes = n;
+    }
+  }
+  return best;
+}
