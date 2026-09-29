@@ -2,7 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { parse as parseYaml } from 'yaml';
 import { makeSandbox, cleanup, copyIn, runNode } from './helpers.mjs';
+import { priceEnv, readPriceConfig } from '../scripts/price.mjs';
 
 // The DEPLOYABLE default is the OPEN variant: public image + real env inlined on-chain,
 // enterprise:false, no datacenter flag, no encryption step (encrypt.mjs is a stub).
@@ -52,10 +54,14 @@ test('generate.mjs (open, default) expands countries.yaml into 12 beta v8 OPEN s
     // no explicit TLS port → the relay rides 51820/tcp).
     const de = JSON.parse(readFileSync(join(onchainDir, 'cumulusvpnde.json'), 'utf8'));
     const deEnv = de.compose[0].environmentParameters;
-    assert.ok(
-      deEnv.includes('CVPN_PRICE_FLUX=20') && deEnv.includes('CVPN_PRICE_SCHEDULE=20@0'),
-      'price env comes from countries.yaml price.schedule, as both variables',
+    // Expected price read from countries.yaml, never hardcoded: every reprice
+    // appends to the schedule, and a literal here reddens CI on each one.
+    const { entries } = readPriceConfig(
+      parseYaml(readFileSync(join(sb, 'countries.yaml'), 'utf8')),
     );
+    for (const e of priceEnv(entries)) {
+      assert.ok(deEnv.includes(e), `price env comes from countries.yaml price.schedule: ${e}`);
+    }
     assert.ok(deEnv.includes('CVPN_OBFS_ENABLE=1'), 'standard advertises awg');
     assert.ok(deEnv.includes('CVPN_TLS_ENABLE=1'), 'standard advertises wg-tls');
     assert.ok(
