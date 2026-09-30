@@ -25,7 +25,8 @@
   * { box-sizing:border-box; }
   body { margin:0; background:var(--bg); color:var(--ink); font-family:var(--sans);
     -webkit-font-smoothing:antialiased; line-height:1.5; min-height:100vh; }
-  .wrap { max-width:560px; margin:0 auto; padding:48px 24px 80px; }
+  .wrap { max-width:1120px; margin:0 auto; padding:40px 32px 80px; }
+  #login { max-width:480px; }
   .brand { display:flex; align-items:center; gap:11px; font-weight:700; letter-spacing:-.02em; font-size:18px; margin-bottom:6px; }
   .mark { width:26px; height:26px; }
   .sub { color:var(--ink-3); font-family:var(--mono); font-size:12px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:28px; }
@@ -73,6 +74,46 @@
   #toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
   #toast.ok { border-color:color-mix(in srgb,var(--green) 50%,var(--line)); }
   #toast.bad { border-color:color-mix(in srgb,var(--red) 50%,var(--line)); }
+  /* wide layout */
+  :root { color-scheme:dark; }
+  @media (prefers-color-scheme: light) { :root { color-scheme:light; } }
+  .dash-top { display:flex; align-items:center; justify-content:flex-end; gap:14px; margin-top:-44px; margin-bottom:12px; }
+  .dash-head { margin-top:28px; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:24px; align-items:start; }
+  .grid .dash-head { margin-top:0; }
+  .grid .card { margin-bottom:0; }
+  @media (max-width: 900px) { .grid { grid-template-columns:1fr; } .dash-top { margin-top:0; } .wrap { padding:32px 16px 64px; } }
+  h2 { margin-top:20px; }
+  .card > h2:first-child { margin-top:0; }
+  /* payment options matrix */
+  .matrix { width:100%; border-collapse:collapse; margin:4px 0 8px; }
+  .matrix th { text-align:left; font-size:11.5px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-3); padding:0 0 10px; }
+  .matrix th:not(:first-child), .matrix td:not(:first-child) { width:84px; text-align:center; }
+  .matrix td { padding:14px 0; border-top:1px solid var(--line); vertical-align:middle; }
+  .matrix td b { display:block; font-size:15px; font-weight:600; }
+  .matrix td small { display:block; color:var(--ink-3); font-size:12.5px; margin-top:2px; }
+  .matrix .sw { display:inline-block; vertical-align:middle; }
+  .note { color:var(--ink-3); font-size:12.5px; line-height:1.55; margin:8px 0 0; }
+  .actions { display:inline-flex; gap:10px; align-items:center; }
+  /* form fields */
+  input[type=text], input[type=number], input[type=date], select {
+    width:100%; font:inherit; font-size:14px; background:var(--surface-2); color:var(--ink);
+    border:1px solid var(--line); border-radius:10px; padding:10px 12px; min-height:42px; }
+  input[type=text]:focus, input[type=number]:focus, input[type=date]:focus, select:focus {
+    outline:none; border-color:var(--cyan); box-shadow:0 0 0 3px color-mix(in srgb,var(--cyan) 30%,transparent); }
+  input[type=checkbox] { accent-color:var(--cyan); width:18px; height:18px; }
+  .form-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:16px 18px; margin-top:10px; }
+  .form-grid.two { grid-template-columns:repeat(2, 1fr); }
+  @media (max-width: 900px) { .form-grid, .form-grid.two { grid-template-columns:1fr; } }
+  .field { display:flex; flex-direction:column; gap:7px; font-size:13px; font-weight:600; color:var(--ink-2); }
+  .field small { font-weight:400; color:var(--ink-3); }
+  /* inputs line up across a row even when one label carries a hint */
+  .field > input, .field > select { margin-top:auto; }
+  .field.check { flex-direction:row; align-items:flex-start; gap:10px; padding-top:24px; }
+  .field.check span small { display:block; margin-top:2px; }
+  .inline { display:flex; gap:10px; align-items:center; }
+  .inline input { flex:1; }
+  #voucher-stats { margin:12px 0 4px; }
   [hidden] { display:none !important; }
 </style>
 </head>
@@ -103,145 +144,112 @@
 
   <!-- DASHBOARD (shown after auth) -->
   <div id="editor" hidden>
-    <div class="dash-head">
-      <div class="sec-title">Treasury</div>
+    <div class="dash-top">
+      <span class="updated">Signed in</span>
       <button class="btn ghost sm" id="signout">Sign out</button>
     </div>
-    <div class="card">
-      <p class="hint">
-        The bridge's settlement wallet. Every card, Google Play and App Store sale is paid on chain
-        from here into our payment address. When it runs dry, sales queue and buyers wait for
-        premium until it is topped up.
-      </p>
-      <div class="warn" id="t-low" hidden></div>
-      <div class="row"><div class="k">Balance <small id="t-addr">—</small></div><div class="big" id="t-balance">—</div></div>
-      <div class="row"><div class="k">Monthly sales it can settle <small id="t-price">—</small></div><div class="big" id="t-months">—</div></div>
-      <div class="row"><div class="k">Waiting to settle <small id="t-need">—</small></div><div id="t-queue">—</div></div>
-      <div class="foot">
-        <span class="updated" id="t-updated">—</span>
-        <button class="btn ghost sm" id="t-refresh">Refresh</button>
-      </div>
-      <div class="err" id="t-err"></div>
+
+    <div class="grid">
+      <section>
+        <div class="dash-head"><div class="sec-title">Treasury</div></div>
+        <div class="card">
+          <p class="hint">
+            The wallet that pays card, Google Play and App Store sales on chain. When it runs dry,
+            sales queue and buyers wait for premium until it is topped up.
+          </p>
+          <div class="warn" id="t-low" hidden></div>
+          <div class="row"><div class="k">Balance <small id="t-addr">—</small></div><div class="big" id="t-balance">—</div></div>
+          <div class="row"><div class="k">Monthly sales it can settle <small id="t-price">—</small></div><div class="big" id="t-months">—</div></div>
+          <div class="row"><div class="k">Waiting to settle <small id="t-need">—</small></div><div id="t-queue">—</div></div>
+          <div class="foot">
+            <span class="updated" id="t-updated">—</span>
+            <button class="btn ghost sm" id="t-refresh">Refresh</button>
+          </div>
+          <div class="err" id="t-err"></div>
+        </div>
+      </section>
+
+      <section>
+        <div class="dash-head"><div class="sec-title">Payment options in the app</div></div>
+        <div class="card">
+          <p class="hint">What the apps show, per platform. Changes reach an app the next time it opens.</p>
+          <table class="matrix">
+            <thead><tr><th>Option</th><th>Android</th><th>iOS</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>Store subscriptions</b><small>Google Play / App Store billing</small></td>
+                <td><label class="sw"><input type="checkbox" id="iap-android" aria-label="Store subscriptions on Android" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="iap-ios" aria-label="Store subscriptions on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+              </tr>
+              <tr>
+                <td><b>FLUX checkout in the app</b><small>QR code and wallet hand-off</small></td>
+                <td><label class="sw"><input type="checkbox" id="t-android" aria-label="FLUX checkout on Android" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="t-ios" aria-label="FLUX checkout on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+              </tr>
+              <tr>
+                <td><b>“Pay on the website” button</b><small>opens the web checkout with the device already filled in</small></td>
+                <td><label class="sw"><input type="checkbox" id="wp-android" aria-label="Pay on the website on Android" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="wp-ios" aria-label="Pay on the website on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+              </tr>
+              <tr>
+                <td><b>Voucher code box</b><small>redeem our codes inside the app</small></td>
+                <td><label class="sw"><input type="checkbox" id="vr-android" aria-label="Voucher box on Android" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="vr-ios" aria-label="Voucher box on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="note">
+            Store subscriptions are always within store rules. The other three can conflict with
+            App&nbsp;Store / Google&nbsp;Play rules outside the US — your call per platform.
+          </p>
+          <div class="foot">
+            <span class="updated" id="updated">—</span>
+            <span class="actions">
+              <button class="btn ghost sm" id="all-on">Turn all on</button>
+              <button class="btn primary" id="save">Save</button>
+            </span>
+          </div>
+          <div class="err" id="save-err"></div>
+        </div>
+      </section>
     </div>
 
-    <div class="dash-head" style="margin-top:28px">
-      <div class="sec-title">Feature flags</div>
-    </div>
-    <div class="card">
-      <div class="warn">
-        <b>⚠ Store-compliance:</b> turning <code>inAppUpgrade</code> <b>on</b> shows the in-app FLUX
-        purchase UI (QR + wallet). <b>Do not enable it for a build that is under, or has passed,
-        App&nbsp;Store / Google&nbsp;Play review</b> — a post-review behaviour change is a policy
-        violation. Direct-APK / web / testing builds only. These toggles are now the <i>only</i>
-        gate on both platforms — the app no longer excludes iOS in code, so a flip here reaches
-        an App&nbsp;Store build on its next launch.
-      </div>
-
-      <h2>inAppUpgrade</h2>
-      <p class="hint">In-app FLUX upgrade flow, per platform. Off = store-compliant "manage on web".</p>
-
-      <div class="row">
-        <div class="k">Android <small>com.cumulusvpn.app</small></div>
-        <label class="sw"><input type="checkbox" id="t-android" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-      <div class="row">
-        <div class="k">iOS <small>com.cumulusvpn.app (App Store)</small></div>
-        <label class="sw"><input type="checkbox" id="t-ios" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-
-      <h2>iapPurchase</h2>
-      <p class="hint">
-        Store-billing subscriptions (Apple IAP / Play Billing via the payments bridge).
-        Store-compliant — but it must be <b>ON before submitting a build with the subscribe UI for
-        review</b> (reviewers must find the declared subscriptions; fail-closed flags would hide
-        them). Off afterwards = emergency kill switch only (bridge outage).
-      </p>
-
-      <div class="row">
-        <div class="k">Android <small>Play Billing</small></div>
-        <label class="sw"><input type="checkbox" id="iap-android" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-      <div class="row">
-        <div class="k">iOS <small>Apple IAP</small></div>
-        <label class="sw"><input type="checkbox" id="iap-ios" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-
-      <h2>voucherRedeem</h2>
-      <p class="hint">
-        In-app voucher redeem box (our codes), per platform. On Android the direct APK and the
-        Play build are the <b>same binary</b>, so this is the only thing separating them — keep it
-        <b>OFF while a Play build is live</b>. Both toggles are live: nothing is excluded at build
-        level any more, so whether a code box is acceptable in a store build is your call to make
-        per platform, and it takes effect on next app launch.
-      </p>
-      <div class="row">
-        <div class="k">Android <small>direct APK only</small></div>
-        <label class="sw"><input type="checkbox" id="vr-android" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-      <div class="row">
-        <div class="k">iOS <small>App Store build</small></div>
-        <label class="sw"><input type="checkbox" id="vr-ios" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-
-      <h2>webPayLink</h2>
-      <p class="hint">
-        "Pay on the website" button in the app: opens vpn.cumulusvpn.com with the device's code
-        already filled in (FLUX or card, no store cut). A link to an outside checkout is store
-        steering outside the US — the same kind of call as <code>inAppUpgrade</code>, per platform,
-        effective on next app launch.
-      </p>
-      <div class="row">
-        <div class="k">Android <small>Play + direct APK</small></div>
-        <label class="sw"><input type="checkbox" id="wp-android" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-      <div class="row">
-        <div class="k">iOS <small>App Store build</small></div>
-        <label class="sw"><input type="checkbox" id="wp-ios" /><span class="track"></span><span class="knob"></span></label>
-      </div>
-
-      <div class="foot">
-        <span class="updated" id="updated">—</span>
-        <button class="btn primary" id="save">Save</button>
-      </div>
-      <div class="err" id="save-err"></div>
-    </div>
-
-    <div class="dash-head" style="margin-top:28px">
-      <div class="sec-title">Vouchers</div>
-    </div>
+    <div class="dash-head"><div class="sec-title">Vouchers</div></div>
     <div class="card">
       <div class="warn">
-        <b>⚠ Vouchers mint treasury FLUX:</b> every redeemed free-time code is settled on-chain
-        from the bridge treasury. Revoking stops <i>future</i> redemptions only — settled grants
-        cannot be clawed back. Generated codes are shown <b>once</b> (download the CSV).
+        <b>⚠ Vouchers mint treasury FLUX:</b> every redeemed free-time code is settled on chain
+        from the treasury. Revoking stops <i>future</i> redemptions only — settled grants cannot be
+        clawed back. Generated codes are shown <b>once</b> (download the CSV).
       </div>
 
-      <div id="voucher-stats" class="hint" style="margin:10px 0">Loading campaign stats…</div>
+      <div id="voucher-stats" class="hint">Loading campaign stats…</div>
 
       <h2>Create</h2>
-      <div class="row"><div class="k">Type</div>
-        <select id="v-type">
-          <option value="grant_days">Free days (settled on-chain)</option>
-          <option value="stripe_discount">Card discount % (Stripe)</option>
-        </select>
-      </div>
-      <div class="row"><div class="k">Value <small id="v-value-hint">days (30 = 1 month)</small></div>
-        <input type="number" id="v-value" min="1" max="360" value="30" />
-      </div>
-      <div class="row"><div class="k">Codes to generate</div>
-        <input type="number" id="v-count" min="1" max="1000" value="1" />
-      </div>
-      <div class="row"><div class="k">Vanity code <small>optional, overrides count</small></div>
-        <input type="text" id="v-code" placeholder="LAUNCH26 (no 0/O/1/I/L)" />
-      </div>
-      <div class="row"><div class="k">Campaign</div>
-        <input type="text" id="v-campaign" placeholder="e.g. summer-launch" />
-      </div>
-      <div class="row"><div class="k">Max redemptions <small>per code</small></div>
-        <input type="number" id="v-max" min="1" value="1" />
-      </div>
-      <div class="row"><div class="k">Expires</div>
-        <input type="date" id="v-expiry" />
+      <div class="form-grid">
+        <label class="field">Type
+          <select id="v-type">
+            <option value="grant_days">Free days (settled on-chain)</option>
+            <option value="stripe_discount">Card discount % (Stripe)</option>
+          </select>
+        </label>
+        <label class="field">Value <small id="v-value-hint">days (30 = 1 month)</small>
+          <input type="number" id="v-value" min="1" max="360" value="30" />
+        </label>
+        <label class="field">Codes to generate
+          <input type="number" id="v-count" min="1" max="1000" value="1" />
+        </label>
+        <label class="field">Vanity code <small>optional, overrides count</small>
+          <input type="text" id="v-code" placeholder="LAUNCH26 (no 0/O/1/I/L)" />
+        </label>
+        <label class="field">Campaign
+          <input type="text" id="v-campaign" placeholder="e.g. summer-launch" />
+        </label>
+        <label class="field">Max redemptions <small>per code</small>
+          <input type="number" id="v-max" min="1" value="1" />
+        </label>
+        <label class="field">Expires
+          <input type="date" id="v-expiry" />
+        </label>
       </div>
       <div class="foot">
         <span class="updated" id="v-projected"></span>
@@ -253,36 +261,33 @@
       <div id="voucher-list" class="hint">Loading…</div>
     </div>
 
-    <div class="dash-head" style="margin-top:28px">
-      <div class="sec-title">Subscriber lookup</div>
-    </div>
+    <div class="dash-head"><div class="sec-title">Subscriber lookup</div></div>
     <div class="card">
-      <div class="hint" style="margin-bottom:10px">
-        Look a device up by the <b>payment code</b> it shows in Settings → About. Shows the
-        subscriptions bound to it and whether their on-chain settlements landed. There are no
-        accounts here — refunds and manual cancels are done in the Stripe / App Store / Play
-        console using the <code>external_id</code> below. <b>Move</b> re-points a subscription
-        at another device's code (a reinstall, a new phone) — the support override: no 30-day
-        limit, and its renewals follow it from then on.
-      </div>
-      <div class="row"><div class="k">Payment code</div>
-        <input type="text" id="s-code" placeholder="27 base58 characters" />
-      </div>
-      <div class="foot">
-        <span class="updated"></span>
+      <p class="hint">
+        Look a device up by the <b>payment code</b> it shows in Settings (Device code): its
+        subscriptions and whether their on-chain settlements landed. Refunds and cancels are done in
+        the Stripe / App Store / Play console using the <code>external_id</code>. <b>Move</b>
+        re-points a subscription at another device's code (a reinstall, a new phone) — the support
+        override: no 30-day limit, and its renewals follow it from then on.
+      </p>
+      <div class="inline">
+        <input type="text" id="s-code" placeholder="Payment code — 27 base58 characters" aria-label="Payment code" />
         <button class="btn primary" id="s-lookup">Look up</button>
       </div>
       <div class="err" id="s-err"></div>
       <div id="s-result" class="hint"></div>
 
       <div id="s-move" hidden>
-        <h2 style="margin-top:18px">Move to another code</h2>
+        <h2>Move to another code</h2>
         <p class="hint" id="s-move-what"></p>
-        <div class="row"><div class="k">New payment code <small>from Settings → About on the new device</small></div>
-          <input type="text" id="s-move-code" placeholder="27 base58 characters" />
-        </div>
-        <div class="row"><div class="k">Grant the rest of the current period <small>settled on-chain from the treasury — at most once per billing period, however often it moves</small></div>
-          <input type="checkbox" id="s-move-grant" />
+        <div class="form-grid two">
+          <label class="field">New payment code <small>from Settings on the new device</small>
+            <input type="text" id="s-move-code" placeholder="27 base58 characters" />
+          </label>
+          <label class="field check">
+            <input type="checkbox" id="s-move-grant" />
+            <span>Grant the rest of the current period <small>settled on chain from the treasury — at most once per billing period, however often it moves</small></span>
+          </label>
         </div>
         <div class="foot">
           <button class="btn ghost sm" id="s-move-cancel">Close</button>
@@ -665,6 +670,12 @@
   $('signin').addEventListener('click', doLogin);
   $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
   $('save').addEventListener('click', save);
+  // Checks every payment option on both platforms; nothing changes until Save.
+  $('all-on').addEventListener('click', function () {
+    ['iap-android', 'iap-ios', 't-android', 't-ios', 'wp-android', 'wp-ios', 'vr-android', 'vr-ios']
+      .forEach(function (id) { $(id).checked = true; });
+    toast('All on — press Save to apply', true);
+  });
   $('signout').addEventListener('click', signOut);
 
   // init: resume a stored session if the token still verifies
