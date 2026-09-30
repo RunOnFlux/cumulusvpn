@@ -50,6 +50,17 @@ alternative, which is why the two paths stay strictly separated.
   exclusion is gone, so this flag — not the binary — is the gate on both platforms.
 - **`voucherRedeem`** gates our own code-redeem box. Same rule as `inAppUpgrade` for Play:
   the direct APK and the Play build are one binary, so keep it OFF while Play is live.
+- **`webPayLink`** (1.1.3+) gates the "Pay on the website" button, which opens
+  `vpn.cumulusvpn.com/#/upgrade?code=<device code>` so the web checkout (FLUX or Stripe card)
+  is already set to that device. Outside the US an external-checkout link is steering under
+  Play's Payments policy and Apple 3.1.1 / 3.1.3 — the same class of risk as `inAppUpgrade`.
+
+**Operator decision, 2026-09-30:** every purchase surface — store subscriptions, the in-app
+FLUX checkout, and "Pay on the website" — ships in EVERY build (Play, direct APK, App Store),
+controlled only by these per-platform flags in the admin dashboard. The store-policy risk of
+the FLUX checkout and the web link in store builds was explained and is accepted as a business
+decision; the flags are the lever if a store objects. The rules above describe the
+compliance-safe settings, not a requirement.
 
 ---
 

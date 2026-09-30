@@ -49,6 +49,8 @@ interface Props {
   readonly cryptoEnabled: boolean;
   /** In-app voucher redeem box visible — remote `voucherRedeem` flag. */
   readonly voucherEnabled: boolean;
+  /** "Pay on the website" button visible — remote `webPayLink` flag. */
+  readonly webPayEnabled: boolean;
   /** Store subscription section visible — remote `iapPurchase` flag. */
   readonly iap: IapState | null;
   readonly onClose: () => void;
@@ -60,6 +62,13 @@ const MANAGE_URL =
     ? 'https://apps.apple.com/account/subscriptions'
     : 'https://play.google.com/store/account/subscriptions';
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+/** The web app's upgrade page; `code` pre-fills this device (it stays in the #fragment, never sent to a server). */
+const WEB_PAY_URL = 'https://vpn.cumulusvpn.com/#/upgrade';
+
+/** Link that opens the website's checkout already set to pay for `code`. */
+export function webPayUrl(code: string): string {
+  return `${WEB_PAY_URL}?code=${encodeURIComponent(code)}`;
+}
 /** Apple's standard EULA for auto-renewable subscriptions. */
 const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
 
@@ -88,6 +97,7 @@ export function UpgradeScreen({
   payment,
   cryptoEnabled,
   voucherEnabled,
+  webPayEnabled,
   iap,
   onClose,
 }: Props): React.JSX.Element {
@@ -165,6 +175,7 @@ export function UpgradeScreen({
       {iap && !premium ? <SubscribeSection iap={iap} /> : null}
       {voucherEnabled && payment ? <RedeemSection code={payment.code} /> : null}
       {iap ? <StoreOfferCodeRow /> : null}
+      {webPayEnabled && payment ? <WebPayCard code={payment.code} /> : null}
       {showCrypto ? <InAppPay payment={payment} premium={premium} /> : null}
     </ScrollView>
   );
@@ -285,6 +296,29 @@ function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Elemen
         </>
       )}
     </>
+  );
+}
+
+/**
+ * "Pay on the website": the web checkout (FLUX or card) opened already set to
+ * THIS device's code, so nothing is typed and the right device gets premium.
+ * Gated by the remote `webPayLink` flag.
+ */
+function WebPayCard({ code }: { readonly code: string }): React.JSX.Element {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.copy}>
+        Prefer FLUX or a card? Pay on our website — this device is already filled in, and premium
+        unlocks here automatically.
+      </Text>
+      <Pressable
+        onPress={() => void Linking.openURL(webPayUrl(code))}
+        accessibilityRole="link"
+        style={({ pressed }) => [styles.payBtn, pressed && styles.payBtnPressed]}
+      >
+        <Text style={styles.payBtnLabel}>Pay on the website</Text>
+      </Pressable>
+    </View>
   );
 }
 

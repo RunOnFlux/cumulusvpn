@@ -118,6 +118,7 @@ export const pl: Catalog = {
     'Premium jest powiązane z kluczem jednego urządzenia. Aby zapłacić stąd za telefon, otwórz aplikację → Ustawienia → Informacje i skopiuj jego kod urządzenia.',
   otherdev_placeholder: 'Kod urządzenia',
   otherdev_apply: 'Użyj tego kodu',
+  otherdev_paste: 'Wklej',
   otherdev_active:
     'Sprawdź, czy zgadza się z kodem pokazanym na tamtym urządzeniu — błędnie przepisany kod nadal może być poprawny i opłaciłby nie to urządzenie.',
   otherdev_clear: 'Wróć do tej przeglądarki ({code}…)',

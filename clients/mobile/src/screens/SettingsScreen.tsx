@@ -2,6 +2,8 @@
  * Settings — connection preferences + about. Kept intentionally small: the
  * product is "one screen, one job", so this is prefs, not a control panel.
  */
+import { useEffect, useState } from 'react';
+import Clipboard from '@react-native-clipboard/clipboard';
 import {
   Linking,
   Platform,
@@ -217,13 +219,7 @@ export function SettingsScreen({
           // takes to the website to redeem a voucher or get support. Shown on
           // ALL builds; deliberately no purchase or redeem framing here
           // (store guidelines prohibit in-app custom code redemption on iOS).
-          <Pressable
-            onLongPress={() => void Share.share({ message: vpn.payment!.code })}
-            accessibilityRole="text"
-            accessibilityLabel="Device code"
-          >
-            <InfoRow label="Device code" value={vpn.payment.code} mono />
-          </Pressable>
+          <DeviceCodeRow code={vpn.payment.code} />
         ) : null}
         <InfoRow
           label="Directory trust key"
@@ -284,6 +280,43 @@ function ToggleRow({
       </View>
       <Toggle value={value} disabled={disabled} onValueChange={onValueChange} />
     </View>
+  );
+}
+
+/**
+ * The Device code with a Copy button — what a user pastes on the website to pay
+ * for, or get support for, this device. Long-press still opens the share sheet.
+ */
+function DeviceCodeRow({ code }: { readonly code: string }): React.JSX.Element {
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+    const t = setTimeout(() => setCopied(false), 2000);
+    return () => clearTimeout(t);
+  }, [copied]);
+  return (
+    <Pressable
+      style={styles.row}
+      onLongPress={() => void Share.share({ message: code })}
+      accessibilityRole="text"
+      accessibilityLabel="Device code"
+    >
+      <Text style={styles.rowTitle}>Device code</Text>
+      <Text style={[styles.infoValue, styles.infoMono, styles.codeValue]}>{code}</Text>
+      <Pressable
+        onPress={() => {
+          Clipboard.setString(code);
+          setCopied(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Copy device code"
+        hitSlop={8}
+      >
+        <Text style={styles.copy}>{copied ? 'Copied' : 'Copy'}</Text>
+      </Pressable>
+    </Pressable>
   );
 }
 
@@ -359,6 +392,8 @@ const styles = StyleSheet.create({
   rowSub: { color: color.inkDim, fontSize: 12, marginTop: 2 },
   infoValue: { color: color.inkMuted, fontSize: 13, flexShrink: 1, textAlign: 'right' },
   infoMono: { fontFamily: font.mono, fontSize: 11.5 },
+  codeValue: { flex: 1 },
+  copy: { color: color.cyan, fontSize: 13, fontWeight: '600' },
   linkRow: {
     flexDirection: 'row',
     alignItems: 'center',

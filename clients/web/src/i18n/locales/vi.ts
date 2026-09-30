@@ -113,6 +113,7 @@ export const vi: Catalog = {
     'Premium gắn với khoá của một thiết bị. Để trả cho điện thoại của bạn từ đây, mở ứng dụng → Cài đặt → Giới thiệu và sao chép mã thiết bị.',
   otherdev_placeholder: 'Mã thiết bị',
   otherdev_apply: 'Dùng mã này',
+  otherdev_paste: 'Dán',
   otherdev_active:
     'Kiểm tra xem có khớp với mã hiển thị trên thiết bị đó không — mã gõ sai vẫn có thể hợp lệ và sẽ trả cho nhầm thiết bị.',
   otherdev_clear: 'Quay lại trình duyệt này ({code}…)',

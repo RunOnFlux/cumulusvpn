@@ -111,6 +111,7 @@ export const zh: Catalog = {
     '高级权限绑定到单台设备的密钥。若要在此为你的手机付款，请打开应用 → 设置 → 关于，复制其设备码。',
   otherdev_placeholder: '设备码',
   otherdev_apply: '使用此代码',
+  otherdev_paste: '粘贴',
   otherdev_active: '请核对它与该设备上显示的代码一致——输错的代码也可能有效，那会为错误的设备付款。',
   otherdev_clear: '返回此浏览器（{code}…）',
   otherdev_err: '这不是有效的设备码。请在要升级的设备上从 设置 → 关于 复制。',

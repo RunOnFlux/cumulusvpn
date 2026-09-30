@@ -118,6 +118,7 @@ export const en = {
     'Premium is tied to one device key. To pay for your phone from here, open the app → Settings → About and copy its Device code.',
   otherdev_placeholder: 'Device code',
   otherdev_apply: 'Use this code',
+  otherdev_paste: 'Paste',
   otherdev_active:
     'Check this matches the code shown on that device — a mistyped code can still be valid, and would pay for the wrong one.',
   otherdev_clear: 'Back to this browser ({code}…)',

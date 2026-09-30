@@ -39,6 +39,7 @@ describe('resolveFlags', () => {
     expect(DEFAULT_FLAGS.inAppUpgrade).toBe(false);
     expect(DEFAULT_FLAGS.iapPurchase).toBe(false);
     expect(DEFAULT_FLAGS.voucherRedeem).toBe(false);
+    expect(DEFAULT_FLAGS.webPayLink).toBe(false);
   });
 });
 
@@ -67,11 +68,13 @@ describe('resolveFlags: iapPurchase', () => {
       inAppUpgrade: true,
       iapPurchase: false,
       voucherRedeem: false,
+      webPayLink: false,
     });
     expect(resolveFlags(both, 'ios')).toEqual({
       inAppUpgrade: false,
       iapPurchase: true,
       voucherRedeem: false,
+      webPayLink: false,
     });
   });
 
@@ -99,5 +102,19 @@ describe('resolveFlags: voucherRedeem', () => {
     );
     expect(resolveFlags({}, 'android').voucherRedeem).toBe(false);
     expect(resolveFlags(null, 'android').voucherRedeem).toBe(false);
+  });
+});
+
+describe('resolveFlags: webPayLink', () => {
+  it('is remote-controlled per platform', () => {
+    const doc = { webPayLink: { android: true, ios: false } };
+    expect(resolveFlags(doc, 'android').webPayLink).toBe(true);
+    expect(resolveFlags(doc, 'ios').webPayLink).toBe(false);
+  });
+
+  it('is strict-true and fail-closed like every flag', () => {
+    expect(resolveFlags({ webPayLink: { ios: 1 } }, 'ios').webPayLink).toBe(false);
+    expect(resolveFlags({}, 'ios').webPayLink).toBe(false);
+    expect(resolveFlags(null, 'android').webPayLink).toBe(false);
   });
 });

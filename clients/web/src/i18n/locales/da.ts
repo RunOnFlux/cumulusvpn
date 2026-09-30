@@ -112,6 +112,7 @@ export const da: Catalog = {
     'Premium er knyttet til én enheds nøgle. Vil du betale for din telefon herfra, så åbn appen → Indstillinger → Om og kopiér dens enhedskode.',
   otherdev_placeholder: 'Enhedskode',
   otherdev_apply: 'Brug denne kode',
+  otherdev_paste: 'Indsæt',
   otherdev_active:
     'Tjek at den matcher koden på den enhed — en forkert indtastet kode kan stadig være gyldig og ville betale for den forkerte.',
   otherdev_clear: 'Tilbage til denne browser ({code}…)',

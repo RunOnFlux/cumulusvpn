@@ -113,6 +113,7 @@ export const fi: Catalog = {
     'Premium on sidottu yhden laitteen avaimeen. Jos haluat maksaa puhelimestasi täältä, avaa sovellus → Asetukset → Tietoja ja kopioi sen laitekoodi.',
   otherdev_placeholder: 'Laitekoodi',
   otherdev_apply: 'Käytä tätä koodia',
+  otherdev_paste: 'Liitä',
   otherdev_active:
     'Tarkista, että se vastaa kyseisen laitteen näyttämää koodia — väärin kirjoitettu koodi voi silti olla kelvollinen ja maksaisi väärästä laitteesta.',
   otherdev_clear: 'Takaisin tähän selaimeen ({code}…)',

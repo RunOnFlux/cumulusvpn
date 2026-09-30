@@ -329,7 +329,8 @@ const FLAGS_KEY = 'flags';
 //   inAppUpgrade  — crypto/FLUX purchase UI (direct-APK / testing builds only)
 //   iapPurchase   — store-billing subscription UI (must be ON before store review)
 //   voucherRedeem — our own code-redeem box (Play build shares the APK binary)
-const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase', 'voucherRedeem'];
+//   webPayLink    — "Pay on the website" button (web checkout, device code prefilled)
+const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase', 'voucherRedeem', 'webPayLink'];
 // Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
 const DEFAULT_FLAGS = Object.fromEntries(
   FLAG_NAMES.map((name) => [name, { android: false, ios: false }]),

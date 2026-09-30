@@ -113,6 +113,7 @@ export const id: Catalog = {
     'Premium terikat pada kunci satu perangkat. Untuk membayar ponselmu dari sini, buka aplikasi → Pengaturan → Tentang lalu salin kode perangkatnya.',
   otherdev_placeholder: 'Kode perangkat',
   otherdev_apply: 'Gunakan kode ini',
+  otherdev_paste: 'Tempel',
   otherdev_active:
     'Pastikan cocok dengan kode yang tampil di perangkat itu — kode yang salah ketik bisa tetap valid dan akan membayar perangkat yang keliru.',
   otherdev_clear: 'Kembali ke peramban ini ({code}…)',

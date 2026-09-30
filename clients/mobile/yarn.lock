@@ -874,12 +874,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=70a794&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=23be65&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.2.0"
     "@noble/hashes": "npm:2.2.0"
     "@scure/base": "npm:2.2.0"
-  checksum: 10c0/c8dfd7acaec26dbba719a0d1fe0d32c6c15ac4c27002552e2de927d5b793faa1edea414784907d06f0e5266c458a3ea25b0dbb277e56c2c4945ffef7f04615a7
+  checksum: 10c0/f4527146e5af7f9887a48e8b5bf9d1816d1ad5910423c02c21f9aabe33bb5128fc433e7b2ced1896a1d0cce3ce378883392b1b740b45910fca69cffabb0ff30f
   languageName: node
   linkType: hard
 
@@ -891,6 +891,7 @@ __metadata:
     "@babel/runtime": "npm:7.29.7"
     "@cumulusvpn/core": "file:../core-ts"
     "@react-native-async-storage/async-storage": "npm:3.1.1"
+    "@react-native-clipboard/clipboard": "npm:1.16.3"
     "@react-native-community/cli": "npm:20.2.0"
     "@react-native-community/cli-platform-android": "npm:20.2.0"
     "@react-native-community/cli-platform-ios": "npm:20.2.0"
@@ -1427,6 +1428,23 @@ __metadata:
     react: "*"
     react-native: "*"
   checksum: 10c0/20d34973b0a4d1acc133556c52daa59b9826f676abdc351f12c70feb4d557b66e279d1c880662bbfe037b7d79bf64fdee759a5217781c47cd20fd8ba0e0e1b24
+  languageName: node
+  linkType: hard
+
+"@react-native-clipboard/clipboard@npm:1.16.3":
+  version: 1.16.3
+  resolution: "@react-native-clipboard/clipboard@npm:1.16.3"
+  peerDependencies:
+    react: ">= 16.9.0"
+    react-native: ">= 0.61.5"
+    react-native-macos: ">= 0.61.0"
+    react-native-windows: ">= 0.61.0"
+  peerDependenciesMeta:
+    react-native-macos:
+      optional: true
+    react-native-windows:
+      optional: true
+  checksum: 10c0/4e6478a3dfc8862f93dd47790d1357082966c59bc6624f58a2281f3de4e7dfd57a4655e16f6c0310e46924eac654558b88fb726187c19ed3fc47c67235a1ae07
   languageName: node
   linkType: hard
 

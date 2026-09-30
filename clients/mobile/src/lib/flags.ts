@@ -41,6 +41,12 @@ export interface Flags {
    * `iapPurchase`.
    */
   readonly voucherRedeem: boolean;
+  /**
+   * "Pay on the website" button: opens vpn.cumulusvpn.com with this device's
+   * code already filled in (FLUX or card, no store cut). When OFF — the
+   * default — the app links to no external checkout.
+   */
+  readonly webPayLink: boolean;
 }
 
 /** Safe default when the remote flags can't be fetched: everything OFF. */
@@ -48,6 +54,7 @@ export const DEFAULT_FLAGS: Flags = {
   inAppUpgrade: false,
   iapPurchase: false,
   voucherRedeem: false,
+  webPayLink: false,
 };
 
 /** Read a `{ android, ios }` boolean flag from a parsed doc for the given OS. */
@@ -68,6 +75,7 @@ export function resolveFlags(json: unknown, os: string): Flags {
     inAppUpgrade: platformFlag(json, 'inAppUpgrade', os),
     iapPurchase: platformFlag(json, 'iapPurchase', os),
     voucherRedeem: platformFlag(json, 'voucherRedeem', os),
+    webPayLink: platformFlag(json, 'webPayLink', os),
   };
 }
 

@@ -112,6 +112,7 @@ export const sv: Catalog = {
     'Premium är knutet till en enhets nyckel. Vill du betala för din telefon härifrån, öppna appen → Inställningar → Om och kopiera dess enhetskod.',
   otherdev_placeholder: 'Enhetskod',
   otherdev_apply: 'Använd den här koden',
+  otherdev_paste: 'Klistra in',
   otherdev_active:
     'Kontrollera att den stämmer med koden på den enheten — en felskriven kod kan ändå vara giltig och skulle betala för fel enhet.',
   otherdev_clear: 'Tillbaka till den här webbläsaren ({code}…)',

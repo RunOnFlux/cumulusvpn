@@ -151,8 +151,8 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
   const [codeInput, setCodeInput] = useState('');
   const [codeError, setCodeError] = useState(false);
 
-  const applyCode = (): void => {
-    const trimmed = codeInput.trim();
+  const applyCode = (input: string = codeInput): void => {
+    const trimmed = input.trim();
     if (!isValidPaymentCode(trimmed)) {
       setCodeError(true);
       return;
@@ -176,6 +176,26 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
       /* private mode */
     }
     setManualCode(null);
+    if (params.get('code') !== null) {
+      // The code came in the link (the app's "Pay on the website"): drop it
+      // from the URL too, or resolveCode would pick it up again.
+      window.location.hash = '/upgrade';
+    }
+  };
+
+  // One tap from the app's "Copy" to a filled-in, echoed-back code. Only
+  // offered where the browser can read the clipboard (secure context).
+  const canPaste = typeof navigator !== 'undefined' && !!navigator.clipboard?.readText;
+  const pasteCode = (): void => {
+    void navigator.clipboard.readText().then(
+      (text) => {
+        setCodeInput(text.trim());
+        applyCode(text);
+      },
+      () => {
+        /* permission denied — typing still works */
+      },
+    );
   };
 
   const [plan, setPlan] = useState<PaymentPlan>('monthly');
@@ -512,7 +532,7 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
             <span className="eyebrow">{t('otherdev_eyebrow')}</span>
             <p className="lede">{t('otherdev_lede')}</p>
           </div>
-          {manualCode === null ? (
+          {code === ownCode ? (
             <>
               <div className="btn-row">
                 <input
@@ -531,10 +551,15 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
                   }}
                   aria-label={t('otherdev_placeholder')}
                 />
+                {canPaste && (
+                  <button className="btn" onClick={pasteCode}>
+                    {t('otherdev_paste')}
+                  </button>
+                )}
                 <button
                   className="btn amber"
                   disabled={codeInput.trim() === ''}
-                  onClick={applyCode}
+                  onClick={() => applyCode()}
                 >
                   {t('otherdev_apply')}
                 </button>
@@ -544,7 +569,7 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
           ) : (
             <>
               <p className="pay-note">{t('otherdev_active')}</p>
-              <CopyField label={t('otherdev_placeholder')} value={manualCode} />
+              <CopyField label={t('otherdev_placeholder')} value={code} />
               <div className="btn-row">
                 <button className="btn block" onClick={clearCode}>
                   {t('otherdev_clear', { code: ownCode.slice(0, 8) })}

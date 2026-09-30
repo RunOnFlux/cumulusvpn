@@ -113,6 +113,7 @@ export const sw: Catalog = {
     'Premium imefungwa kwenye ufunguo wa kifaa kimoja. Ili kulipia simu yako kutoka hapa, fungua programu → Mipangilio → Kuhusu na unakili msimbo wa kifaa.',
   otherdev_placeholder: 'Msimbo wa kifaa',
   otherdev_apply: 'Tumia msimbo huu',
+  otherdev_paste: 'Bandika',
   otherdev_active:
     'Hakikisha unalingana na msimbo unaoonyeshwa kwenye kifaa hicho — msimbo uliokosewa unaweza bado kuwa sahihi na ukalipia kifaa kisicho sahihi.',
   otherdev_clear: 'Rudi kwenye kivinjari hiki ({code}…)',

@@ -183,6 +183,22 @@
         <label class="sw"><input type="checkbox" id="vr-ios" /><span class="track"></span><span class="knob"></span></label>
       </div>
 
+      <h2>webPayLink</h2>
+      <p class="hint">
+        "Pay on the website" button in the app: opens vpn.cumulusvpn.com with the device's code
+        already filled in (FLUX or card, no store cut). A link to an outside checkout is store
+        steering outside the US — the same kind of call as <code>inAppUpgrade</code>, per platform,
+        effective on next app launch.
+      </p>
+      <div class="row">
+        <div class="k">Android <small>Play + direct APK</small></div>
+        <label class="sw"><input type="checkbox" id="wp-android" /><span class="track"></span><span class="knob"></span></label>
+      </div>
+      <div class="row">
+        <div class="k">iOS <small>App Store build</small></div>
+        <label class="sw"><input type="checkbox" id="wp-ios" /><span class="track"></span><span class="knob"></span></label>
+      </div>
+
       <div class="foot">
         <span class="updated" id="updated">—</span>
         <button class="btn primary" id="save">Save</button>
@@ -312,6 +328,9 @@
       var vr = (f && f.voucherRedeem) || {};
       $('vr-android').checked = vr.android === true;
       $('vr-ios').checked = vr.ios === true;
+      var wp = (f && f.webPayLink) || {};
+      $('wp-android').checked = wp.android === true;
+      $('wp-ios').checked = wp.ios === true;
       $('updated').textContent = f && f.updatedAt
         ? 'Last updated ' + new Date(f.updatedAt).toLocaleString()
         : 'Never updated (serving defaults)';
@@ -493,6 +512,7 @@
       inAppUpgrade: { android: $('t-android').checked, ios: $('t-ios').checked },
       iapPurchase: { android: $('iap-android').checked, ios: $('iap-ios').checked },
       voucherRedeem: { android: $('vr-android').checked, ios: $('vr-ios').checked },
+      webPayLink: { android: $('wp-android').checked, ios: $('wp-ios').checked },
     };
     fetch('/api/flags', {
       method: 'POST',

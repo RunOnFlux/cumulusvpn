@@ -113,6 +113,7 @@ export const nl: Catalog = {
     'Premium hangt aan de sleutel van één apparaat. Wil je hier voor je telefoon betalen, open dan de app → Instellingen → Over en kopieer de apparaatcode.',
   otherdev_placeholder: 'Apparaatcode',
   otherdev_apply: 'Deze code gebruiken',
+  otherdev_paste: 'Plakken',
   otherdev_active:
     'Controleer of dit overeenkomt met de code op dat apparaat — een verkeerd getypte code kan alsnog geldig zijn en betaalt dan het verkeerde apparaat.',
   otherdev_clear: 'Terug naar deze browser ({code}…)',

@@ -499,4 +499,26 @@ describe('UpgradePage pay-for-another-device', () => {
     expect(screen.getByText(`CVPN1:${ZERO_CODE}`)).toBeTruthy();
     expect(localStorage.getItem(PAY_CODE_OVERRIDE_STORAGE_KEY)).toBeNull();
   });
+
+  it('shows a device code that arrived in the link as the one being paid for', () => {
+    // The app's "Pay on the website" opens #/upgrade?code=<device>: the page
+    // must say whose device it is paying for, not offer an empty input.
+    renderPage(new URLSearchParams(`code=${OTHER}`));
+    expect(screen.queryByPlaceholderText('Device code')).toBeNull();
+    expect(screen.getByText(OTHER)).toBeTruthy();
+    expect(screen.getByText(/Back to this browser/)).toBeTruthy();
+  });
+
+  it('pastes a copied device code in one tap', async () => {
+    const readText = vi.fn(async () => `  ${OTHER}\n`);
+    Object.defineProperty(navigator, 'clipboard', { value: { readText }, configurable: true });
+    try {
+      renderPage();
+      fireEvent.click(screen.getByText('Paste'));
+      await waitFor(() => expect(screen.getByText(`CVPN1:${OTHER}`)).toBeTruthy());
+      expect(localStorage.getItem(PAY_CODE_OVERRIDE_STORAGE_KEY)).toBe(OTHER);
+    } finally {
+      Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
+    }
+  });
 });

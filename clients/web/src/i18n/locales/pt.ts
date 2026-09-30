@@ -113,6 +113,7 @@ export const pt: Catalog = {
     'O premium está vinculado à chave de um dispositivo. Para pagar pelo seu celular daqui, abra o app → Configurações → Sobre e copie o código do dispositivo.',
   otherdev_placeholder: 'Código do dispositivo',
   otherdev_apply: 'Usar este código',
+  otherdev_paste: 'Colar',
   otherdev_active:
     'Confira se confere com o código exibido naquele dispositivo — um código digitado errado ainda pode ser válido e pagaria pelo dispositivo errado.',
   otherdev_clear: 'Voltar para este navegador ({code}…)',

@@ -113,6 +113,7 @@ export const it: Catalog = {
     'Il premium è legato alla chiave di un dispositivo. Per pagare per il tuo telefono da qui, apri l’app → Impostazioni → Info e copia il suo codice dispositivo.',
   otherdev_placeholder: 'Codice dispositivo',
   otherdev_apply: 'Usa questo codice',
+  otherdev_paste: 'Incolla',
   otherdev_active:
     'Controlla che corrisponda al codice mostrato su quel dispositivo: un codice digitato male può essere comunque valido e pagherebbe per quello sbagliato.',
   otherdev_clear: 'Torna a questo browser ({code}…)',

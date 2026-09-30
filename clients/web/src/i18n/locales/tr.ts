@@ -112,6 +112,7 @@ export const tr: Catalog = {
     'Premium tek bir cihazın anahtarına bağlıdır. Telefonun için buradan ödeme yapmak istersen uygulamayı aç → Ayarlar → Hakkında ve cihaz kodunu kopyala.',
   otherdev_placeholder: 'Cihaz kodu',
   otherdev_apply: 'Bu kodu kullan',
+  otherdev_paste: 'Yapıştır',
   otherdev_active:
     'O cihazda görünen kodla eşleştiğini doğrula — yanlış yazılmış bir kod yine de geçerli olabilir ve yanlış cihaza ödeme yapar.',
   otherdev_clear: 'Bu tarayıcıya dön ({code}…)',

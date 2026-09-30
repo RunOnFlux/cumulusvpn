@@ -113,6 +113,7 @@ export const fr: Catalog = {
     'Le premium est lié à la clé d’un appareil. Pour payer pour votre téléphone depuis ici, ouvrez l’application → Réglages → À propos et copiez son code d’appareil.',
   otherdev_placeholder: 'Code d’appareil',
   otherdev_apply: 'Utiliser ce code',
+  otherdev_paste: 'Coller',
   otherdev_active:
     'Vérifiez qu’il correspond au code affiché sur cet appareil : un code mal saisi peut rester valide et paierait pour le mauvais appareil.',
   otherdev_clear: 'Revenir à ce navigateur ({code}…)',

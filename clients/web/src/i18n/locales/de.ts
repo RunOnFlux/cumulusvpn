@@ -114,6 +114,7 @@ export const de: Catalog = {
     'Premium hängt am Schlüssel eines Geräts. Um von hier aus für dein Telefon zu zahlen, öffne die App → Einstellungen → Info und kopiere den Gerätecode.',
   otherdev_placeholder: 'Gerätecode',
   otherdev_apply: 'Diesen Code verwenden',
+  otherdev_paste: 'Einfügen',
   otherdev_active:
     'Prüfe, ob er mit dem Code auf jenem Gerät übereinstimmt — ein vertippter Code kann trotzdem gültig sein und würde das falsche Gerät bezahlen.',
   otherdev_clear: 'Zurück zu diesem Browser ({code}…)',
