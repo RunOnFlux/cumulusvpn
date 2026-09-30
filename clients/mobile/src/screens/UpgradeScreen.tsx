@@ -172,7 +172,12 @@ export function UpgradeScreen({
       </View>
 
       {iap?.transferOffer ? <TransferOffer iap={iap} /> : null}
-      {iap && !premium ? <SubscribeSection iap={iap} /> : null}
+      {/* Premium paid in FLUX (or by card) has no store subscription to
+          manage, so it can still subscribe: the chain adds the new days on top
+          of the current expiry. Hidden only once a store subscription exists. */}
+      {iap && !(premium && iap.holdsSubscription) ? (
+        <SubscribeSection iap={iap} premium={premium} />
+      ) : null}
       {voucherEnabled && payment ? <RedeemSection code={payment.code} /> : null}
       {iap ? <StoreOfferCodeRow /> : null}
       {webPayEnabled && payment ? <WebPayCard code={payment.code} /> : null}
@@ -186,7 +191,13 @@ export function UpgradeScreen({
  * builds render. Prices come from the store (localized); the chain
  * settlement is invisible to the user beyond a brief "Activating…".
  */
-function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Element {
+function SubscribeSection({
+  iap,
+  premium,
+}: {
+  readonly iap: IapState;
+  readonly premium: boolean;
+}): React.JSX.Element {
   const [plan, setPlan] = useState<IapPlan>('monthly');
   const busy = iap.phase === 'purchasing' || iap.phase === 'verifying';
 
@@ -203,7 +214,13 @@ function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Elemen
 
   return (
     <>
-      <Text style={styles.section}>Subscribe</Text>
+      <Text style={styles.section}>{premium ? 'Renew automatically' : 'Subscribe'}</Text>
+      {premium ? (
+        <Text style={styles.note}>
+          Your premium was paid once. Subscribe to keep it going automatically — each payment adds
+          its time on top of your current end date, so nothing you already paid is lost.
+        </Text>
+      ) : null}
       {!iap.ready ? (
         <View style={[styles.card, styles.iapLoading]}>
           {iap.error ? (
