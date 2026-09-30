@@ -117,59 +117,33 @@ export function UpgradeScreen({
         </Pressable>
       </View>
 
-      <View style={styles.card}>
-        <View style={styles.tierRow}>
-          <Text style={styles.tierLabel}>Current tier</Text>
-          <TierPill tier={tier} />
+      {premium ? (
+        <PremiumCard
+          expiry={expiry}
+          renewing={iap?.holdsSubscription === true}
+          canAddTime={showCrypto || webPayEnabled || iap !== null}
+        />
+      ) : (
+        <View style={styles.card}>
+          <View style={styles.tierRow}>
+            <Text style={styles.tierLabel}>Current tier</Text>
+            <TierPill tier={tier} />
+          </View>
+          <Text style={styles.copy}>
+            {showCrypto
+              ? 'Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account, paid once with FLUX for 30 days.'
+              : 'Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account needed.'}
+          </Text>
+          {showCrypto ? (
+            <View style={styles.priceRow}>
+              <Text style={styles.priceLabel}>Premium</Text>
+              <Text style={styles.price}>
+                {payment.priceFlux} FLUX <Text style={styles.priceUnit}>/ 30 days</Text>
+              </Text>
+            </View>
+          ) : null}
         </View>
-        {premium ? (
-          <>
-            <Text style={styles.copy}>
-              {showCrypto
-                ? 'You’re on Premium — full speed on every gateway. Pay again any time to add more time; it stacks on top of your current expiry.'
-                : 'You’re on Premium — full speed on every gateway.'}
-            </Text>
-            {expiry ? (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Active until</Text>
-                <Text style={styles.price}>
-                  {expiry.date}{' '}
-                  <Text style={styles.priceUnit}>
-                    · {expiry.daysLeft} {expiry.daysLeft === 1 ? 'day' : 'days'} left
-                  </Text>
-                </Text>
-              </View>
-            ) : null}
-            {/* Only with a store subscription to manage: premium paid in FLUX
-                has none, and the store's page would open empty. */}
-            {iap?.holdsSubscription ? (
-              <Pressable
-                onPress={() => void Linking.openURL(MANAGE_URL)}
-                accessibilityRole="link"
-                hitSlop={8}
-              >
-                <Text style={styles.link}>Manage subscription</Text>
-              </Pressable>
-            ) : null}
-          </>
-        ) : (
-          <>
-            <Text style={styles.copy}>
-              {showCrypto
-                ? 'Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account, paid once with FLUX for 30 days.'
-                : 'Free is capped at 100 KB/s. Premium unlocks full speed on every gateway — no account needed.'}
-            </Text>
-            {showCrypto ? (
-              <View style={styles.priceRow}>
-                <Text style={styles.priceLabel}>Premium</Text>
-                <Text style={styles.price}>
-                  {payment.priceFlux} FLUX <Text style={styles.priceUnit}>/ 30 days</Text>
-                </Text>
-              </View>
-            ) : null}
-          </>
-        )}
-      </View>
+      )}
 
       {iap?.transferOffer ? <TransferOffer iap={iap} /> : null}
       {/* Premium paid in FLUX (or by card) has no store subscription to
@@ -183,6 +157,90 @@ export function UpgradeScreen({
       {webPayEnabled && payment ? <WebPayCard code={payment.code} /> : null}
       {showCrypto ? <InAppPay payment={payment} premium={premium} /> : null}
     </ScrollView>
+  );
+}
+
+/** Benefits premium unlocks — each one real in this build (split tunneling is premium-gated). */
+const PREMIUM_PERKS = ['Full speed', 'Every server', 'Split tunneling'] as const;
+
+/**
+ * The premium "your plan" card: days left as the headline, the end date, a
+ * gauge that runs down over the last 30 days, what premium unlocks, and how it
+ * continues (a store subscription renews on its own; anything else is paid
+ * once and topped up — every payment adds its days on top).
+ */
+function PremiumCard({
+  expiry,
+  renewing,
+  canAddTime,
+}: {
+  readonly expiry: ReturnType<typeof formatExpiry>;
+  readonly renewing: boolean;
+  readonly canAddTime: boolean;
+}): React.JSX.Element {
+  // A fuel gauge, not a timeline: full while 30+ days remain, then runs down.
+  const fill = expiry ? Math.min(expiry.daysLeft, 30) / 30 : 1;
+  const low = expiry !== null && expiry.daysLeft <= 5;
+  return (
+    <View style={styles.premCard}>
+      <View style={styles.premTop}>
+        <Text style={styles.premKicker}>PREMIUM</Text>
+        <View style={styles.premStatus}>
+          <View style={[styles.premDot, low && styles.premDotLow]} />
+          <Text style={styles.premStatusText}>Active</Text>
+        </View>
+      </View>
+
+      {expiry ? (
+        <>
+          <View style={styles.premDaysRow}>
+            <Text style={styles.premDays}>{expiry.daysLeft}</Text>
+            <Text style={styles.premDaysUnit}>
+              {expiry.daysLeft === 1 ? 'day left' : 'days left'}
+            </Text>
+          </View>
+          <Text style={styles.premUntil}>Active until {expiry.date}</Text>
+          <View style={styles.gauge}>
+            <View
+              style={[styles.gaugeFill, low && styles.gaugeFillLow, { width: `${fill * 100}%` }]}
+            />
+          </View>
+        </>
+      ) : (
+        <Text style={styles.premUntil}>Full speed on every server.</Text>
+      )}
+
+      <View style={styles.perks}>
+        {PREMIUM_PERKS.map((p) => (
+          <View key={p} style={styles.perk}>
+            <Text style={styles.perkText}>✓ {p}</Text>
+          </View>
+        ))}
+      </View>
+
+      <View style={styles.premFoot}>
+        {renewing ? (
+          <>
+            <Text style={styles.premFootText}>Renews automatically</Text>
+            {/* Only with a store subscription to manage: premium paid in FLUX
+                has none, and the store's page would open empty. */}
+            <Pressable
+              onPress={() => void Linking.openURL(MANAGE_URL)}
+              accessibilityRole="link"
+              hitSlop={8}
+            >
+              <Text style={styles.link}>Manage</Text>
+            </Pressable>
+          </>
+        ) : (
+          <Text style={styles.premFootText}>
+            {canAddTime
+              ? 'Paid once — add time below any time; it stacks on your end date.'
+              : 'Paid once — it stays active until the date above.'}
+          </Text>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -216,7 +274,7 @@ function SubscribeSection({
     <>
       <Text style={styles.section}>{premium ? 'Renew automatically' : 'Subscribe'}</Text>
       {premium ? (
-        <Text style={styles.note}>
+        <Text style={[styles.note, styles.renewNote]}>
           Your premium was paid once. Subscribe to keep it going automatically — each payment adds
           its time on top of your current end date, so nothing you already paid is lost.
         </Text>
@@ -654,6 +712,53 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   tierRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  premCard: {
+    backgroundColor: 'rgba(245,178,61,0.08)',
+    borderColor: 'rgba(245,178,61,0.35)',
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: space.lg,
+    gap: space.sm,
+  },
+  premTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  premKicker: { color: color.amber, fontSize: 12, fontWeight: '700', letterSpacing: 1.4 },
+  premStatus: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  premDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: color.green },
+  premDotLow: { backgroundColor: color.red },
+  premStatusText: { color: color.inkMuted, fontSize: 12.5, fontWeight: '600' },
+  premDaysRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginTop: space.xs },
+  premDays: { color: color.ink, fontSize: 44, fontWeight: '800', letterSpacing: -1 },
+  premDaysUnit: { color: color.inkMuted, fontSize: 15, fontWeight: '600' },
+  premUntil: { color: color.inkDim, fontSize: 13.5 },
+  gauge: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+    marginTop: space.xs,
+  },
+  gaugeFill: { height: 6, borderRadius: 3, backgroundColor: color.amber },
+  gaugeFillLow: { backgroundColor: color.red },
+  perks: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: space.sm },
+  perk: {
+    borderColor: 'rgba(245,178,61,0.30)',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  perkText: { color: color.inkMuted, fontSize: 12, fontWeight: '600' },
+  premFoot: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: space.md,
+    borderTopColor: 'rgba(245,178,61,0.20)',
+    borderTopWidth: 1,
+    paddingTop: space.md,
+    marginTop: space.sm,
+  },
+  premFootText: { color: color.inkDim, fontSize: 12.5, lineHeight: 18, flexShrink: 1 },
   tierLabel: { color: color.inkDim, fontSize: 13 },
   copy: { color: color.inkMuted, fontSize: 14, lineHeight: 20 },
   priceRow: {
@@ -725,6 +830,7 @@ const styles = StyleSheet.create({
   stepNumText: { color: color.amber, fontSize: 12, fontWeight: '700' },
   stepText: { flex: 1, color: color.inkMuted, fontSize: 14, lineHeight: 20 },
   note: { color: color.inkFaint, fontSize: 12, lineHeight: 17, marginTop: space.lg },
+  renewNote: { marginTop: 0, marginBottom: space.md },
   iapLoading: { alignItems: 'center', gap: space.md },
   planRow: { flexDirection: 'row', gap: space.md },
   planCard: {
