@@ -132,19 +132,63 @@ describe('startIapSession', () => {
       onPending: jest.fn(),
       onError: jest.fn(),
     });
-    expect(await session.reconcile(CODE)).toBe(true);
+    const r = await session.reconcile(CODE);
+    expect(r.any).toBe(true);
+    expect(r.holdsSubscription).toBe(true);
     expect(mock.finishTransaction).toHaveBeenCalledTimes(2);
     session.dispose();
   });
 
-  it('reconcile() returns false when the store holds nothing', async () => {
+  it('reconcile() finds nothing when the store holds nothing', async () => {
     mockBridge(true);
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
       onError: jest.fn(),
     });
-    expect(await session.reconcile(CODE)).toBe(false);
+    expect(await session.reconcile(CODE)).toEqual({
+      any: false,
+      elsewhere: [],
+      holdsSubscription: false,
+    });
+    session.dispose();
+  });
+
+  it('reconcile() reports — never takes — a subscription owned by another identity', async () => {
+    (globalThis as { fetch?: unknown }).fetch = jest.fn(async () => ({
+      json: async () => ({
+        status: 'error',
+        data: { code: '409', name: 'owned_by_other_device', message: 'owned by another device' },
+      }),
+    }));
+    mock.getAvailablePurchases.mockResolvedValue([purchase({ purchaseToken: 'other-1' })]);
+    const session = await startIapSession(CODE, {
+      onVerified: jest.fn(),
+      onPending: jest.fn(),
+      onError: jest.fn(),
+    });
+    const r = await session.reconcile(CODE);
+    expect(r.any).toBe(false);
+    expect(r.elsewhere).toHaveLength(1);
+    expect(r.holdsSubscription).toBe(true);
+    expect(mock.finishTransaction).not.toHaveBeenCalled();
+    session.dispose();
+  });
+
+  it('transfer() asks the bridge to move it, then finishes', async () => {
+    const f = mockBridge(true);
+    const session = await startIapSession(CODE, {
+      onVerified: jest.fn(),
+      onPending: jest.fn(),
+      onError: jest.fn(),
+    });
+    expect(await session.transfer([purchase({ purchaseToken: 'other-1' }) as never], CODE)).toBe(
+      true,
+    );
+    const [url, init] = f.mock.calls[0] as unknown as [string, { body: string }];
+    expect(url).toContain('/v1/google/claim');
+    expect(JSON.parse(init.body)).toMatchObject({ purchase_token: 'other-1', transfer: true });
+    expect(mock.finishTransaction).toHaveBeenCalledTimes(1);
     session.dispose();
   });
 

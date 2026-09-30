@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Confidentialité par architecture</span>
     <h1>Politique de confidentialité</h1>
-    <p class="doc-meta">Dernière mise à jour : 14 août 2026 · En vigueur depuis : 14 août 2026</p>
+    <p class="doc-meta">Dernière mise à jour : 30 septembre 2026 · En vigueur depuis : 14 août 2026</p>
 
   <p class="doc-meta">Cette traduction est fournie à titre pratique ; la version anglaise sur cumulusvpn.com/privacy fait
       foi.</p>
@@ -148,8 +148,11 @@
     <p>Un VPN ne peut pas fonctionner sans que certaines données y transitent en temps réel. Voici tout ce qui est concerné, et pourquoi
       rien de tout cela ne devient un enregistrement à votre sujet.</p>
     <h3>4.1 Votre clé publique (identifiant pseudonyme)</h3>
-    <p>Votre appareil génère une paire de clés WireGuard localement au premier lancement. La <strong>clé privée ne
-      quitte jamais votre appareil</strong> — même pas vers nous. Seule la <strong>clé publique</strong> est envoyée à une
+    <p>Votre appareil génère une paire de clés WireGuard localement au premier lancement. La <strong>clé privée n'est
+      jamais envoyée ni à nous ni à aucune passerelle</strong>. Afin qu'elle ne soit pas perdue si vous supprimez et réinstallez l'app — ou passez à un nouveau
+      téléphone —, l'app en conserve une <strong>sauvegarde chiffrée</strong> : dans le trousseau (Keychain) de l'iPhone sous iOS,
+      et sous Android dans le Block Store de Google, chiffrée de bout en bout avec votre verrouillage d'écran afin que
+      ni Google ni nous ne puissions la lire. La sauvegarde est activée par défaut et peut être désactivée dans les Réglages. Seule la <strong>clé publique</strong> est envoyée à une
       passerelle afin qu'elle puisse acheminer votre tunnel chiffré. Une clé publique est une valeur de 32 octets à l'apparence aléatoire. Elle n'
       est liée ni à votre nom, ni à votre e-mail, ni à votre matériel, et vous pouvez la régénérer à tout moment. C'est un pseudonyme,
       pas une identité.</p>
@@ -240,7 +243,7 @@
         Si vous avez contacté l'assistance par e-mail, vous pouvez demander une copie de cette correspondance.</li>
       <li><strong>Suppression :</strong> Il n'y a rien de lié à votre identité que nous puissions supprimer des passerelles ;
         l'état des pairs est déjà éphémère, en RAM uniquement, et s'efface à la déconnexion/au redémarrage. Vous pouvez supprimer votre clé sur
-        votre appareil à tout moment, ce qui rompt totalement le lien pseudonyme.</li>
+        votre appareil à tout moment (désactivez d'abord la sauvegarde d'identité dans les Réglages, afin qu'aucune copie ne subsiste), ce qui rompt totalement le lien pseudonyme.</li>
       <li><strong>Ne pas vendre / ne pas partager :</strong> Nous ne vendons ni ne partageons de données personnelles, donc il n'y a
         rien dont vous puissiez vous désinscrire.</li>
     </ul>
@@ -256,7 +259,8 @@
 
     <h2>12. Sécurité</h2>
     <p>Le trafic est chiffré de bout en bout entre votre appareil et la passerelle grâce au protocole WireGuard®
-      (cryptographie moderne et auditée). Votre clé privée ne quitte jamais votre appareil. L'état des pairs côté serveur est
+      (cryptographie moderne et auditée). Votre clé privée n'est jamais envoyée ni à nous ni à aucune passerelle ; sa seule copie hors de l'app est la
+      sauvegarde chiffrée décrite à la section 4.1, que vous pouvez désactiver. L'état des pairs côté serveur est
       conservé uniquement en mémoire. L'app atteint l'API de contrôle de chaque passerelle via une connexion directe dont les
       réponses sont signées en ed25519 et vérifiées par l'app, de sorte que l'authenticité de l'annuaire des serveurs et des
       réponses des passerelles est protégée par des signatures numériques plutôt que par un certificat de transport.</p>

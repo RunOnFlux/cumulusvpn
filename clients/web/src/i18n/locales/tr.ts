@@ -127,6 +127,22 @@ export const tr: Catalog = {
   manage_cta_busy: 'Faturalandırma portalı açılıyor…',
   manage_err:
     'Faturalandırma portalı bu tarayıcıdan açılamadı. Aboneliğini her zaman Stripe makbuz e-postandaki bağlantıdan yönetebilir veya iptal edebilirsin.',
+  transfer_cta: 'Başka bir cihaza taşı',
+  transfer_lede:
+    'Uygulamayı yeniden mi kurdun ya da yeni bir telefonun mu var? Yeni cihazda Ayarlar → Hakkında bölümündeki cihaz kodunu gir. Bu faturalandırma döneminin kalanını hemen, sonrasında da her yenilemeyi alır. Bir abonelik 30 günde bir taşınabilir.',
+  transfer_next: 'Devam',
+  transfer_cancel: 'Vazgeç',
+  transfer_confirm:
+    'Bu abonelik {code} cihazına taşınsın mı? O cihazda görünen kodla eşleştiğini doğrula — yanlış yazılmış bir kod yine de geçerli olabilir ve aboneliği yanlış cihaza taşır.',
+  transfer_confirm_cta: 'Aboneliği taşı',
+  transfer_busy: 'Taşınıyor…',
+  transfer_done:
+    'Taşındı. Bu faturalandırma döneminin kalanı için Premium {code} üzerinde etkinleşiyor ve yenilemeler o cihaza gidecek. Faturalandırma burada kalır — önceki gibi bu sayfadan yönetebilir veya iptal edebilirsin.',
+  transfer_err_soon: 'Bu abonelik kısa süre önce taşındı. {date} tarihinde yeniden taşınabilir.',
+  transfer_err_same: 'O cihazda bu abonelik zaten var.',
+  transfer_err_none:
+    'Bu tarayıcıdaki satın alma için etkin bir kart aboneliği bulunamadı, yani taşınacak bir şey yok.',
+  transfer_err: 'Abonelik taşınamadı. Lütfen birazdan tekrar dene.',
 
   redeem_eyebrow: 'Kodun mu var?',
   redeem_lede:

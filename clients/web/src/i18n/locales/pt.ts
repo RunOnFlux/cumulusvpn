@@ -128,6 +128,23 @@ export const pt: Catalog = {
   manage_cta_busy: 'Abrindo o portal de faturamento…',
   manage_err:
     'Não foi possível abrir o portal de faturamento neste navegador. Você sempre pode gerenciar ou cancelar pelo link no e-mail de recibo da Stripe.',
+  transfer_cta: 'Mover para outro dispositivo',
+  transfer_lede:
+    'Reinstalou o app ou trocou de celular? Digite o código do dispositivo em Configurações → Sobre no novo dispositivo. Ele recebe na hora o restante deste período de cobrança e todas as renovações seguintes. Uma assinatura pode ser movida uma vez a cada 30 dias.',
+  transfer_next: 'Continuar',
+  transfer_cancel: 'Cancelar',
+  transfer_confirm:
+    'Mover esta assinatura para {code}? Verifique se corresponde ao código exibido naquele dispositivo — um código digitado errado ainda pode ser válido e a moveria para o dispositivo errado.',
+  transfer_confirm_cta: 'Mover assinatura',
+  transfer_busy: 'Movendo…',
+  transfer_done:
+    'Pronto. O premium do restante deste período de cobrança está sendo ativado em {code}, e as renovações irão para esse dispositivo. A cobrança continua aqui — gerencie ou cancele por esta página como antes.',
+  transfer_err_soon:
+    'Esta assinatura foi movida recentemente. Ela poderá ser movida de novo em {date}.',
+  transfer_err_same: 'Esse dispositivo já tem esta assinatura.',
+  transfer_err_none:
+    'Nenhuma assinatura ativa no cartão foi encontrada para a compra deste navegador, então não há nada para mover.',
+  transfer_err: 'Não foi possível mover a assinatura. Tente novamente em instantes.',
 
   redeem_eyebrow: 'Tem um código?',
   redeem_lede:

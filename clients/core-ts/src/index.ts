@@ -9,6 +9,13 @@
 
 export { generateKeypair, publicKeyFromPrivate } from './keys.js';
 export {
+  encodeRecoveryKey,
+  decodeRecoveryKey,
+  InvalidRecoveryKeyError,
+  RECOVERY_KEY_PREFIX,
+} from './recoveryKey.js';
+export type { RecoveryKeyError } from './recoveryKey.js';
+export {
   paymentCode,
   isValidPaymentCode,
   paymentMemo,
@@ -23,6 +30,10 @@ export {
   openBillingPortal,
   verifyApplePurchase,
   verifyGooglePurchase,
+  claimApplePurchase,
+  claimGooglePurchase,
+  transferStripeSubscription,
+  transferAvailableAt,
   paymentStatus,
   redeemVoucher,
   DEFAULT_BRIDGE_URL,
@@ -34,6 +45,7 @@ export type {
   PaymentStatusResult,
   BridgeOptions,
   RedeemOutcome,
+  ClaimResult,
 } from './bridge.js';
 export { hasLeadingZeroBits, powHash, solvePoW, verifyPoW } from './pow.js';
 export { verifySignedResponse } from './sign.js';

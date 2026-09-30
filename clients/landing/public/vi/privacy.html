@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Quyền riêng tư từ kiến trúc</span>
     <h1>Chính sách quyền riêng tư</h1>
-    <p class="doc-meta">Cập nhật lần cuối: 14 tháng 8 năm 2026 · Có hiệu lực: 14 tháng 8 năm 2026</p>
+    <p class="doc-meta">Cập nhật lần cuối: 30 tháng 9 năm 2026 · Có hiệu lực: 14 tháng 8 năm 2026</p>
 
   <p class="doc-meta">Bản dịch này được cung cấp để thuận tiện; phiên bản tiếng Anh tại cumulusvpn.com/privacy có giá trị pháp lý cao nhất.</p>
   </div>
@@ -146,7 +146,10 @@
       không có phần nào trong số đó trở thành một bản ghi về bạn.</p>
     <h3>4.1 Khóa công khai của bạn (định danh bút danh)</h3>
     <p>Thiết bị của bạn tạo một cặp khóa WireGuard cục bộ ngay lần khởi chạy đầu tiên. <strong>Khóa riêng tư không bao giờ
-      rời khỏi thiết bị của bạn</strong> — thậm chí không đến với chúng tôi. Chỉ có <strong>khóa công khai</strong> được gửi đến một
+      được gửi cho chúng tôi hay cho bất kỳ gateway nào</strong>. Để khóa không bị mất khi bạn xóa rồi cài đặt lại ứng dụng — hoặc chuyển sang điện thoại
+      mới — ứng dụng giữ một <strong>bản sao lưu được mã hóa</strong> của khóa: trên iOS là trong Keychain (Chuỗi khóa) của iPhone,
+      và trên Android là trong Block Store của Google, được mã hóa đầu cuối bằng khóa màn hình của bạn để
+      cả Google lẫn chúng tôi đều không thể đọc được. Tính năng sao lưu được bật theo mặc định và có thể tắt trong Cài đặt. Chỉ có <strong>khóa công khai</strong> được gửi đến một
       gateway để nó có thể định tuyến tunnel đã mã hóa của bạn. Một khóa công khai là một giá trị 32 byte trông ngẫu nhiên. Nó
       không gắn với tên, email, hay phần cứng của bạn, và bạn có thể tạo lại nó bất cứ lúc nào. Đó là một bút danh,
       không phải một danh tính.</p>
@@ -232,7 +235,7 @@
       <li><strong>Truy cập / khả năng di chuyển:</strong> Chúng tôi thường không giữ dữ liệu cá nhân nào liên kết với bạn để cung cấp.
         Nếu bạn từng email cho bộ phận hỗ trợ, bạn có thể yêu cầu một bản sao của thư từ đó.</li>
       <li><strong>Xóa:</strong> Không có gì gắn với danh tính của bạn để chúng tôi xóa khỏi các gateway; trạng thái peer vốn đã là RAM tạm thời
-        và tự xóa khi ngắt kết nối/khởi động lại. Bạn có thể xóa khóa của mình trên thiết bị bất cứ lúc nào, việc này sẽ cắt đứt hoàn toàn liên kết ẩn danh.</li>
+        và tự xóa khi ngắt kết nối/khởi động lại. Bạn có thể xóa khóa của mình trên thiết bị bất cứ lúc nào (hãy tắt sao lưu danh tính trong Cài đặt trước, để không còn bản sao nào), việc này sẽ cắt đứt hoàn toàn liên kết ẩn danh.</li>
       <li><strong>Không bán / không chia sẻ:</strong> Chúng tôi không bán hay chia sẻ dữ liệu cá nhân, nên không có gì để từ chối.</li>
     </ul>
     <p>Để thực hiện bất kỳ quyền nào, hãy email <strong>info@cumulusvpn.com</strong>. Chúng tôi có thể không xác định được bạn trong
@@ -245,7 +248,8 @@
 
     <h2>12. Bảo mật</h2>
     <p>Lưu lượng được mã hóa đầu cuối giữa thiết bị của bạn và gateway bằng giao thức WireGuard®
-      (mật mã học hiện đại, đã được kiểm toán). Khóa riêng tư của bạn không bao giờ rời khỏi thiết bị của bạn. Trạng thái peer phía máy chủ
+      (mật mã học hiện đại, đã được kiểm toán). Khóa riêng tư của bạn không bao giờ được gửi cho chúng tôi hay cho bất kỳ gateway nào; bản sao duy nhất của nó bên ngoài ứng dụng là
+      bản sao lưu được mã hóa được mô tả ở mục 4.1, mà bạn có thể tắt. Trạng thái peer phía máy chủ
       chỉ được giữ trong bộ nhớ. Ứng dụng truy cập control API của mỗi gateway qua một kết nối trực tiếp mà các phản hồi
       được ký bằng ed25519 và được ứng dụng xác minh, vì vậy tính xác thực của danh mục máy chủ và các phản hồi gateway được bảo vệ bằng chữ ký số thay vì bằng một chứng chỉ truyền tải.</p>
 

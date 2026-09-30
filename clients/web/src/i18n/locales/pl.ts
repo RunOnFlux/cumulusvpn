@@ -133,6 +133,23 @@ export const pl: Catalog = {
   manage_cta_busy: 'Otwieranie portalu rozliczeniowego…',
   manage_err:
     'Nie udało się otworzyć portalu rozliczeniowego w tej przeglądarce. Zawsze możesz zarządzać subskrypcją lub ją anulować przez link w e-mailu z potwierdzeniem od Stripe.',
+  transfer_cta: 'Przenieś na inne urządzenie',
+  transfer_lede:
+    'Aplikacja zainstalowana ponownie albo nowy telefon? Wpisz kod urządzenia z Ustawienia → Informacje na nowym urządzeniu. Od razu otrzyma resztę bieżącego okresu rozliczeniowego, a potem każde odnowienie. Subskrypcję można przenieść raz na 30 dni.',
+  transfer_next: 'Dalej',
+  transfer_cancel: 'Anuluj',
+  transfer_confirm:
+    'Przenieść tę subskrypcję na {code}? Sprawdź, czy zgadza się z kodem pokazanym na tamtym urządzeniu — błędnie przepisany kod nadal może być poprawny i przeniósłby ją na niewłaściwe urządzenie.',
+  transfer_confirm_cta: 'Przenieś subskrypcję',
+  transfer_busy: 'Przenoszenie…',
+  transfer_done:
+    'Przeniesiono. Premium na resztę bieżącego okresu rozliczeniowego aktywuje się na {code}, a odnowienia trafią na to urządzenie. Rozliczenia zostają tutaj — zarządzaj nimi lub anuluj z tej strony jak dotąd.',
+  transfer_err_soon:
+    'Ta subskrypcja została niedawno przeniesiona. Ponownie będzie można ją przenieść {date}.',
+  transfer_err_same: 'To urządzenie ma już tę subskrypcję.',
+  transfer_err_none:
+    'Nie znaleziono aktywnej subskrypcji kartą dla zakupu z tej przeglądarki, więc nie ma czego przenosić.',
+  transfer_err: 'Nie udało się przenieść subskrypcji. Spróbuj ponownie za chwilę.',
 
   redeem_eyebrow: 'Masz kod?',
   redeem_lede:

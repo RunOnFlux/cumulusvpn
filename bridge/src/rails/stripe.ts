@@ -4,6 +4,12 @@
  * (`cvpn_code`, `cvpn_plan`) so every renewal invoice carries them without a
  * client in the loop. Grants are keyed by INVOICE id: `invoice.paid` webhook
  * retries and event-id churn all collapse onto the same invoice.
+ *
+ * Once a subscription is moved to another code (a buyer's transfer, or a
+ * support rebind — docs/18 "Claims and transfers"), the bridge's own
+ * `subscriptions` binding is authoritative. The metadata is rewritten too,
+ * but invoices already drafted, and webhook retries, still carry the old
+ * copy.
  */
 import Stripe from 'stripe';
 import type { FastifyBaseLogger } from 'fastify';
@@ -12,8 +18,15 @@ import type { StripeConfig } from '../config.js';
 import { PLAN_DAYS } from '../config.js';
 import { recordGrant, type GrantResult } from '../grants.js';
 import type { PaymentsRepo } from '../db/payments.js';
-import type { Plan, SubscriptionsRepo } from '../db/subscriptions.js';
+import type { Plan, SubscriptionsRepo, TransferActor } from '../db/subscriptions.js';
 import type { VouchersRepo } from '../db/vouchers.js';
+import {
+  remainingDays,
+  transferAvailableAt,
+  transferEventKey,
+  type ClaimOutcome,
+  type RebindOutcome,
+} from '../transfers.js';
 
 /** Narrow Stripe's `string | Customer | DeletedCustomer | null` to an id. */
 function customerId(ref: string | { id: string } | null | undefined): string | null {
@@ -59,6 +72,16 @@ function priceIdOf(line: Stripe.InvoiceLineItem): string | null {
     return ref;
   }
   return ref?.id ?? null;
+}
+
+/**
+ * End of a subscription's current period (unix seconds), across the basil
+ * (per-item `current_period_end`) and legacy (top-level) payload shapes.
+ */
+function periodEndOf(sub: Stripe.Subscription): number | null {
+  const item = sub.items?.data?.[0] as { current_period_end?: number } | undefined;
+  const legacy = sub as unknown as { current_period_end?: number };
+  return item?.current_period_end ?? legacy.current_period_end ?? null;
 }
 
 export class StripeRail {
@@ -180,6 +203,146 @@ export class StripeRail {
     return portal.url;
   }
 
+  /**
+   * Move a card subscription to another device's payment code, handing it the
+   * rest of the current period.
+   *
+   * Authorized exactly like createPortalSession — by the Checkout Session id,
+   * never by a payment code (see there for why) — except that the code here is
+   * the NEW device's, so it cannot be checked against the session. The buyer
+   * who holds the session may move the subscription again later, at most
+   * once per 30 days.
+   *
+   * Refusals: `no_subscription` (unknown session, no subscription, or not
+   * active / refunded), `already_bound`, `transfer_too_soon`.
+   */
+  async transferSubscription(sessionId: string, code: string): Promise<ClaimOutcome> {
+    let session: Stripe.Checkout.Session;
+    try {
+      session = await this.stripe.checkout.sessions.retrieve(sessionId);
+    } catch (e) {
+      this.log.info({ err: e, session: sessionId }, 'transfer: session lookup failed');
+      return { accepted: false, reason: 'no_subscription' };
+    }
+    const subId =
+      typeof session.subscription === 'string' ? session.subscription : session.subscription?.id;
+    if (!subId) {
+      return { accepted: false, reason: 'no_subscription' };
+    }
+    let sub: Stripe.Subscription;
+    try {
+      sub = await this.stripe.subscriptions.retrieve(subId);
+    } catch (e) {
+      this.log.info({ err: e, subscription: subId }, 'transfer: subscription lookup failed');
+      return { accepted: false, reason: 'no_subscription' };
+    }
+    const known = this.subs.get('stripe', subId);
+    if (sub.status !== 'active' || known?.status === 'refunded') {
+      return { accepted: false, reason: 'no_subscription' };
+    }
+    const owner = known?.payment_code ?? sub.metadata.cvpn_code;
+    if (owner === code) {
+      return { accepted: false, reason: 'already_bound' };
+    }
+    const availableAt = transferAvailableAt(
+      known?.transferred_at ?? null,
+      Math.floor(Date.now() / 1000),
+    );
+    if (availableAt !== null) {
+      return { accepted: false, reason: 'transfer_too_soon', availableAt };
+    }
+    const moved = this.transferTo(code, sub, known?.plan, 'user', true);
+    await this.rewriteMetadata(subId, code);
+    return {
+      accepted: true,
+      reason: `transfer:${moved.grant}`,
+      days: moved.days,
+      test: !sub.livemode,
+      transferred: true,
+    };
+  }
+
+  /**
+   * Support override: move a subscription with no 30-day limit, optionally
+   * granting the rest of the current period under the SAME per-period key a
+   * buyer's transfer uses, so support cannot double-grant a period either.
+   */
+  async adminRebind(subId: string, code: string, grantRemaining: boolean): Promise<RebindOutcome> {
+    const known = this.subs.get('stripe', subId);
+    if (!known) {
+      return { ok: false, reason: 'not_found' };
+    }
+    const sub = await this.stripe.subscriptions.retrieve(subId);
+    if (grantRemaining && (sub.status !== 'active' || known.status === 'refunded')) {
+      return { ok: false, reason: 'not_active' };
+    }
+    const moved = this.transferTo(code, sub, known.plan, 'admin', grantRemaining);
+    await this.rewriteMetadata(subId, code);
+    return {
+      ok: true,
+      reason: 'rebound',
+      previousCode: moved.previous,
+      days: moved.days,
+      grant: moved.grant,
+      test: !sub.livemode,
+    };
+  }
+
+  /**
+   * Rebind (and, when `grant`, hand over the rest of the period). Synchronous
+   * on purpose: the caller's rate-limit check, the grant and the rebind run
+   * with no await between them, so two racing transfers cannot both pass the
+   * check. The grant is recorded BEFORE the rebind — a crash in between leaves
+   * the subscription where it was, and the retry lands on the same
+   * per-period key instead of losing the days.
+   *
+   * Test-mode subscriptions move but never settle unless STRIPE_TEST_GRANTS,
+   * exactly like their invoices.
+   */
+  private transferTo(
+    code: string,
+    sub: Stripe.Subscription,
+    knownPlan: Plan | undefined,
+    actor: TransferActor,
+    grant: boolean,
+  ): { days: number; grant: GrantResult | 'none'; previous: string | null } {
+    const item = sub.items?.data?.[0];
+    const plan = (item ? this.planForPrice(item.price?.id) : null) ?? knownPlan ?? 'monthly';
+    const periodEnd = periodEndOf(sub);
+    const settles = grant && (sub.livemode || this.cfg.testGrants) && periodEnd !== null;
+    const days = settles ? remainingDays(periodEnd * 1000, Date.now(), plan) : 0;
+    const result =
+      days > 0 && periodEnd !== null
+        ? recordGrant(this.payments, this.priceZats, {
+            rail: 'stripe',
+            eventKey: transferEventKey(sub.id, periodEnd * 1000),
+            externalRef: sub.id,
+            paymentCode: code,
+            days,
+          })
+        : 'none';
+    const previous = this.subs.rebind('stripe', sub.id, code, plan, actor, days);
+    this.log.info(
+      { subscription: sub.id, actor, days, grant: result, livemode: sub.livemode },
+      'stripe subscription transferred',
+    );
+    return { days, grant: result, previous };
+  }
+
+  /**
+   * Point the subscription metadata at the new code, so the Stripe dashboard
+   * and future invoices agree with the bridge. Best effort: the bridge's own
+   * binding already won in resolveInvoiceBinding, so a failure here must not
+   * fail a move that has been recorded.
+   */
+  private async rewriteMetadata(subId: string, code: string): Promise<void> {
+    try {
+      await this.stripe.subscriptions.update(subId, { metadata: { cvpn_code: code } });
+    } catch (e) {
+      this.log.warn({ err: e, subscription: subId }, 'stripe metadata rewrite failed');
+    }
+  }
+
   /** Deactivate the Stripe promotion code behind a revoked discount voucher. */
   async deactivatePromo(promoId: string): Promise<void> {
     await this.stripe.promotionCodes.update(promoId, { active: false });
@@ -210,7 +373,9 @@ export class StripeRail {
     if (!code || !subId) {
       return 'checkout-completed:missing-binding';
     }
-    this.subs.upsert('stripe', subId, code, plan, customerId(session.customer));
+    // A redelivery of this event after a transfer must not move it back.
+    const bound = this.subs.get('stripe', subId)?.payment_code ?? code;
+    this.subs.upsert('stripe', subId, bound, plan, customerId(session.customer));
     return 'checkout-completed:bound';
   }
 
@@ -300,9 +465,7 @@ export class StripeRail {
   private planForLines(lines: readonly Stripe.InvoiceLineItem[]): Plan | null {
     let best: { plan: Plan; amount: number } | null = null;
     for (const line of lines) {
-      const id = priceIdOf(line);
-      const plan =
-        id === this.cfg.priceAnnual ? 'annual' : id === this.cfg.priceMonthly ? 'monthly' : null;
+      const plan = this.planForPrice(priceIdOf(line));
       if (plan === null || line.amount <= 0) {
         continue;
       }
@@ -311,6 +474,11 @@ export class StripeRail {
       }
     }
     return best?.plan ?? null;
+  }
+
+  /** The plan a configured price id bills, or null for any other price. */
+  private planForPrice(id: string | null | undefined): Plan | null {
+    return id === this.cfg.priceAnnual ? 'annual' : id === this.cfg.priceMonthly ? 'monthly' : null;
   }
 
   /**
@@ -457,6 +625,11 @@ export class StripeRail {
    * is copied onto invoices by Stripe, but the exact field moved across API
    * versions — try the modern shape, then the legacy one, then fall back to
    * retrieving the subscription itself.
+   *
+   * The code the bridge has persisted for the subscription wins over all of
+   * them: after a transfer the metadata on an already-drafted invoice (and on
+   * any webhook retry) still names the device it was moved away from. Before
+   * any transfer the two are the same code, so this changes nothing.
    */
   private async resolveInvoiceBinding(
     invoice: Stripe.Invoice,
@@ -489,6 +662,7 @@ export class StripeRail {
       code = sub.metadata.cvpn_code;
       planRaw = sub.metadata.cvpn_plan;
     }
+    code = this.subs.get('stripe', subId)?.payment_code ?? code;
     if (!code) {
       return null;
     }

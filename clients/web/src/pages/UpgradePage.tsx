@@ -6,6 +6,8 @@ import {
   openBillingPortal,
   paymentCode,
   redeemVoucher,
+  transferAvailableAt,
+  transferStripeSubscription,
   walletDeepLink,
   MEMO_PREFIX,
 } from '@cumulusvpn/core';
@@ -120,7 +122,7 @@ function rememberPortalSession(code: string, sessionId: string): void {
 }
 
 export function UpgradePage({ keypair, directory, params, onNavigateConnect }: UpgradePageProps) {
-  const { t, rich } = useI18n();
+  const { t, rich, locale } = useI18n();
   const session = params.get('session');
   /**
    * A Device code pasted by hand, for paying from a desktop browser on behalf
@@ -226,6 +228,70 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
       // subscription is long gone) — the receipt-email fallback covers both.
       setPortalError(true);
       setPortalBusy(false);
+    }
+  };
+
+  /**
+   * Moving the card subscription to another device — a reinstall is a new
+   * key and a new phone a new code, and both used to strand a paid
+   * subscription. Same capability as the portal: the stored Checkout Session
+   * id (the typed code authorizes nothing). The code is echoed back before
+   * anything moves, for the reason the pay-for-another-device card gives: a
+   * typo can still be a valid code.
+   */
+  const [transferStep, setTransferStep] = useState<'closed' | 'enter' | 'confirm' | 'done'>(
+    'closed',
+  );
+  const [transferInput, setTransferInput] = useState('');
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
+  const transferCode = transferInput.trim();
+
+  const reviewTransfer = (): void => {
+    if (!isValidPaymentCode(transferCode)) {
+      setTransferError(t('otherdev_err'));
+      return;
+    }
+    setTransferError(null);
+    setTransferStep('confirm');
+  };
+
+  const cancelTransfer = (): void => {
+    setTransferStep('closed');
+    setTransferInput('');
+    setTransferError(null);
+  };
+
+  const confirmTransfer = async (): Promise<void> => {
+    if (portalSession === null || transferBusy) {
+      return;
+    }
+    setTransferBusy(true);
+    setTransferError(null);
+    try {
+      await transferStripeSubscription(
+        fetch.bind(window),
+        { sessionId: portalSession, code: transferCode },
+        { baseUrl: BRIDGE_URL },
+      );
+      // The session stays filed under THIS code: billing (card, cancel)
+      // belongs to whoever bought, only the premium moved.
+      setTransferStep('done');
+    } catch (e) {
+      const slug = e instanceof ApiError ? e.slug : 'network';
+      const availableAt = transferAvailableAt(e);
+      setTransferError(
+        availableAt !== null
+          ? t('transfer_err_soon', { date: availableAt.toLocaleDateString(locale) })
+          : slug === 'already_bound'
+            ? t('transfer_err_same')
+            : slug === 'no_subscription'
+              ? t('transfer_err_none')
+              : t('transfer_err'),
+      );
+      setTransferStep('enter');
+    } finally {
+      setTransferBusy(false);
     }
   };
 
@@ -511,6 +577,75 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
                 </button>
               </div>
               {portalError && <p className="pay-note error">{t('manage_err')}</p>}
+              {transferStep === 'closed' && (
+                <div className="btn-row">
+                  <button className="btn block" onClick={() => setTransferStep('enter')}>
+                    {t('transfer_cta')}
+                  </button>
+                </div>
+              )}
+              {transferStep === 'enter' && (
+                <>
+                  <p className="pay-note">{t('transfer_lede')}</p>
+                  <div className="btn-row">
+                    <input
+                      className="mono"
+                      style={{ flex: 1, padding: '12px', fontSize: '15px' }}
+                      value={transferInput}
+                      placeholder={t('otherdev_placeholder')}
+                      onChange={(e) => {
+                        setTransferInput(e.target.value);
+                        setTransferError(null);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          reviewTransfer();
+                        }
+                      }}
+                      // Not the placeholder: the pay-for-another-device box on
+                      // this page is already labelled "Device code".
+                      aria-label={t('transfer_cta')}
+                    />
+                    <button
+                      className="btn amber"
+                      disabled={transferCode === ''}
+                      onClick={reviewTransfer}
+                    >
+                      {t('transfer_next')}
+                    </button>
+                  </div>
+                  <div className="btn-row">
+                    <button className="btn block" onClick={cancelTransfer}>
+                      {t('transfer_cancel')}
+                    </button>
+                  </div>
+                </>
+              )}
+              {transferStep === 'confirm' && (
+                <>
+                  <p className="pay-note">{t('transfer_confirm', { code: transferCode })}</p>
+                  <div className="btn-row">
+                    <button
+                      className="btn amber block"
+                      disabled={transferBusy}
+                      onClick={() => void confirmTransfer()}
+                    >
+                      {transferBusy ? t('transfer_busy') : t('transfer_confirm_cta')}
+                    </button>
+                  </div>
+                  <div className="btn-row">
+                    <button className="btn block" disabled={transferBusy} onClick={cancelTransfer}>
+                      {t('transfer_cancel')}
+                    </button>
+                  </div>
+                </>
+              )}
+              {transferStep === 'done' && (
+                <p className="pay-note">
+                  {t('transfer_done', { code: `${transferCode.slice(0, 8)}…` })}
+                </p>
+              )}
+              {transferError && <p className="pay-note error">{transferError}</p>}
             </>
           )}
         </section>

@@ -40,6 +40,7 @@ const K = {
   activeRoute: 'cvpn:activeRoute',
   disclosure: 'cvpn:disclosureAck',
   splitPolicy: 'cvpn:splitPolicy',
+  identityBackup: 'cvpn:identityBackup',
 } as const;
 
 /**
@@ -104,7 +105,9 @@ export async function loadActiveRoute(): Promise<PersistedRoute | null> {
  */
 // '2': in-app store subscriptions added — the "nothing is sold inside this
 // app" claim was replaced with the store-payment disclosure.
-export const DISCLOSURE_VERSION = '2';
+// '3': identity backup — "the private key never leaves this device" became the
+// Keychain / Block Store copy (on by default, switchable in Settings).
+export const DISCLOSURE_VERSION = '3';
 
 /** The route styles a user may persist (mirrors core `RouteStyle`). */
 const ROUTE_STYLES: readonly RouteStyle[] = [
@@ -223,6 +226,16 @@ export async function loadAutoConnect(): Promise<boolean> {
 /** Persist the auto-connect-on-launch preference. */
 export async function saveAutoConnect(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(K.autoConnect, enabled ? '1' : '0');
+}
+
+/** Whether the identity is backed up (identity.ts). ON unless the user turned it off. */
+export async function loadIdentityBackup(): Promise<boolean> {
+  return (await AsyncStorage.getItem(K.identityBackup)) !== '0';
+}
+
+/** Persist the identity-backup preference. */
+export async function saveIdentityBackup(enabled: boolean): Promise<void> {
+  await AsyncStorage.setItem(K.identityBackup, enabled ? '1' : '0');
 }
 
 /** True once the user has acknowledged the CURRENT disclosure version. */

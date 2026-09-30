@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy per architettura</span>
     <h1>Informativa sulla privacy</h1>
-    <p class="doc-meta">Ultimo aggiornamento: 14 agosto 2026 · In vigore dal: 14 agosto 2026</p>
+    <p class="doc-meta">Ultimo aggiornamento: 30 settembre 2026 · In vigore dal: 14 agosto 2026</p>
 
   <p class="doc-meta">Questa traduzione è fornita per comodità; la versione inglese su cumulusvpn.com/privacy è quella
       autorevole.</p>
@@ -149,7 +149,10 @@
       nulla di esso diventa un registro su di te.</p>
     <h3>4.1 La tua chiave pubblica (identificatore pseudonimo)</h3>
     <p>Il tuo dispositivo genera una coppia di chiavi WireGuard localmente al primo avvio. La <strong>chiave privata non
-      lascia mai il tuo dispositivo</strong> — nemmeno verso di noi. Solo la <strong>chiave pubblica</strong> viene inviata a un
+      viene mai inviata a noi né ad alcun gateway</strong>. Perché non vada persa se elimini e reinstalli l'app — o passi a un nuovo
+      telefono — l'app ne conserva un <strong>backup cifrato</strong>: nel Portachiavi (Keychain) dell'iPhone su iOS,
+      e su Android nel Block Store di Google, cifrato end-to-end con il blocco schermo, così che
+      né Google né noi possiamo leggerlo. Il backup è attivo per impostazione predefinita e può essere disattivato nelle Impostazioni. Solo la <strong>chiave pubblica</strong> viene inviata a un
       gateway affinché possa instradare il tuo tunnel cifrato. Una chiave pubblica è un valore di 32 byte dall'aspetto casuale. Non
       è legata al tuo nome, alla tua email o al tuo hardware, e puoi rigenerarla in qualsiasi momento. È uno pseudonimo,
       non un'identità.</p>
@@ -240,7 +243,7 @@
         Se hai scritto al supporto via email, puoi richiedere una copia di quella corrispondenza.</li>
       <li><strong>Cancellazione:</strong> Non c'è nulla legato alla tua identità che possiamo eliminare dai gateway;
         lo stato dei peer è già effimero, solo in RAM, e si cancella alla disconnessione/al riavvio. Puoi eliminare la tua chiave sul
-        tuo dispositivo in qualsiasi momento, il che interrompe completamente il collegamento pseudonimo.</li>
+        tuo dispositivo in qualsiasi momento (prima disattiva il backup dell'identità nelle Impostazioni, così non ne resta alcuna copia), il che interrompe completamente il collegamento pseudonimo.</li>
       <li><strong>Non vendere / non condividere:</strong> Non vendiamo né condividiamo dati personali, quindi non c'è
         nulla da cui disiscriversi.</li>
     </ul>
@@ -256,7 +259,8 @@
 
     <h2>12. Sicurezza</h2>
     <p>Il traffico è cifrato end-to-end tra il tuo dispositivo e il gateway usando il protocollo WireGuard®
-      (crittografia moderna e verificata). La tua chiave privata non lascia mai il tuo dispositivo. Lo stato dei peer lato server viene
+      (crittografia moderna e verificata). La tua chiave privata non viene mai inviata a noi né ad alcun gateway; la sua unica copia al di fuori dell'app è il
+      backup cifrato descritto nella sezione 4.1, che puoi disattivare. Lo stato dei peer lato server viene
       mantenuto solo in memoria. L'app raggiunge l'API di controllo di ciascun gateway tramite una connessione diretta le cui
       risposte sono firmate con ed25519 e verificate dall'app, così l'autenticità della directory dei server e delle
       risposte dei gateway è protetta da firme digitali anziché da un certificato di trasporto.</p>

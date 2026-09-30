@@ -14,12 +14,14 @@ const checkoutMock = vi.hoisted(() => vi.fn());
 const statusMock = vi.hoisted(() => vi.fn());
 const redeemMock = vi.hoisted(() => vi.fn());
 const portalMock = vi.hoisted(() => vi.fn());
+const transferMock = vi.hoisted(() => vi.fn());
 vi.mock('@cumulusvpn/core', async (importOriginal) => ({
   ...(await importOriginal<typeof CoreModule>()),
   createStripeCheckout: checkoutMock,
   paymentStatus: statusMock,
   redeemVoucher: redeemMock,
   openBillingPortal: portalMock,
+  transferStripeSubscription: transferMock,
 }));
 
 const keypair: Keypair = {
@@ -57,6 +59,7 @@ beforeEach(() => {
   statusMock.mockReset();
   redeemMock.mockReset();
   portalMock.mockReset();
+  transferMock.mockReset();
   localStorage.clear();
 });
 
@@ -334,6 +337,110 @@ describe('UpgradePage subscription management', () => {
     statusMock.mockResolvedValue({ code: ZERO_CODE, payments: [] });
     renderPage(new URLSearchParams('session='));
     expect(screen.queryByText('Manage subscription')).toBeNull();
+  });
+});
+
+describe('UpgradePage move subscription to another device', () => {
+  const NEW_CODE = '2bmMSbm88eN6MA6RuDiFKjNAZEuk';
+
+  function withStoredSession(): void {
+    localStorage.setItem(
+      PAY_PORTAL_SESSIONS_STORAGE_KEY,
+      JSON.stringify({ [ZERO_CODE]: 'cs_live_move' }),
+    );
+  }
+
+  it('is only offered where the portal is — it needs the same checkout session', () => {
+    renderPage();
+    expect(screen.queryByText('Move to another device')).toBeNull();
+  });
+
+  it('echoes the code back, then moves it with the stored session', async () => {
+    withStoredSession();
+    transferMock.mockResolvedValue({
+      accepted: true,
+      days: 12,
+      months: 0,
+      state: 'pending',
+      transferred: true,
+      test: false,
+    });
+    renderPage();
+    fireEvent.click(screen.getByText('Move to another device'));
+    fireEvent.change(screen.getByLabelText('Move to another device'), {
+      target: { value: NEW_CODE },
+    });
+    fireEvent.click(screen.getByText('Continue'));
+    // Nothing moves until the user has seen the code they typed.
+    expect(transferMock).not.toHaveBeenCalled();
+    expect(screen.getByText(new RegExp(`Move this subscription to ${NEW_CODE}\\?`))).toBeTruthy();
+    fireEvent.click(screen.getByText('Move subscription'));
+    await waitFor(() => expect(screen.getByText(/^Moved\./)).toBeTruthy());
+    expect(transferMock).toHaveBeenCalledWith(
+      expect.anything(),
+      { sessionId: 'cs_live_move', code: NEW_CODE },
+      expect.anything(),
+    );
+    // Billing stays with this browser: the session is still filed under it.
+    expect(JSON.parse(localStorage.getItem(PAY_PORTAL_SESSIONS_STORAGE_KEY) ?? '{}')).toEqual({
+      [ZERO_CODE]: 'cs_live_move',
+    });
+  });
+
+  it('rejects a malformed code before calling the bridge', () => {
+    withStoredSession();
+    renderPage();
+    fireEvent.click(screen.getByText('Move to another device'));
+    fireEvent.change(screen.getByLabelText('Move to another device'), {
+      target: { value: 'not-a-code' },
+    });
+    fireEvent.click(screen.getByText('Continue'));
+    expect(screen.getByText(/That is not a valid device code/)).toBeTruthy();
+    expect(transferMock).not.toHaveBeenCalled();
+  });
+
+  it('says when a recently moved subscription can move again', async () => {
+    withStoredSession();
+    const { ApiError } = await import('@cumulusvpn/core');
+    transferMock.mockRejectedValue(
+      new ApiError({
+        code: '409',
+        name: 'transfer_too_soon',
+        message:
+          'this subscription moved in the last 30 days; it can move again after 2026-10-30T12:00:00.000Z',
+      }),
+    );
+    renderPage();
+    fireEvent.click(screen.getByText('Move to another device'));
+    fireEvent.change(screen.getByLabelText('Move to another device'), {
+      target: { value: NEW_CODE },
+    });
+    fireEvent.click(screen.getByText('Continue'));
+    fireEvent.click(screen.getByText('Move subscription'));
+    const expected = new Date('2026-10-30T12:00:00.000Z').toLocaleDateString('en');
+    await waitFor(() =>
+      expect(
+        screen.getByText(`This subscription moved recently. It can move again on ${expected}.`),
+      ).toBeTruthy(),
+    );
+  });
+
+  it('explains a subscription that is already on that device', async () => {
+    withStoredSession();
+    const { ApiError } = await import('@cumulusvpn/core');
+    transferMock.mockRejectedValue(
+      new ApiError({ code: '409', name: 'already_bound', message: 'x' }),
+    );
+    renderPage();
+    fireEvent.click(screen.getByText('Move to another device'));
+    fireEvent.change(screen.getByLabelText('Move to another device'), {
+      target: { value: NEW_CODE },
+    });
+    fireEvent.click(screen.getByText('Continue'));
+    fireEvent.click(screen.getByText('Move subscription'));
+    await waitFor(() =>
+      expect(screen.getByText('That device already has this subscription.')).toBeTruthy(),
+    );
   });
 });
 

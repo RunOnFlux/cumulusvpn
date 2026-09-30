@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Mimariyle gizlilik</span>
     <h1>Gizlilik Politikası</h1>
-    <p class="doc-meta">Son güncelleme: 14 Ağustos 2026 · Yürürlük tarihi: 14 Ağustos 2026</p>
+    <p class="doc-meta">Son güncelleme: 30 Eylül 2026 · Yürürlük tarihi: 14 Ağustos 2026</p>
 
   <p class="doc-meta">Bu çeviri kolaylık sağlamak amacıyla sunulmuştur; cumulusvpn.com/privacy adresindeki İngilizce sürüm esas alınır.</p>
   </div>
@@ -123,7 +123,7 @@
     <h2>4. Teknik olarak neler dahil (ve neden bu senin profilin olmadığı)</h2>
     <p>Bir VPN, gerçek zamanlı olarak içinden geçen bazı veriler olmadan çalışamaz. İşte hepsi bu — ve hiçbirinin neden hakkında bir kayda dönüşmediği.</p>
     <h3>4.1 Açık anahtarın (takma ad niteliğinde tanımlayıcı)</h3>
-    <p>Cihazın, ilk açılışta yerel olarak bir WireGuard anahtar çifti oluşturur. <strong>Özel anahtar cihazından asla çıkmaz</strong> — bize bile. Şifreli tünelini yönlendirebilmesi için bir gateway'e yalnızca <strong>açık anahtar</strong> gönderilir. Açık anahtar, rastgele görünümlü 32 baytlık bir değerdir. Adına, e-postana veya donanımına bağlı değildir ve istediğin zaman yeniden oluşturabilirsin. Bir takma addır, kimlik değil.</p>
+    <p>Cihazın, ilk açılışta yerel olarak bir WireGuard anahtar çifti oluşturur. <strong>Özel anahtar bize veya herhangi bir gateway'e asla gönderilmez</strong>. Uygulamayı silip yeniden yüklediğinde — ya da yeni bir telefona geçtiğinde — kaybolmaması için uygulama anahtarın <strong>şifreli bir yedeğini</strong> tutar: iOS'ta iPhone'un Anahtar Zinciri'nde (Keychain), Android'de ise Google'ın Block Store'unda; bu yedek, ekran kilidinle uçtan uca şifrelenir, böylece ne Google ne de biz onu okuyabiliriz. Yedekleme varsayılan olarak açıktır ve Ayarlar'dan kapatılabilir. Şifreli tünelini yönlendirebilmesi için bir gateway'e yalnızca <strong>açık anahtar</strong> gönderilir. Açık anahtar, rastgele görünümlü 32 baytlık bir değerdir. Adına, e-postana veya donanımına bağlı değildir ve istediğin zaman yeniden oluşturabilirsin. Bir takma addır, kimlik değil.</p>
     <h3>4.2 Gateway'de bellek içi eş durumu</h3>
     <p>Bağlıyken, gateway paketleri yönlendirmek için gereken minimumu — <strong>yalnızca uçucu bellekte (RAM)</strong> — tutar: açık anahtarını, ona atanan geçici dahili tünel IP'sini (örn. 10.8.x.y) ve hız katmanını uygulamak için kullanılan bir bayt sayacını. Bu durum <strong>asla diske yazılmaz</strong>, herhangi bir merkezi sunucuya gönderilmez ve <strong>gateway süreci yeniden başladığında</strong> ya da bağlantını kestiğinde silinir. Bundan oluşturulmuş bir geçmiş kayıt yoktur.</p>
     <h3>4.3 Gerçek IP adresin, geçici olarak</h3>
@@ -165,7 +165,7 @@
     <p>Nerede yaşadığına bağlı olarak, kişisel verine erişme, düzeltme, silme veya taşıma; işlemeye itiraz etme veya onu kısıtlama ve (Kaliforniya'da) neyin toplandığını bilme ve bu hakları kullandığın için ayrımcılığa uğramama hakların olabilir. Hizmet anonim olduğu için:</p>
     <ul>
       <li><strong>Erişim / taşınabilirlik:</strong> Genellikle sana sağlayacak, seninle ilişkilendirilmiş hiçbir kişisel veri tutmayız. Destek ekibine e-posta gönderdiysen, o yazışmanın bir kopyasını isteyebilirsin.</li>
-      <li><strong>Silme:</strong> Gateway'lerde silebileceğimiz, kimliğine bağlı hiçbir şey yoktur; eş durumu zaten yalnızca RAM'de geçicidir ve bağlantı kesildiğinde/yeniden başladığında temizlenir. Anahtarını cihazında istediğin zaman silebilirsin, bu da takma ad bağlantısını tamamen koparır.</li>
+      <li><strong>Silme:</strong> Gateway'lerde silebileceğimiz, kimliğine bağlı hiçbir şey yoktur; eş durumu zaten yalnızca RAM'de geçicidir ve bağlantı kesildiğinde/yeniden başladığında temizlenir. Anahtarını cihazında istediğin zaman silebilirsin (hiçbir kopya kalmaması için önce Ayarlar'dan kimlik yedeğini kapat), bu da takma ad bağlantısını tamamen koparır.</li>
       <li><strong>Satma/paylaşma yok tercihi:</strong> Kişisel veri satmadığımız veya paylaşmadığımız için, vazgeçilecek bir şey yoktur.</li>
     </ul>
     <p>Herhangi bir hakkını kullanmak için <strong>info@cumulusvpn.com</strong> adresine e-posta gönder. Hizmet anonim olduğu için tam da bu nedenle seni (var olmayan) kayıtlarımızda tanımlayamayabiliriz — bu bir kaçamak değil, tasarımın kendisidir. Ayrıca yerel veri koruma otoritene şikâyette bulunma hakkına da sahipsin.</p>
@@ -174,7 +174,7 @@
     <p>CumulusVPN, 13 yaşından küçük çocuklara (ya da ülkende geçerli olan asgari dijital rıza yaşından küçüklere) yönelik değildir. Çocuklardan bilerek kişisel veri toplamayız. Kimseden tanımlayıcı veri toplamadığımız için, bir kullanıcının yaşını belirleyemeyiz; hizmet genel kitleye yöneliktir ve çocuklara pazarlanmaz.</p>
 
     <h2>12. Güvenlik</h2>
-    <p>Trafik, WireGuard® protokolü (modern, denetlenmiş kriptografi) kullanılarak cihazın ile gateway arasında uçtan uca şifrelenir. Özel anahtarın cihazından asla çıkmaz. Sunucu tarafı eş durumu yalnızca bellekte tutulur. Uygulama, her gateway'in kontrol API'sine, yanıtları ed25519 ile imzalanmış ve uygulama tarafından doğrulanmış doğrudan bir bağlantı üzerinden ulaşır; böylece sunucu dizininin ve gateway yanıtlarının özgünlüğü bir taşıma sertifikası yerine dijital imzalarla korunur.</p>
+    <p>Trafik, WireGuard® protokolü (modern, denetlenmiş kriptografi) kullanılarak cihazın ile gateway arasında uçtan uca şifrelenir. Özel anahtarın bize veya herhangi bir gateway'e asla gönderilmez; uygulama dışındaki tek kopyası, Bölüm 4.1'de açıklanan ve kapatabileceğin şifreli yedektir. Sunucu tarafı eş durumu yalnızca bellekte tutulur. Uygulama, her gateway'in kontrol API'sine, yanıtları ed25519 ile imzalanmış ve uygulama tarafından doğrulanmış doğrudan bir bağlantı üzerinden ulaşır; böylece sunucu dizininin ve gateway yanıtlarının özgünlüğü bir taşıma sertifikası yerine dijital imzalarla korunur.</p>
 
     <h2>13. Bu politikadaki değişiklikler</h2>
     <p>Bu politikayı değiştirirsek, yukarıdaki “Son güncelleme” tarihini güncelleyecek ve yeni sürümü <a href="https://cumulusvpn.com/privacy">cumulusvpn.com/privacy</a> adresinde yayımlayacağız. Önemli değişiklikler vurgulanacaktır. Herhangi bir e-posta listesi tutmadığımız için, güncel politika için yetkili kaynak web sitesidir.</p>

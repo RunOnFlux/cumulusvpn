@@ -65,6 +65,8 @@
   .foot { display:flex; align-items:center; justify-content:space-between; gap:14px; margin-top:22px; }
   .updated { color:var(--ink-3); font-family:var(--mono); font-size:11.5px; }
   .err { color:var(--red); font-size:13px; margin-top:12px; min-height:1em; }
+  .big { font-weight:700; font-size:20px; letter-spacing:-.01em; font-variant-numeric:tabular-nums; text-align:right; }
+  .row .k small a { color:var(--cyan); font-family:var(--mono); text-decoration:none; }
   #toast { position:fixed; left:50%; bottom:28px; transform:translateX(-50%) translateY(20px); opacity:0; pointer-events:none;
     background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:11px 18px; font-size:14px; font-weight:600;
     box-shadow:0 20px 50px -20px rgba(0,0,0,.5); transition:.2s; }
@@ -102,8 +104,28 @@
   <!-- DASHBOARD (shown after auth) -->
   <div id="editor" hidden>
     <div class="dash-head">
-      <div class="sec-title">Feature flags</div>
+      <div class="sec-title">Treasury</div>
       <button class="btn ghost sm" id="signout">Sign out</button>
+    </div>
+    <div class="card">
+      <p class="hint">
+        The bridge's settlement wallet. Every card, Google Play and App Store sale is paid on chain
+        from here into our payment address. When it runs dry, sales queue and buyers wait for
+        premium until it is topped up.
+      </p>
+      <div class="warn" id="t-low" hidden></div>
+      <div class="row"><div class="k">Balance <small id="t-addr">—</small></div><div class="big" id="t-balance">—</div></div>
+      <div class="row"><div class="k">Monthly sales it can settle <small id="t-price">—</small></div><div class="big" id="t-months">—</div></div>
+      <div class="row"><div class="k">Waiting to settle <small id="t-need">—</small></div><div id="t-queue">—</div></div>
+      <div class="foot">
+        <span class="updated" id="t-updated">—</span>
+        <button class="btn ghost sm" id="t-refresh">Refresh</button>
+      </div>
+      <div class="err" id="t-err"></div>
+    </div>
+
+    <div class="dash-head" style="margin-top:28px">
+      <div class="sec-title">Feature flags</div>
     </div>
     <div class="card">
       <div class="warn">
@@ -223,7 +245,9 @@
         Look a device up by the <b>payment code</b> it shows in Settings → About. Shows the
         subscriptions bound to it and whether their on-chain settlements landed. There are no
         accounts here — refunds and manual cancels are done in the Stripe / App Store / Play
-        console using the <code>external_id</code> below.
+        console using the <code>external_id</code> below. <b>Move</b> re-points a subscription
+        at another device's code (a reinstall, a new phone) — the support override: no 30-day
+        limit, and its renewals follow it from then on.
       </div>
       <div class="row"><div class="k">Payment code</div>
         <input type="text" id="s-code" placeholder="27 base58 characters" />
@@ -234,6 +258,23 @@
       </div>
       <div class="err" id="s-err"></div>
       <div id="s-result" class="hint"></div>
+
+      <div id="s-move" hidden>
+        <h2 style="margin-top:18px">Move to another code</h2>
+        <p class="hint" id="s-move-what"></p>
+        <div class="row"><div class="k">New payment code <small>from Settings → About on the new device</small></div>
+          <input type="text" id="s-move-code" placeholder="27 base58 characters" />
+        </div>
+        <div class="row"><div class="k">Grant the rest of the current period <small>settled on-chain from the treasury — at most once per billing period, however often it moves</small></div>
+          <input type="checkbox" id="s-move-grant" />
+        </div>
+        <div class="foot">
+          <button class="btn ghost sm" id="s-move-cancel">Close</button>
+          <button class="btn primary" id="s-move-go">Move</button>
+        </div>
+        <div class="err" id="s-move-err"></div>
+        <div class="hint" id="s-move-result"></div>
+      </div>
     </div>
   </div>
 </div>
@@ -277,7 +318,51 @@
     });
   }
 
-  function showEditor() { $('login').hidden = true; $('editor').hidden = false; loadFlags(); loadVoucherStats(); loadVouchers(); }
+  function showEditor() { $('login').hidden = true; $('editor').hidden = false; loadTreasury(); loadFlags(); loadVoucherStats(); loadVouchers(); }
+
+  // ---- treasury (bridge settlement wallet, via /api/treasury) ----
+  function fmtFlux(n) { return Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 }); }
+  function ago(s) {
+    if (s < 3600) return Math.max(1, Math.round(s / 60)) + ' min';
+    if (s < 172800) return Math.round(s / 3600) + ' h';
+    return Math.round(s / 86400) + ' days';
+  }
+
+  function loadTreasury() {
+    $('t-err').textContent = '';
+    fetch('/api/treasury', { headers: { authorization: 'Bearer ' + token } }).then(function (r) {
+      if (r.status === 401) { signOut(); throw new Error('session expired'); }
+      return r.json().then(function (j) {
+        if (j && j.status === 'success') return j.data;
+        throw new Error((j && j.data && j.data.message) || (j && j.error) || ('HTTP ' + r.status));
+      });
+    }).then(function (d) {
+      var a = String(d.treasury_address || '');
+      $('t-addr').innerHTML = a
+        ? '<a href="https://explorer.runonflux.io/address/' + encodeURIComponent(a) + '" target="_blank" rel="noopener">' +
+          esc(a.slice(0, 6) + '…' + a.slice(-4)) + '</a>'
+        : '—';
+      $('t-balance').textContent = d.balance_flux == null ? 'unknown' : fmtFlux(d.balance_flux) + ' FLUX';
+      $('t-months').textContent = d.settleable_months == null ? '—' : fmtFlux(d.settleable_months);
+      $('t-price').textContent = d.price_flux == null ? 'price unknown' : 'at ' + fmtFlux(d.price_flux) + ' FLUX each';
+      $('t-queue').textContent = d.pending_payments || d.broadcast_payments
+        ? d.pending_payments + ' pending · ' + d.broadcast_payments + ' confirming'
+        : 'nothing';
+      $('t-need').textContent = d.pending_payments
+        ? fmtFlux(d.pending_flux_needed) + ' FLUX needed' +
+          (d.oldest_unsettled_age_s != null ? ' · oldest ' + ago(d.oldest_unsettled_age_s) : '')
+        : 'queue is empty';
+      var short = d.balance_flux != null && d.pending_flux_needed > d.balance_flux;
+      $('t-low').hidden = !(short || d.low_balance);
+      $('t-low').innerHTML = '<b>⚠ Top up the treasury:</b> ' +
+        (short
+          ? 'queued sales need more FLUX than it holds, so buyers are waiting for premium.'
+          : 'the balance is under the bridge’s alert minimum.') +
+        ' Send FLUX to <code>' + esc(a) + '</code>.';
+      $('t-updated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    }).catch(function (e) { $('t-err').textContent = 'Treasury unavailable: ' + e.message; });
+  }
+  $('t-refresh').addEventListener('click', loadTreasury);
 
   // ---- vouchers (proxied to the payments bridge; dashboard token auth) ----
   function esc(v) {
@@ -438,8 +523,9 @@
         throw new Error((j && j.data && j.data.message) || (j && j.error) || ('HTTP ' + r.status));
       });
     }).then(function (d) {
-      var subs = d.subscriptions || [], pays = d.payments || [];
-      if (!subs.length && !pays.length) {
+      var subs = d.subscriptions || [], pays = d.payments || [], moves = d.transfers || [];
+      lookedUp = { code: code, subs: subs };
+      if (!subs.length && !pays.length && !moves.length) {
         $('s-result').textContent = 'Nothing on record for that code (it may be a FLUX-only or unpaid device).';
         return;
       }
@@ -447,12 +533,27 @@
       if (subs.length) {
         html += '<h2>Subscriptions</h2><table style="width:100%;border-collapse:collapse;font-size:13px">' +
           '<tr><th align="left">Rail</th><th align="left">Plan</th><th align="left">Status</th>' +
-          '<th align="left">external_id</th><th align="left">Updated</th></tr>' +
-          subs.map(function (s) {
+          '<th align="left">external_id</th><th align="left">Updated</th><th></th></tr>' +
+          subs.map(function (s, i) {
             return '<tr><td>' + esc(s.rail) + '</td><td>' + esc(s.plan) + '</td><td>' +
               esc(s.status) + '</td><td><code>' + esc(s.external_id) + '</code>' +
               (s.stripe_customer_id ? '<br/><code>' + esc(s.stripe_customer_id) + '</code>' : '') +
-              '</td><td>' + new Date(s.updated_at * 1000).toLocaleDateString() + '</td></tr>';
+              '</td><td>' + new Date(s.updated_at * 1000).toLocaleDateString() +
+              (s.transferred_at ? '<br/><small>moved ' + new Date(s.transferred_at * 1000).toLocaleDateString() + '</small>' : '') +
+              '</td><td><button class="btn ghost sm" data-move="' + i + '">Move…</button></td></tr>';
+          }).join('') + '</table>';
+      }
+      if (moves.length) {
+        // The old code's subscription list is empty after a move — this is
+        // where "where did my premium go?" gets answered.
+        html += '<h2>Moves</h2><table style="width:100%;border-collapse:collapse;font-size:13px">' +
+          '<tr><th align="left">When</th><th align="left">Rail</th><th align="left">From → to</th>' +
+          '<th align="left">By</th><th align="left">Days</th></tr>' +
+          moves.map(function (m) {
+            return '<tr><td>' + new Date(m.created_at * 1000).toLocaleDateString() + '</td><td>' +
+              esc(m.rail) + '</td><td><code>' + esc(shortCode(m.from_code)) + '</code> → <code>' +
+              esc(shortCode(m.to_code)) + '</code></td><td>' + esc(m.actor) + '</td><td>' +
+              esc(m.days) + '</td></tr>';
           }).join('') + '</table>';
       }
       if (pays.length) {
@@ -467,14 +568,79 @@
           }).join('') + '</table>';
       }
       $('s-result').innerHTML = html;
+      $('s-result').querySelectorAll('[data-move]').forEach(function (b) {
+        b.addEventListener('click', function () { openMove(subs[Number(b.getAttribute('data-move'))]); });
+      });
     }).catch(function (e) {
       $('s-result').textContent = '';
       $('s-err').textContent = e.message;
     });
   }
 
-  $('s-lookup').addEventListener('click', lookupSubscriber);
-  $('s-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') lookupSubscriber(); });
+  function shortCode(c) { return c ? String(c).slice(0, 8) + '…' : '—'; }
+
+  // ---- move a subscription to another code (POST /api/subscriptions/rebind) ----
+  // Support override for a reinstall / new phone the app's own claim flow
+  // could not handle: no 30-day limit. "Grant the rest of the current period"
+  // uses the same per-billing-period key as a user transfer, so a period can
+  // never be granted twice however often it is moved.
+  var lookedUp = null, moveTarget = null;
+
+  function openMove(sub) {
+    moveTarget = sub;
+    $('s-move-what').innerHTML = esc(sub.rail) + ' · <code>' + esc(sub.external_id) + '</code> (' +
+      esc(sub.plan) + ', ' + esc(sub.status) + ') — currently on <code>' +
+      esc(lookedUp ? lookedUp.code : '') + '</code>';
+    $('s-move-code').value = '';
+    $('s-move-grant').checked = false;
+    $('s-move-err').textContent = '';
+    $('s-move-result').textContent = '';
+    $('s-move').hidden = false;
+    $('s-move-code').focus();
+  }
+
+  function closeMove() { moveTarget = null; $('s-move').hidden = true; }
+
+  function doMove() {
+    var to = $('s-move-code').value.trim();
+    var grant = $('s-move-grant').checked;
+    $('s-move-err').textContent = '';
+    $('s-move-result').textContent = '';
+    if (!moveTarget || !to) { $('s-move-err').textContent = 'Enter the new device\u2019s payment code.'; return; }
+    if (!confirm('Move this ' + moveTarget.rail + ' subscription to ' + to + '?' +
+      (grant ? '\n\nThe new code also gets the rest of the current period, paid from the treasury.' : '') +
+      '\n\nRenewals will credit the new code from now on.')) return;
+    var target = moveTarget;
+    fetch('/api/subscriptions/rebind', {
+      method: 'POST',
+      headers: { authorization: 'Bearer ' + token, 'content-type': 'application/json' },
+      body: JSON.stringify({
+        rail: target.rail, external_id: target.external_id, payment_code: to, grant_remaining: grant,
+      }),
+    }).then(function (r) {
+      if (r.status === 401) { signOut(); throw new Error('session expired'); }
+      return r.json().then(function (j) {
+        if (j && j.status === 'success') return j.data;
+        throw new Error((j && j.data && j.data.message) || (j && j.error) || ('HTTP ' + r.status));
+      });
+    }).then(function (d) {
+      var granted = d.grant === 'queued'
+        ? ' Granted ' + d.days + ' days (queued for settlement' + (d.test ? ', test purchase' : '') + ').'
+        : d.grant === 'duplicate'
+          ? ' No new grant: this billing period was already handed over.'
+          : grant ? ' No grant (nothing left of the period, or a test purchase with the probe off).' : '';
+      $('s-move-result').innerHTML = 'Moved from <code>' + esc(shortCode(d.previous_code)) +
+        '</code> to <code>' + esc(shortCode(d.payment_code)) + '</code>.' + esc(granted);
+      toast('Moved', true);
+      lookupSubscriber();
+    }).catch(function (e) { $('s-move-err').textContent = e.message; toast('Move failed', false); });
+  }
+
+  $('s-move-go').addEventListener('click', doMove);
+  $('s-move-cancel').addEventListener('click', closeMove);
+  // A fresh lookup is a different subscriber: drop any half-filled move.
+  $('s-lookup').addEventListener('click', function () { closeMove(); lookupSubscriber(); });
+  $('s-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') { closeMove(); lookupSubscriber(); } });
 
   $('signin').addEventListener('click', doLogin);
   $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });

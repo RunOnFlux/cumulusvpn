@@ -127,6 +127,22 @@ export const da: Catalog = {
   manage_cta_busy: 'Åbner faktureringsportalen…',
   manage_err:
     'Faktureringsportalen kunne ikke åbnes fra denne browser. Du kan altid administrere eller opsige via linket i kvitteringsmailen fra Stripe.',
+  transfer_cta: 'Flyt til en anden enhed',
+  transfer_lede:
+    'Har du geninstalleret appen eller fået en ny telefon? Indtast enhedskoden fra Indstillinger → Om på den nye enhed. Den får med det samme resten af denne faktureringsperiode og hver fornyelse derefter. Et abonnement kan flyttes én gang hver 30. dag.',
+  transfer_next: 'Fortsæt',
+  transfer_cancel: 'Annuller',
+  transfer_confirm:
+    'Flyt dette abonnement til {code}? Tjek at den matcher koden på den enhed — en forkert indtastet kode kan stadig være gyldig og ville flytte det til den forkerte.',
+  transfer_confirm_cta: 'Flyt abonnement',
+  transfer_busy: 'Flytter…',
+  transfer_done:
+    'Flyttet. Premium for resten af denne faktureringsperiode aktiveres på {code}, og fornyelser går til den enhed. Betalingen bliver her — administrer eller opsig fra denne side som før.',
+  transfer_err_soon: 'Dette abonnement blev flyttet for nylig. Det kan flyttes igen {date}.',
+  transfer_err_same: 'Den enhed har allerede dette abonnement.',
+  transfer_err_none:
+    'Der blev ikke fundet et aktivt kortabonnement for købet i denne browser, så der er intet at flytte.',
+  transfer_err: 'Abonnementet kunne ikke flyttes. Prøv igen om lidt.',
 
   redeem_eyebrow: 'Har du en kode?',
   redeem_lede:

@@ -17,8 +17,8 @@ import {
   buildMultihopConfig,
   buildWgConfig,
   compileSplitPolicy,
+  decodeRecoveryKey,
   enroll,
-  generateKeypair,
   hasPremiumTransport,
   obfsForTransport,
   paymentCode,
@@ -43,6 +43,15 @@ import {
   type TunnelState,
   type TunnelStatus,
 } from '../native/CumulusTunnel';
+import { CumulusIdentity } from '../native/CumulusIdentity';
+import {
+  BACKUP_OFF,
+  overwriteBackup,
+  readBackedUp,
+  resolveIdentity,
+  syncBackup,
+  type BackupStatus,
+} from './identity';
 import {
   discoverFleet,
   fleetPriceFlux,
@@ -64,6 +73,7 @@ import {
   loadExitCountry,
   loadFavorites,
   loadFleet,
+  loadIdentityBackup,
   loadKeypair,
   loadKillSwitch,
   loadNodeDiversity,
@@ -78,6 +88,7 @@ import {
   saveExitCountry,
   saveFavorites,
   saveFleet,
+  saveIdentityBackup,
   saveKeypair,
   saveKillSwitch,
   saveNodeDiversity,
@@ -212,6 +223,16 @@ export interface VpnModel {
   readonly pingMs: number | null;
   /** Favorited (pinned) country codes, surfaced first in the picker. */
   readonly favorites: readonly string[];
+  /** Identity backup (state/identity.ts): on/off, where the copy lives, a different backed-up identity. */
+  readonly identityBackup: IdentityBackupModel;
+  /** True when this launch brought the identity back from the backup (after a reinstall). */
+  readonly identityRestored: boolean;
+}
+
+/** Settings' view of the identity backup. */
+export interface IdentityBackupModel extends BackupStatus {
+  /** The user's switch; ON unless they turned it off. */
+  readonly enabled: boolean;
 }
 
 /** Chain-payment identity derived from the device key + last enrollment. */
@@ -255,6 +276,17 @@ export interface VpnActions {
   toggleFavorite(code: string): Promise<void>;
   /** Open the OS VPN settings (Android lockdown hand-off; no-op on iOS). */
   openVpnSettings(): Promise<void>;
+  /** Turn the identity backup on (sync now) or off (delete the backup). Persisted. */
+  setIdentityBackup(enabled: boolean): Promise<void>;
+  /**
+   * Replace this device's identity with the one in a recovery key. Disconnects
+   * first; premium follows the new key. Throws `InvalidRecoveryKeyError`.
+   */
+  restoreIdentity(recoveryKey: string): Promise<void>;
+  /** Switch to the different identity found in the backup (`identityBackup.other`). */
+  switchToBackedUpIdentity(): Promise<void>;
+  /** Keep the current identity and make it the backup, replacing the other one. */
+  replaceBackupWithCurrent(): Promise<void>;
 }
 
 const STATUS_POLL_MS = 30_000;
@@ -311,6 +343,11 @@ export function isTunnelDead(s: { state: string; lastHandshake: number }): boole
 
 export function useVpn(): VpnModel & VpnActions {
   const [keypair, setKeypair] = useState<Keypair | null>(null);
+  const [identityBackup, setIdentityBackupModel] = useState<IdentityBackupModel>({
+    enabled: true,
+    ...BACKUP_OFF,
+  });
+  const [identityRestored, setIdentityRestored] = useState(false);
   const [countries, setCountries] = useState<readonly Country[]>([]);
   // Per-CITY rows for the single-hop picker (a country can appear as several
   // cities, e.g. US New York / California). Country-level `countries` still
@@ -559,12 +596,37 @@ export function useVpn(): VpnModel & VpnActions {
     }, 2500);
     (async () => {
       try {
-        const restored = (await loadKeypair()) ?? generateKeypair();
-        await saveKeypair(restored);
+        // The identity: the stored key, else the backup's (a reinstall), else a
+        // new one (state/identity.ts). An existing key never waits on the
+        // backup — syncing it runs behind the boot, so a slow Block Store or
+        // Keychain can't hold the splash.
+        const backupEnabled = await loadIdentityBackup();
+        const local = await loadKeypair();
+        const identity = local
+          ? null
+          : await resolveIdentity(
+              { load: loadKeypair, save: saveKeypair },
+              CumulusIdentity,
+              backupEnabled,
+            );
         if (!alive) {
           return;
         }
-        setKeypair(restored);
+        if (local) {
+          setKeypair(local);
+          setIdentityBackupModel({ enabled: backupEnabled, ...BACKUP_OFF });
+          if (backupEnabled) {
+            void syncBackup(local, CumulusIdentity).then((status) => {
+              if (alive) {
+                setIdentityBackupModel({ enabled: true, ...status });
+              }
+            });
+          }
+        } else if (identity) {
+          setKeypair(identity.keypair);
+          setIdentityRestored(identity.restored);
+          setIdentityBackupModel({ enabled: backupEnabled, ...identity.backup });
+        }
         setSelectedCode(await loadSelectedCountry());
         setRouteStyleState(await loadRouteStyle());
         setTransportModeState(await loadTransportMode());
@@ -1361,6 +1423,73 @@ export function useVpn(): VpnModel & VpnActions {
     await CumulusTunnel.openVpnSettings();
   }, []);
 
+  // ---- identity: restore / switch / backup switch (state/identity.ts) ----
+  // Swapping the key changes the payment code, so everything derived from the
+  // old one — the tunnel, the enrollment, the tier — is dropped and rebuilt;
+  // entitlement polling re-reads the tier for the new key on its next pass.
+  const replaceIdentity = useCallback(
+    async (kp: Keypair): Promise<void> => {
+      if (state !== 'disconnected') {
+        await disconnect();
+      }
+      await saveKeypair(kp);
+      setEnrollment(null);
+      tierRef.current = 'free';
+      setTier('free');
+      setPaidUntil(null);
+      setIdentityRestored(false);
+      setKeypair(kp);
+    },
+    [state, disconnect],
+  );
+
+  const setIdentityBackup = useCallback(
+    async (enabled: boolean): Promise<void> => {
+      await saveIdentityBackup(enabled);
+      if (!enabled) {
+        try {
+          await CumulusIdentity.remove();
+        } catch {
+          // Still off: the switch is the user's word, and a leftover copy is
+          // removed on the next remove() or overwritten when turned back on.
+        }
+        setIdentityBackupModel({ enabled: false, ...BACKUP_OFF });
+        return;
+      }
+      const status = keypair ? await syncBackup(keypair, CumulusIdentity) : BACKUP_OFF;
+      setIdentityBackupModel({ enabled: true, ...status });
+    },
+    [keypair],
+  );
+
+  const restoreIdentity = useCallback(
+    async (recoveryKey: string): Promise<void> => {
+      const kp = decodeRecoveryKey(recoveryKey);
+      await replaceIdentity(kp);
+      if (identityBackup.enabled) {
+        // Deliberate: the user chose this identity, so it becomes the backup.
+        setIdentityBackupModel({ enabled: true, ...(await overwriteBackup(kp, CumulusIdentity)) });
+      }
+    },
+    [replaceIdentity, identityBackup.enabled],
+  );
+
+  const switchToBackedUpIdentity = useCallback(async (): Promise<void> => {
+    const kp = await readBackedUp(CumulusIdentity);
+    if (!kp) {
+      throw new Error('The backed-up identity could not be read. Try again.');
+    }
+    await replaceIdentity(kp);
+    setIdentityBackupModel({ enabled: true, ...(await syncBackup(kp, CumulusIdentity)) });
+  }, [replaceIdentity]);
+
+  const replaceBackupWithCurrent = useCallback(async (): Promise<void> => {
+    if (!keypair) {
+      return;
+    }
+    setIdentityBackupModel({ enabled: true, ...(await overwriteBackup(keypair, CumulusIdentity)) });
+  }, [keypair]);
+
   return {
     keypair,
     countries,
@@ -1404,6 +1533,12 @@ export function useVpn(): VpnModel & VpnActions {
     setAutoConnect,
     toggleFavorite,
     openVpnSettings,
+    identityBackup,
+    identityRestored,
+    setIdentityBackup,
+    restoreIdentity,
+    switchToBackedUpIdentity,
+    replaceBackupWithCurrent,
   };
 }
 

@@ -133,6 +133,22 @@ export const en = {
   manage_cta_busy: 'Opening billing portal…',
   manage_err:
     'Could not open the billing portal from this browser. You can always manage or cancel from the link in your Stripe receipt email.',
+  transfer_cta: 'Move to another device',
+  transfer_lede:
+    'Reinstalled the app or got a new phone? Enter the Device code from Settings → About on the new device. It gets the rest of this billing period right away, and every renewal after that. A subscription can move once every 30 days.',
+  transfer_next: 'Continue',
+  transfer_cancel: 'Cancel',
+  transfer_confirm:
+    'Move this subscription to {code}? Check this matches the code shown on that device — a mistyped code can still be valid, and would move it to the wrong one.',
+  transfer_confirm_cta: 'Move subscription',
+  transfer_busy: 'Moving…',
+  transfer_done:
+    'Moved. Premium for the rest of this billing period is activating on {code}, and renewals will go to that device. Billing stays here — manage or cancel from this page as before.',
+  transfer_err_soon: 'This subscription moved recently. It can move again on {date}.',
+  transfer_err_same: 'That device already has this subscription.',
+  transfer_err_none:
+    'No active card subscription was found for this browser’s purchase, so there is nothing to move.',
+  transfer_err: 'Could not move the subscription. Please try again in a moment.',
 
   redeem_eyebrow: 'Have a code?',
   redeem_lede:

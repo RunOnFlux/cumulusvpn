@@ -128,6 +128,22 @@ export const vi: Catalog = {
   manage_cta_busy: 'Đang mở cổng thanh toán…',
   manage_err:
     'Không thể mở cổng thanh toán từ trình duyệt này. Bạn luôn có thể quản lý hoặc huỷ bằng liên kết trong email biên nhận của Stripe.',
+  transfer_cta: 'Chuyển sang thiết bị khác',
+  transfer_lede:
+    'Đã cài lại ứng dụng hoặc có điện thoại mới? Nhập mã thiết bị trong Cài đặt → Giới thiệu trên thiết bị mới. Thiết bị đó nhận ngay phần còn lại của kỳ thanh toán này và mọi lần gia hạn sau đó. Mỗi gói đăng ký chỉ chuyển được một lần mỗi 30 ngày.',
+  transfer_next: 'Tiếp tục',
+  transfer_cancel: 'Huỷ',
+  transfer_confirm:
+    'Chuyển gói đăng ký này sang {code}? Kiểm tra xem có khớp với mã hiển thị trên thiết bị đó không — mã gõ sai vẫn có thể hợp lệ và sẽ chuyển nhầm thiết bị.',
+  transfer_confirm_cta: 'Chuyển gói đăng ký',
+  transfer_busy: 'Đang chuyển…',
+  transfer_done:
+    'Đã chuyển. Premium cho phần còn lại của kỳ thanh toán này đang được kích hoạt trên {code}, và các lần gia hạn sẽ đến thiết bị đó. Việc thanh toán vẫn ở đây — quản lý hoặc huỷ từ trang này như trước.',
+  transfer_err_soon: 'Gói đăng ký này vừa được chuyển gần đây. Có thể chuyển lại vào {date}.',
+  transfer_err_same: 'Thiết bị đó đã có gói đăng ký này.',
+  transfer_err_none:
+    'Không tìm thấy gói đăng ký bằng thẻ nào đang hoạt động cho giao dịch mua trong trình duyệt này, nên không có gì để chuyển.',
+  transfer_err: 'Không thể chuyển gói đăng ký. Vui lòng thử lại sau giây lát.',
 
   redeem_eyebrow: 'Bạn có mã?',
   redeem_lede:

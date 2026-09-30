@@ -20,6 +20,31 @@ account. This copies the battle-tested mechanism FluxOS itself uses for app regi
 - The memo carries `H = base58(SHA256(K)[0:20])` (~27 chars) — the **payment code** — rather than
   the raw key, so the chain does not directly publish which WG pubkey was bought (weak but free
   privacy; anyone who already knows `K` can link it — see Privacy below).
+- **Losing the key loses what was paid to it**, so the mobile app keeps it across uninstalls
+  (`clients/mobile/src/state/identity.ts`), in three layers:
+  1. **Automatic backup, on by default** (Settings → Your identity; switching it off deletes the
+     backup). Android: Google **Block Store** — kept across reinstall while Google backup is on,
+     moved to a new phone in device-to-device setup, and sent to Google's cloud ONLY when that
+     copy is end-to-end encrypted (screen lock set); otherwise device-only. iOS: the **Keychain**
+     (`AfterFirstUnlock`, survives delete + reinstall), deliberately **not** iCloud-Keychain
+     synced — that would put one WireGuard key on every device of the Apple ID at once, and two
+     devices on one key fight over the same tunnel. The stored value is the recovery key string.
+  2. **Recovery key** (`CVPN-…`, core `encodeRecoveryKey` / `decodeRecoveryKey`): version ‖ key ‖
+     sha256(version ‖ key)[0:4], base58, grouped by five, so a typo fails instead of restoring a
+     different identity. Shown/shared from Settings; "Restore from recovery key" replaces the
+     identity (disconnecting first). The only way back for a FLUX payer without a backup, and
+     for phones without Play services.
+  3. **Store subscriptions follow the store account** (docs/18 "Claims and transfers"): the app
+     claims unowned purchases (offer/promo codes redeemed outside the purchase sheet)
+     automatically, but a subscription owned by another identity is only MOVED on the user's
+     tap ("Move it here") — an iPad and an iPhone on one Apple ID would otherwise tug it back
+     and forth.
+
+  One invariant: **never overwrite a backup that holds a different valid identity** — it may be
+  the paid one (an install that began while Block Store was briefly unreadable mints a new key).
+  It is surfaced as "the backup holds a different identity" with Switch / Keep; only a deliberate
+  action replaces it. The in-app 5.4 disclosure (DISCLOSURE_VERSION 3) and the privacy policy
+  §4.1 / §12 describe the backup.
 
 ### Memo format (OP_RETURN, ≤80 bytes standard relay)
 ```

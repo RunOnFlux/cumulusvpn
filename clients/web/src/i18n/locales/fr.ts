@@ -128,6 +128,23 @@ export const fr: Catalog = {
   manage_cta_busy: 'Ouverture du portail de facturation…',
   manage_err:
     'Impossible d’ouvrir le portail de facturation depuis ce navigateur. Vous pouvez toujours gérer ou résilier via le lien dans l’e-mail de reçu Stripe.',
+  transfer_cta: 'Transférer vers un autre appareil',
+  transfer_lede:
+    'Application réinstallée ou nouveau téléphone ? Saisissez le code d’appareil affiché dans Réglages → À propos sur le nouvel appareil. Il reçoit tout de suite le reste de cette période de facturation, puis chaque renouvellement. Un abonnement peut être transféré une fois tous les 30 jours.',
+  transfer_next: 'Continuer',
+  transfer_cancel: 'Annuler',
+  transfer_confirm:
+    'Transférer cet abonnement vers {code} ? Vérifiez qu’il correspond au code affiché sur cet appareil : un code mal saisi peut rester valide et le transférerait vers le mauvais appareil.',
+  transfer_confirm_cta: 'Transférer l’abonnement',
+  transfer_busy: 'Transfert…',
+  transfer_done:
+    'Transféré. Le premium pour le reste de cette période de facturation s’active sur {code}, et les renouvellements iront à cet appareil. La facturation reste ici : gérez ou résiliez depuis cette page comme avant.',
+  transfer_err_soon:
+    'Cet abonnement a été transféré récemment. Il pourra l’être à nouveau le {date}.',
+  transfer_err_same: 'Cet appareil a déjà cet abonnement.',
+  transfer_err_none:
+    'Aucun abonnement par carte actif n’a été trouvé pour l’achat de ce navigateur : il n’y a rien à transférer.',
+  transfer_err: 'Impossible de transférer l’abonnement. Réessayez dans un instant.',
 
   redeem_eyebrow: 'Vous avez un code ?',
   redeem_lede:

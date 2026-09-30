@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Yksityisyys arkkitehtuurin ansiosta</span>
     <h1>Tietosuojaseloste</h1>
-    <p class="doc-meta">Viimeksi päivitetty: 14. elokuuta 2026 · Voimassa: 14. elokuuta 2026</p>
+    <p class="doc-meta">Viimeksi päivitetty: 30. syyskuuta 2026 · Voimassa: 14. elokuuta 2026</p>
 
   <p class="doc-meta">Tämä käännös on tarjottu käytön helpottamiseksi; englanninkielinen versio osoitteessa cumulusvpn.com/privacy on virallisesti pätevä.</p>
   </div>
@@ -123,7 +123,7 @@
     <h2>4. Mitä tekniikan tasolla tapahtuu (ja miksi siitä ei synny profiilia sinusta)</h2>
     <p>VPN ei voi toimia ilman, että jonkin verran dataa kulkee sen läpi reaaliajassa. Tässä on kaikki se data, ja miksi mikään siitä ei muutu tallenteeksi sinusta.</p>
     <h3>4.1 Julkinen avaimesi (pseudonyymi tunniste)</h3>
-    <p>Laitteesi luo WireGuard-avainparin paikallisesti ensimmäisellä käynnistyskerralla. <strong>Yksityinen avain ei koskaan poistu laitteeltasi</strong> — ei edes meille. Vain <strong>julkinen avain</strong> lähetetään yhdyskäytävälle, jotta se voi reitittää salatun tunnelisi. Julkinen avain on 32 tavun mittainen, satunnaiselta näyttävä arvo. Se ei ole sidottu nimeesi, sähköpostiisi tai laitteistoosi, ja voit luoda sen uudelleen milloin tahansa. Se on pseudonyymi, ei identiteetti.</p>
+    <p>Laitteesi luo WireGuard-avainparin paikallisesti ensimmäisellä käynnistyskerralla. <strong>Yksityistä avainta ei koskaan lähetetä meille eikä millekään yhdyskäytävälle</strong>. Jotta se ei katoa, kun poistat sovelluksen ja asennat sen uudelleen — tai siirryt uuteen puhelimeen — sovellus pitää siitä <strong>salattua varmuuskopiota</strong>: iOS:ssä iPhonen avainnipussa (Keychain) ja Androidissa Googlen Block Storessa, päästä päähän salattuna näytön lukituksellasi niin, ettei Google eikä me voi lukea sitä. Varmuuskopio on oletuksena käytössä, ja sen voi poistaa käytöstä Asetuksista. Vain <strong>julkinen avain</strong> lähetetään yhdyskäytävälle, jotta se voi reitittää salatun tunnelisi. Julkinen avain on 32 tavun mittainen, satunnaiselta näyttävä arvo. Se ei ole sidottu nimeesi, sähköpostiisi tai laitteistoosi, ja voit luoda sen uudelleen milloin tahansa. Se on pseudonyymi, ei identiteetti.</p>
     <h3>4.2 Vertaistila yhdyskäytävän muistissa</h3>
     <p>Kun olet yhteydessä, yhdyskäytävä pitää — <strong>vain haihtuvassa muistissa (RAM)</strong> — pakettien reitittämiseen tarvittavan vähimmäistiedon: julkisen avaimesi, sille osoitetun väliaikaisen sisäisen tunneli-IP:n (esim. 10.8.x.y) ja tavulaskurin, jolla nopeustasosi valvotaan. Tätä tilaa <strong>ei koskaan kirjoiteta levylle</strong>, sitä ei lähetetä millekään keskuspalvelimelle, ja se <strong>pyyhkiytyy, kun yhdyskäytävän prosessi käynnistyy uudelleen</strong> tai katkaiset yhteyden. Siitä ei rakennu mitään historiallista lokia.</p>
     <h3>4.3 Todellinen IP-osoitteesi, hetkellisesti</h3>
@@ -165,7 +165,7 @@
     <p>Asuinpaikastasi riippuen sinulla voi olla oikeus saada pääsy henkilötietoihisi, oikaista tai poistaa niitä, siirtää ne järjestelmästä toiseen, vastustaa käsittelyä tai rajoittaa sitä, sekä (Kaliforniassa) saada tietää, mitä sinusta kerätään, ja olla joutumatta syrjityksi näiden oikeuksien käyttämisestä. Koska palvelu on anonyymi:</p>
     <ul>
       <li><strong>Tarkastusoikeus / siirrettävyys:</strong> Meillä ei yleensä ole hallussamme sinuun sidottuja henkilötietoja annettavaksi. Jos olet lähettänyt sähköpostia tukeen, voit pyytää kopiota tuosta kirjeenvaihdosta.</li>
-      <li><strong>Poisto-oikeus:</strong> Yhdyskäytävillä ei ole mitään identiteettiisi sidottua, jonka voisimme poistaa; vertaistila on jo valmiiksi ohimenevää, vain RAM-muistissa, ja se pyyhkiytyy yhteyden katketessa tai uudelleenkäynnistyksessä. Voit poistaa avaimesi laitteeltasi milloin tahansa, mikä katkaisee pseudonyymin yhteyden kokonaan.</li>
+      <li><strong>Poisto-oikeus:</strong> Yhdyskäytävillä ei ole mitään identiteettiisi sidottua, jonka voisimme poistaa; vertaistila on jo valmiiksi ohimenevää, vain RAM-muistissa, ja se pyyhkiytyy yhteyden katketessa tai uudelleenkäynnistyksessä. Voit poistaa avaimesi laitteeltasi milloin tahansa (poista ensin identiteetin varmuuskopiointi käytöstä Asetuksista, jotta kopiota ei jää), mikä katkaisee pseudonyymin yhteyden kokonaan.</li>
       <li><strong>Myynnin/jakamisen kieltäminen:</strong> Emme myy emmekä jaa henkilötietoja, joten mistään ei ole tarvetta kieltäytyä.</li>
     </ul>
     <p>Käyttääksesi mitä tahansa näistä oikeuksista, lähetä sähköpostia osoitteeseen <strong>info@cumulusvpn.com</strong>. Emme välttämättä pysty tunnistamaan sinua (olemattomista) tiedoistamme juuri siksi, että palvelu on anonyymi — se on suunnittelun tulos, ei kiertelyä. Sinulla on myös oikeus tehdä valitus paikalliselle tietosuojaviranomaisellesi.</p>
@@ -174,7 +174,7 @@
     <p>CumulusVPN ei ole suunnattu alle 13-vuotiaille lapsille (tai maasi digitaalisen suostumuksen alaikärajaa nuoremmille). Emme tietoisesti kerää henkilötietoja lapsilta. Koska emme kerää keneltäkään tunnistavia tietoja, emme voi määrittää käyttäjän ikää; palvelu on tarkoitettu yleisölle eikä sitä markkinoida lapsille.</p>
 
     <h2>12. Tietoturva</h2>
-    <p>Liikenne salataan päästä päähän laitteesi ja yhdyskäytävän välillä WireGuard®-protokollalla (moderni, auditoitu salaus). Yksityinen avaimesi ei koskaan poistu laitteeltasi. Palvelinpuolen vertaistila pidetään vain muistissa. Sovellus tavoittaa kunkin yhdyskäytävän ohjaus-API:n suoralla yhteydellä, jonka vastaukset on allekirjoitettu ed25519-avaimella ja jotka sovellus varmentaa, joten palvelinhakemiston ja yhdyskäytävien vastausten aitous on suojattu digitaalisilla allekirjoituksilla eikä siirtotason varmenteella.</p>
+    <p>Liikenne salataan päästä päähän laitteesi ja yhdyskäytävän välillä WireGuard®-protokollalla (moderni, auditoitu salaus). Yksityistä avaintasi ei koskaan lähetetä meille eikä millekään yhdyskäytävälle; sen ainoa kopio sovelluksen ulkopuolella on kohdassa 4.1 kuvattu salattu varmuuskopio, jonka voit poistaa käytöstä. Palvelinpuolen vertaistila pidetään vain muistissa. Sovellus tavoittaa kunkin yhdyskäytävän ohjaus-API:n suoralla yhteydellä, jonka vastaukset on allekirjoitettu ed25519-avaimella ja jotka sovellus varmentaa, joten palvelinhakemiston ja yhdyskäytävien vastausten aitous on suojattu digitaalisilla allekirjoituksilla eikä siirtotason varmenteella.</p>
 
     <h2>13. Muutokset tähän selosteeseen</h2>
     <p>Jos muutamme tätä selostetta, päivitämme yllä olevan ”Viimeksi päivitetty” -päivämäärän ja julkaisemme uuden version osoitteessa <a href="https://cumulusvpn.com/privacy">cumulusvpn.com/privacy</a>. Olennaiset muutokset tuodaan erikseen esiin. Koska meillä ei ole postituslistaa, verkkosivusto on ajantasaisen selosteen virallinen lähde.</p>

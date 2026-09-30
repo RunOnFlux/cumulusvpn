@@ -1,6 +1,6 @@
 # CumulusVPN Privacy Policy
 
-**Last updated: 9 August 2026**
+**Last updated: 30 September 2026**
 **Effective date: 16 July 2026**
 
 CumulusVPN is a decentralized VPN service. This policy explains, in plain language, exactly
@@ -81,8 +81,11 @@ A VPN cannot function without some data passing through it in real time. Here is
 and why none of it becomes a record about you.
 
 ### 4.1 Your public key (pseudonymous identifier)
-Your device generates a WireGuard key pair locally on first launch. The **private key never
-leaves your device** — not even to us. Only the **public key** is sent to a gateway so it can
+Your device generates a WireGuard key pair locally on first launch. The **private key is never
+sent to us or to any gateway**. So that deleting and reinstalling the app — or moving to a new phone —
+doesn't lose it, the app keeps an **encrypted backup** of it: in the iPhone's Keychain on iOS, and on
+Android in Google's Block Store, end-to-end encrypted with your screen lock so neither Google nor we can
+read it. The backup is on by default and can be turned off in the app's Settings. Only the **public key** is sent to a gateway so it can
 route your encrypted tunnel. A public key is a 32-byte random-looking value. It is not tied to
 your name, email, or hardware, and you can regenerate it at any time. It is a pseudonym, not an
 identity.
@@ -207,7 +210,8 @@ is anonymous:
   emailed support, you can ask for a copy of that correspondence.
 - **Deletion:** There is nothing tied to your identity for us to delete from gateways; peer
   state is already ephemeral RAM-only and clears on disconnect/restart. You can delete your key
-  on your device at any time, which fully severs the pseudonymous link.
+  on your device at any time (turn off the identity backup in Settings first, so no copy remains),
+  which fully severs the pseudonymous link.
 - **Do-not-sell / do-not-share:** We do not sell or share personal data, so there is nothing to
   opt out of.
 
@@ -229,7 +233,8 @@ general audiences and is not marketed to children.
 ## 12. Security
 
 Traffic is encrypted end-to-end between your device and the gateway using the WireGuard®
-protocol (modern, audited cryptography). Your private key never leaves your device. Server-side
+protocol (modern, audited cryptography). Your private key is never sent to us or to any gateway; its only copy outside the app is the
+encrypted backup described in section 4.1, which you can turn off. Server-side
 peer state is kept in memory only. Our client apps verify the authenticity of the server
 directory and gateway responses using digital signatures to resist tampering.
 

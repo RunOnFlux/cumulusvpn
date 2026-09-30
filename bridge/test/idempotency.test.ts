@@ -170,3 +170,41 @@ describe('migration 2 upgrade', () => {
     ).toThrow(/UNIQUE/);
   });
 });
+
+describe('migration 4 upgrade', () => {
+  it('adds the transfer columns to live subscriptions without touching their binding', () => {
+    const raw = new Database(':memory:');
+    for (let v = 0; v < 3; v++) {
+      raw.exec(MIGRATIONS[v]!);
+    }
+    raw.pragma('user_version = 3');
+    raw
+      .prepare(
+        `INSERT INTO subscriptions (rail, external_id, payment_code, plan, created_at, updated_at, stripe_customer_id)
+         VALUES ('stripe', 'sub_old', ?, 'monthly', 1700000000, 1700000000, 'cus_old')`,
+      )
+      .run(CODE);
+    raw.transaction(() => {
+      raw.exec(MIGRATIONS[3]!);
+      raw.pragma('user_version = 4');
+    })();
+
+    const subs = new SubscriptionsRepo(raw);
+    // Never moved: no transfer clock running, no Apple period on file.
+    expect(subs.get('stripe', 'sub_old')).toMatchObject({
+      payment_code: CODE,
+      stripe_customer_id: 'cus_old',
+      transferred_at: null,
+      apple_expires_ms: null,
+      apple_sandbox: null,
+    });
+    const other = 'BS9J1c9RcXVGpNNUM3nlyLVm1DTy';
+    expect(subs.rebind('stripe', 'sub_old', other, 'monthly', 'admin', 0)).toBe(CODE);
+    expect(subs.get('stripe', 'sub_old')).toMatchObject({
+      payment_code: other,
+      status: 'active',
+      stripe_customer_id: 'cus_old',
+    });
+    expect(subs.transfersForCode(CODE)).toHaveLength(1);
+  });
+});

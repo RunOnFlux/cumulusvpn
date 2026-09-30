@@ -342,6 +342,16 @@ function jsonResponse(obj, extraHeaders = {}, status = 200) {
   });
 }
 
+/**
+ * Price per 30 days from the bridge's price schedule ("20@0,12@2986310"): the
+ * last entry, i.e. what the treasury pays per monthly sale from now on.
+ */
+function latestPrice(schedule) {
+  if (typeof schedule !== 'string' || schedule === '') return null;
+  const price = Number(schedule.split(',').pop().split('@')[0]);
+  return Number.isFinite(price) && price > 0 ? price : null;
+}
+
 /** Bearer token from the Authorization header, or null. */
 function bearerToken(request) {
   const m = /^Bearer\s+(.+)$/i.exec(request.headers.get('authorization') || '');
@@ -415,6 +425,41 @@ export default {
       });
     }
 
+    // ---- treasury: the bridge's settlement wallet, for the admin page ----
+    // /internal/treasury (behind the bridge admin token) plus the price from
+    // the bridge's public /v1/health, so the page can say how many monthly
+    // sales the balance still covers. Same token handling as the proxy below.
+    if (url.pathname === '/api/treasury' && request.method === 'GET') {
+      if (!(await tokenMatches(bearerToken(request), env.ADMIN_TOKEN))) {
+        return jsonResponse({ error: 'unauthorized' }, {}, 401);
+      }
+      if (!env.BRIDGE_URL || !env.BRIDGE_ADMIN_TOKEN) {
+        return jsonResponse({ error: 'bridge proxy not configured' }, {}, 503);
+      }
+      const [res, health] = await Promise.all([
+        fetch(new URL('/internal/treasury', env.BRIDGE_URL), {
+          headers: { authorization: `Bearer ${env.BRIDGE_ADMIN_TOKEN}` },
+        }),
+        fetch(new URL('/v1/health', env.BRIDGE_URL))
+          .then((r) => r.json())
+          .catch(() => null),
+      ]);
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body || body.status !== 'success') {
+        return jsonResponse(body ?? { error: `bridge HTTP ${res.status}` }, {}, res.ok ? 502 : res.status);
+      }
+      const price = latestPrice(health?.data?.price_schedule);
+      const balance = body.data.balance_flux;
+      return jsonResponse({
+        status: 'success',
+        data: {
+          ...body.data,
+          price_flux: price,
+          settleable_months: price !== null && typeof balance === 'number' ? Math.floor(balance / price) : null,
+        },
+      });
+    }
+
     // ---- voucher admin: authenticated proxy to the payments bridge ----
     // The browser authenticates with the DASHBOARD token it already holds;
     // the bridge's own admin token (BRIDGE_ADMIN_TOKEN secret) never leaves
@@ -422,7 +467,8 @@ export default {
     //   wrangler secret put BRIDGE_ADMIN_TOKEN --config clients/dashboard/wrangler.jsonc
     // `/api/subscriptions?code=` is the support lookup (which subscription
     // does this device's payment code belong to, and did its settlements
-    // land) — same proxy, same token handling.
+    // land), and POST `/api/subscriptions/rebind` moves one to another code
+    // — same proxy (prefix match, body forwarded), same token handling.
     const bridgeRoute = ['/api/vouchers', '/api/subscriptions'].find((p) =>
       url.pathname.startsWith(p),
     );

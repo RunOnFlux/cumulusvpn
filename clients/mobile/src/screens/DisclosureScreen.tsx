@@ -12,7 +12,7 @@
  * privacy manifest and this screen are checked against each other in review.
  * If the substance changes, bump DISCLOSURE_VERSION so users see it again.
  */
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { color, radius, space } from '../theme/tokens';
 
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
@@ -75,7 +75,10 @@ export function DisclosureScreen({ onAccept, onClose }: Props): React.JSX.Elemen
         <Group
           title="What stays on this device"
           points={[
-            'Your WireGuard keypair is generated on this device; the private key never leaves it.',
+            'Your WireGuard keypair is generated on this device. The private key is never sent to us or to any gateway.',
+            Platform.OS === 'ios'
+              ? 'A copy of the key is kept in this iPhone’s Keychain, so deleting and reinstalling the app keeps your identity and plan. You can turn this off in Settings.'
+              : 'A copy of the key is backed up with Google’s Block Store — end-to-end encrypted with your screen lock, so neither Google nor we can read it — so reinstalling or moving to a new phone keeps your identity and plan. You can turn this off in Settings.',
             'Your preferences, favourite countries and a cached gateway list are stored locally only.',
           ]}
         />

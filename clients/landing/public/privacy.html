@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy by architecture</span>
     <h1>Privacy Policy</h1>
-    <p class="doc-meta">Last updated: 14 August 2026 · Effective: 14 August 2026</p>
+    <p class="doc-meta">Last updated: 30 September 2026 · Effective: 14 August 2026</p>
 
   </div>
 
@@ -146,8 +146,11 @@
     <p>A VPN cannot function without some data passing through it in real time. Here is all of it, and why
       none of it becomes a record about you.</p>
     <h3>4.1 Your public key (pseudonymous identifier)</h3>
-    <p>Your device generates a WireGuard key pair locally on first launch. The <strong>private key never
-      leaves your device</strong> — not even to us. Only the <strong>public key</strong> is sent to a
+    <p>Your device generates a WireGuard key pair locally on first launch. The <strong>private key is never
+      sent to us or to any gateway</strong>. So that deleting and reinstalling the app — or moving to a new
+      phone — doesn't lose it, the app keeps an <strong>encrypted backup</strong> of it: in the iPhone's
+      Keychain on iOS, and on Android in Google's Block Store, end-to-end encrypted with your screen lock so
+      neither Google nor we can read it. The backup is on by default and can be turned off in Settings. Only the <strong>public key</strong> is sent to a
       gateway so it can route your encrypted tunnel. A public key is a 32-byte random-looking value. It is
       not tied to your name, email, or hardware, and you can regenerate it at any time. It is a pseudonym,
       not an identity.</p>
@@ -238,7 +241,8 @@
         If you emailed support, you can ask for a copy of that correspondence.</li>
       <li><strong>Deletion:</strong> There is nothing tied to your identity for us to delete from gateways;
         peer state is already ephemeral RAM-only and clears on disconnect/restart. You can delete your key on
-        your device at any time, which fully severs the pseudonymous link.</li>
+        your device at any time (turn off the identity backup in Settings first, so no copy remains), which
+        fully severs the pseudonymous link.</li>
       <li><strong>Do-not-sell / do-not-share:</strong> We do not sell or share personal data, so there is
         nothing to opt out of.</li>
     </ul>
@@ -254,7 +258,8 @@
 
     <h2>12. Security</h2>
     <p>Traffic is encrypted end-to-end between your device and the gateway using the WireGuard® protocol
-      (modern, audited cryptography). Your private key never leaves your device. Server-side peer state is
+      (modern, audited cryptography). Your private key is never sent to us or to any gateway; its only copy outside the app is the
+      encrypted backup described in section 4.1, which you can turn off. Server-side peer state is
       kept in memory only. The app reaches each gateway's control API over a direct connection whose
       responses are ed25519-signed and verified by the app, so the authenticity of the server directory and
       gateway responses is protected by digital signatures rather than by a transport certificate.</p>

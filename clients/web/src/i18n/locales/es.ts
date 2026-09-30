@@ -128,6 +128,22 @@ export const es: Catalog = {
   manage_cta_busy: 'Abriendo el portal de facturación…',
   manage_err:
     'No se pudo abrir el portal de facturación desde este navegador. Siempre puedes gestionar o cancelar desde el enlace del correo de recibo de Stripe.',
+  transfer_cta: 'Pasar a otro dispositivo',
+  transfer_lede:
+    '¿Reinstalaste la app o tienes un teléfono nuevo? Introduce el código de dispositivo de Ajustes → Acerca de en el nuevo dispositivo. Recibe de inmediato el resto de este periodo de facturación y cada renovación posterior. Una suscripción puede pasarse una vez cada 30 días.',
+  transfer_next: 'Continuar',
+  transfer_cancel: 'Cancelar',
+  transfer_confirm:
+    '¿Pasar esta suscripción a {code}? Comprueba que coincide con el código que muestra ese dispositivo: un código mal escrito puede seguir siendo válido y la pasaría a otro.',
+  transfer_confirm_cta: 'Pasar suscripción',
+  transfer_busy: 'Pasando…',
+  transfer_done:
+    'Hecho. El premium del resto de este periodo de facturación se está activando en {code}, y las renovaciones irán a ese dispositivo. La facturación sigue aquí: gestiónala o cancélala desde esta página como siempre.',
+  transfer_err_soon: 'Esta suscripción se pasó hace poco. Podrá pasarse de nuevo el {date}.',
+  transfer_err_same: 'Ese dispositivo ya tiene esta suscripción.',
+  transfer_err_none:
+    'No se encontró ninguna suscripción con tarjeta activa para la compra de este navegador, así que no hay nada que pasar.',
+  transfer_err: 'No se pudo pasar la suscripción. Inténtalo de nuevo en un momento.',
 
   redeem_eyebrow: '¿Tienes un código?',
   redeem_lede:

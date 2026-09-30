@@ -123,6 +123,21 @@ export const zh: Catalog = {
   manage_cta_busy: '正在打开账单门户…',
   manage_err:
     '无法在此浏览器中打开账单门户。你随时可以通过 Stripe 收据邮件中的链接管理或取消订阅。',
+  transfer_cta: '转移到其他设备',
+  transfer_lede:
+    '重装了应用或换了新手机？请输入新设备上 设置 → 关于 中的设备码。它会立即获得本计费周期的剩余时间，以及之后的每次续订。每个订阅每 30 天只能转移一次。',
+  transfer_next: '继续',
+  transfer_cancel: '取消',
+  transfer_confirm:
+    '将此订阅转移到 {code}？请核对它与该设备上显示的代码一致——输错的代码也可能有效，那会转移到错误的设备。',
+  transfer_confirm_cta: '转移订阅',
+  transfer_busy: '正在转移…',
+  transfer_done:
+    '已转移。本计费周期剩余时间的高级权限正在 {code} 上激活，之后的续订也将归该设备。账单仍在这里——可像以前一样在此页面管理或取消。',
+  transfer_err_soon: '此订阅最近已转移过，{date} 后可再次转移。',
+  transfer_err_same: '该设备已拥有此订阅。',
+  transfer_err_none: '未找到此浏览器所购买的有效银行卡订阅，因此没有可转移的内容。',
+  transfer_err: '无法转移订阅。请稍后再试。',
 
   redeem_eyebrow: '有兑换码？',
   redeem_lede:

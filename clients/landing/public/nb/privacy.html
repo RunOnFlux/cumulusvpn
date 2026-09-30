@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Personvern gjennom arkitektur</span>
     <h1>Personvernerklæring</h1>
-    <p class="doc-meta">Sist oppdatert: 14. august 2026 · Gjeldende fra: 14. august 2026</p>
+    <p class="doc-meta">Sist oppdatert: 30. september 2026 · Gjeldende fra: 14. august 2026</p>
 
   <p class="doc-meta">Denne oversettelsen er kun til bekvemmelighet; den engelske versjonen på cumulusvpn.com/privacy er gjeldende.</p>
   </div>
@@ -146,8 +146,11 @@
     <p>En VPN kan ikke fungere uten at noe data passerer gjennom den i sanntid. Her er alt sammen, og hvorfor
       ingenting av det blir en registrering om deg.</p>
     <h3>4.1 Den offentlige nøkkelen din (pseudonym identifikator)</h3>
-    <p>Enheten din genererer et WireGuard-nøkkelpar lokalt ved første oppstart. Den <strong>private nøkkelen forlater
-      aldri enheten din</strong> — ikke engang til oss. Bare den <strong>offentlige nøkkelen</strong> sendes til en
+    <p>Enheten din genererer et WireGuard-nøkkelpar lokalt ved første oppstart. Den <strong>private nøkkelen sendes
+      aldri til oss eller til noen gateway</strong>. For at den ikke skal gå tapt når du sletter og installerer appen på nytt — eller bytter til en ny
+      telefon — lagrer appen en <strong>kryptert sikkerhetskopi</strong> av den: i iPhonens nøkkelring (Keychain) på iOS
+      og på Android i Googles Block Store, ende-til-ende-kryptert med skjermlåsen din, slik at
+      verken Google eller vi kan lese den. Sikkerhetskopien er slått på som standard og kan slås av i Innstillinger. Bare den <strong>offentlige nøkkelen</strong> sendes til en
       gateway, slik at den kan rute den krypterte tunnelen din. En offentlig nøkkel er en 32-byte, tilfeldig utseende verdi. Den er
       ikke knyttet til navnet ditt, e-posten din eller maskinvaren din, og du kan generere den på nytt når som helst. Den er et pseudonym,
       ikke en identitet.</p>
@@ -238,7 +241,7 @@
         Har du sendt en e-post til support, kan du be om en kopi av den korrespondansen.</li>
       <li><strong>Sletting:</strong> Det finnes ingenting knyttet til identiteten din som vi kan slette fra gatewayer;
         peer-tilstanden er allerede flyktig og finnes kun i RAM, og tømmes ved frakobling/omstart. Du kan slette nøkkelen din på
-        enheten din når som helst, noe som fullstendig kutter den pseudonyme koblingen.</li>
+        enheten din når som helst (slå først av sikkerhetskopien av identiteten i Innstillinger, slik at ingen kopi blir igjen), noe som fullstendig kutter den pseudonyme koblingen.</li>
       <li><strong>Ikke selge / ikke dele:</strong> Vi selger eller deler ikke personopplysninger, så det er
         ingenting å reservere seg mot.</li>
     </ul>
@@ -254,7 +257,8 @@
 
     <h2>12. Sikkerhet</h2>
     <p>Trafikken er ende-til-ende-kryptert mellom enheten din og gatewayen ved hjelp av WireGuard®-protokollen
-      (moderne, revidert kryptografi). Den private nøkkelen din forlater aldri enheten din. Peer-tilstanden på serversiden
+      (moderne, revidert kryptografi). Den private nøkkelen din sendes aldri til oss eller til noen gateway; den eneste kopien utenfor appen er den
+      krypterte sikkerhetskopien som er beskrevet i avsnitt 4.1, og den kan du slå av. Peer-tilstanden på serversiden
       holdes kun i minnet. Appen når hver gateways styrings-API over en direkte forbindelse hvis
       svar er ed25519-signert og verifisert av appen, slik at ektheten til serverkatalogen og
       gatewaysvarene beskyttes av digitale signaturer i stedet for av et transportsertifikat.</p>

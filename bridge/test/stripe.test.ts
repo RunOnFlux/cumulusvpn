@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import Stripe from 'stripe';
 import { base58 } from '@scure/base';
 import type { FastifyBaseLogger } from 'fastify';
@@ -619,5 +619,194 @@ describe('stripe test-mode grants', () => {
     const { raw, sig } = signedEvent(invoicePaidEvent('in_live', 'sub_l1', 'monthly'));
     expect(await rail.handleWebhook(raw, sig)).toBe('invoice:queued');
     expect(payments.byCode(CODE)[0]).toMatchObject({ days: 30 });
+  });
+});
+
+describe('stripe transfer to another device', () => {
+  const NEW_CODE = base58.encode(new Uint8Array(20).fill(4));
+  const DAY = 86_400_000;
+  const NOW = Date.UTC(2026, 8, 30, 12, 0, 0);
+  const PERIOD_END_S = NOW / 1000 + 12 * 86_400;
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(NOW);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  /**
+   * Stub the calls a transfer makes. `sub` is what subscriptions.retrieve
+   * returns; metadata rewrites are recorded. The rest of the Stripe client
+   * (webhook signature checks) stays real.
+   */
+  function stubTransfer(
+    rail: StripeRail,
+    over: { session?: object | Error; sub?: Record<string, unknown> } = {},
+  ): { updates: { id: string; metadata: Record<string, string> }[] } {
+    const updates: { id: string; metadata: Record<string, string> }[] = [];
+    const session = over.session ?? {
+      id: 'cs_live_abc',
+      object: 'checkout.session',
+      subscription: 'sub_T',
+      metadata: { cvpn_code: CODE, cvpn_plan: 'monthly' },
+    };
+    const sub = {
+      id: 'sub_T',
+      object: 'subscription',
+      status: 'active',
+      livemode: true,
+      metadata: { cvpn_code: CODE, cvpn_plan: 'monthly' },
+      items: {
+        data: [{ price: { id: 'price_monthly' }, current_period_end: PERIOD_END_S }],
+      },
+      ...over.sub,
+    };
+    const client = (rail as unknown as { stripe: Record<string, unknown> }).stripe;
+    client.checkout = {
+      sessions: {
+        retrieve: () =>
+          session instanceof Error ? Promise.reject(session) : Promise.resolve(session),
+      },
+    };
+    client.subscriptions = {
+      retrieve: () => Promise.resolve(sub),
+      update: (id: string, args: { metadata: Record<string, string> }) => {
+        updates.push({ id, metadata: args.metadata });
+        return Promise.resolve(sub);
+      },
+    };
+    return { updates };
+  }
+
+  it('moves the subscription, grants the rest of the period, and rewrites metadata', async () => {
+    const { rail, payments, subs } = setup();
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly', 'cus_T');
+    const { updates } = stubTransfer(rail);
+    const out = await rail.transferSubscription('cs_live_abc', NEW_CODE);
+    expect(out).toMatchObject({ accepted: true, days: 12, transferred: true, test: false });
+    expect(subs.get('stripe', 'sub_T')).toMatchObject({
+      payment_code: NEW_CODE,
+      stripe_customer_id: 'cus_T',
+      transferred_at: NOW / 1000,
+    });
+    expect(payments.byCode(NEW_CODE)[0]).toMatchObject({
+      event_key: `transfer:sub_T:${PERIOD_END_S * 1000}`,
+      days: 12,
+    });
+    expect(updates).toEqual([{ id: 'sub_T', metadata: { cvpn_code: NEW_CODE } }]);
+  });
+
+  it('credits renewals to the new code even when the invoice still names the old one', async () => {
+    // Invoices already drafted (and webhook retries) carry the metadata as it
+    // was — the bridge's own binding must win.
+    const { rail, payments, subs } = setup();
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly');
+    stubTransfer(rail);
+    await rail.transferSubscription('cs_live_abc', NEW_CODE);
+    const { raw, sig } = signedEvent(invoicePaidEvent('in_next', 'sub_T', 'monthly'));
+    expect(await rail.handleWebhook(raw, sig)).toBe('invoice:queued');
+    expect(payments.byCode(NEW_CODE).map((p) => p.event_key)).toContain('in_next');
+    expect(payments.byCode(CODE)).toHaveLength(0);
+    expect(subs.get('stripe', 'sub_T')?.payment_code).toBe(NEW_CODE);
+  });
+
+  it('is not undone by a redelivered checkout.session.completed', async () => {
+    const { rail, subs } = setup();
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly');
+    stubTransfer(rail);
+    await rail.transferSubscription('cs_live_abc', NEW_CODE);
+    const { raw, sig } = signedEvent({
+      id: 'evt_cs_again',
+      object: 'event',
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_live_abc',
+          object: 'checkout.session',
+          subscription: 'sub_T',
+          metadata: { cvpn_code: CODE, cvpn_plan: 'monthly' },
+        },
+      },
+    });
+    await rail.handleWebhook(raw, sig);
+    expect(subs.get('stripe', 'sub_T')?.payment_code).toBe(NEW_CODE);
+  });
+
+  it('allows one move per 30 days and one transfer grant per billing period', async () => {
+    const { rail, payments, subs } = setup();
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly');
+    stubTransfer(rail, {
+      sub: {
+        items: {
+          data: [
+            { price: { id: 'price_annual' }, current_period_end: PERIOD_END_S + 300 * 86_400 },
+          ],
+        },
+      },
+    });
+    await rail.transferSubscription('cs_live_abc', NEW_CODE);
+    expect(await rail.transferSubscription('cs_live_abc', CODE)).toMatchObject({
+      accepted: false,
+      reason: 'transfer_too_soon',
+      availableAt: NOW / 1000 + 30 * 86_400,
+    });
+    vi.setSystemTime(NOW + 31 * DAY);
+    expect(await rail.transferSubscription('cs_live_abc', CODE)).toMatchObject({
+      accepted: true,
+      reason: 'transfer:duplicate',
+    });
+    expect(payments.byCode(CODE)).toHaveLength(0);
+  });
+
+  it('refuses unknown sessions, inactive subscriptions and a no-op move', async () => {
+    const { rail, subs } = setup();
+    stubTransfer(rail, { session: new Error('No such checkout.session') });
+    expect(await rail.transferSubscription('cs_bogus', NEW_CODE)).toMatchObject({
+      reason: 'no_subscription',
+    });
+    stubTransfer(rail, { sub: { status: 'canceled' } });
+    expect(await rail.transferSubscription('cs_live_abc', NEW_CODE)).toMatchObject({
+      reason: 'no_subscription',
+    });
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly');
+    subs.setStatus('stripe', 'sub_T', 'refunded');
+    stubTransfer(rail);
+    expect(await rail.transferSubscription('cs_live_abc', NEW_CODE)).toMatchObject({
+      reason: 'no_subscription',
+    });
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly');
+    expect(await rail.transferSubscription('cs_live_abc', CODE)).toMatchObject({
+      reason: 'already_bound',
+    });
+  });
+
+  it('moves a test-mode subscription without spending the treasury', async () => {
+    const { rail, payments, subs } = setup();
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly');
+    stubTransfer(rail, { sub: { livemode: false } });
+    expect(await rail.transferSubscription('cs_live_abc', NEW_CODE)).toMatchObject({
+      accepted: true,
+      days: 0,
+      test: true,
+    });
+    expect(subs.get('stripe', 'sub_T')?.payment_code).toBe(NEW_CODE);
+    expect(payments.byCode(NEW_CODE)).toHaveLength(0);
+  });
+
+  it('lets support rebind without a grant, and grant under the same period key', async () => {
+    const { rail, payments, subs } = setup();
+    subs.upsert('stripe', 'sub_T', CODE, 'monthly');
+    const { updates } = stubTransfer(rail);
+    expect(await rail.adminRebind('sub_T', NEW_CODE, false)).toMatchObject({
+      ok: true,
+      previousCode: CODE,
+      grant: 'none',
+    });
+    expect(payments.byCode(NEW_CODE)).toHaveLength(0);
+    expect(await rail.adminRebind('sub_T', NEW_CODE, true)).toMatchObject({ grant: 'queued' });
+    expect(await rail.adminRebind('sub_T', NEW_CODE, true)).toMatchObject({ grant: 'duplicate' });
+    expect(updates.map((u) => u.metadata.cvpn_code)).toEqual([NEW_CODE, NEW_CODE, NEW_CODE]);
   });
 });

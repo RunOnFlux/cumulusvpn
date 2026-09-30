@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Datenschutz durch Architektur</span>
     <h1>Datenschutzerklärung</h1>
-    <p class="doc-meta">Zuletzt aktualisiert: 14. August 2026 · Gültig ab: 14. August 2026</p>
+    <p class="doc-meta">Zuletzt aktualisiert: 30. September 2026 · Gültig ab: 14. August 2026</p>
 
   <p class="doc-meta">Diese Übersetzung dient der Vereinfachung; maßgeblich ist die englische Fassung unter cumulusvpn.com/privacy.</p>
   </div>
@@ -147,8 +147,11 @@
     <p>Ein VPN kann nicht funktionieren, ohne dass in Echtzeit Daten hindurchlaufen. Hier ist alles davon, und warum
       nichts davon zu einer Aufzeichnung über dich wird.</p>
     <h3>4.1 Dein öffentlicher Schlüssel (pseudonyme Kennung)</h3>
-    <p>Dein Gerät erzeugt beim ersten Start lokal ein WireGuard-Schlüsselpaar. Der <strong>private Schlüssel verlässt
-      niemals dein Gerät</strong> — nicht einmal an uns. Nur der <strong>öffentliche Schlüssel</strong> wird an ein
+    <p>Dein Gerät erzeugt beim ersten Start lokal ein WireGuard-Schlüsselpaar. Der <strong>private Schlüssel wird niemals
+      an uns oder an ein Gateway gesendet</strong>. Damit er beim Löschen und Neuinstallieren der App — oder beim Wechsel auf ein neues
+      Handy — nicht verloren geht, bewahrt die App ein <strong>verschlüsseltes Backup</strong> davon auf: unter iOS im Schlüsselbund (Keychain) des iPhones
+      und unter Android im Block Store von Google, Ende-zu-Ende verschlüsselt mit deiner Displaysperre, sodass
+      weder Google noch wir es lesen können. Das Backup ist standardmäßig aktiviert und lässt sich in den Einstellungen abschalten. Nur der <strong>öffentliche Schlüssel</strong> wird an ein
       Gateway gesendet, damit es deinen verschlüsselten Tunnel routen kann. Ein öffentlicher Schlüssel ist ein 32 Byte großer, zufällig wirkender Wert. Er ist
       nicht mit deinem Namen, deiner E-Mail-Adresse oder deiner Hardware verknüpft, und du kannst ihn jederzeit neu erzeugen. Er ist ein Pseudonym,
       keine Identität.</p>
@@ -237,7 +240,7 @@
         Hast du dem Support eine E-Mail geschrieben, kannst du um eine Kopie dieses Schriftwechsels bitten.</li>
       <li><strong>Löschung:</strong> Es gibt nichts an deine Identität Gebundenes, das wir von Gateways löschen könnten;
         der Peer-Status ist ohnehin flüchtig, nur im RAM, und wird bei Trennung/Neustart gelöscht. Du kannst deinen Schlüssel auf
-        deinem Gerät jederzeit löschen, wodurch die pseudonyme Verknüpfung vollständig gekappt wird.</li>
+        deinem Gerät jederzeit löschen (schalte vorher in den Einstellungen das Identitäts-Backup ab, damit keine Kopie übrig bleibt), wodurch die pseudonyme Verknüpfung vollständig gekappt wird.</li>
       <li><strong>Kein Verkauf / keine Weitergabe:</strong> Wir verkaufen oder teilen keine personenbezogenen Daten, also gibt es
         nichts, wovon du dich abmelden könntest.</li>
     </ul>
@@ -253,7 +256,8 @@
 
     <h2>12. Sicherheit</h2>
     <p>Der Datenverkehr wird zwischen deinem Gerät und dem Gateway Ende-zu-Ende mit dem WireGuard®-Protokoll verschlüsselt
-      (moderne, geprüfte Kryptografie). Dein privater Schlüssel verlässt nie dein Gerät. Der serverseitige Peer-Status wird
+      (moderne, geprüfte Kryptografie). Dein privater Schlüssel wird nie an uns oder an ein Gateway gesendet; seine einzige Kopie außerhalb der App ist das
+      in Abschnitt 4.1 beschriebene verschlüsselte Backup, das du abschalten kannst. Der serverseitige Peer-Status wird
       nur im Arbeitsspeicher gehalten. Die App erreicht die Steuer-API jedes Gateways über eine direkte Verbindung, deren
       Antworten ed25519-signiert und von der App verifiziert werden, sodass die Echtheit des Serververzeichnisses und der
       Gateway-Antworten durch digitale Signaturen geschützt ist statt durch ein Transportzertifikat.</p>

@@ -5,6 +5,13 @@
  * base plan, and the obfuscated account id that must equal the payment code
  * the purchase was made for. Grants are keyed by latestOrderId (GPA…-0,
  * -1, …), unique per renewal and stable across RTDN redeliveries.
+ *
+ * Claims (docs/18 "Claims and transfers") resolve ownership through the
+ * persisted purchaseToken binding instead of that account id: a reinstall is
+ * a new code, and a promo code redeemed in the Play Store has no account id
+ * at all. The token is the subscription's identity throughout — stable
+ * across renewals, and only the Play account holding the purchase can
+ * present it.
  */
 import { google, type androidpublisher_v3 } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
@@ -12,9 +19,16 @@ import type { FastifyBaseLogger } from 'fastify';
 
 import type { GoogleConfig } from '../config.js';
 import { isValidPaymentCode } from '../codes.js';
-import { recordGrant } from '../grants.js';
+import { recordGrant, type GrantResult } from '../grants.js';
 import type { PaymentsRepo } from '../db/payments.js';
-import type { Plan, SubscriptionsRepo } from '../db/subscriptions.js';
+import type { Plan, SubscriptionsRepo, TransferActor } from '../db/subscriptions.js';
+import {
+  remainingDays,
+  transferAvailableAt,
+  transferEventKey,
+  type ClaimOutcome,
+  type RebindOutcome,
+} from '../transfers.js';
 
 /** RTDN subscription notification types that should trigger a re-verify + grant. */
 const GRANT_NOTIFICATIONS = new Set([1 /* RECOVERED */, 2 /* RENEWED */, 4 /* PURCHASED */]);
@@ -26,6 +40,19 @@ export interface GoogleVerifyOutcome {
   readonly days?: number;
   readonly test?: boolean;
 }
+
+/** What Play says the current period of a verified subscription is. */
+interface PeriodFacts {
+  readonly days: number;
+  readonly plan: Plan;
+  readonly orderId: string;
+  readonly productId: string | undefined;
+  /** End of the current period (ms); NaN when Play reported none. */
+  readonly expiryMs: number;
+  readonly test: boolean;
+}
+
+const nowS = (): number => Math.floor(Date.now() / 1000);
 
 export class GoogleRail {
   private readonly publisher: androidpublisher_v3.Androidpublisher;
@@ -57,15 +84,10 @@ export class GoogleRail {
     if (!isValidPaymentCode(code)) {
       return { accepted: false, reason: 'invalid_code' };
     }
-    const { data: sub } = await this.publisher.purchases.subscriptionsv2.get({
-      packageName: this.cfg.packageName,
-      token: purchaseToken,
-    });
-    if (
-      sub.subscriptionState !== 'SUBSCRIPTION_STATE_ACTIVE' &&
-      sub.subscriptionState !== 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD'
-    ) {
-      return { accepted: false, reason: `state:${sub.subscriptionState ?? 'unknown'}` };
+    const sub = await this.fetchSubscription(purchaseToken);
+    const inactive = this.inactiveReason(sub);
+    if (inactive !== null) {
+      return { accepted: false, reason: inactive };
     }
     // The account id is the binding between this purchase and the payment
     // code — like Apple's appAccountToken, its absence must FAIL the strict
@@ -76,37 +98,108 @@ export class GoogleRail {
     if (requireAccountMatch && obfuscated !== code) {
       return { accepted: false, reason: obfuscated ? 'account_id_mismatch' : 'account_id_missing' };
     }
-    const line = sub.lineItems?.[0];
-    const basePlan = line?.offerDetails?.basePlanId;
-    const days = this.daysForBasePlan(basePlan);
-    if (days === null) {
-      return { accepted: false, reason: `unknown_base_plan:${basePlan ?? 'none'}` };
+    const facts = this.periodFacts(sub);
+    if (typeof facts === 'string') {
+      return { accepted: false, reason: facts };
     }
-    const orderId =
-      line?.latestSuccessfulOrderId ??
-      (sub as { latestOrderId?: string | null }).latestOrderId ??
+    // Once moved, the account id still names the device the subscription was
+    // moved AWAY from, and its app re-verifies on every launch. Letting that
+    // rebind would undo the transfer past its 30-day limit, so a moved
+    // subscription settles to its current owner, exactly as its RTDNs do.
+    return this.settle(this.movedOwner(purchaseToken) ?? code, purchaseToken, sub, facts);
+  }
+
+  /**
+   * Client-initiated claim: Restore Purchases after a reinstall, or a promo
+   * code redeemed in the Play Store (no account id). Verified with Play
+   * exactly like verifyPurchase; ownership comes from the persisted binding,
+   * falling back to the account id:
+   *
+   * - owned by this code, or by nobody → settle exactly as verify would. An
+   *   unbound purchase goes to its first claimant, which is safe because only
+   *   the Play account holding it can present its token.
+   * - owned by another code → `owned_by_other_device`; with `transfer`, a
+   *   move (at most one per 30 days) that grants the rest of the period.
+   */
+  async claimPurchase(
+    code: string,
+    purchaseToken: string,
+    transfer: boolean,
+  ): Promise<ClaimOutcome> {
+    if (!isValidPaymentCode(code)) {
+      return { accepted: false, reason: 'invalid_code' };
+    }
+    const sub = await this.fetchSubscription(purchaseToken);
+    const inactive = this.inactiveReason(sub);
+    if (inactive !== null) {
+      return { accepted: false, reason: inactive };
+    }
+    const facts = this.periodFacts(sub);
+    if (typeof facts === 'string') {
+      return { accepted: false, reason: facts };
+    }
+    const known = this.subs.get('google', purchaseToken);
+    const owner =
+      known?.payment_code ||
+      sub.externalAccountIdentifiers?.obfuscatedExternalAccountId ||
       undefined;
-    if (!orderId) {
-      return { accepted: false, reason: 'no_order_id' };
+    if (owner === undefined || owner === code) {
+      return { ...(await this.settle(code, purchaseToken, sub, facts)), transferred: false };
     }
-    const plan: Plan = days === 360 ? 'annual' : 'monthly';
-    this.subs.upsert('google', purchaseToken, code, plan);
-
-    await this.acknowledgeIfNeeded(sub, purchaseToken, line?.productId ?? undefined);
-
-    const isTest = sub.testPurchase !== undefined && sub.testPurchase !== null;
-    if (isTest && !this.cfg.testGrants) {
-      return this.testGrant(purchaseToken, code, orderId);
+    if (!transfer) {
+      return { accepted: false, reason: 'owned_by_other_device' };
     }
-    const result = recordGrant(this.payments, this.priceZats, {
-      rail: 'google',
-      eventKey: orderId,
-      externalRef: purchaseToken,
-      paymentCode: code,
-      days,
-    });
-    this.log.info({ order: orderId, result }, 'google purchase verified');
-    return { accepted: true, reason: result, days, test: false };
+    const availableAt = transferAvailableAt(known?.transferred_at ?? null, nowS());
+    if (availableAt !== null) {
+      return { accepted: false, reason: 'transfer_too_soon', availableAt };
+    }
+    const moved = this.transferTo(code, purchaseToken, facts, 'user');
+    await this.acknowledgeIfNeeded(sub, purchaseToken, facts.productId);
+    return {
+      accepted: true,
+      reason: `transfer:${moved.grant}`,
+      days: moved.days,
+      test: facts.test,
+      transferred: true,
+    };
+  }
+
+  /**
+   * Support override: move a subscription with no 30-day limit, optionally
+   * granting the rest of the current period — under the SAME per-period key
+   * a user transfer uses, so support cannot double-grant a period either.
+   */
+  async adminRebind(
+    purchaseToken: string,
+    code: string,
+    grantRemaining: boolean,
+  ): Promise<RebindOutcome> {
+    const known = this.subs.get('google', purchaseToken);
+    if (!known) {
+      return { ok: false, reason: 'not_found' };
+    }
+    if (!grantRemaining) {
+      const previous = this.subs.rebind('google', purchaseToken, code, known.plan, 'admin', 0);
+      return { ok: true, reason: 'rebound', previousCode: previous, days: 0, grant: 'none' };
+    }
+    const sub = await this.fetchSubscription(purchaseToken);
+    const inactive = this.inactiveReason(sub);
+    if (inactive !== null) {
+      return { ok: false, reason: 'not_active' };
+    }
+    const facts = this.periodFacts(sub);
+    if (typeof facts === 'string') {
+      return { ok: false, reason: facts };
+    }
+    const moved = this.transferTo(code, purchaseToken, facts, 'admin');
+    return {
+      ok: true,
+      reason: 'rebound',
+      previousCode: moved.previous,
+      days: moved.days,
+      grant: moved.grant,
+      test: facts.test,
+    };
   }
 
   /**
@@ -146,14 +239,14 @@ export class GoogleRail {
     if (!GRANT_NOTIFICATIONS.has(note.notificationType ?? -1)) {
       return `rtdn:ignored:${note.notificationType}`;
     }
-    // Renewals carry no account id on some resubscribe paths — fall back to
-    // the binding persisted at first client verify.
+    // The persisted binding wins: after a transfer the account id still names
+    // the code that originally bought, and renewals must credit the code the
+    // subscription was moved to. (Renewals also carry no account id on some
+    // resubscribe paths.) The account id is only the fallback for a purchase
+    // whose client verify has not landed yet.
     const known = this.subs.get('google', token);
-    const { data: sub } = await this.publisher.purchases.subscriptionsv2.get({
-      packageName: this.cfg.packageName,
-      token,
-    });
-    const code = sub.externalAccountIdentifiers?.obfuscatedExternalAccountId ?? known?.payment_code;
+    const sub = await this.fetchSubscription(token);
+    const code = known?.payment_code ?? sub.externalAccountIdentifiers?.obfuscatedExternalAccountId;
     if (!code) {
       return 'rtdn:code-unknown';
     }
@@ -206,6 +299,126 @@ export class GoogleRail {
       'google test purchase verified (bounded probe grant)',
     );
     return { accepted: true, reason: `test:${result}`, days, test: true };
+  }
+
+  /**
+   * Move the subscription to `code` and hand it the rest of the current
+   * period (a test purchase gets the bounded probe instead, once per test
+   * subscription under its own key).
+   *
+   * Synchronous on purpose: the caller's rate-limit check, the grant and the
+   * rebind run with no await between them, so two racing transfers cannot
+   * both pass the check. The grant is recorded BEFORE the rebind — a crash in
+   * between leaves the subscription where it was, and the retry lands on the
+   * same per-period key instead of losing the days.
+   */
+  private transferTo(
+    code: string,
+    purchaseToken: string,
+    facts: PeriodFacts,
+    actor: TransferActor,
+  ): { days: number; grant: GrantResult | 'none'; previous: string | null } {
+    const probe = facts.test && !this.cfg.testGrants;
+    const days = probe
+      ? this.cfg.testGrantDays
+      : remainingDays(facts.expiryMs, Date.now(), facts.plan);
+    const grant =
+      days > 0
+        ? recordGrant(this.payments, this.priceZats, {
+            rail: 'google',
+            eventKey: probe
+              ? `test-transfer:${purchaseToken}`
+              : transferEventKey(purchaseToken, facts.expiryMs),
+            externalRef: purchaseToken,
+            paymentCode: code,
+            days,
+          })
+        : 'none';
+    const previous = this.subs.rebind('google', purchaseToken, code, facts.plan, actor, days);
+    this.log.info(
+      { order: facts.orderId, actor, days, grant, test: facts.test },
+      'google subscription transferred',
+    );
+    return { days, grant, previous };
+  }
+
+  /** The current owner of a subscription that has been moved; undefined if never moved. */
+  private movedOwner(purchaseToken: string): string | undefined {
+    const known = this.subs.get('google', purchaseToken);
+    return known && known.transferred_at !== null ? known.payment_code : undefined;
+  }
+
+  /** Bind, acknowledge, and grant the current period — the verify path proper. */
+  private async settle(
+    code: string,
+    purchaseToken: string,
+    sub: androidpublisher_v3.Schema$SubscriptionPurchaseV2,
+    facts: PeriodFacts,
+  ): Promise<GoogleVerifyOutcome> {
+    this.subs.upsert('google', purchaseToken, code, facts.plan);
+
+    await this.acknowledgeIfNeeded(sub, purchaseToken, facts.productId);
+
+    if (facts.test && !this.cfg.testGrants) {
+      return this.testGrant(purchaseToken, code, facts.orderId);
+    }
+    const result = recordGrant(this.payments, this.priceZats, {
+      rail: 'google',
+      eventKey: facts.orderId,
+      externalRef: purchaseToken,
+      paymentCode: code,
+      days: facts.days,
+    });
+    this.log.info({ order: facts.orderId, result }, 'google purchase verified');
+    return { accepted: true, reason: result, days: facts.days, test: false };
+  }
+
+  private async fetchSubscription(
+    purchaseToken: string,
+  ): Promise<androidpublisher_v3.Schema$SubscriptionPurchaseV2> {
+    const { data } = await this.publisher.purchases.subscriptionsv2.get({
+      packageName: this.cfg.packageName,
+      token: purchaseToken,
+    });
+    return data;
+  }
+
+  /** Why a subscription cannot be granted on, or null when it is active / in grace. */
+  private inactiveReason(sub: androidpublisher_v3.Schema$SubscriptionPurchaseV2): string | null {
+    if (
+      sub.subscriptionState !== 'SUBSCRIPTION_STATE_ACTIVE' &&
+      sub.subscriptionState !== 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD'
+    ) {
+      return `state:${sub.subscriptionState ?? 'unknown'}`;
+    }
+    return null;
+  }
+
+  /** Base plan, order id and period end of a verified subscription, or why they are unusable. */
+  private periodFacts(
+    sub: androidpublisher_v3.Schema$SubscriptionPurchaseV2,
+  ): PeriodFacts | string {
+    const line = sub.lineItems?.[0];
+    const basePlan = line?.offerDetails?.basePlanId;
+    const days = this.daysForBasePlan(basePlan);
+    if (days === null) {
+      return `unknown_base_plan:${basePlan ?? 'none'}`;
+    }
+    const orderId =
+      line?.latestSuccessfulOrderId ??
+      (sub as { latestOrderId?: string | null }).latestOrderId ??
+      undefined;
+    if (!orderId) {
+      return 'no_order_id';
+    }
+    return {
+      days,
+      plan: days === 360 ? 'annual' : 'monthly',
+      orderId,
+      productId: line?.productId ?? undefined,
+      expiryMs: line?.expiryTime ? Date.parse(line.expiryTime) : NaN,
+      test: sub.testPurchase !== undefined && sub.testPurchase !== null,
+    };
   }
 
   private daysForBasePlan(basePlanId: string | null | undefined): number | null {

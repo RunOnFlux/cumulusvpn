@@ -128,6 +128,22 @@ export const nl: Catalog = {
   manage_cta_busy: 'Facturatieportaal openen…',
   manage_err:
     'Het facturatieportaal kon niet vanuit deze browser worden geopend. Je kunt altijd beheren of opzeggen via de link in de Stripe-bon per e-mail.',
+  transfer_cta: 'Naar een ander apparaat verplaatsen',
+  transfer_lede:
+    'App opnieuw geïnstalleerd of een nieuwe telefoon? Voer de apparaatcode in uit Instellingen → Over op het nieuwe apparaat. Dat krijgt meteen de rest van deze factuurperiode en daarna elke verlenging. Een abonnement kan eens per 30 dagen verhuizen.',
+  transfer_next: 'Doorgaan',
+  transfer_cancel: 'Annuleren',
+  transfer_confirm:
+    'Dit abonnement naar {code} verplaatsen? Controleer of dit overeenkomt met de code op dat apparaat — een verkeerd getypte code kan alsnog geldig zijn en verplaatst het dan naar het verkeerde apparaat.',
+  transfer_confirm_cta: 'Abonnement verplaatsen',
+  transfer_busy: 'Bezig met verplaatsen…',
+  transfer_done:
+    'Verplaatst. Premium voor de rest van deze factuurperiode wordt geactiveerd op {code}, en verlengingen gaan naar dat apparaat. De facturatie blijft hier — beheer of zeg op via deze pagina zoals voorheen.',
+  transfer_err_soon: 'Dit abonnement is onlangs verplaatst. Het kan weer verhuizen op {date}.',
+  transfer_err_same: 'Dat apparaat heeft dit abonnement al.',
+  transfer_err_none:
+    'Er is geen actief kaartabonnement gevonden voor de aankoop in deze browser, dus er valt niets te verplaatsen.',
+  transfer_err: 'Het abonnement kon niet worden verplaatst. Probeer het zo nog eens.',
 
   redeem_eyebrow: 'Heb je een code?',
   redeem_lede:

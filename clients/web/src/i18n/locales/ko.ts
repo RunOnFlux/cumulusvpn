@@ -125,6 +125,21 @@ export const ko: Catalog = {
   manage_cta_busy: '결제 포털을 여는 중…',
   manage_err:
     '이 브라우저에서 결제 포털을 열지 못했습니다. Stripe 영수증 이메일의 링크에서 언제든지 관리하거나 해지할 수 있습니다.',
+  transfer_cta: '다른 기기로 옮기기',
+  transfer_lede:
+    '앱을 다시 설치했거나 새 휴대폰을 샀나요? 새 기기의 설정 → 정보에 있는 기기 코드를 입력하세요. 현재 결제 기간의 남은 기간이 바로 적용되고, 이후 모든 갱신도 그 기기로 갑니다. 구독은 30일에 한 번 옮길 수 있습니다.',
+  transfer_next: '계속',
+  transfer_cancel: '취소',
+  transfer_confirm:
+    '이 구독을 {code}(으)로 옮길까요? 해당 기기에 표시된 코드와 일치하는지 확인하세요. 잘못 입력한 코드도 유효할 수 있어 엉뚱한 기기로 옮겨질 수 있습니다.',
+  transfer_confirm_cta: '구독 옮기기',
+  transfer_busy: '옮기는 중…',
+  transfer_done:
+    '옮겼습니다. 현재 결제 기간의 남은 프리미엄이 {code}에서 활성화되고 있으며, 갱신은 그 기기로 갑니다. 결제는 여기 그대로 남아 있으니 이전처럼 이 페이지에서 관리하거나 해지하세요.',
+  transfer_err_soon: '이 구독은 최근에 옮겨졌습니다. {date}에 다시 옮길 수 있습니다.',
+  transfer_err_same: '그 기기에는 이미 이 구독이 있습니다.',
+  transfer_err_none: '이 브라우저에서 구매한 활성 카드 구독을 찾을 수 없어 옮길 것이 없습니다.',
+  transfer_err: '구독을 옮기지 못했습니다. 잠시 후 다시 시도하세요.',
 
   redeem_eyebrow: '코드가 있으신가요?',
   redeem_lede:

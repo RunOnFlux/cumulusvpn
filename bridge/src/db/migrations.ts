@@ -154,4 +154,36 @@ export const MIGRATIONS: readonly string[] = [
   ALTER TABLE subscriptions ADD COLUMN stripe_customer_id TEXT;
   CREATE INDEX subscriptions_code ON subscriptions (payment_code, updated_at DESC);
   `,
+  `
+  -- Migration 4: store subscriptions follow the person (claims / transfers).
+  --
+  -- transferred_at: unix seconds of the last move to another payment code —
+  --   a user transfer or a support rebind. It is the one-transfer-per-30-days
+  --   limit, and it marks a binding the store's own account field no longer
+  --   describes: from then on verify and renewals follow OUR binding, never
+  --   the obfuscatedExternalAccountId / appAccountToken stamped at purchase.
+  -- apple_expires_ms / apple_sandbox: period end and environment of the last
+  --   verified Apple transaction. Apple is the one rail the bridge cannot
+  --   re-query on demand (no App Store Server API key), so a support rebind
+  --   that grants the rest of the period reads them from here.
+  ALTER TABLE subscriptions ADD COLUMN transferred_at INTEGER;
+  ALTER TABLE subscriptions ADD COLUMN apple_expires_ms INTEGER;
+  ALTER TABLE subscriptions ADD COLUMN apple_sandbox INTEGER;
+
+  -- One row per move. The subscription row only remembers where it is NOW, so
+  -- without this support could not answer "where did my premium go?" from the
+  -- old code, whose subscription list is empty after the move.
+  CREATE TABLE subscription_transfers (
+    id          INTEGER PRIMARY KEY,
+    rail        TEXT NOT NULL,
+    external_id TEXT NOT NULL,
+    from_code   TEXT,
+    to_code     TEXT NOT NULL,
+    actor       TEXT NOT NULL CHECK (actor IN ('user','admin')),
+    days        INTEGER NOT NULL DEFAULT 0,
+    created_at  INTEGER NOT NULL
+  );
+  CREATE INDEX subscription_transfers_from ON subscription_transfers (from_code, created_at DESC);
+  CREATE INDEX subscription_transfers_to ON subscription_transfers (to_code, created_at DESC);
+  `,
 ];

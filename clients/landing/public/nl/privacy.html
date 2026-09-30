@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy door architectuur</span>
     <h1>Privacybeleid</h1>
-    <p class="doc-meta">Laatst bijgewerkt: 14 augustus 2026 · Van kracht: 14 augustus 2026</p>
+    <p class="doc-meta">Laatst bijgewerkt: 30 september 2026 · Van kracht: 14 augustus 2026</p>
 
   <p class="doc-meta">Deze vertaling wordt aangeboden voor het gemak; de Engelse versie op cumulusvpn.com/privacy is leidend.</p>
   </div>
@@ -147,8 +147,11 @@
     <p>Een VPN kan niet functioneren zonder dat er in realtime wat data doorheen gaat. Hier is alles daarvan, en waarom
       niets ervan een vastlegging over jou wordt.</p>
     <h3>4.1 Je publieke sleutel (pseudonieme identificator)</h3>
-    <p>Je apparaat genereert bij de eerste start lokaal een WireGuard-sleutelpaar. De <strong>privésleutel verlaat
-      nooit je apparaat</strong> — zelfs niet naar ons. Alleen de <strong>publieke sleutel</strong> wordt naar een
+    <p>Je apparaat genereert bij de eerste start lokaal een WireGuard-sleutelpaar. De <strong>privésleutel wordt
+      nooit naar ons of naar een gateway gestuurd</strong>. Om te voorkomen dat je hem kwijtraakt als je de app verwijdert en opnieuw installeert — of overstapt op een nieuwe
+      telefoon — bewaart de app er een <strong>versleutelde back-up</strong> van: op iOS in de sleutelhanger (Keychain) van de iPhone,
+      en op Android in de Block Store van Google, end-to-end versleuteld met je schermvergrendeling, zodat
+      Google noch wij die kunnen lezen. De back-up staat standaard aan en kan in Instellingen worden uitgezet. Alleen de <strong>publieke sleutel</strong> wordt naar een
       gateway gestuurd, zodat die je versleutelde tunnel kan routeren. Een publieke sleutel is een 32 byte grote, willekeurig ogende waarde. Hij is
       niet gekoppeld aan je naam, e-mail of hardware, en je kunt hem op elk moment opnieuw genereren. Het is een pseudoniem,
       geen identiteit.</p>
@@ -237,7 +240,7 @@
         Heb je de support gemaild, dan kun je om een kopie van die correspondentie vragen.</li>
       <li><strong>Verwijdering:</strong> Er is niets aan jouw identiteit gekoppeld dat we van gateways kunnen verwijderen;
         peer-status is toch al vluchtig en alleen-RAM en wordt gewist bij verbreken/herstarten. Je kunt je sleutel op
-        je apparaat op elk moment verwijderen, waardoor de pseudonieme koppeling volledig wordt verbroken.</li>
+        je apparaat op elk moment verwijderen (zet eerst de identiteitsback-up uit in Instellingen, zodat er geen kopie overblijft), waardoor de pseudonieme koppeling volledig wordt verbroken.</li>
       <li><strong>Niet-verkopen / niet-delen:</strong> We verkopen of delen geen persoonsgegevens, dus is er
         niets om je voor af te melden.</li>
     </ul>
@@ -253,7 +256,8 @@
 
     <h2>12. Beveiliging</h2>
     <p>Verkeer wordt end-to-end versleuteld tussen je apparaat en de gateway met het WireGuard®-protocol
-      (moderne, geauditeerde cryptografie). Je privésleutel verlaat nooit je apparaat. Serverside peer-status wordt
+      (moderne, geauditeerde cryptografie). Je privésleutel wordt nooit naar ons of naar een gateway gestuurd; de enige kopie buiten de app is de
+      versleutelde back-up die in paragraaf 4.1 wordt beschreven, en die kun je uitzetten. Serverside peer-status wordt
       alleen in het geheugen bewaard. De app bereikt de control-API van elke gateway via een directe verbinding waarvan de
       antwoorden ed25519-ondertekend zijn en door de app worden geverifieerd, zodat de authenticiteit van de serverdirectory en
       gatewayantwoorden wordt beschermd door digitale handtekeningen in plaats van door een transportcertificaat.</p>

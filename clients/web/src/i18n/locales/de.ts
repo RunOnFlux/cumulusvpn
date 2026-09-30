@@ -129,6 +129,22 @@ export const de: Catalog = {
   manage_cta_busy: 'Abrechnungsportal wird geöffnet…',
   manage_err:
     'Das Abrechnungsportal konnte in diesem Browser nicht geöffnet werden. Du kannst dein Abo jederzeit über den Link in der Stripe-Beleg-E-Mail verwalten oder kündigen.',
+  transfer_cta: 'Auf ein anderes Gerät übertragen',
+  transfer_lede:
+    'App neu installiert oder ein neues Handy? Gib den Gerätecode aus Einstellungen → Info auf dem neuen Gerät ein. Es bekommt sofort den Rest dieses Abrechnungszeitraums und danach jede Verlängerung. Ein Abo kann alle 30 Tage einmal umziehen.',
+  transfer_next: 'Weiter',
+  transfer_cancel: 'Abbrechen',
+  transfer_confirm:
+    'Dieses Abo auf {code} übertragen? Prüfe, ob er mit dem Code auf jenem Gerät übereinstimmt — ein vertippter Code kann trotzdem gültig sein und würde es auf das falsche Gerät übertragen.',
+  transfer_confirm_cta: 'Abo übertragen',
+  transfer_busy: 'Wird übertragen…',
+  transfer_done:
+    'Übertragen. Premium für den Rest dieses Abrechnungszeitraums wird auf {code} aktiviert, und Verlängerungen gehen an dieses Gerät. Die Abrechnung bleibt hier — verwalten oder kündigen kannst du wie bisher auf dieser Seite.',
+  transfer_err_soon: 'Dieses Abo wurde kürzlich übertragen. Es kann ab {date} wieder umziehen.',
+  transfer_err_same: 'Dieses Gerät hat das Abo bereits.',
+  transfer_err_none:
+    'Für den Kauf in diesem Browser wurde kein aktives Kartenabo gefunden, es gibt also nichts zu übertragen.',
+  transfer_err: 'Das Abo konnte nicht übertragen werden. Bitte versuche es gleich noch einmal.',
 
   redeem_eyebrow: 'Hast du einen Code?',
   redeem_lede:

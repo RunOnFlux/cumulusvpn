@@ -128,6 +128,23 @@ export const it: Catalog = {
   manage_cta_busy: 'Apertura del portale di fatturazione…',
   manage_err:
     'Non è stato possibile aprire il portale di fatturazione da questo browser. Puoi sempre gestire o disdire dal link nell’e-mail di ricevuta Stripe.',
+  transfer_cta: 'Sposta su un altro dispositivo',
+  transfer_lede:
+    'Hai reinstallato l’app o hai un telefono nuovo? Inserisci il codice dispositivo che trovi in Impostazioni → Info sul nuovo dispositivo. Riceve subito il resto di questo periodo di fatturazione e ogni rinnovo successivo. Un abbonamento si può spostare una volta ogni 30 giorni.',
+  transfer_next: 'Continua',
+  transfer_cancel: 'Annulla',
+  transfer_confirm:
+    'Spostare questo abbonamento su {code}? Controlla che corrisponda al codice mostrato su quel dispositivo: un codice digitato male può essere comunque valido e lo sposterebbe su quello sbagliato.',
+  transfer_confirm_cta: 'Sposta abbonamento',
+  transfer_busy: 'Spostamento…',
+  transfer_done:
+    'Fatto. Il premium per il resto di questo periodo di fatturazione si sta attivando su {code} e i rinnovi andranno a quel dispositivo. La fatturazione resta qui: gestiscila o disdici da questa pagina come prima.',
+  transfer_err_soon:
+    'Questo abbonamento è stato spostato di recente. Potrà essere spostato di nuovo il {date}.',
+  transfer_err_same: 'Quel dispositivo ha già questo abbonamento.',
+  transfer_err_none:
+    'Non è stato trovato alcun abbonamento con carta attivo per l’acquisto di questo browser, quindi non c’è nulla da spostare.',
+  transfer_err: 'Impossibile spostare l’abbonamento. Riprova tra un momento.',
 
   redeem_eyebrow: 'Hai un codice?',
   redeem_lede:

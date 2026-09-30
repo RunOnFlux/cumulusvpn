@@ -26,7 +26,12 @@ import type {
   PurchaseError,
   SubscriptionOffer,
 } from 'react-native-iap';
-import { appAccountToken, verifyApplePurchase, verifyGooglePurchase } from '@cumulusvpn/core';
+import {
+  ApiError,
+  appAccountToken,
+  claimApplePurchase,
+  claimGooglePurchase,
+} from '@cumulusvpn/core';
 
 /** Store product ids (App Store Connect) — Android uses one subscription
  *  product with base plans, selected via offer tokens. */
@@ -49,6 +54,22 @@ export interface VerifyResult {
   readonly ok: boolean;
   /** True when the purchase completed but is awaiting external approval (Android PENDING). */
   readonly pending: boolean;
+  /**
+   * The subscription belongs to another identity of this store account — this
+   * device before a reinstall, or another phone. Only a deliberate transfer
+   * moves it here (docs/18 "Claims and transfers").
+   */
+  readonly elsewhere?: boolean;
+}
+
+/** What a reconcile pass found in the store account. */
+export interface ReconcileResult {
+  /** At least one purchase was accepted for this device. */
+  readonly any: boolean;
+  /** Purchases owned by another identity — offer to move them here. */
+  readonly elsewhere: readonly Purchase[];
+  /** The store account holds one of our subscriptions at all (for "Manage subscription"). */
+  readonly holdsSubscription: boolean;
 }
 
 const iosSkus = [IOS_SKU_MONTHLY, IOS_SKU_ANNUAL];
@@ -75,7 +96,12 @@ export interface IapSession {
   /** Kick off the platform purchase sheet. Resolution arrives via the listener. */
   readonly purchase: (plan: IapPlan, code: string) => Promise<void>;
   /** Re-verify + finish everything the store still holds (restore & repair). */
-  readonly reconcile: (code: string) => Promise<boolean>;
+  readonly reconcile: (code: string) => Promise<ReconcileResult>;
+  /**
+   * Move subscriptions owned by another identity to `code` — the user said
+   * yes. Rejects with the bridge's reason (e.g. `transfer_too_soon`).
+   */
+  readonly transfer: (purchases: readonly Purchase[], code: string) => Promise<boolean>;
   readonly dispose: () => void;
 }
 
@@ -90,8 +116,18 @@ export interface IapCallbacks {
 /**
  * Verify one store purchase against the bridge; finish/acknowledge it only
  * on acceptance. Returns whether the bridge accepted it.
+ *
+ * Goes through the bridge's CLAIM endpoint, not the older strict verify: a
+ * claim also accepts a purchase no identity owns yet — an Apple offer code or
+ * Play promo code redeemed outside the purchase sheet carries no payment code
+ * — while a purchase owned by another identity comes back `elsewhere`, never
+ * credited here unless `transfer` says the user chose to move it.
  */
-export async function verifyAndFinish(purchase: Purchase, code: string): Promise<VerifyResult> {
+export async function verifyAndFinish(
+  purchase: Purchase,
+  code: string,
+  transfer = false,
+): Promise<VerifyResult> {
   if (purchase.purchaseState === 'pending') {
     return { ok: false, pending: true };
   }
@@ -99,16 +135,27 @@ export async function verifyAndFinish(purchase: Purchase, code: string): Promise
   if (!token) {
     return { ok: false, pending: false };
   }
-  const verify =
-    Platform.OS === 'ios'
-      ? verifyApplePurchase(fetch, { code, signedTransaction: token })
-      : verifyGooglePurchase(fetch, { code, purchaseToken: token });
-  const res = await verify;
-  if (!res.accepted) {
-    return { ok: false, pending: false };
+  try {
+    const res =
+      Platform.OS === 'ios'
+        ? await claimApplePurchase(fetch, { code, signedTransaction: token, transfer })
+        : await claimGooglePurchase(fetch, { code, purchaseToken: token, transfer });
+    if (!res.accepted) {
+      return { ok: false, pending: false };
+    }
+  } catch (e) {
+    if (e instanceof ApiError && e.slug === 'owned_by_other_device') {
+      return { ok: false, pending: false, elsewhere: true };
+    }
+    throw e;
   }
   await finishTransaction({ purchase, isConsumable: false });
   return { ok: true, pending: false };
+}
+
+/** Our subscription products, on either store. */
+function isOurSubscription(p: Purchase): boolean {
+  return p.productId === ANDROID_SKU || iosSkus.includes(p.productId);
 }
 
 /**
@@ -139,6 +186,9 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
           cb.onPending();
         } else if (res.ok) {
           cb.onVerified();
+        } else if (res.elsewhere) {
+          // Another identity's subscription (e.g. a renewal StoreKit replays
+          // for the Apple ID). Not an error: Restore Purchases offers the move.
         } else {
           cb.onError('Purchase could not be verified. It will be retried automatically.');
         }
@@ -192,16 +242,31 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
         });
       }
     },
-    reconcile: async (payCode: string): Promise<boolean> => {
+    reconcile: async (payCode: string): Promise<ReconcileResult> => {
       const held = await getAvailablePurchases();
+      const list = (Array.isArray(held) ? held : []) as Purchase[];
       let any = false;
-      for (const p of Array.isArray(held) ? held : []) {
+      const elsewhere: Purchase[] = [];
+      for (const p of list) {
         try {
-          const res = await verifyAndFinish(p as Purchase, payCode);
+          const res = await verifyAndFinish(p, payCode);
           any = any || res.ok;
+          if (res.elsewhere) {
+            elsewhere.push(p);
+          }
         } catch {
           // Keep going; a later launch retries the rest.
         }
+      }
+      return { any, elsewhere, holdsSubscription: list.some(isOurSubscription) };
+    },
+    transfer: async (purchases: readonly Purchase[], payCode: string): Promise<boolean> => {
+      let any = false;
+      for (const p of purchases) {
+        // Errors (transfer_too_soon, bridge down) propagate: the user asked
+        // for this, so they get told why it didn't happen.
+        const res = await verifyAndFinish(p, payCode, true);
+        any = any || res.ok;
       }
       return any;
     },

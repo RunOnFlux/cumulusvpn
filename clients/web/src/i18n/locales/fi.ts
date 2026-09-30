@@ -128,6 +128,22 @@ export const fi: Catalog = {
   manage_cta_busy: 'Avataan laskutusportaalia…',
   manage_err:
     'Laskutusportaalia ei voitu avata tässä selaimessa. Voit aina hallita tilausta tai peruuttaa sen Stripen kuittisähköpostin linkistä.',
+  transfer_cta: 'Siirrä toiselle laitteelle',
+  transfer_lede:
+    'Asensitko sovelluksen uudelleen tai hankitko uuden puhelimen? Syötä uuden laitteen laitekoodi kohdasta Asetukset → Tietoja. Se saa heti tämän laskutuskauden loppuosan ja jokaisen sen jälkeisen uusinnan. Tilauksen voi siirtää kerran 30 päivässä.',
+  transfer_next: 'Jatka',
+  transfer_cancel: 'Peruuta',
+  transfer_confirm:
+    'Siirretäänkö tämä tilaus laitteelle {code}? Tarkista, että se vastaa kyseisen laitteen näyttämää koodia — väärin kirjoitettu koodi voi silti olla kelvollinen ja siirtäisi tilauksen väärälle laitteelle.',
+  transfer_confirm_cta: 'Siirrä tilaus',
+  transfer_busy: 'Siirretään…',
+  transfer_done:
+    'Siirretty. Premium tämän laskutuskauden loppuun aktivoituu laitteella {code}, ja uusinnat menevät sille laitteelle. Laskutus pysyy täällä — hallitse tai peruuta tältä sivulta kuten ennenkin.',
+  transfer_err_soon: 'Tämä tilaus siirrettiin äskettäin. Sen voi siirtää uudelleen {date}.',
+  transfer_err_same: 'Kyseisellä laitteella on jo tämä tilaus.',
+  transfer_err_none:
+    'Tämän selaimen ostolle ei löytynyt aktiivista korttitilausta, joten siirrettävää ei ole.',
+  transfer_err: 'Tilausta ei voitu siirtää. Yritä hetken päästä uudelleen.',
 
   redeem_eyebrow: 'Onko sinulla koodi?',
   redeem_lede:

@@ -16,10 +16,13 @@ UI within ~1 min of confirmation.
 
 | Rail | Purchase → code binding | Renewal → code lookup | Idempotency key (one chain tx max) |
 |---|---|---|---|
-| Stripe | `subscription_data.metadata.cvpn_code`/`cvpn_plan` set at Checkout | invoice's subscription metadata (fallback: retrieve subscription) | **invoice id** — only `invoice.paid` grants |
-| Apple | `appAccountToken` = UUID derived from the code (below); `/v1/apple/verify` recomputes and rejects mismatch | ASN v2 → `appAccountToken` map or `originalTransactionId` binding persisted at first verify | **transactionId** (unique per renewal) |
-| Google | `obfuscatedExternalAccountId` = the raw code (~27 chars) | RTDN → `subscriptionsv2.get` → account id, fallback purchaseToken binding | **latestOrderId** (`GPA…-0, -1, …`) |
+| Stripe | `subscription_data.metadata.cvpn_code`/`cvpn_plan` set at Checkout | the bridge's subscription binding, else the invoice's subscription metadata (fallback: retrieve subscription) | **invoice id** — only `invoice.paid` grants |
+| Apple | `appAccountToken` = UUID derived from the code (below); `/v1/apple/verify` recomputes and rejects mismatch | ASN v2 → `appAccountToken` map or `originalTransactionId` binding persisted at first verify (the binding alone once moved) | **transactionId** (unique per renewal) |
+| Google | `obfuscatedExternalAccountId` = the raw code (~27 chars) | RTDN → `subscriptionsv2.get` → persisted purchaseToken binding, fallback account id | **latestOrderId** (`GPA…-0, -1, …`) |
 | Voucher | our own DB: `voucher_redemptions` UNIQUE(voucher, code) | n/a (one-shot grants) | **`voucher_id:payment_code`** (mirrors the UNIQUE) |
+
+A binding can move after purchase — a reinstall, a new phone, a code
+redeemed in the store — see "Claims and transfers" below.
 
 Everything a webhook/notification claims is re-verified against the
 provider (Stripe signature over raw bytes; Apple JWS x5c chain to the
@@ -104,6 +107,92 @@ broadcast ─▶ confirmer: ≥1 conf → confirmed; expired unmined → back to
 - Treasury runs dry → rows stay `pending`, retry forever with backoff,
   operator is paged. Users see `pending` via the status endpoint.
 
+## Claims and transfers — subscriptions follow the person
+
+A device's identity is its WireGuard key, so a reinstall is a NEW payment
+code, and a Play promo code / Apple offer code redeemed in the store (outside
+the app) carries no code at all. `/verify` requires the store's account field
+to equal the presenting code, so a reinstalled app could never restore, and a
+store-redeemed code could never unlock premium. Claims fix both without
+touching verify, which the app keeps using for fresh purchases.
+
+A subscription is identified by its store-stable id — Google purchaseToken
+(constant across renewals), Apple originalTransactionId, Stripe subscription
+id — and the bridge's `subscriptions` row for it is its **binding**.
+
+`POST /v1/google/claim` / `/v1/apple/claim` verify with the store exactly as
+verify does (Apple also requires the transaction to be unexpired and
+unrevoked — a claim can move a subscription, an old receipt must not), then
+resolve ownership instead of requiring a match:
+
+| Case | When | Result |
+|---|---|---|
+| A | bound to this code | exactly verify: idempotent grant of the current period (order id / transactionId) |
+| B | unbound, and the store account id is absent (store-redeemed code) or is this code | bind here, then exactly verify. First claimant wins — safe, because only the store account holding the purchase can present its token / signed transaction |
+| C | bound to another code, or unbound with an account id naming another code | `409 owned_by_other_device`; the app asks the user, then resends with `transfer: true` |
+
+(Apple, before any move: the transaction's `appAccountToken` names the
+purchaser and wins over an older binding — the notification rule the bridge
+already had, which keeps a resubscribe from a different device working.)
+
+**A transfer** (`transfer: true`, `POST /v1/stripe/transfer`, or a support
+rebind):
+
+- **At most one per subscription per 30 days** (`subscriptions.transferred_at`),
+  else `409 transfer_too_soon`, whose message ends in the ISO-8601 date it
+  becomes possible. Support rebinds skip this limit.
+- **Rebinds** to the new code and logs the move (`subscription_transfers`).
+- **Grants the rest of the current period** to the new code:
+  `ceil((period end − now) / 1 day)`, at least 1, at most the plan's days,
+  under the idempotency key `transfer:<subscription id>:<period end ms>`.
+  That key is the hard wall: whatever the rate limit says, one billing period
+  produces at most ONE transfer grant — A→B→A, user and support alike.
+- Sandbox / license-tester purchases get the bounded probe instead
+  (`sandbox-transfer:` / `test-transfer:` + the subscription id, once per
+  test subscription) unless `APPLE_SANDBOX_GRANTS` / `GOOGLE_TEST_GRANTS`;
+  test-mode Stripe subscriptions move but settle nothing unless
+  `STRIPE_TEST_GRANTS`.
+- The grant is written before the rebind, with no `await` between the
+  rate-limit check and either write: two racing transfers cannot both pass,
+  and a crash between the writes retries onto the same key.
+
+**The accepted leak.** The old code keeps what it already has — chain grants
+cannot be clawed back — so a transfer can put one period on two codes at
+once. The two walls above bound that to ≤ 1 period per subscription per 30
+days, and the store account holder is only ever overlapping their own
+subscription. Accepted by design, like refunds.
+
+**Renewals follow the binding.** After a move, the store's own account field
+(`obfuscatedExternalAccountId`, `appAccountToken`, and the Stripe metadata on
+invoices already drafted) still names the device the subscription left:
+
+- Google RTDN resolves the persisted binding first; the account id is only
+  the fallback for a purchase whose client verify has not landed yet.
+- Apple notifications follow the binding of a moved subscription — except a
+  purchase made AFTER the move (`transactionReason` PURCHASE, `purchaseDate`
+  later than the move: a resubscribe), whose buyer owns it again.
+- Stripe `invoice.paid` (and a redelivered `checkout.session.completed`) use
+  the bridge's binding over the metadata; the transfer also rewrites the
+  subscription's `cvpn_code` (best effort) so the Stripe dashboard agrees.
+- `/verify` from the device a subscription left — its app re-verifies held
+  purchases on every launch, and the account id still matches it — settles to
+  the current owner instead of rebinding; otherwise a move would drift back
+  past its 30-day limit. Before any move, verify is exactly as it was.
+
+**Stripe.** `POST /v1/stripe/transfer {session_id, payment_code}` is
+authorized by the Checkout Session id, exactly like the portal (below) — the
+payment code is the NEW device's and authorizes nothing. Billing stays with
+the buyer: the portal remains keyed on the original session and code.
+
+**Support.** `POST /internal/subscriptions/rebind {rail, external_id,
+payment_code, grant_remaining}` (admin token; the dashboard's Subscriber
+lookup → Move…) moves a subscription with no 30-day limit; `grant_remaining`
+uses the SAME per-period key, so support cannot double-grant a period
+either. Google and Stripe read the live period from the store; Apple uses the
+last verified transaction's (`apple_expires_ms` — there is no App Store
+Server API key to ask). Moves show in `/internal/subscriptions` as
+`transfers` under both codes.
+
 ## Vouchers & promo codes
 
 Dashboard-managed codes (bridge SQLite; admin via `/internal/vouchers`,
@@ -146,6 +235,13 @@ payment_code)` + the payments queue's `UNIQUE(rail, event_key)`.
   when the session is unknown, has no customer, or is bound to another code.
 - `POST /v1/apple/verify` `{payment_code, signed_transaction}`
 - `POST /v1/google/verify` `{payment_code, purchase_token}`
+- `POST /v1/apple/claim` `{payment_code, signed_transaction, transfer?}` /
+  `POST /v1/google/claim` `{payment_code, purchase_token, transfer?}` →
+  `{accepted, days, months, state:'pending', transferred, test}` (Apple adds
+  `sandbox`, as verify). `409 owned_by_other_device` / `409 transfer_too_soon`;
+  store failures `422 verify_failed` as verify. See "Claims and transfers".
+- `POST /v1/stripe/transfer` `{session_id, payment_code}` → same shape.
+  `409 transfer_too_soon` / `409 already_bound` / `404 no_subscription`.
 - `GET  /v1/payment/:code/status` → recent payments with
   `pending | broadcast | confirmed | failed` + `txid` — the "activating…"
   UX while waiting for the chain.

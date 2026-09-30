@@ -128,6 +128,23 @@ export const sw: Catalog = {
   manage_cta_busy: 'Inafungua tovuti ya malipo…',
   manage_err:
     'Haikuwezekana kufungua tovuti ya malipo kwenye kivinjari hiki. Unaweza kila wakati kudhibiti au kughairi kupitia kiungo kilicho katika barua pepe ya risiti ya Stripe.',
+  transfer_cta: 'Hamishia kwenye kifaa kingine',
+  transfer_lede:
+    'Umesakinisha programu upya au una simu mpya? Weka msimbo wa kifaa kutoka Mipangilio → Kuhusu kwenye kifaa kipya. Kitapata mara moja muda uliobaki wa kipindi hiki cha malipo, na kila usasishaji baada ya hapo. Usajili unaweza kuhamishwa mara moja kila siku 30.',
+  transfer_next: 'Endelea',
+  transfer_cancel: 'Ghairi',
+  transfer_confirm:
+    'Hamishia usajili huu kwa {code}? Hakikisha unalingana na msimbo unaoonyeshwa kwenye kifaa hicho — msimbo uliokosewa unaweza bado kuwa sahihi na ukauhamishia kifaa kisicho sahihi.',
+  transfer_confirm_cta: 'Hamisha usajili',
+  transfer_busy: 'Inahamisha…',
+  transfer_done:
+    'Imehamishwa. Premium kwa muda uliobaki wa kipindi hiki cha malipo inawashwa kwenye {code}, na usasishaji utaenda kwenye kifaa hicho. Malipo yanabaki hapa — dhibiti au ghairi kutoka ukurasa huu kama awali.',
+  transfer_err_soon:
+    'Usajili huu ulihamishwa hivi karibuni. Unaweza kuhamishwa tena tarehe {date}.',
+  transfer_err_same: 'Kifaa hicho tayari kina usajili huu.',
+  transfer_err_none:
+    'Hakuna usajili hai wa kadi uliopatikana kwa ununuzi wa kivinjari hiki, kwa hiyo hakuna cha kuhamisha.',
+  transfer_err: 'Imeshindwa kuhamisha usajili. Tafadhali jaribu tena baada ya muda mfupi.',
 
   redeem_eyebrow: 'Una msimbo?',
   redeem_lede:

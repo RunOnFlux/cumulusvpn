@@ -54,7 +54,12 @@ async function serverWith(env: NodeJS.ProcessEnv) {
 describe('cors: the browser preflight that broke card checkout', () => {
   it('answers the preflight for every endpoint the web app calls', async () => {
     const app = await serverWith(BASE_ENV);
-    for (const url of ['/v1/stripe/checkout', '/v1/stripe/portal', '/v1/voucher/redeem']) {
+    for (const url of [
+      '/v1/stripe/checkout',
+      '/v1/stripe/portal',
+      '/v1/stripe/transfer',
+      '/v1/voucher/redeem',
+    ]) {
       const res = await app.inject({
         method: 'OPTIONS',
         url,

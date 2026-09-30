@@ -130,7 +130,9 @@ export function UpgradeScreen({
                 </Text>
               </View>
             ) : null}
-            {iap ? (
+            {/* Only with a store subscription to manage: premium paid in FLUX
+                has none, and the store's page would open empty. */}
+            {iap?.holdsSubscription ? (
               <Pressable
                 onPress={() => void Linking.openURL(MANAGE_URL)}
                 accessibilityRole="link"
@@ -159,6 +161,7 @@ export function UpgradeScreen({
         )}
       </View>
 
+      {iap?.transferOffer ? <TransferOffer iap={iap} /> : null}
       {iap && !premium ? <SubscribeSection iap={iap} /> : null}
       {voucherEnabled && payment ? <RedeemSection code={payment.code} /> : null}
       {iap ? <StoreOfferCodeRow /> : null}
@@ -255,13 +258,15 @@ function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Elemen
             <Pressable onPress={() => iap.restore()} accessibilityRole="button" hitSlop={8}>
               <Text style={styles.link}>Restore Purchases</Text>
             </Pressable>
-            <Pressable
-              onPress={() => void Linking.openURL(MANAGE_URL)}
-              accessibilityRole="link"
-              hitSlop={8}
-            >
-              <Text style={styles.link}>Manage Subscription</Text>
-            </Pressable>
+            {iap.holdsSubscription ? (
+              <Pressable
+                onPress={() => void Linking.openURL(MANAGE_URL)}
+                accessibilityRole="link"
+                hitSlop={8}
+              >
+                <Text style={styles.link}>Manage Subscription</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               onPress={() => void Linking.openURL(PRIVACY_URL)}
               accessibilityRole="link"
@@ -280,6 +285,37 @@ function SubscribeSection({ iap }: { readonly iap: IapState }): React.JSX.Elemen
         </>
       )}
     </>
+  );
+}
+
+/**
+ * The store account holds a subscription another identity owns — this device
+ * before a reinstall, or another phone. Moving it is the user's call (two
+ * devices on one store account must not tug it back and forth on their own).
+ */
+function TransferOffer({ iap }: { readonly iap: IapState }): React.JSX.Element {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.copy}>
+        Your store account has a CumulusVPN subscription that belongs to another identity — this
+        device before it was reinstalled, or another phone. Move it to this device?
+      </Text>
+      <Text style={styles.note}>
+        The rest of the current period and all renewals then unlock this device. The other identity
+        keeps premium until its current period ends. A subscription can move once every 30 days.
+      </Text>
+      <Pressable
+        onPress={iap.transfer}
+        accessibilityRole="button"
+        style={({ pressed }) => [styles.payBtn, pressed && styles.payBtnPressed]}
+      >
+        <Text style={styles.payBtnLabel}>Move it here</Text>
+      </Pressable>
+      <Pressable onPress={iap.dismissTransfer} accessibilityRole="button" hitSlop={8}>
+        <Text style={styles.link}>Not now</Text>
+      </Pressable>
+      {iap.error ? <Text style={styles.walletError}>{iap.error}</Text> : null}
+    </View>
   );
 }
 

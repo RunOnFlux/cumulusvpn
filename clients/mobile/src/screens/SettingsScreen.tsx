@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
+import { IdentitySection } from '../components/IdentitySection';
 import { PoweredByFlux } from '../components/PoweredByFlux';
 import { SplitTunnelingSection } from '../components/SplitTunnelingSection';
 import { TierPill } from '../components/TierPill';
@@ -177,6 +178,11 @@ export function SettingsScreen({
           </>
         )}
 
+        {/* The device identity — premium is paid to it — and how it survives
+            deleting the app or moving phones (state/identity.ts). */}
+        <Text style={styles.section}>Your identity</Text>
+        <IdentitySection vpn={vpn} />
+
         <Text style={styles.section}>Privacy &amp; support</Text>
         <Pressable
           style={styles.linkRow}
@@ -234,7 +240,8 @@ export function SettingsScreen({
         </Pressable>
 
         <Text style={styles.footer}>
-          Decentralized WireGuard VPN on Flux Cloud. No logs; your key never leaves this device.
+          Decentralized WireGuard VPN on Flux Cloud. No logs; your key stays on this device and in
+          its encrypted backup while that is on.
         </Text>
 
         <View style={styles.poweredBy}>

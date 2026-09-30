@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privasi lewat arsitektur</span>
     <h1>Kebijakan Privasi</h1>
-    <p class="doc-meta">Terakhir diperbarui: 14 Agustus 2026 · Berlaku: 14 Agustus 2026</p>
+    <p class="doc-meta">Terakhir diperbarui: 30 September 2026 · Berlaku: 14 Agustus 2026</p>
 
   <p class="doc-meta">Terjemahan ini disediakan untuk kemudahan; versi bahasa Inggris di cumulusvpn.com/privacy adalah yang otoritatif.</p>
   </div>
@@ -124,7 +124,7 @@
     <h2>4. Apa yang secara teknis terlibat (dan mengapa itu bukan profil tentang Anda)</h2>
     <p>VPN tidak bisa berfungsi tanpa sejumlah data yang melewatinya secara real-time. Berikut semuanya, dan mengapa tidak satu pun darinya menjadi catatan tentang Anda.</p>
     <h3>4.1 Kunci publik Anda (identifier semu/pseudonim)</h3>
-    <p>Perangkat Anda membuat sepasang kunci WireGuard secara lokal saat pertama kali dijalankan. <strong>Kunci privat tidak pernah meninggalkan perangkat Anda</strong> — bahkan ke kami sekalipun. Hanya <strong>kunci publik</strong> yang dikirim ke gateway agar bisa merutekan tunnel terenkripsi Anda. Kunci publik adalah nilai 32-byte yang tampak acak. Ini tidak terkait dengan nama, email, atau perangkat keras Anda, dan Anda bisa membuatnya ulang kapan saja. Ini adalah samaran, bukan identitas.</p>
+    <p>Perangkat Anda membuat sepasang kunci WireGuard secara lokal saat pertama kali dijalankan. <strong>Kunci privat tidak pernah dikirim ke kami atau ke gateway mana pun</strong>. Agar tidak hilang saat Anda menghapus dan menginstal ulang aplikasi — atau pindah ke ponsel baru — aplikasi menyimpan <strong>cadangan terenkripsi</strong> dari kunci tersebut: di Keychain iPhone pada iOS, dan di Android pada Block Store milik Google, terenkripsi end-to-end dengan kunci layar Anda sehingga baik Google maupun kami tidak dapat membacanya. Cadangan ini aktif secara default dan dapat dinonaktifkan di Pengaturan. Hanya <strong>kunci publik</strong> yang dikirim ke gateway agar bisa merutekan tunnel terenkripsi Anda. Kunci publik adalah nilai 32-byte yang tampak acak. Ini tidak terkait dengan nama, email, atau perangkat keras Anda, dan Anda bisa membuatnya ulang kapan saja. Ini adalah samaran, bukan identitas.</p>
     <h3>4.2 State peer dalam memori di gateway</h3>
     <p>Saat Anda terhubung, gateway menyimpan — <strong>hanya di memori volatil (RAM)</strong> — hal minimum yang dibutuhkan untuk merutekan paket: kunci publik Anda, IP tunnel internal sementara yang ditetapkan untuknya (misalnya 10.8.x.y), dan penghitung byte yang digunakan untuk menerapkan tingkat kecepatan Anda. State ini <strong>tidak pernah ditulis ke disk</strong>, tidak dikirim ke server pusat mana pun, dan <strong>terhapus saat proses gateway di-restart</strong> atau Anda memutuskan koneksi. Tidak ada log historis yang dibangun darinya.</p>
     <h3>4.3 Alamat IP asli Anda, secara sementara</h3>
@@ -166,7 +166,7 @@
     <p>Tergantung di mana Anda tinggal, Anda mungkin memiliki hak untuk mengakses, mengoreksi, menghapus, atau memindahkan data pribadi Anda, untuk menolak atau membatasi pemrosesan, dan (di California) untuk mengetahui apa yang dikumpulkan dan tidak didiskriminasi karena menjalankan hak-hak ini. Karena layanan ini anonim:</p>
     <ul>
       <li><strong>Akses / portabilitas:</strong> Kami umumnya tidak memiliki data pribadi yang terkait dengan Anda untuk diberikan. Jika Anda pernah mengirim email ke bantuan, Anda bisa meminta salinan korespondensi itu.</li>
-      <li><strong>Penghapusan:</strong> Tidak ada apa pun yang terkait dengan identitas Anda untuk kami hapus dari gateway; state peer sudah bersifat sementara, hanya di RAM, dan terhapus saat terputus/restart. Anda bisa menghapus kunci Anda di perangkat Anda kapan saja, yang sepenuhnya memutus tautan samaran tersebut.</li>
+      <li><strong>Penghapusan:</strong> Tidak ada apa pun yang terkait dengan identitas Anda untuk kami hapus dari gateway; state peer sudah bersifat sementara, hanya di RAM, dan terhapus saat terputus/restart. Anda bisa menghapus kunci Anda di perangkat Anda kapan saja (nonaktifkan dulu cadangan identitas di Pengaturan, agar tidak ada salinan yang tersisa), yang sepenuhnya memutus tautan samaran tersebut.</li>
       <li><strong>Larangan-menjual / larangan-membagikan:</strong> Kami tidak menjual atau membagikan data pribadi, jadi tidak ada yang perlu di-opt-out.</li>
     </ul>
     <p>Untuk menjalankan hak apa pun, kirim email ke <strong>info@cumulusvpn.com</strong>. Kami mungkin tidak bisa mengidentifikasi Anda dalam catatan kami (yang tidak ada) justru karena layanan ini anonim — itu adalah bagian dari desain, bukan penghindaran. Anda juga memiliki hak untuk mengajukan keluhan ke otoritas perlindungan data setempat Anda.</p>
@@ -175,7 +175,7 @@
     <p>CumulusVPN tidak ditujukan untuk anak-anak di bawah 13 tahun (atau usia minimum persetujuan digital di negara Anda). Kami tidak dengan sengaja mengumpulkan data pribadi dari anak-anak. Karena kami tidak mengumpulkan data identitas apa pun dari siapa pun, kami tidak bisa menentukan usia pengguna; layanan ini ditujukan untuk khalayak umum dan tidak dipasarkan kepada anak-anak.</p>
 
     <h2>12. Keamanan</h2>
-    <p>Trafik dienkripsi end-to-end antara perangkat Anda dan gateway menggunakan protokol WireGuard® (kriptografi modern yang teraudit). Kunci privat Anda tidak pernah meninggalkan perangkat Anda. State peer di sisi server hanya disimpan di memori. Aplikasi menjangkau control API setiap gateway lewat koneksi langsung yang responsnya ditandatangani ed25519 dan diverifikasi oleh aplikasi, sehingga keaslian direktori server dan respons gateway dilindungi oleh tanda tangan digital, bukan oleh sertifikat transport.</p>
+    <p>Trafik dienkripsi end-to-end antara perangkat Anda dan gateway menggunakan protokol WireGuard® (kriptografi modern yang teraudit). Kunci privat Anda tidak pernah dikirim ke kami atau ke gateway mana pun; satu-satunya salinannya di luar aplikasi adalah cadangan terenkripsi yang dijelaskan di bagian 4.1, yang dapat Anda nonaktifkan. State peer di sisi server hanya disimpan di memori. Aplikasi menjangkau control API setiap gateway lewat koneksi langsung yang responsnya ditandatangani ed25519 dan diverifikasi oleh aplikasi, sehingga keaslian direktori server dan respons gateway dilindungi oleh tanda tangan digital, bukan oleh sertifikat transport.</p>
 
     <h2>13. Perubahan pada kebijakan ini</h2>
     <p>Jika kami mengubah kebijakan ini, kami akan memperbarui tanggal "Terakhir diperbarui" di atas dan mempublikasikan versi baru di <a href="https://cumulusvpn.com/privacy">cumulusvpn.com/privacy</a>. Perubahan material akan disorot. Karena kami tidak menyimpan mailing list, situs web adalah sumber resmi untuk kebijakan yang berlaku saat ini.</p>

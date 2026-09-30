@@ -1,8 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
+  claimApplePurchase,
+  claimGooglePurchase,
   createStripeCheckout,
   paymentStatus,
   redeemVoucher,
+  transferAvailableAt,
+  transferStripeSubscription,
   verifyApplePurchase,
   verifyGooglePurchase,
   DEFAULT_BRIDGE_URL,
@@ -138,5 +142,85 @@ describe('createStripeCheckout with voucher', () => {
     await createStripeCheckout(f, { code: CODE, plan: 'annual', voucher: 'HALFOFF9' });
     const [, init] = f.mock.calls[0] as [string, RequestInit];
     expect(JSON.parse(init.body as string).voucher).toBe('HALFOFF9');
+  });
+});
+
+describe('claims and transfers', () => {
+  const claimed = {
+    status: 'success',
+    data: {
+      accepted: true,
+      days: 30,
+      months: 1,
+      state: 'pending',
+      transferred: false,
+      test: false,
+    },
+  };
+
+  it('claims a Play purchase without asking to transfer by default', async () => {
+    const f = fetchReturning(claimed);
+    const out = await claimGooglePurchase(f, { code: CODE, purchaseToken: 'tok123'.repeat(4) });
+    expect(out.transferred).toBe(false);
+    const [url, init] = f.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${DEFAULT_BRIDGE_URL}/v1/google/claim`);
+    expect(JSON.parse(init.body as string)).toEqual({
+      payment_code: CODE,
+      purchase_token: 'tok123'.repeat(4),
+    });
+  });
+
+  it('sends transfer: true only when the user confirmed the move', async () => {
+    const f = fetchReturning({ ...claimed, data: { ...claimed.data, transferred: true } });
+    await claimApplePurchase(f, { code: CODE, signedTransaction: 'ey.abc.def', transfer: true });
+    const [url, init] = f.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${DEFAULT_BRIDGE_URL}/v1/apple/claim`);
+    expect(JSON.parse(init.body as string)).toEqual({
+      payment_code: CODE,
+      signed_transaction: 'ey.abc.def',
+      transfer: true,
+    });
+  });
+
+  it('surfaces owned_by_other_device as an ApiError slug the app can branch on', async () => {
+    const f = fetchReturning({
+      status: 'error',
+      data: { code: '409', name: 'owned_by_other_device', message: 'confirm, then transfer' },
+    });
+    await expect(
+      claimGooglePurchase(f, { code: CODE, purchaseToken: 'tok123'.repeat(4) }),
+    ).rejects.toMatchObject({ code: '409', slug: 'owned_by_other_device' });
+  });
+
+  it('moves a card subscription with the checkout session as the capability', async () => {
+    const f = fetchReturning({ ...claimed, data: { ...claimed.data, transferred: true } });
+    const out = await transferStripeSubscription(f, { sessionId: 'cs_live_abc', code: CODE });
+    expect(out.transferred).toBe(true);
+    const [url, init] = f.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe(`${DEFAULT_BRIDGE_URL}/v1/stripe/transfer`);
+    expect(JSON.parse(init.body as string)).toEqual({
+      session_id: 'cs_live_abc',
+      payment_code: CODE,
+    });
+  });
+
+  it('reads when a too-soon transfer becomes possible', async () => {
+    const f = fetchReturning({
+      status: 'error',
+      data: {
+        code: '409',
+        name: 'transfer_too_soon',
+        message:
+          'this subscription moved in the last 30 days; it can move again after 2026-10-30T12:00:00.000Z',
+      },
+    });
+    const err = await transferStripeSubscription(f, { sessionId: 'cs_live_abc', code: CODE }).catch(
+      (e: unknown) => e,
+    );
+    expect(transferAvailableAt(err)?.toISOString()).toBe('2026-10-30T12:00:00.000Z');
+    expect(
+      transferAvailableAt(new ApiError({ code: '409', name: 'already_bound', message: 'x' })),
+    ).toBeNull();
+    expect(transferAvailableAt(new Error('network'))).toBeNull();
   });
 });

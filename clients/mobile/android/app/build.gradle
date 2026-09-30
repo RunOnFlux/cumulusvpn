@@ -142,6 +142,11 @@ dependencies {
     // `gomobile bind`. See CumulusMultihopVpnService.kt.
     implementation(files("libs/wgmobile.aar"))
 
+    // Identity backup: Block Store keeps the device key across uninstall and
+    // moves it to a new phone (end-to-end encrypted when it goes to the cloud).
+    // See identity/CumulusIdentityModule.kt.
+    implementation("com.google.android.gms:play-services-auth-blockstore:16.4.0")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

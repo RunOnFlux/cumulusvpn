@@ -128,6 +128,23 @@ export const id: Catalog = {
   manage_cta_busy: 'Membuka portal penagihan…',
   manage_err:
     'Portal penagihan tidak dapat dibuka dari peramban ini. Kamu selalu bisa mengelola atau membatalkan lewat tautan di email tanda terima Stripe.',
+  transfer_cta: 'Pindahkan ke perangkat lain',
+  transfer_lede:
+    'Menginstal ulang aplikasi atau punya ponsel baru? Masukkan kode perangkat dari Pengaturan → Tentang di perangkat baru. Perangkat itu langsung mendapat sisa periode penagihan ini, lalu setiap perpanjangan berikutnya. Langganan bisa dipindahkan sekali setiap 30 hari.',
+  transfer_next: 'Lanjut',
+  transfer_cancel: 'Batal',
+  transfer_confirm:
+    'Pindahkan langganan ini ke {code}? Pastikan cocok dengan kode yang tampil di perangkat itu — kode yang salah ketik bisa tetap valid dan akan memindahkannya ke perangkat yang keliru.',
+  transfer_confirm_cta: 'Pindahkan langganan',
+  transfer_busy: 'Memindahkan…',
+  transfer_done:
+    'Dipindahkan. Premium untuk sisa periode penagihan ini sedang diaktifkan di {code}, dan perpanjangan akan masuk ke perangkat itu. Penagihan tetap di sini — kelola atau batalkan dari halaman ini seperti sebelumnya.',
+  transfer_err_soon:
+    'Langganan ini baru saja dipindahkan. Langganan bisa dipindahkan lagi pada {date}.',
+  transfer_err_same: 'Perangkat itu sudah memiliki langganan ini.',
+  transfer_err_none:
+    'Tidak ditemukan langganan kartu yang aktif untuk pembelian di peramban ini, jadi tidak ada yang bisa dipindahkan.',
+  transfer_err: 'Langganan tidak dapat dipindahkan. Coba lagi sebentar lagi.',
 
   redeem_eyebrow: 'Punya kode?',
   redeem_lede:

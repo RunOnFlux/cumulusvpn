@@ -26,6 +26,7 @@ import {
   type VouchersRepo,
 } from './db/vouchers.js';
 import { zatsForDays } from './grants.js';
+import { tooSoonMessage, type ClaimOutcome } from './transfers.js';
 import { InvalidAttemptBreaker } from './breaker.js';
 import { Alerter } from './worker/alerts.js';
 import { StripeRail } from './rails/stripe.js';
@@ -116,6 +117,62 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
 
   const badRequest = (reply: FastifyReply, name: string, message: string): FastifyReply =>
     reply.code(400).send(err(400, name, message));
+
+  /**
+   * Reply for a claim or transfer (docs/18 "Claims and transfers"). The
+   * refusals a client acts on are 409s under their own names —
+   * `owned_by_other_device` (ask the user, then resend with transfer: true)
+   * and `transfer_too_soon` (the message ends in the ISO-8601 date it becomes
+   * possible) — plus Stripe's `already_bound` / `no_subscription`. Anything
+   * else is a verification failure, reported exactly like verify's.
+   */
+  const sendClaim = (
+    reply: FastifyReply,
+    outcome: ClaimOutcome,
+    extra: Record<string, unknown> = {},
+  ): FastifyReply => {
+    if (!outcome.accepted) {
+      switch (outcome.reason) {
+        case 'owned_by_other_device':
+          return reply
+            .code(409)
+            .send(
+              err(
+                409,
+                'owned_by_other_device',
+                'this subscription belongs to another device; confirm, then resend with transfer: true to move it here',
+              ),
+            );
+        case 'transfer_too_soon':
+          return reply
+            .code(409)
+            .send(err(409, 'transfer_too_soon', tooSoonMessage(outcome.availableAt ?? 0)));
+        case 'already_bound':
+          return reply
+            .code(409)
+            .send(err(409, 'already_bound', 'this subscription already belongs to that device'));
+        case 'no_subscription':
+          return reply
+            .code(404)
+            .send(
+              err(404, 'no_subscription', 'no active card subscription found for this checkout'),
+            );
+        default:
+          return reply.code(422).send(err(422, 'verify_failed', outcome.reason));
+      }
+    }
+    return reply.send(
+      ok({
+        accepted: true,
+        days: outcome.days,
+        months: outcome.days === undefined ? undefined : Math.floor(outcome.days / 30),
+        state: 'pending',
+        transferred: outcome.transferred === true,
+        test: outcome.test === true,
+        ...extra,
+      }),
+    );
+  };
 
   /**
    * Bearer ADMIN_TOKEN gate for /internal endpoints. Constant-time via
@@ -322,6 +379,41 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
       },
     );
 
+    // Move a card subscription to another device (the buyer's new phone, a
+    // reinstall). The Checkout Session id is the capability, exactly as for
+    // the portal above; the payment code is the NEW device's and authorizes
+    // nothing on its own.
+    app.post(
+      '/v1/stripe/transfer',
+      {
+        config: { rateLimit: { max: 5, timeWindow: '1 minute' } },
+        schema: {
+          body: {
+            type: 'object',
+            required: ['payment_code', 'session_id'],
+            properties: {
+              payment_code: { type: 'string', minLength: 20, maxLength: 40 },
+              session_id: { type: 'string', minLength: 10, maxLength: 200 },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { payment_code, session_id } = req.body as {
+          payment_code: string;
+          session_id: string;
+        };
+        if (!isValidPaymentCode(payment_code)) {
+          return badRequest(
+            reply,
+            'bad_code',
+            'payment_code is not a valid CumulusVPN payment code',
+          );
+        }
+        return sendClaim(reply, await stripe.transferSubscription(session_id, payment_code));
+      },
+    );
+
     app.post('/v1/stripe/webhook', { config: { rateLimit: false } }, async (req, reply) => {
       const signature = req.headers['stripe-signature'];
       if (typeof signature !== 'string' || !req.rawBody) {
@@ -384,6 +476,48 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
       },
     );
 
+    // Restore / offer-code redemption / move from another device. Same
+    // verification as /verify, but ownership comes from the persisted binding
+    // (docs/18 "Claims and transfers"); /verify stays strict for fresh buys.
+    app.post(
+      '/v1/apple/claim',
+      {
+        config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+        schema: {
+          body: {
+            type: 'object',
+            required: ['payment_code', 'signed_transaction'],
+            properties: {
+              payment_code: { type: 'string', minLength: 20, maxLength: 40 },
+              signed_transaction: { type: 'string', minLength: 100, maxLength: 100_000 },
+              transfer: { type: 'boolean' },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { payment_code, signed_transaction, transfer } = req.body as {
+          payment_code: string;
+          signed_transaction: string;
+          transfer?: boolean;
+        };
+        if (!isValidPaymentCode(payment_code)) {
+          return badRequest(
+            reply,
+            'bad_code',
+            'payment_code is not a valid CumulusVPN payment code',
+          );
+        }
+        const outcome = await apple.claimPurchase(
+          payment_code,
+          signed_transaction,
+          transfer === true,
+        );
+        // `sandbox` mirrors /v1/apple/verify; `test` is the rail-neutral name.
+        return sendClaim(reply, outcome, { sandbox: outcome.test === true });
+      },
+    );
+
     app.post('/v1/apple/notifications', { config: { rateLimit: false } }, async (req, reply) => {
       const body = req.body as { signedPayload?: string };
       if (typeof body?.signedPayload !== 'string') {
@@ -440,6 +574,45 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
             state: 'pending',
             test: outcome.test === true,
           }),
+        );
+      },
+    );
+
+    // Restore / Play promo-code redemption / move from another device. Same
+    // verification as /verify, but ownership comes from the persisted binding
+    // (docs/18 "Claims and transfers"); /verify stays strict for fresh buys.
+    app.post(
+      '/v1/google/claim',
+      {
+        config: { rateLimit: { max: 20, timeWindow: '1 minute' } },
+        schema: {
+          body: {
+            type: 'object',
+            required: ['payment_code', 'purchase_token'],
+            properties: {
+              payment_code: { type: 'string', minLength: 20, maxLength: 40 },
+              purchase_token: { type: 'string', minLength: 20, maxLength: 4000 },
+              transfer: { type: 'boolean' },
+            },
+          },
+        },
+      },
+      async (req, reply) => {
+        const { payment_code, purchase_token, transfer } = req.body as {
+          payment_code: string;
+          purchase_token: string;
+          transfer?: boolean;
+        };
+        if (!isValidPaymentCode(payment_code)) {
+          return badRequest(
+            reply,
+            'bad_code',
+            'payment_code is not a valid CumulusVPN payment code',
+          );
+        }
+        return sendClaim(
+          reply,
+          await gp.claimPurchase(payment_code, purchase_token, transfer === true),
         );
       },
     );
@@ -544,8 +717,20 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
           plan: s.plan,
           status: s.status,
           stripe_customer_id: s.stripe_customer_id,
+          transferred_at: s.transferred_at,
           created_at: s.created_at,
           updated_at: s.updated_at,
+        })),
+        // Moves into or out of this code — the old code's subscription list is
+        // empty after a transfer, so this is where support finds where it went.
+        transfers: deps.subs.transfersForCode(code).map((t) => ({
+          rail: t.rail,
+          external_id: t.external_id,
+          from_code: t.from_code,
+          to_code: t.to_code,
+          actor: t.actor,
+          days: t.days,
+          created_at: t.created_at,
         })),
         payments: deps.payments.byCode(code, 25).map((p) => ({
           rail: p.rail,
@@ -559,6 +744,92 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
       }),
     );
   });
+
+  /**
+   * Support override: move a subscription to another payment code, with no
+   * 30-day limit (docs/18 "Claims and transfers"). `external_id` is the handle
+   * the lookup above returns. `grant_remaining` hands the new code the rest of
+   * the current period under the SAME per-period key a user transfer uses, so
+   * support cannot double-grant a period either — a second grant for the same
+   * period comes back `grant: 'duplicate'`.
+   */
+  app.post(
+    '/internal/subscriptions/rebind',
+    { config: { rateLimit: false } },
+    async (req, reply) => {
+      if (!requireAdmin(req, reply)) {
+        return reply;
+      }
+      const b = (req.body ?? {}) as {
+        rail?: unknown;
+        external_id?: unknown;
+        payment_code?: unknown;
+        grant_remaining?: unknown;
+      };
+      if (b.rail !== 'google' && b.rail !== 'apple' && b.rail !== 'stripe') {
+        return badRequest(reply, 'bad_request', "rail must be 'google', 'apple' or 'stripe'");
+      }
+      if (
+        typeof b.external_id !== 'string' ||
+        b.external_id === '' ||
+        b.external_id.length > 4000
+      ) {
+        return badRequest(reply, 'bad_request', 'external_id is required');
+      }
+      if (typeof b.payment_code !== 'string' || !isValidPaymentCode(b.payment_code)) {
+        return badRequest(
+          reply,
+          'bad_code',
+          'payment_code must be a valid CumulusVPN payment code',
+        );
+      }
+      if (b.grant_remaining !== undefined && typeof b.grant_remaining !== 'boolean') {
+        return badRequest(reply, 'bad_request', 'grant_remaining must be a boolean');
+      }
+      const grant = b.grant_remaining === true;
+      const known = deps.subs.get(b.rail, b.external_id);
+      if (!known) {
+        return reply.code(404).send(err(404, 'not_found', 'no such subscription'));
+      }
+      if (known.payment_code === b.payment_code && !grant) {
+        return reply
+          .code(409)
+          .send(err(409, 'already_bound', 'this subscription already belongs to that code'));
+      }
+      const rail = b.rail === 'google' ? d.google : b.rail === 'apple' ? d.apple : d.stripe;
+      if (!rail) {
+        return reply
+          .code(409)
+          .send(err(409, 'rail_disabled', `the ${b.rail} rail is not configured on this bridge`));
+      }
+      const outcome = await rail.adminRebind(b.external_id, b.payment_code, grant);
+      if (!outcome.ok) {
+        if (outcome.reason === 'not_found') {
+          return reply.code(404).send(err(404, 'not_found', 'no such subscription'));
+        }
+        const name =
+          outcome.reason === 'not_active' || outcome.reason === 'no_current_period'
+            ? outcome.reason
+            : 'cannot_grant';
+        return reply.code(409).send(err(409, name, outcome.reason));
+      }
+      req.log.info(
+        { rail: b.rail, days: outcome.days, grant: outcome.grant },
+        'subscription rebound by admin',
+      );
+      return reply.send(
+        ok({
+          rail: b.rail,
+          external_id: b.external_id,
+          payment_code: b.payment_code,
+          previous_code: outcome.previousCode ?? null,
+          days: outcome.days ?? 0,
+          grant: outcome.grant ?? 'none',
+          test: outcome.test === true,
+        }),
+      );
+    },
+  );
 
   // ---- Voucher admin (dashboard proxies here with the bridge admin token) ----
   app.get('/internal/vouchers', { config: { rateLimit: false } }, async (req, reply) => {

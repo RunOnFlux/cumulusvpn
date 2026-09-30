@@ -191,6 +191,119 @@ export async function verifyGooglePurchase(
 }
 
 /**
+ * Result of a claim or a transfer: the verify shape plus `transferred`
+ * (true when the subscription just moved to this code and `days` is the rest
+ * of its current period, false when it was simply claimed).
+ */
+export interface ClaimResult {
+  readonly accepted: boolean;
+  readonly days: number;
+  readonly months: number;
+  readonly state: string;
+  readonly transferred: boolean;
+  /** Store sandbox / license-tester / Stripe test mode (bounded or no grant). */
+  readonly test: boolean;
+}
+
+/**
+ * Claim a Google Play subscription for this device — Restore Purchases after
+ * a reinstall (a reinstall is a new key, so a new code), or a promo code
+ * redeemed in the Play Store (which carries no account id at all). Unlike
+ * {@link verifyGooglePurchase}, the purchase need not have been bought for
+ * `code`: the bridge binds it to the first claimant when it is unbound, and
+ * behaves exactly like verify when it is already this code's.
+ *
+ * When the subscription belongs to ANOTHER device the call throws
+ * {@link ApiError} with `slug === 'owned_by_other_device'` (HTTP 409): ask the
+ * user, then call again with `transfer: true` to move it here. A transfer
+ * hands this code the rest of the current period and all future renewals, at
+ * most once per subscription per 30 days — otherwise the slug is
+ * `transfer_too_soon` (409), and the message ends in the ISO-8601 date it
+ * becomes possible ({@link transferAvailableAt} parses it). Store verification
+ * failures surface as `verify_failed` (422), as for verify.
+ */
+export async function claimGooglePurchase(
+  fetchImpl: FetchImpl,
+  params: { code: string; purchaseToken: string; transfer?: boolean },
+  opts?: BridgeOptions,
+): Promise<ClaimResult> {
+  return bridgeFetch(
+    fetchImpl,
+    '/v1/google/claim',
+    postJson({
+      payment_code: params.code,
+      purchase_token: params.purchaseToken,
+      ...(params.transfer === true ? { transfer: true } : {}),
+    }),
+    opts,
+  );
+}
+
+/**
+ * Claim an Apple subscription for this device — Restore Purchases after a
+ * reinstall, or an offer code redeemed in the App Store (no
+ * `appAccountToken`). `signedTransaction` must be the subscription's CURRENT
+ * transaction: the bridge rejects expired or revoked ones (`verify_failed`).
+ * Same ownership rules, transfer flow and error slugs as
+ * {@link claimGooglePurchase}. `sandbox` mirrors {@link verifyApplePurchase}.
+ */
+export async function claimApplePurchase(
+  fetchImpl: FetchImpl,
+  params: { code: string; signedTransaction: string; transfer?: boolean },
+  opts?: BridgeOptions,
+): Promise<ClaimResult & { sandbox: boolean }> {
+  return bridgeFetch(
+    fetchImpl,
+    '/v1/apple/claim',
+    postJson({
+      payment_code: params.code,
+      signed_transaction: params.signedTransaction,
+      ...(params.transfer === true ? { transfer: true } : {}),
+    }),
+    opts,
+  );
+}
+
+/**
+ * Move a card subscription to another device (e.g. the user's new phone),
+ * which gets the rest of the current period and every future renewal.
+ *
+ * Authorized like {@link openBillingPortal}: `sessionId` is the Checkout
+ * Session of the purchase and is the capability; `code` is the NEW device's
+ * payment code and authorizes nothing on its own. At most once per
+ * subscription per 30 days. Throws {@link ApiError} with slug
+ * `transfer_too_soon` (409; message ends in the ISO-8601 date, see
+ * {@link transferAvailableAt}), `already_bound` (409, that device already has
+ * it) or `no_subscription` (404: unknown session, or no active subscription).
+ */
+export async function transferStripeSubscription(
+  fetchImpl: FetchImpl,
+  params: { sessionId: string; code: string },
+  opts?: BridgeOptions,
+): Promise<ClaimResult> {
+  return bridgeFetch(
+    fetchImpl,
+    '/v1/stripe/transfer',
+    postJson({ session_id: params.sessionId, payment_code: params.code }),
+    opts,
+  );
+}
+
+/**
+ * When a subscription refused with `transfer_too_soon` can move again, read
+ * from the ISO-8601 date the bridge ends that error's message with. Null for
+ * any other error, or a message without a date.
+ */
+export function transferAvailableAt(err: unknown): Date | null {
+  if (!(err instanceof ApiError) || err.slug !== 'transfer_too_soon') {
+    return null;
+  }
+  const iso = /(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z)$/.exec(err.message)?.[1];
+  const at = iso === undefined ? NaN : Date.parse(iso);
+  return Number.isNaN(at) ? null : new Date(at);
+}
+
+/**
  * Recent bridge payments for a code — drives the "Activating…" UX between
  * a fiat payment and the gateways seeing the confirmed chain tx.
  */

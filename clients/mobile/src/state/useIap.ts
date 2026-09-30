@@ -11,9 +11,11 @@
  * reports premium — the same chain-derived signal every surface trusts.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { paymentStatus } from '@cumulusvpn/core';
+import { AppState } from 'react-native';
+import type { Purchase } from 'react-native-iap';
+import { paymentStatus, transferAvailableAt } from '@cumulusvpn/core';
 import { startIapSession } from '../lib/iap';
-import type { IapPlan, IapPrices, IapSession } from '../lib/iap';
+import type { IapPlan, IapPrices, IapSession, ReconcileResult } from '../lib/iap';
 
 export type IapPhase =
   'idle' | 'purchasing' | 'verifying' | 'pending_store' | 'activating' | 'done' | 'error';
@@ -24,18 +26,48 @@ export interface IapState {
   readonly prices: IapPrices;
   readonly phase: IapPhase;
   readonly error: string | null;
+  /** The store account holds one of our subscriptions (gates "Manage subscription"). */
+  readonly holdsSubscription: boolean;
+  /**
+   * Restore found a subscription owned by another identity of this store
+   * account (this device before a reinstall, or another phone): ask the user,
+   * then `transfer()` it here or `dismissTransfer()`.
+   */
+  readonly transferOffer: boolean;
   readonly purchase: (plan: IapPlan) => void;
   readonly restore: () => void;
+  readonly transfer: () => void;
+  readonly dismissTransfer: () => void;
 }
 
 const STATUS_POLL_MS = 3_000;
+/** Minimum gap between foreground re-checks of the store account. */
+const FOREGROUND_RECHECK_MS = 30_000;
 
 export function useIap(enabled: boolean, code: string | null, tierPremium: boolean): IapState {
   const [ready, setReady] = useState(false);
   const [prices, setPrices] = useState<IapPrices>({ monthly: null, annual: null });
   const [phase, setPhase] = useState<IapPhase>('idle');
   const [error, setError] = useState<string | null>(null);
+  const [holdsSubscription, setHoldsSubscription] = useState(false);
+  const [transferOffer, setTransferOffer] = useState(false);
   const sessionRef = useRef<IapSession | null>(null);
+  // Purchases the last reconcile found owned by another identity.
+  const elsewhereRef = useRef<readonly Purchase[]>([]);
+
+  /** Apply a reconcile pass. Returns whether anything was accepted for this device. */
+  const applyReconcile = useCallback((r: ReconcileResult): boolean => {
+    setHoldsSubscription(r.holdsSubscription);
+    elsewhereRef.current = r.elsewhere;
+    // Offered, never done automatically: two devices on one store account
+    // (an iPad and an iPhone) would otherwise pull the subscription back and
+    // forth. Moving it is always the user's tap.
+    setTransferOffer(!r.any && r.elsewhere.length > 0);
+    if (r.any) {
+      setPhase('activating');
+    }
+    return r.any;
+  }, []);
 
   // ---- store session ------------------------------------------------------
   useEffect(() => {
@@ -71,11 +103,11 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
         setPrices(session.prices);
         setReady(true);
         // Repair pass: verify + finish anything the store still holds
-        // (kill-mid-purchase, failed bridge call, Android ack window).
-        if (await session.reconcile(code)) {
-          if (alive) {
-            setPhase('activating');
-          }
+        // (kill-mid-purchase, failed bridge call, Android ack window, an
+        // offer/promo code redeemed outside the app).
+        const r = await session.reconcile(code);
+        if (alive) {
+          applyReconcile(r);
         }
       } catch {
         // Store unreachable (no Play services, store outage): surface it —
@@ -90,7 +122,28 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
       sessionRef.current?.dispose();
       sessionRef.current = null;
     };
-  }, [enabled, code]);
+  }, [enabled, code, applyReconcile]);
+
+  // ---- foreground re-check ------------------------------------------------
+  // A Play promo code is redeemed in the browser, outside the app; coming back
+  // is the moment to claim it, not the next cold start.
+  useEffect(() => {
+    if (!enabled || !code) {
+      return;
+    }
+    let last = Date.now();
+    const sub = AppState.addEventListener('change', (next) => {
+      const session = sessionRef.current;
+      if (next !== 'active' || !session || Date.now() - last < FOREGROUND_RECHECK_MS) {
+        return;
+      }
+      last = Date.now();
+      void session.reconcile(code).then(applyReconcile, () => {
+        // Store unreachable — the next foreground or launch retries.
+      });
+    });
+    return () => sub.remove();
+  }, [enabled, code, applyReconcile]);
 
   // ---- chain-settlement progress ------------------------------------------
   useEffect(() => {
@@ -147,14 +200,57 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
       return;
     }
     setError(null);
-    void session.reconcile(code).then((any) => {
-      if (any) {
-        setPhase('activating');
-      } else {
-        setError('No previous purchases found for this device.');
-      }
-    });
+    void session.reconcile(code).then(
+      (r) => {
+        if (!applyReconcile(r) && r.elsewhere.length === 0) {
+          setError('No subscription found in this store account.');
+        }
+      },
+      () => setError('Store unavailable right now. Please try again later.'),
+    );
+  }, [code, applyReconcile]);
+
+  const transfer = useCallback((): void => {
+    const session = sessionRef.current;
+    if (!session || !code || elsewhereRef.current.length === 0) {
+      return;
+    }
+    setError(null);
+    void session.transfer(elsewhereRef.current, code).then(
+      (any) => {
+        setTransferOffer(false);
+        if (any) {
+          elsewhereRef.current = [];
+          setPhase('activating');
+        } else {
+          setError('The subscription could not be moved. Please try again later.');
+        }
+      },
+      (e: unknown) => {
+        const at = transferAvailableAt(e);
+        setError(
+          at
+            ? `This subscription moved recently. It can move again on ${at.toISOString().slice(0, 10)}.`
+            : e instanceof Error
+              ? e.message
+              : String(e),
+        );
+      },
+    );
   }, [code]);
 
-  return { ready, prices, phase, error, purchase, restore };
+  const dismissTransfer = useCallback((): void => setTransferOffer(false), []);
+
+  return {
+    ready,
+    prices,
+    phase,
+    error,
+    holdsSubscription,
+    transferOffer,
+    purchase,
+    restore,
+    transfer,
+    dismissTransfer,
+  };
 }

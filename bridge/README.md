@@ -44,7 +44,7 @@ nothing secret is ever committed or baked into the image.
 | Variable                                     | What it is                                                                        | Where to get it                                                                                                                                                                                                                                                                                               |
 | -------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `TREASURY_WIF`                               | Private key (WIF) of the FLUX wallet that funds settlements. **The** crown jewel. | Generate a fresh keypair in any Flux wallet (Zelcore/SSP) you control, export the WIF, fund the address with FLUX. Never reuse an existing wallet.                                                                                                                                                            |
-| `ADMIN_TOKEN`                                | Bearer token for `GET /internal/treasury`                                         | Generate yourself: `openssl rand -hex 32`                                                                                                                                                                                                                                                                     |
+| `ADMIN_TOKEN`                                | Bearer token for the `/internal/*` admin endpoints                                | Generate yourself: `openssl rand -hex 32`                                                                                                                                                                                                                                                                     |
 | `STRIPE_SECRET_KEY`                          | Stripe API key (`sk_live_…`)                                                      | Stripe Dashboard → Developers → API keys                                                                                                                                                                                                                                                                      |
 | `STRIPE_WEBHOOK_SECRET`                      | Webhook signing secret (`whsec_…`)                                                | Stripe Dashboard → Developers → Webhooks → add endpoint `https://pay.cumulusvpn.com/v1/stripe/webhook` (events: `checkout.session.completed`, `invoice.paid`, `charge.refunded`, `customer.subscription.deleted`) — the secret is shown on creation                                                           |
 | `STRIPE_PRICE_MONTHLY` / `_ANNUAL`           | Price ids (`price_…`) for $1.99/mo and $14.99/yr                                  | Stripe Dashboard → Product catalog → create one product with two recurring prices                                                                                                                                                                                                                             |
@@ -108,6 +108,14 @@ against different databases.
 - **Refunds**: chain grants cannot be revoked. The bridge marks the
   subscription `refunded` and cancels future renewals; the already-granted
   period is the accepted, bounded loss.
+- **Moving a subscription** (support): users move their own with the app's
+  Restore / the web's "Move to another device", at most once per 30 days.
+  When that is not enough, `POST /internal/subscriptions/rebind`
+  `{rail, external_id, payment_code, grant_remaining}` (the dashboard's
+  Subscriber lookup → Move…) moves one with no limit; `grant_remaining`
+  hands the new code the rest of the current period, at most once per billing
+  period however often it moves. `external_id` is what the lookup shows. The
+  old code keeps what it already had. See docs/18 "Claims and transfers".
 
 ## Sandbox safety
 

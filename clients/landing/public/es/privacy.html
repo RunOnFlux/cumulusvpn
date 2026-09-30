@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacidad por diseño</span>
     <h1>Política de privacidad</h1>
-    <p class="doc-meta">Última actualización: 14 de agosto de 2026 · Vigente desde: 14 de agosto de 2026</p>
+    <p class="doc-meta">Última actualización: 30 de septiembre de 2026 · Vigente desde: 14 de agosto de 2026</p>
 
   <p class="doc-meta">Esta traducción se ofrece por comodidad; la versión en inglés en cumulusvpn.com/privacy es la
       autoritativa.</p>
@@ -149,7 +149,10 @@
       ninguno se convierte en un registro sobre ti.</p>
     <h3>4.1 Tu clave pública (identificador seudónimo)</h3>
     <p>Tu dispositivo genera un par de claves WireGuard localmente en el primer inicio. La <strong>clave privada nunca
-      sale de tu dispositivo</strong> — ni siquiera hacia nosotros. Solo se envía la <strong>clave pública</strong> a un
+      se envía a nosotros ni a ningún gateway</strong>. Para que no se pierda al borrar y reinstalar la app — o al cambiar a un teléfono
+      nuevo —, la app guarda una <strong>copia de seguridad cifrada</strong> de ella: en el Llavero (Keychain) del iPhone en iOS,
+      y en Android en el Block Store de Google, cifrada de extremo a extremo con tu bloqueo de pantalla para que
+      ni Google ni nosotros podamos leerla. La copia de seguridad está activada por defecto y se puede desactivar en Ajustes. Solo se envía la <strong>clave pública</strong> a un
       gateway para que pueda enrutar tu túnel cifrado. Una clave pública es un valor de 32 bytes con aspecto aleatorio. No
       está vinculada a tu nombre, correo o hardware, y puedes regenerarla en cualquier momento. Es un seudónimo,
       no una identidad.</p>
@@ -240,7 +243,7 @@
         Si escribiste a soporte, puedes pedir una copia de esa correspondencia.</li>
       <li><strong>Eliminación:</strong> No hay nada vinculado a tu identidad que podamos eliminar de los gateways;
         el estado de los pares ya es efímero, solo en RAM, y se borra al desconectar/reiniciar. Puedes eliminar tu clave en
-        tu dispositivo en cualquier momento, lo que corta por completo el vínculo seudónimo.</li>
+        tu dispositivo en cualquier momento (desactiva antes la copia de seguridad de identidad en Ajustes, para que no quede ninguna copia), lo que corta por completo el vínculo seudónimo.</li>
       <li><strong>No vender / no compartir:</strong> No vendemos ni compartimos datos personales, así que no hay
         nada de lo que optar por salir.</li>
     </ul>
@@ -256,7 +259,8 @@
 
     <h2>12. Seguridad</h2>
     <p>El tráfico está cifrado de extremo a extremo entre tu dispositivo y el gateway usando el protocolo WireGuard®
-      (criptografía moderna y auditada). Tu clave privada nunca sale de tu dispositivo. El estado de los pares del lado del servidor se
+      (criptografía moderna y auditada). Tu clave privada nunca se envía a nosotros ni a ningún gateway; su única copia fuera de la app es la
+      copia de seguridad cifrada descrita en la sección 4.1, que puedes desactivar. El estado de los pares del lado del servidor se
       mantiene solo en memoria. La app llega a la API de control de cada gateway mediante una conexión directa cuyas
       respuestas están firmadas con ed25519 y verificadas por la app, así que la autenticidad del directorio de servidores y de las
       respuestas de los gateways está protegida por firmas digitales en lugar de un certificado de transporte.</p>

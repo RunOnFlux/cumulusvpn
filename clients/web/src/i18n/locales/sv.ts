@@ -127,6 +127,22 @@ export const sv: Catalog = {
   manage_cta_busy: 'Öppnar faktureringsportalen…',
   manage_err:
     'Det gick inte att öppna faktureringsportalen från den här webbläsaren. Du kan alltid hantera eller säga upp via länken i Stripe-kvittot du fick via e-post.',
+  transfer_cta: 'Flytta till en annan enhet',
+  transfer_lede:
+    'Installerat om appen eller fått en ny telefon? Ange enhetskoden från Inställningar → Om på den nya enheten. Den får direkt resten av den här faktureringsperioden och varje förnyelse efter det. En prenumeration kan flyttas en gång var 30:e dag.',
+  transfer_next: 'Fortsätt',
+  transfer_cancel: 'Avbryt',
+  transfer_confirm:
+    'Flytta den här prenumerationen till {code}? Kontrollera att den stämmer med koden på den enheten — en felskriven kod kan ändå vara giltig och skulle flytta den till fel enhet.',
+  transfer_confirm_cta: 'Flytta prenumeration',
+  transfer_busy: 'Flyttar…',
+  transfer_done:
+    'Flyttad. Premium för resten av den här faktureringsperioden aktiveras på {code}, och förnyelser går till den enheten. Faktureringen stannar här — hantera eller säg upp från den här sidan som tidigare.',
+  transfer_err_soon: 'Den här prenumerationen flyttades nyligen. Den kan flyttas igen {date}.',
+  transfer_err_same: 'Den enheten har redan den här prenumerationen.',
+  transfer_err_none:
+    'Ingen aktiv kortprenumeration hittades för köpet i den här webbläsaren, så det finns inget att flytta.',
+  transfer_err: 'Det gick inte att flytta prenumerationen. Försök igen om en stund.',
 
   redeem_eyebrow: 'Har du en kod?',
   redeem_lede:

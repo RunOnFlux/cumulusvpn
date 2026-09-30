@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Prywatność dzięki architekturze</span>
     <h1>Polityka prywatności</h1>
-    <p class="doc-meta">Ostatnia aktualizacja: 14 sierpnia 2026 · Obowiązuje od: 14 sierpnia 2026</p>
+    <p class="doc-meta">Ostatnia aktualizacja: 30 września 2026 · Obowiązuje od: 14 sierpnia 2026</p>
 
   <p class="doc-meta">To tłumaczenie zostało udostępnione dla wygody; wersją obowiązującą jest wersja angielska dostępna pod adresem cumulusvpn.com/privacy.</p>
   </div>
@@ -124,7 +124,7 @@
     <h2>4. Co jest technicznie zaangażowane (i dlaczego nie tworzy to twojego profilu)</h2>
     <p>VPN nie może działać bez pewnych danych przepływających przez niego w czasie rzeczywistym. Oto wszystkie z nich — i dlaczego żadne nie staje się zapisem o tobie.</p>
     <h3>4.1 Twój klucz publiczny (identyfikator pseudonimowy)</h3>
-    <p>Twoje urządzenie generuje lokalnie parę kluczy WireGuard przy pierwszym uruchomieniu. <strong>Klucz prywatny nigdy nie opuszcza twojego urządzenia</strong> — nawet w naszym kierunku. Tylko <strong>klucz publiczny</strong> jest wysyłany do bramki, aby mogła poprowadzić twój zaszyfrowany tunel. Klucz publiczny to 32-bajtowa, losowo wyglądająca wartość. Nie jest powiązany z twoim imieniem i nazwiskiem, e-mailem ani sprzętem, i możesz go w każdej chwili wygenerować ponownie. To pseudonim, nie tożsamość.</p>
+    <p>Twoje urządzenie generuje lokalnie parę kluczy WireGuard przy pierwszym uruchomieniu. <strong>Klucz prywatny nigdy nie jest wysyłany do nas ani do żadnej bramki</strong>. Aby nie przepadł po usunięciu i ponownej instalacji aplikacji — ani po przejściu na nowy telefon — aplikacja przechowuje jego <strong>zaszyfrowaną kopię zapasową</strong>: na iOS w pęku kluczy (Keychain) iPhone'a, a na Androidzie w usłudze Block Store od Google, zaszyfrowaną end-to-end przy użyciu blokady ekranu, tak aby ani Google, ani my nie mogli jej odczytać. Kopia zapasowa jest domyślnie włączona i można ją wyłączyć w Ustawieniach. Tylko <strong>klucz publiczny</strong> jest wysyłany do bramki, aby mogła poprowadzić twój zaszyfrowany tunel. Klucz publiczny to 32-bajtowa, losowo wyglądająca wartość. Nie jest powiązany z twoim imieniem i nazwiskiem, e-mailem ani sprzętem, i możesz go w każdej chwili wygenerować ponownie. To pseudonim, nie tożsamość.</p>
     <h3>4.2 Stan połączenia w pamięci bramki</h3>
     <p>Gdy jesteś połączony, bramka przechowuje — <strong>wyłącznie w pamięci ulotnej (RAM)</strong> — minimum potrzebne do trasowania pakietów: twój klucz publiczny, przypisany mu tymczasowy wewnętrzny adres IP tunelu (np. 10.8.x.y) oraz licznik bajtów służący do egzekwowania twojej warstwy prędkości. Ten stan <strong>nigdy nie jest zapisywany na dysku</strong>, nie jest wysyłany do żadnego centralnego serwera i jest <strong>kasowany, gdy proces bramki się restartuje</strong> albo gdy się rozłączasz. Nie powstaje z niego żaden historyczny log.</p>
     <h3>4.3 Twój prawdziwy adres IP, przejściowo</h3>
@@ -166,7 +166,7 @@
     <p>W zależności od miejsca zamieszkania możesz mieć prawo do dostępu, poprawiania, usunięcia lub przeniesienia swoich danych osobowych, do sprzeciwu wobec przetwarzania lub jego ograniczenia, a (w Kalifornii) do informacji o tym, co jest zbierane, i do niedyskryminowania za korzystanie z tych praw. Ponieważ usługa jest anonimowa:</p>
     <ul>
       <li><strong>Dostęp / przenoszalność:</strong> co do zasady nie posiadamy żadnych powiązanych z tobą danych osobowych, które moglibyśmy udostępnić. Jeśli pisałeś do pomocy technicznej, możesz poprosić o kopię tej korespondencji.</li>
-      <li><strong>Usunięcie:</strong> nie ma nic powiązanego z twoją tożsamością, co moglibyśmy usunąć z bramek; stan połączenia i tak jest ulotny, istnieje wyłącznie w RAM i znika po rozłączeniu lub restarcie. W każdej chwili możesz usunąć swój klucz na urządzeniu, co całkowicie zrywa pseudonimowe powiązanie.</li>
+      <li><strong>Usunięcie:</strong> nie ma nic powiązanego z twoją tożsamością, co moglibyśmy usunąć z bramek; stan połączenia i tak jest ulotny, istnieje wyłącznie w RAM i znika po rozłączeniu lub restarcie. W każdej chwili możesz usunąć swój klucz na urządzeniu (najpierw wyłącz kopię zapasową tożsamości w Ustawieniach, aby nie została żadna kopia), co całkowicie zrywa pseudonimowe powiązanie.</li>
       <li><strong>Zakaz sprzedaży / zakaz udostępniania:</strong> nie sprzedajemy ani nie udostępniamy danych osobowych, więc nie ma z czego zrezygnować.</li>
     </ul>
     <p>Aby skorzystać z któregokolwiek z tych praw, napisz na <strong>info@cumulusvpn.com</strong>. Możemy nie być w stanie zidentyfikować cię w naszych (nieistniejących) rejestrach właśnie dlatego, że usługa jest anonimowa — to celowe rozwiązanie, a nie unik. Masz też prawo złożyć skargę do lokalnego organu ochrony danych osobowych.</p>
@@ -175,7 +175,7 @@
     <p>CumulusVPN nie jest kierowany do dzieci poniżej 13 roku życia (lub minimalnego wieku zgody cyfrowej obowiązującego w twoim kraju). Świadomie nie zbieramy danych osobowych od dzieci. Ponieważ od nikogo nie zbieramy danych identyfikujących, nie jesteśmy w stanie ustalić wieku użytkownika; usługa jest przeznaczona dla ogółu odbiorców i nie jest kierowana do dzieci w ramach marketingu.</p>
 
     <h2>12. Bezpieczeństwo</h2>
-    <p>Ruch jest szyfrowany end-to-end między twoim urządzeniem a bramką za pomocą protokołu WireGuard® (nowoczesna, audytowana kryptografia). Twój klucz prywatny nigdy nie opuszcza twojego urządzenia. Stan połączenia po stronie serwera jest przechowywany wyłącznie w pamięci. Aplikacja łączy się z API kontrolnym każdej bramki przez bezpośrednie połączenie, którego odpowiedzi są podpisane ed25519 i weryfikowane przez aplikację, dzięki czemu autentyczność katalogu serwerów i odpowiedzi bramek jest chroniona podpisami cyfrowymi, a nie certyfikatem transportowym.</p>
+    <p>Ruch jest szyfrowany end-to-end między twoim urządzeniem a bramką za pomocą protokołu WireGuard® (nowoczesna, audytowana kryptografia). Twój klucz prywatny nigdy nie jest wysyłany do nas ani do żadnej bramki; jego jedyną kopią poza aplikacją jest zaszyfrowana kopia zapasowa opisana w sekcji 4.1, którą możesz wyłączyć. Stan połączenia po stronie serwera jest przechowywany wyłącznie w pamięci. Aplikacja łączy się z API kontrolnym każdej bramki przez bezpośrednie połączenie, którego odpowiedzi są podpisane ed25519 i weryfikowane przez aplikację, dzięki czemu autentyczność katalogu serwerów i odpowiedzi bramek jest chroniona podpisami cyfrowymi, a nie certyfikatem transportowym.</p>
 
     <h2>13. Zmiany tej polityki</h2>
     <p>Jeśli zmienimy tę politykę, zaktualizujemy powyższą datę „Ostatnia aktualizacja” i opublikujemy nową wersję na <a href="https://cumulusvpn.com/privacy">cumulusvpn.com/privacy</a>. Istotne zmiany zostaną wyróżnione. Ponieważ nie prowadzimy listy mailingowej, strona internetowa jest wiążącym źródłem aktualnej polityki.</p>

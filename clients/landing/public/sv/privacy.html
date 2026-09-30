@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Integritet genom arkitektur</span>
     <h1>Integritetspolicy</h1>
-    <p class="doc-meta">Senast uppdaterad: 14 augusti 2026 · Gäller från: 14 augusti 2026</p>
+    <p class="doc-meta">Senast uppdaterad: 30 september 2026 · Gäller från: 14 augusti 2026</p>
 
   <p class="doc-meta">Denna översättning tillhandahålls för bekvämlighets skull; den engelska versionen på cumulusvpn.com/privacy är auktoritativ.</p>
   </div>
@@ -147,8 +147,11 @@
     <p>Ett VPN kan inte fungera utan att viss data passerar genom det i realtid. Här är allt av det, och varför
       inget av det blir en registrering om dig.</p>
     <h3>4.1 Din publika nyckel (pseudonym identifierare)</h3>
-    <p>Din enhet genererar ett WireGuard-nyckelpar lokalt vid första starten. Den <strong>privata nyckeln lämnar
-      aldrig din enhet</strong> — inte ens till oss. Bara den <strong>publika nyckeln</strong> skickas till en
+    <p>Din enhet genererar ett WireGuard-nyckelpar lokalt vid första starten. Den <strong>privata nyckeln skickas
+      aldrig till oss eller till någon gateway</strong>. För att den inte ska gå förlorad när du raderar och installerar om appen — eller byter till en ny
+      telefon — sparar appen en <strong>krypterad säkerhetskopia</strong> av den: i iPhonens nyckelring (Keychain) på iOS,
+      och på Android i Googles Block Store, ände-till-ände-krypterad med ditt skärmlås så att
+      varken Google eller vi kan läsa den. Säkerhetskopian är på som standard och kan stängas av i Inställningar. Bara den <strong>publika nyckeln</strong> skickas till en
       gateway så att den kan dirigera din krypterade tunnel. En publik nyckel är ett 32 byte stort, slumpmässigt utseende värde. Den är
       inte knuten till ditt namn, din e-post eller din hårdvara, och du kan återskapa den när som helst. Det är en pseudonym,
       inte en identitet.</p>
@@ -236,7 +239,7 @@
         Om du mejlat supporten kan du be om en kopia av den korrespondensen.</li>
       <li><strong>Radering:</strong> Det finns inget knutet till din identitet för oss att radera från gateways;
         peer-status är redan flyktig, enbart i RAM, och rensas vid frånkoppling/omstart. Du kan radera din nyckel på
-        din enhet när som helst, vilket helt bryter den pseudonyma kopplingen.</li>
+        din enhet när som helst (stäng först av säkerhetskopieringen av identiteten i Inställningar, så att ingen kopia finns kvar), vilket helt bryter den pseudonyma kopplingen.</li>
       <li><strong>Inte sälja / inte dela:</strong> Vi säljer eller delar inte personuppgifter, så det finns
         inget att tacka nej till.</li>
     </ul>
@@ -252,7 +255,8 @@
 
     <h2>12. Säkerhet</h2>
     <p>Trafik krypteras ände-till-ände mellan din enhet och gatewayen med WireGuard®-protokollet
-      (modern, granskad kryptografi). Din privata nyckel lämnar aldrig din enhet. Serversidans peer-status
+      (modern, granskad kryptografi). Din privata nyckel skickas aldrig till oss eller till någon gateway; dess enda kopia utanför appen är den
+      krypterade säkerhetskopia som beskrivs i avsnitt 4.1, och den kan du stänga av. Serversidans peer-status
       hålls bara i minnet. Appen når varje gateways kontroll-API över en direkt anslutning vars
       svar är ed25519-signerade och verifieras av appen, så att äktheten hos serverkatalogen och
       gatewaysvaren skyddas av digitala signaturer snarare än av ett transportcertifikat.</p>
