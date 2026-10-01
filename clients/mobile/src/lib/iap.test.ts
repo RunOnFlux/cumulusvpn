@@ -174,7 +174,25 @@ describe('startIapSession', () => {
       any: false,
       elsewhere: [],
       holdsSubscription: false,
+      autoRenewing: false,
     });
+    session.dispose();
+  });
+
+  it('reconcile() tells a cancelled subscription from a renewing one', async () => {
+    // A cancelled subscription is still listed until its paid period ends —
+    // the plan card must not keep saying "Renews automatically".
+    mockBridge(true);
+    mock.getAvailablePurchases.mockResolvedValue([purchase({ isAutoRenewing: false })]);
+    const session = await startIapSession(CODE, {
+      onVerified: jest.fn(),
+      onPending: jest.fn(),
+      onCancelled: jest.fn(),
+      onError: jest.fn(),
+    });
+    const r = await session.reconcile(CODE);
+    expect(r.holdsSubscription).toBe(true);
+    expect(r.autoRenewing).toBe(false);
     session.dispose();
   });
 

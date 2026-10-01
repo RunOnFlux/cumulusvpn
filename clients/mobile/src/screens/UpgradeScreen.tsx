@@ -120,7 +120,9 @@ export function UpgradeScreen({
       {premium ? (
         <PremiumCard
           expiry={expiry}
-          renewing={iap?.holdsSubscription === true}
+          storeSub={
+            iap?.holdsSubscription ? (iap.subscriptionRenews ? 'renewing' : 'cancelled') : null
+          }
           canAddTime={showCrypto || webPayEnabled || iap !== null}
         />
       ) : (
@@ -174,11 +176,15 @@ const PREMIUM_PERKS = ['Full speed', 'Every server', 'Split tunneling'] as const
  */
 function PremiumCard({
   expiry,
-  renewing,
+  storeSub,
   canAddTime,
 }: {
   readonly expiry: ReturnType<typeof formatExpiry>;
-  readonly renewing: boolean;
+  /**
+   * A store subscription on this account: 'renewing', or 'cancelled' — the store
+   * keeps listing a cancelled one until its paid period ends. Null = none.
+   */
+  readonly storeSub: 'renewing' | 'cancelled' | null;
   readonly canAddTime: boolean;
 }): React.JSX.Element {
   // A fuel gauge, not a timeline: full while 30+ days remain, then runs down.
@@ -222,17 +228,22 @@ function PremiumCard({
       </View>
 
       <View style={styles.premFoot}>
-        {renewing ? (
+        {storeSub ? (
           <>
-            <Text style={styles.premFootText}>Renews automatically</Text>
+            <Text style={styles.premFootText}>
+              {storeSub === 'renewing'
+                ? 'Renews automatically'
+                : `Cancelled — premium stays until ${expiry ? expiry.date : 'the end of the paid period'}`}
+            </Text>
             {/* Only with a store subscription to manage: premium paid in FLUX
-                has none, and the store's page would open empty. */}
+                has none, and the store's page would open empty. The store's
+                page is also where a cancelled one is resubscribed. */}
             <Pressable
               onPress={() => void Linking.openURL(MANAGE_URL)}
               accessibilityRole="link"
               hitSlop={8}
             >
-              <Text style={styles.link}>Manage</Text>
+              <Text style={styles.link}>{storeSub === 'renewing' ? 'Manage' : 'Resubscribe'}</Text>
             </Pressable>
           </>
         ) : (

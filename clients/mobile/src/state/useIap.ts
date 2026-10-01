@@ -28,6 +28,8 @@ export interface IapState {
   readonly error: string | null;
   /** The store account holds one of our subscriptions (gates "Manage subscription"). */
   readonly holdsSubscription: boolean;
+  /** …and it will renew; false once cancelled (still held until the period ends). */
+  readonly subscriptionRenews: boolean;
   /**
    * Restore found a subscription owned by another identity of this store
    * account (this device before a reinstall, or another phone): ask the user,
@@ -50,6 +52,7 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
   const [phase, setPhase] = useState<IapPhase>('idle');
   const [error, setError] = useState<string | null>(null);
   const [holdsSubscription, setHoldsSubscription] = useState(false);
+  const [subscriptionRenews, setSubscriptionRenews] = useState(false);
   const [transferOffer, setTransferOffer] = useState(false);
   const sessionRef = useRef<IapSession | null>(null);
   // Purchases the last reconcile found owned by another identity.
@@ -58,6 +61,7 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
   /** Apply a reconcile pass. Returns whether anything was accepted for this device. */
   const applyReconcile = useCallback((r: ReconcileResult): boolean => {
     setHoldsSubscription(r.holdsSubscription);
+    setSubscriptionRenews(r.autoRenewing);
     elsewhereRef.current = r.elsewhere;
     // Offered, never done automatically: two devices on one store account
     // (an iPad and an iPhone) would otherwise pull the subscription back and
@@ -253,6 +257,7 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
     phase,
     error,
     holdsSubscription,
+    subscriptionRenews,
     transferOffer,
     purchase,
     restore,

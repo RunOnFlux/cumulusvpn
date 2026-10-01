@@ -70,6 +70,11 @@ export interface ReconcileResult {
   readonly elsewhere: readonly Purchase[];
   /** The store account holds one of our subscriptions at all (for "Manage subscription"). */
   readonly holdsSubscription: boolean;
+  /**
+   * That subscription will renew. False after the user cancels: the store keeps
+   * listing it until the paid period ends, so holding it ≠ renewing it.
+   */
+  readonly autoRenewing: boolean;
 }
 
 const iosSkus = [IOS_SKU_MONTHLY, IOS_SKU_ANNUAL];
@@ -264,7 +269,13 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
           // Keep going; a later launch retries the rest.
         }
       }
-      return { any, elsewhere, holdsSubscription: list.some(isOurSubscription) };
+      const ours = list.filter(isOurSubscription);
+      return {
+        any,
+        elsewhere,
+        holdsSubscription: ours.length > 0,
+        autoRenewing: ours.some((p) => p.isAutoRenewing),
+      };
     },
     transfer: async (purchases: readonly Purchase[], payCode: string): Promise<boolean> => {
       let any = false;
