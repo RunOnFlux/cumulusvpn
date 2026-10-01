@@ -383,20 +383,28 @@ function SubscribeSection({
  * Gated by the remote `webPayLink` flag.
  */
 function WebPayCard({ code }: { readonly code: string }): React.JSX.Element {
+  // Own section heading like every other block — its top margin is what keeps
+  // the card off whatever precedes it (the store promo-code line, the code box).
   return (
-    <View style={styles.card}>
-      <Text style={styles.copy}>
-        Prefer FLUX or a card? Pay on our website — this device is already filled in, and premium
-        unlocks here automatically.
-      </Text>
-      <Pressable
-        onPress={() => void Linking.openURL(webPayUrl(code))}
-        accessibilityRole="link"
-        style={({ pressed }) => [styles.payBtn, pressed && styles.payBtnPressed]}
-      >
-        <Text style={styles.payBtnLabel}>Pay on the website</Text>
-      </Pressable>
-    </View>
+    <>
+      <Text style={styles.section}>Pay on the website</Text>
+      <View style={styles.card}>
+        <Text style={styles.copy}>
+          FLUX or a card, with this device already filled in — premium unlocks here automatically.
+        </Text>
+        <Pressable
+          onPress={() => void Linking.openURL(webPayUrl(code))}
+          accessibilityRole="link"
+          style={({ pressed }) => [
+            styles.payBtn,
+            styles.payBtnInCard,
+            pressed && styles.payBtnPressed,
+          ]}
+        >
+          <Text style={styles.payBtnLabel}>Open checkout</Text>
+        </Pressable>
+      </View>
+    </>
   );
 }
 
@@ -881,4 +889,7 @@ const styles = StyleSheet.create({
     marginTop: space.lg,
   },
   offerCodeText: { color: color.inkFaint, fontSize: 13 },
+  // The card's own gap already spaces the button; payBtn's top margin is for
+  // buttons that follow loose content.
+  payBtnInCard: { marginTop: 0 },
 });
