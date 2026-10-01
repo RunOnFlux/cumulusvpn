@@ -179,6 +179,27 @@ describe('startIapSession', () => {
     session.dispose();
   });
 
+  it('reconcile() reports the store state BEFORE any bridge call', async () => {
+    // The plan screen must not wait on network round trips to show
+    // "cancelled" — the store answer goes out first.
+    const f = mockBridge(true);
+    mock.getAvailablePurchases.mockResolvedValue([purchase({ isAutoRenewing: false })]);
+    const session = await startIapSession(CODE, {
+      onVerified: jest.fn(),
+      onPending: jest.fn(),
+      onCancelled: jest.fn(),
+      onError: jest.fn(),
+    });
+    const seen: string[] = [];
+    const onHoldings = jest.fn((st: string) => {
+      seen.push(`${st}@${f.mock.calls.length}`);
+    });
+    await session.reconcile(CODE, onHoldings);
+    expect(seen).toEqual(['cancelled@0']);
+    expect(f).toHaveBeenCalled();
+    session.dispose();
+  });
+
   it('reconcile() tells a cancelled subscription from a renewing one', async () => {
     // A cancelled subscription is still listed until its paid period ends —
     // the plan card must not keep saying "Renews automatically".

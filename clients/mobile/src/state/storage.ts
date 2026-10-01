@@ -41,6 +41,7 @@ const K = {
   disclosure: 'cvpn:disclosureAck',
   splitPolicy: 'cvpn:splitPolicy',
   identityBackup: 'cvpn:identityBackup',
+  storeSub: 'cvpn:storeSub',
 } as const;
 
 /**
@@ -226,6 +227,20 @@ export async function loadAutoConnect(): Promise<boolean> {
 /** Persist the auto-connect-on-launch preference. */
 export async function saveAutoConnect(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(K.autoConnect, enabled ? '1' : '0');
+}
+
+/**
+ * Last known state of our store subscription (useIap) — so the plan screen
+ * opens already showing it, instead of correcting itself a moment later.
+ */
+export async function loadStoreSub(): Promise<'renewing' | 'cancelled' | 'none' | null> {
+  const v = await AsyncStorage.getItem(K.storeSub);
+  return v === 'renewing' || v === 'cancelled' || v === 'none' ? v : null;
+}
+
+/** Persist the last known store-subscription state. */
+export async function saveStoreSub(state: 'renewing' | 'cancelled' | 'none'): Promise<void> {
+  await AsyncStorage.setItem(K.storeSub, state);
 }
 
 /** Whether the identity is backed up (identity.ts). ON unless the user turned it off. */

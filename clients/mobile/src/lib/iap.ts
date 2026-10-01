@@ -77,6 +77,9 @@ export interface VerifyResult {
   readonly elsewhere?: boolean;
 }
 
+/** Our subscription in this store account: renewing, cancelled (still held until its period ends), or none. */
+export type StoreSubState = 'renewing' | 'cancelled' | 'none';
+
 /** What a reconcile pass found in the store account. */
 export interface ReconcileResult {
   /** At least one purchase was accepted for this device. */
@@ -116,7 +119,14 @@ export interface IapSession {
   /** Kick off the platform purchase sheet. Resolution arrives via the listener. */
   readonly purchase: (plan: IapPlan, code: string) => Promise<void>;
   /** Re-verify + finish everything the store still holds (restore & repair). */
-  readonly reconcile: (code: string) => Promise<ReconcileResult>;
+  /**
+   * `onHoldings` fires as soon as the STORE answers — before the bridge round
+   * trips — so the screen can show the subscription's state without waiting.
+   */
+  readonly reconcile: (
+    code: string,
+    onHoldings?: (state: StoreSubState) => void,
+  ) => Promise<ReconcileResult>;
   /**
    * Move subscriptions owned by another identity to `code` — the user said
    * yes. Rejects with the bridge's reason (e.g. `transfer_too_soon`).
@@ -272,9 +282,15 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
         });
       }
     },
-    reconcile: async (payCode: string): Promise<ReconcileResult> => {
+    reconcile: async (
+      payCode: string,
+      onHoldings?: (state: StoreSubState) => void,
+    ): Promise<ReconcileResult> => {
       const held = await getAvailablePurchases();
       const list = (Array.isArray(held) ? held : []) as Purchase[];
+      const ours = list.filter(isOurSubscription);
+      const autoRenewing = ours.some((p) => p.isAutoRenewing);
+      onHoldings?.(ours.length === 0 ? 'none' : autoRenewing ? 'renewing' : 'cancelled');
       let any = false;
       const elsewhere: Purchase[] = [];
       for (const p of list) {
@@ -288,13 +304,7 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
           // Keep going; a later launch retries the rest.
         }
       }
-      const ours = list.filter(isOurSubscription);
-      return {
-        any,
-        elsewhere,
-        holdsSubscription: ours.length > 0,
-        autoRenewing: ours.some((p) => p.isAutoRenewing),
-      };
+      return { any, elsewhere, holdsSubscription: ours.length > 0, autoRenewing };
     },
     transfer: async (purchases: readonly Purchase[], payCode: string): Promise<boolean> => {
       let any = false;

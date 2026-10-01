@@ -15,7 +15,8 @@ import { AppState } from 'react-native';
 import type { Purchase } from 'react-native-iap';
 import { paymentStatus, transferAvailableAt } from '@cumulusvpn/core';
 import { startIapSession } from '../lib/iap';
-import type { IapPlan, IapPrices, IapSession, ReconcileResult } from '../lib/iap';
+import type { IapPlan, IapPrices, IapSession, ReconcileResult, StoreSubState } from '../lib/iap';
+import { loadStoreSub, saveStoreSub } from './storage';
 
 export type IapPhase =
   'idle' | 'purchasing' | 'verifying' | 'pending_store' | 'activating' | 'done' | 'error';
@@ -30,6 +31,12 @@ export interface IapState {
   readonly holdsSubscription: boolean;
   /** …and it will renew; false once cancelled (still held until the period ends). */
   readonly subscriptionRenews: boolean;
+  /**
+   * The subscription state above is known — from this launch's store check or
+   * the last one remembered. Until then a premium user is shown no plan picker,
+   * so it can't flash up and vanish once the store answers.
+   */
+  readonly storeKnown: boolean;
   /**
    * Restore found a subscription owned by another identity of this store
    * account (this device before a reinstall, or another phone): ask the user,
@@ -55,17 +62,38 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
   });
   const [phase, setPhase] = useState<IapPhase>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [holdsSubscription, setHoldsSubscription] = useState(false);
-  const [subscriptionRenews, setSubscriptionRenews] = useState(false);
+  // null = not known yet (no store answer this launch, nothing remembered).
+  const [storeSub, setStoreSub] = useState<StoreSubState | null>(null);
   const [transferOffer, setTransferOffer] = useState(false);
   const sessionRef = useRef<IapSession | null>(null);
   // Purchases the last reconcile found owned by another identity.
   const elsewhereRef = useRef<readonly Purchase[]>([]);
 
+  // Remembered state first, so the plan screen is right from its first frame;
+  // the store's own answer replaces it moments later.
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+    let alive = true;
+    void loadStoreSub().then((s) => {
+      if (alive && s !== null) {
+        setStoreSub((cur) => cur ?? s);
+      }
+    });
+    return () => {
+      alive = false;
+    };
+  }, [enabled]);
+
+  /** The store answered: show it now, remember it for next launch. */
+  const applyHoldings = useCallback((s: StoreSubState): void => {
+    setStoreSub(s);
+    void saveStoreSub(s);
+  }, []);
+
   /** Apply a reconcile pass. Returns whether anything was accepted for this device. */
   const applyReconcile = useCallback((r: ReconcileResult): boolean => {
-    setHoldsSubscription(r.holdsSubscription);
-    setSubscriptionRenews(r.autoRenewing);
     elsewhereRef.current = r.elsewhere;
     // Offered, never done automatically: two devices on one store account
     // (an iPad and an iPhone) would otherwise pull the subscription back and
@@ -119,7 +147,11 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
         // Repair pass: verify + finish anything the store still holds
         // (kill-mid-purchase, failed bridge call, Android ack window, an
         // offer/promo code redeemed outside the app).
-        const r = await session.reconcile(code);
+        const r = await session.reconcile(code, (st) => {
+          if (alive) {
+            applyHoldings(st);
+          }
+        });
         if (alive) {
           applyReconcile(r);
         }
@@ -136,7 +168,7 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
       sessionRef.current?.dispose();
       sessionRef.current = null;
     };
-  }, [enabled, code, applyReconcile]);
+  }, [enabled, code, applyReconcile, applyHoldings]);
 
   // ---- foreground re-check ------------------------------------------------
   // A Play promo code is redeemed in the browser, outside the app; coming back
@@ -152,12 +184,12 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
         return;
       }
       last = Date.now();
-      void session.reconcile(code).then(applyReconcile, () => {
+      void session.reconcile(code, applyHoldings).then(applyReconcile, () => {
         // Store unreachable — the next foreground or launch retries.
       });
     });
     return () => sub.remove();
-  }, [enabled, code, applyReconcile]);
+  }, [enabled, code, applyReconcile, applyHoldings]);
 
   // ---- chain-settlement progress ------------------------------------------
   useEffect(() => {
@@ -214,7 +246,7 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
       return;
     }
     setError(null);
-    void session.reconcile(code).then(
+    void session.reconcile(code, applyHoldings).then(
       (r) => {
         if (!applyReconcile(r) && r.elsewhere.length === 0) {
           setError('No subscription found in this store account.');
@@ -222,7 +254,7 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
       },
       () => setError('Store unavailable right now. Please try again later.'),
     );
-  }, [code, applyReconcile]);
+  }, [code, applyReconcile, applyHoldings]);
 
   const transfer = useCallback((): void => {
     const session = sessionRef.current;
@@ -260,8 +292,9 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
     prices,
     phase,
     error,
-    holdsSubscription,
-    subscriptionRenews,
+    holdsSubscription: storeSub === 'renewing' || storeSub === 'cancelled',
+    subscriptionRenews: storeSub === 'renewing',
+    storeKnown: storeSub !== null,
     transferOffer,
     purchase,
     restore,

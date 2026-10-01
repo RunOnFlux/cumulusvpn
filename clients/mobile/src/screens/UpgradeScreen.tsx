@@ -121,7 +121,15 @@ export function UpgradeScreen({
         <PremiumCard
           expiry={expiry}
           storeSub={
-            iap?.holdsSubscription ? (iap.subscriptionRenews ? 'renewing' : 'cancelled') : null
+            !iap
+              ? null
+              : !iap.storeKnown
+                ? 'checking'
+                : iap.holdsSubscription
+                  ? iap.subscriptionRenews
+                    ? 'renewing'
+                    : 'cancelled'
+                  : null
           }
           canAddTime={showCrypto || webPayEnabled || iap !== null}
         />
@@ -151,7 +159,7 @@ export function UpgradeScreen({
       {/* Premium paid in FLUX (or by card) has no store subscription to
           manage, so it can still subscribe: the chain adds the new days on top
           of the current expiry. Hidden only once a store subscription exists. */}
-      {iap && !(premium && iap.holdsSubscription) ? (
+      {iap && !(premium && (iap.holdsSubscription || !iap.storeKnown)) ? (
         <SubscribeSection iap={iap} premium={premium} />
       ) : null}
       {voucherEnabled && payment ? <RedeemSection code={payment.code} /> : null}
@@ -182,9 +190,11 @@ function PremiumCard({
   readonly expiry: ReturnType<typeof formatExpiry>;
   /**
    * A store subscription on this account: 'renewing', or 'cancelled' — the store
-   * keeps listing a cancelled one until its paid period ends. Null = none.
+   * keeps listing a cancelled one until its paid period ends. 'checking' until
+   * the first store answer (only ever on a first launch: the last answer is
+   * remembered). Null = none.
    */
-  readonly storeSub: 'renewing' | 'cancelled' | null;
+  readonly storeSub: 'renewing' | 'cancelled' | 'checking' | null;
   readonly canAddTime: boolean;
 }): React.JSX.Element {
   // A fuel gauge, not a timeline: full while 30+ days remain, then runs down.
@@ -228,7 +238,9 @@ function PremiumCard({
       </View>
 
       <View style={styles.premFoot}>
-        {storeSub ? (
+        {storeSub === 'checking' ? (
+          <Text style={styles.premFootText}>Checking your subscription…</Text>
+        ) : storeSub ? (
           <>
             <Text style={styles.premFootText}>
               {storeSub === 'renewing'

@@ -5,6 +5,7 @@
  * validation/defaulting, the null-clears-auto-pick behaviour of the entry/exit
  * setters, and the discovery (fleet) cache round-trip + corruption guard.
  */
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GatewayInfo, Keypair } from '@cumulusvpn/core';
 import {
   loadKeypair,
@@ -19,6 +20,8 @@ import {
   saveExitCountry,
   loadFleet,
   saveFleet,
+  loadStoreSub,
+  saveStoreSub,
 } from './storage';
 
 const KP: Keypair = { publicKey: 'pub-abc', privateKey: 'priv-xyz' };
@@ -102,5 +105,19 @@ describe('fleet cache', () => {
   it('treats an empty gateway list as no cache', async () => {
     await saveFleet([], {}, 1_700_000_000_000);
     await expect(loadFleet()).resolves.toBeNull();
+  });
+});
+
+describe('store subscription state', () => {
+  it('round-trips each state, so the plan screen opens already knowing it', async () => {
+    for (const st of ['renewing', 'cancelled', 'none'] as const) {
+      await saveStoreSub(st);
+      await expect(loadStoreSub()).resolves.toBe(st);
+    }
+  });
+
+  it('treats an unknown stored value as not known', async () => {
+    await AsyncStorage.setItem('cvpn:storeSub', 'paused?');
+    await expect(loadStoreSub()).resolves.toBeNull();
   });
 });
