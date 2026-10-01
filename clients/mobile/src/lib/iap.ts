@@ -48,6 +48,21 @@ export interface IapPrices {
   /** Store-localized display price, e.g. "$1.99" / "1,99 €". Never hardcode. */
   readonly monthly: string | null;
   readonly annual: string | null;
+  /**
+   * Whole-percent saving of the annual plan against twelve monthly payments,
+   * from the store's own numeric prices in the user's currency — null when
+   * either price is missing or the annual plan saves nothing.
+   */
+  readonly annualSavingPct: number | null;
+}
+
+/** Saving of `annual` vs 12 × `monthly`, in whole percent; null when not a real saving. */
+export function annualSaving(monthly: number | null, annual: number | null): number | null {
+  if (monthly === null || annual === null || !(monthly > 0) || !(annual > 0)) {
+    return null;
+  }
+  const pct = Math.round((1 - annual / (12 * monthly)) * 100);
+  return pct > 0 ? pct : null;
 }
 
 export interface VerifyResult {
@@ -182,6 +197,10 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
       ? {
           monthly: byId.get(IOS_SKU_MONTHLY)?.displayPrice ?? null,
           annual: byId.get(IOS_SKU_ANNUAL)?.displayPrice ?? null,
+          annualSavingPct: annualSaving(
+            byId.get(IOS_SKU_MONTHLY)?.price ?? null,
+            byId.get(IOS_SKU_ANNUAL)?.price ?? null,
+          ),
         }
       : resolveAndroidPrices(androidProduct);
 
@@ -300,9 +319,21 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
  */
 function resolveAndroidPrices(product: Product | undefined): IapPrices {
   const offers = androidOffers(product);
-  const price = (basePlanId: string): string | null => {
-    const offer = offers?.find((o) => o.basePlanIdAndroid === basePlanId);
-    return offer?.pricingPhasesAndroid?.pricingPhaseList.at(-1)?.formattedPrice ?? null;
+  // The LAST pricing phase is the recurring price (earlier ones are trials/intro offers).
+  const phase = (basePlanId: string) =>
+    offers
+      ?.find((o) => o.basePlanIdAndroid === basePlanId)
+      ?.pricingPhasesAndroid?.pricingPhaseList.at(-1);
+  const amount = (basePlanId: string): number | null => {
+    const micros = Number(phase(basePlanId)?.priceAmountMicros);
+    return Number.isFinite(micros) && micros > 0 ? micros / 1e6 : null;
   };
-  return { monthly: price(ANDROID_BASE_PLAN_MONTHLY), annual: price(ANDROID_BASE_PLAN_ANNUAL) };
+  return {
+    monthly: phase(ANDROID_BASE_PLAN_MONTHLY)?.formattedPrice ?? null,
+    annual: phase(ANDROID_BASE_PLAN_ANNUAL)?.formattedPrice ?? null,
+    annualSavingPct: annualSaving(
+      amount(ANDROID_BASE_PLAN_MONTHLY),
+      amount(ANDROID_BASE_PLAN_ANNUAL),
+    ),
+  };
 }

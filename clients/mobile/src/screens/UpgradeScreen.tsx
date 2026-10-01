@@ -333,6 +333,11 @@ function SubscribeSection({
               label="Annual"
               price={iap.prices.annual}
               unit="/ year"
+              badge={
+                iap.prices.annualSavingPct !== null
+                  ? `Save ${iap.prices.annualSavingPct}%`
+                  : undefined
+              }
               selected={plan === 'annual'}
               onSelect={() => setPlan('annual')}
             />
@@ -454,12 +459,15 @@ function PlanCard({
   label,
   price,
   unit,
+  badge,
   selected,
   onSelect,
 }: {
   readonly label: string;
   readonly price: string | null;
   readonly unit: string;
+  /** e.g. "Save 37%" — computed from the store's prices, never hard-coded. */
+  readonly badge?: string | undefined;
   readonly selected: boolean;
   readonly onSelect: () => void;
 }): React.JSX.Element {
@@ -473,6 +481,11 @@ function PlanCard({
       <Text style={styles.planLabel}>{label}</Text>
       <Text style={styles.planPrice}>{price ?? '—'}</Text>
       <Text style={styles.planUnit}>{unit}</Text>
+      {badge ? (
+        <View style={styles.saveBadge}>
+          <Text style={styles.saveBadgeText}>{badge}</Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 }
@@ -872,6 +885,14 @@ const styles = StyleSheet.create({
   planLabel: { color: color.inkDim, fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   planPrice: { color: color.ink, fontSize: 20, fontWeight: '700' },
   planUnit: { color: color.inkFaint, fontSize: 12 },
+  saveBadge: {
+    marginTop: 6,
+    backgroundColor: color.amber,
+    borderRadius: 999,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  saveBadgeText: { color: '#1A1205', fontSize: 11, fontWeight: '800', letterSpacing: 0.4 },
   link: { color: color.cyan, fontSize: 13, fontWeight: '600' },
   legalRow: {
     flexDirection: 'row',

@@ -6,7 +6,7 @@
  */
 import { Platform } from 'react-native';
 import * as iapLib from 'react-native-iap';
-import { startIapSession, verifyAndFinish } from './iap';
+import { annualSaving, startIapSession, verifyAndFinish } from './iap';
 
 const mock = iapLib as unknown as {
   __firePurchase: (p: object) => void;
@@ -245,12 +245,16 @@ describe('startIapSession', () => {
       {
         basePlanIdAndroid: 'premium-monthly',
         offerTokenAndroid: 'offer-tok-monthly',
-        pricingPhasesAndroid: { pricingPhaseList: [{ formattedPrice: '$1.99' }] },
+        pricingPhasesAndroid: {
+          pricingPhaseList: [{ formattedPrice: '$1.99', priceAmountMicros: '1990000' }],
+        },
       },
       {
         basePlanIdAndroid: 'premium-annual',
         offerTokenAndroid: 'offer-tok-annual',
-        pricingPhasesAndroid: { pricingPhaseList: [{ formattedPrice: '$14.99' }] },
+        pricingPhasesAndroid: {
+          pricingPhaseList: [{ formattedPrice: '$14.99', priceAmountMicros: '14990000' }],
+        },
       },
     ],
   };
@@ -311,7 +315,8 @@ describe('startIapSession', () => {
       onCancelled: jest.fn(),
       onError: jest.fn(),
     });
-    expect(session.prices).toEqual({ monthly: '$1.99', annual: '$14.99' });
+    // $14.99 vs 12 × $1.99 = $23.88 → 37% saved, from the store's own numbers.
+    expect(session.prices).toEqual({ monthly: '$1.99', annual: '$14.99', annualSavingPct: 37 });
     session.dispose();
   });
 
@@ -332,5 +337,20 @@ describe('startIapSession', () => {
     // Shared cross-package vector (see core-ts paymentCode.test.ts).
     expect(arg.request.apple.appAccountToken).toBe('d47c7e4b-c0f7-421c-a429-72ad6e9ecaf3');
     session.dispose();
+  });
+});
+
+describe('annualSaving', () => {
+  it('is the whole-percent saving against twelve monthly payments', () => {
+    expect(annualSaving(1.99, 14.99)).toBe(37);
+    expect(annualSaving(4.99, 47.88)).toBe(20);
+  });
+
+  it('is null when a price is missing or there is no saving', () => {
+    expect(annualSaving(null, 14.99)).toBeNull();
+    expect(annualSaving(1.99, null)).toBeNull();
+    expect(annualSaving(1.99, 23.88)).toBeNull();
+    expect(annualSaving(1.99, 30)).toBeNull();
+    expect(annualSaving(0, 14.99)).toBeNull();
   });
 });

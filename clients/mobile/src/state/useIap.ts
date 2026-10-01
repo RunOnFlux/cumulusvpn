@@ -48,7 +48,11 @@ const FOREGROUND_RECHECK_MS = 30_000;
 
 export function useIap(enabled: boolean, code: string | null, tierPremium: boolean): IapState {
   const [ready, setReady] = useState(false);
-  const [prices, setPrices] = useState<IapPrices>({ monthly: null, annual: null });
+  const [prices, setPrices] = useState<IapPrices>({
+    monthly: null,
+    annual: null,
+    annualSavingPct: null,
+  });
   const [phase, setPhase] = useState<IapPhase>('idle');
   const [error, setError] = useState<string | null>(null);
   const [holdsSubscription, setHoldsSubscription] = useState(false);
