@@ -35,10 +35,9 @@ export interface Flags {
    */
   readonly iapPurchase: boolean;
   /**
-   * In-app voucher/promo-code redeem box for OUR codes. When OFF — the
-   * default — no code-entry surface renders. The store-sanctioned offer-code
-   * sheets (Apple/Play) are NOT gated by this flag; they ride with
-   * `iapPurchase`.
+   * In-app voucher/promo-code redeem box for OUR codes, plus the link to the
+   * store's own offer/promo-code sheet (Apple/Play; also needs `iapPurchase`).
+   * When OFF — the default — no code-entry surface renders.
    */
   readonly voucherRedeem: boolean;
   /**

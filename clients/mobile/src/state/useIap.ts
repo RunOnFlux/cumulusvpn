@@ -88,6 +88,12 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
               setPhase('pending_store');
             }
           },
+          onCancelled: () => {
+            if (alive) {
+              // Back to choosing a plan — unless a purchase already moved on.
+              setPhase((p) => (p === 'purchasing' || p === 'verifying' ? 'idle' : p));
+            }
+          },
           onError: (message) => {
             if (alive) {
               setError(message);

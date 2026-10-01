@@ -91,12 +91,33 @@ describe('verifyAndFinish', () => {
 });
 
 describe('startIapSession', () => {
+  it('reports a cancelled store sheet as cancelled, not as an error', async () => {
+    // requestPurchase resolves when the sheet OPENS; closing it without buying
+    // must reset the UI, or "Opening store…" never goes away.
+    mockBridge(true);
+    const cancelled = jest.fn();
+    const onError = jest.fn();
+    const session = await startIapSession(CODE, {
+      onVerified: jest.fn(),
+      onPending: jest.fn(),
+      onCancelled: cancelled,
+      onError,
+    });
+    mock.__fireError({ code: 'user-cancelled', message: 'User cancelled' });
+    expect(cancelled).toHaveBeenCalledTimes(1);
+    expect(onError).not.toHaveBeenCalled();
+    mock.__fireError({ code: 'service-error', message: 'Play is down' });
+    expect(onError).toHaveBeenCalledWith('Play is down');
+    session.dispose();
+  });
+
   it('routes listener purchases through verify-then-finish and reports up', async () => {
     mockBridge(true);
     const verified = jest.fn();
     const session = await startIapSession(CODE, {
       onVerified: verified,
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     mock.__firePurchase(purchase());
@@ -112,6 +133,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: pending,
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     mock.__firePurchase(purchase({ purchaseState: 'pending' }));
@@ -130,6 +152,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     const r = await session.reconcile(CODE);
@@ -144,6 +167,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     expect(await session.reconcile(CODE)).toEqual({
@@ -165,6 +189,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     const r = await session.reconcile(CODE);
@@ -180,6 +205,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     expect(await session.transfer([purchase({ purchaseToken: 'other-1' }) as never], CODE)).toBe(
@@ -217,6 +243,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     await session.purchase('monthly', CODE);
@@ -249,6 +276,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     await expect(session.purchase('annual', CODE)).rejects.toThrow('no Play offer');
@@ -262,6 +290,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     expect(session.prices).toEqual({ monthly: '$1.99', annual: '$14.99' });
@@ -274,6 +303,7 @@ describe('startIapSession', () => {
     const session = await startIapSession(CODE, {
       onVerified: jest.fn(),
       onPending: jest.fn(),
+      onCancelled: jest.fn(),
       onError: jest.fn(),
     });
     await session.purchase('annual', CODE);

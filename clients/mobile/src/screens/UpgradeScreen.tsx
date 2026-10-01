@@ -153,7 +153,10 @@ export function UpgradeScreen({
         <SubscribeSection iap={iap} premium={premium} />
       ) : null}
       {voucherEnabled && payment ? <RedeemSection code={payment.code} /> : null}
-      {iap ? <StoreOfferCodeRow /> : null}
+      {/* Store codes (Play promo / App Store offer codes) sit with our own code
+          box and share its switch: with no campaign running they'd be a button
+          to nowhere, so they only appear when codes are being handed out. */}
+      {iap && voucherEnabled ? <StoreOfferCodeRow /> : null}
       {webPayEnabled && payment ? <WebPayCard code={payment.code} /> : null}
       {showCrypto ? <InAppPay payment={payment} premium={premium} /> : null}
     </ScrollView>
@@ -563,11 +566,14 @@ function StoreOfferCodeRow(): React.JSX.Element {
     }
   };
   return (
-    <Pressable onPress={() => void open()} accessibilityRole="button" hitSlop={8}>
-      <Text style={[styles.link, styles.offerCodeRow]}>
-        {Platform.OS === 'ios' ? 'Redeem an offer code' : 'Redeem a Play promo code'}
+    <View style={styles.offerCodeRow}>
+      <Text style={styles.offerCodeText}>
+        {Platform.OS === 'ios' ? 'Have an App Store offer code?' : 'Have a Google Play promo code?'}
       </Text>
-    </Pressable>
+      <Pressable onPress={() => void open()} accessibilityRole="button" hitSlop={8}>
+        <Text style={styles.link}>Redeem it</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -866,5 +872,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: space.md,
     paddingVertical: 12,
   },
-  offerCodeRow: { textAlign: 'center', marginTop: space.lg },
+  offerCodeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: space.lg,
+  },
+  offerCodeText: { color: color.inkFaint, fontSize: 13 },
 });

@@ -110,6 +110,8 @@ export interface IapCallbacks {
   readonly onVerified: () => void;
   /** Android PENDING purchase — awaiting external payment approval. */
   readonly onPending: () => void;
+  /** The user closed the store sheet without buying — not an error, but the UI must reset. */
+  readonly onCancelled: () => void;
   readonly onError: (message: string) => void;
 }
 
@@ -201,8 +203,12 @@ export async function startIapSession(code: string, cb: IapCallbacks): Promise<I
   });
 
   const errorSub = purchaseErrorListener((e: PurchaseError) => {
-    // User cancellation is not an error worth surfacing.
-    if (e.code !== 'user-cancelled' && e.code !== 'user-error') {
+    // Cancelling is not an error worth surfacing — but it must still be
+    // reported: requestPurchase resolves as soon as the sheet OPENS, so
+    // without this the button would sit on "Opening store…" forever.
+    if (e.code === 'user-cancelled' || e.code === 'user-error') {
+      cb.onCancelled();
+    } else {
       cb.onError(e.message);
     }
   });
