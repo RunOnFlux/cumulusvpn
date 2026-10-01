@@ -5,10 +5,12 @@ import ReactAppDependencyProvider
 
 @main
 class AppDelegate: UIResponder, UIApplicationDelegate {
+  // Set by SceneDelegate, which owns the window and starts React Native in it.
   var window: UIWindow?
 
   var reactNativeDelegate: ReactNativeDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
+  var launchOptions: [UIApplication.LaunchOptionsKey: Any]?
 
   func application(
     _ application: UIApplication,
@@ -20,14 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     reactNativeDelegate = delegate
     reactNativeFactory = factory
-
-    window = UIWindow(frame: UIScreen.main.bounds)
-
-    factory.startReactNative(
-      withModuleName: "CumulusVPN",
-      in: window,
-      launchOptions: launchOptions
-    )
+    self.launchOptions = launchOptions
 
     return true
   }

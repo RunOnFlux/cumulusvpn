@@ -23,6 +23,7 @@
 		CCD0E1EF4953467DCAB708C5 /* CumulusIdentityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC4BE3EF187AE0527F84263C /* CumulusIdentityModule.swift */; };
 		DD0160FCAB9793E9B91B94C4 /* NetworkExtension.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */; };
 		E56718CC6519A6BDDA755CE9 /* Wgnest.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 48A4B83E657702F2100C614E /* Wgnest.xcframework */; };
+		E5E76CD461C6E503B91ADE74 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B92B8F4D46E14A29AC728533 /* SceneDelegate.swift */; };
 		E9976E5A87F43075035A9B6E /* CumulusTunnelModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2ACC8C2FEFF9349B78B1F82D /* CumulusTunnelModule.swift */; };
 		FA11B00C0FF1CE00CAFEBABE /* WgTlsBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA11B00C0FF1CE00DEADBEEF /* WgTlsBridge.swift */; };
 		FB4CBE1334AD5A3E6263A849 /* CumulusTunnelModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 370E7D7ADE72014F94A4D2E0 /* CumulusTunnelModule.m */; };
@@ -79,6 +80,7 @@
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = CumulusVPN/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		91B3F55BAF0D274712D54CE8 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		B231C4547823B9B48AE3BD65 /* NetworkExtension.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = NetworkExtension.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/NetworkExtension.framework; sourceTree = DEVELOPER_DIR; };
+		B92B8F4D46E14A29AC728533 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SceneDelegate.swift; path = CumulusVPN/SceneDelegate.swift; sourceTree = "<group>"; };
 		BC4BE3EF187AE0527F84263C /* CumulusIdentityModule.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CumulusIdentityModule.swift; sourceTree = "<group>"; };
 		BC9962EE835F6DADB18C09BA /* CumulusIdentityModule.m */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.objc; path = CumulusIdentityModule.m; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
@@ -128,6 +130,7 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
+				B92B8F4D46E14A29AC728533 /* SceneDelegate.swift */,
 			);
 			name = CumulusVPN;
 			sourceTree = "<group>";
@@ -400,6 +403,7 @@
 				FB4CBE1334AD5A3E6263A849 /* CumulusTunnelModule.m in Sources */,
 				CCD0E1EF4953467DCAB708C5 /* CumulusIdentityModule.swift in Sources */,
 				691DD536CCC5668BBCE1FA2C /* CumulusIdentityModule.m in Sources */,
+				E5E76CD461C6E503B91ADE74 /* SceneDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
