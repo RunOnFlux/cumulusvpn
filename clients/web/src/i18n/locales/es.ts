@@ -37,7 +37,7 @@ export const es: Catalog = {
   connect_verify_warn:
     'No se pudo verificar la firma del directorio — los endpoints se muestran solo a título informativo.',
   connect_notice_no_live_gateway:
-    'No hay ningún gateway activo accesible desde el navegador. Se muestran los países del directorio firmado — las configuraciones se inscriben en un gateway activo cuando hay uno disponible.',
+    'No se pudo contactar con ningún gateway ahora mismo. Se muestran los países del directorio firmado — recarga la página en un minuto para volver a intentarlo.',
   connect_choose_location: 'Elige una ubicación',
   connect_tier_free: 'GRATIS · 100 KB/s',
   connect_loading_directory: 'Resolviendo el directorio firmado y descubriendo gateways…',
@@ -48,7 +48,7 @@ export const es: Catalog = {
   connect_enrolling: 'Inscribiendo…',
   connect_generate: 'Generar .conf',
   connect_no_gateway_in_country:
-    'No hay ningún gateway activo accesible en {country} desde el navegador. La inscripción se envía a la API de control de un gateway (http :51821), a la que las páginas https no pueden llegar — esto funciona desde los clientes de escritorio y móvil que comparten este núcleo.',
+    'Ningún gateway en {country} respondió ahora mismo. Elige otro país o recarga la página en un minuto para volver a intentarlo.',
   connect_error_enroll_failed: 'Falló la inscripción.',
   connect_qr_caption: 'Escanea con la app WireGuard',
   connect_stat_assigned_ip: 'IP asignada',
@@ -204,7 +204,7 @@ export const es: Catalog = {
   multihop_error_no_exit:
     'Multi-hop necesita un gateway de salida distinto; no se resolvió ninguno.',
   multihop_error_no_gateways:
-    'No hay gateways activos accesibles desde el navegador, así que no se pudo resolver ninguna ruta. El anidamiento multi-hop es en realidad una función de nuestras apps — los clientes de escritorio y móvil (mismo núcleo) prueban los gateways directamente y ejecutan los dos túneles por ti.',
+    'No se pudo contactar con ningún gateway ahora mismo, así que no se pudo resolver ninguna ruta. Recarga la página en un minuto para volver a intentarlo.',
   multihop_error_failed: 'Falló la generación de multi-hop.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'externo · MTU 1420',

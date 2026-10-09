@@ -37,7 +37,7 @@ export const fi: Catalog = {
   connect_verify_warn:
     'Hakemiston allekirjoitusta ei voitu vahvistaa — päätepisteet näytetään vain tiedoksi.',
   connect_notice_no_live_gateway:
-    'Selaimesta ei tavoiteta yhtään aktiivista yhdyskäytävää. Näytetään allekirjoitetun hakemiston maat — asetukset rekisteröityvät aktiiviseen yhdyskäytävään, kun sellainen on tavoitettavissa.',
+    'Yhtään yhdyskäytävää ei tavoitettu juuri nyt. Näytetään allekirjoitetun hakemiston maat — lataa sivu uudelleen minuutin kuluttua yrittääksesi uudelleen.',
   connect_choose_location: 'Valitse sijainti',
   connect_tier_free: 'ILMAINEN · 100 KB/s',
   connect_loading_directory: 'Ratkaistaan allekirjoitettua hakemistoa ja etsitään yhdyskäytäviä…',
@@ -48,7 +48,7 @@ export const fi: Catalog = {
   connect_enrolling: 'Rekisteröidään…',
   connect_generate: 'Luo .conf',
   connect_no_gateway_in_country:
-    'Selaimesta ei tavoiteta yhtään aktiivista yhdyskäytävää maassa {country}. Rekisteröinti lähetetään yhdyskäytävän ohjaus-API:in (http :51821), johon https-sivut eivät pääse — tämä toimii työpöytä- ja mobiilisovelluksista, jotka jakavat saman ytimen.',
+    'Mikään yhdyskäytävä maassa {country} ei vastannut juuri nyt. Valitse toinen maa tai lataa sivu uudelleen minuutin kuluttua yrittääksesi uudelleen.',
   connect_error_enroll_failed: 'Rekisteröinti epäonnistui.',
   connect_qr_caption: 'Skannaa WireGuard-sovellukseen',
   connect_stat_assigned_ip: 'Osoitettu IP',
@@ -202,7 +202,7 @@ export const fi: Catalog = {
   multihop_error_no_exit:
     'Multi-hop tarvitsee erillisen uloskäynti-yhdyskäytävän; yhtään ei löytynyt.',
   multihop_error_no_gateways:
-    'Selaimesta ei tavoiteta yhtään aktiivista yhdyskäytävää, joten reittiä ei voitu ratkaista. Multi-hop-sisäkkäisyys on itse asiassa omien sovellustemme ominaisuus — työpöytä- ja mobiilisovellukset (sama ydin) etsivät yhdyskäytäviä suoraan ja ajavat kaksi tunnelia puolestasi.',
+    'Yhtään yhdyskäytävää ei tavoitettu juuri nyt, joten reittiä ei voitu muodostaa. Lataa sivu uudelleen minuutin kuluttua yrittääksesi uudelleen.',
   multihop_error_failed: 'Multi-hopin luonti epäonnistui.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'ulompi · MTU 1420',

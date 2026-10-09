@@ -37,7 +37,7 @@ export const da: Catalog = {
   connect_verify_warn:
     'Katalogets signatur kunne ikke verificeres — endpoints vises kun til orientering.',
   connect_notice_no_live_gateway:
-    'Ingen aktiv gateway tilgængelig fra browseren. De signerede katalogs lande vises — konfigurationer tilmeldes en aktiv gateway, når én er tilgængelig.',
+    'Ingen gateway kunne nås lige nu. De signerede katalogs lande vises — genindlæs siden om et minut for at prøve igen.',
   connect_choose_location: 'Vælg en placering',
   connect_tier_free: 'GRATIS · 100 KB/s',
   connect_loading_directory: 'Løser det signerede katalog og finder gateways…',
@@ -48,7 +48,7 @@ export const da: Catalog = {
   connect_enrolling: 'Tilmelder…',
   connect_generate: 'Generér .conf',
   connect_no_gateway_in_country:
-    'Ingen aktiv gateway tilgængelig i {country} fra browseren. Tilmeldingen sendes til en gateways styrings-API (http :51821), som https-sider ikke kan nå — det fungerer fra desktop- og mobilklienterne, der deler denne kerne.',
+    'Ingen gateway i {country} svarede lige nu. Vælg et andet land, eller genindlæs siden om et minut for at prøve igen.',
   connect_error_enroll_failed: 'Tilmeldingen mislykkedes.',
   connect_qr_caption: 'Scan ind i WireGuard-appen',
   connect_stat_assigned_ip: 'Tildelt IP',
@@ -200,7 +200,7 @@ export const da: Catalog = {
   multihop_generate: 'Generér to konfigurationer',
   multihop_error_no_exit: 'Multi-hop kræver en separat udgangsgateway; ingen blev fundet.',
   multihop_error_no_gateways:
-    'Ingen aktive gateways tilgængelige fra browseren, så ingen rute kunne findes. Multi-hop-nesting er reelt en funktion i vores apps — desktop- og mobilklienterne (samme kerne) undersøger gateways direkte og kører de to tunneler for dig.',
+    'Ingen gateway kunne nås lige nu, så der kunne ikke findes en rute. Genindlæs siden om et minut for at prøve igen.',
   multihop_error_failed: 'Multi-hop-generering mislykkedes.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'ydre · MTU 1420',

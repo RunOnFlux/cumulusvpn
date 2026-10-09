@@ -37,7 +37,7 @@ export const sv: Catalog = {
   connect_verify_warn:
     'Katalogens signatur kunde inte verifieras — endpoints visas endast i informationssyfte.',
   connect_notice_no_live_gateway:
-    'Ingen aktiv gateway nåbar från webbläsaren. Den signerade katalogens länder visas — konfigurationer registreras hos en aktiv gateway när en sådan är nåbar.',
+    'Ingen gateway gick att nå just nu. Den signerade katalogens länder visas — ladda om sidan om en minut för att försöka igen.',
   connect_choose_location: 'Välj en plats',
   connect_tier_free: 'GRATIS · 100 KB/s',
   connect_loading_directory: 'Löser upp den signerade katalogen och upptäcker gateways…',
@@ -48,7 +48,7 @@ export const sv: Catalog = {
   connect_enrolling: 'Registrerar…',
   connect_generate: 'Generera .conf',
   connect_no_gateway_in_country:
-    'Ingen aktiv gateway nåbar i {country} från webbläsaren. Registreringen skickas till en gateways styr-API (http :51821), som https-sidor inte kan nå — det fungerar från desktop- och mobilklienterna som delar denna kärna.',
+    'Ingen gateway i {country} svarade just nu. Välj ett annat land, eller ladda om sidan om en minut för att försöka igen.',
   connect_error_enroll_failed: 'Registreringen misslyckades.',
   connect_qr_caption: 'Skanna in i WireGuard-appen',
   connect_stat_assigned_ip: 'Tilldelad IP',
@@ -199,7 +199,7 @@ export const sv: Catalog = {
   multihop_generate: 'Generera två konfigurationer',
   multihop_error_no_exit: 'Multi-hop kräver en separat utgångsgateway; ingen kunde fastställas.',
   multihop_error_no_gateways:
-    'Inga aktiva gateways nåbara från webbläsaren, så ingen rutt kunde fastställas. Multi-hop-nästling är egentligen en funktion i våra appar — desktop- och mobilklienterna (samma kärna) sonderar gateways direkt och kör de två tunnlarna åt dig.',
+    'Ingen gateway gick att nå just nu, så ingen rutt kunde fastställas. Ladda om sidan om en minut för att försöka igen.',
   multihop_error_failed: 'Det gick inte att generera multi-hop.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'yttre · MTU 1420',

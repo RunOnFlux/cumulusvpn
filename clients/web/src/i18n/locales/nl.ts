@@ -37,7 +37,7 @@ export const nl: Catalog = {
   connect_verify_warn:
     'Directoryhandtekening kon niet worden geverifieerd — endpoints worden alleen ter informatie getoond.',
   connect_notice_no_live_gateway:
-    'Geen actieve gateway bereikbaar vanuit de browser. De landen uit de ondertekende directory worden getoond — configuraties schrijven zich in bij een actieve gateway zodra er één bereikbaar is.',
+    'Er is op dit moment geen gateway bereikbaar. De landen uit de ondertekende directory worden getoond — laad de pagina over een minuut opnieuw om het nog eens te proberen.',
   connect_choose_location: 'Kies een locatie',
   connect_tier_free: 'GRATIS · 100 KB/s',
   connect_loading_directory: 'Ondertekende directory wordt opgehaald en gateways worden gezocht…',
@@ -48,7 +48,7 @@ export const nl: Catalog = {
   connect_enrolling: 'Inschrijven…',
   connect_generate: '.conf genereren',
   connect_no_gateway_in_country:
-    "Geen actieve gateway bereikbaar in {country} vanuit de browser. Inschrijving gaat naar de control-API van een gateway (http :51821), die https-pagina's niet kunnen bereiken — dit werkt wel vanuit de desktop- en mobiele clients, die deze kern delen.",
+    'Geen enkele gateway in {country} reageerde op dit moment. Kies een ander land, of laad de pagina over een minuut opnieuw om het nog eens te proberen.',
   connect_error_enroll_failed: 'Inschrijving mislukt.',
   connect_qr_caption: 'Scan met de WireGuard-app',
   connect_stat_assigned_ip: 'Toegewezen IP',
@@ -202,7 +202,7 @@ export const nl: Catalog = {
   multihop_generate: 'Twee configuraties genereren',
   multihop_error_no_exit: 'Multi-hop heeft een aparte exit-gateway nodig; er is er geen gevonden.',
   multihop_error_no_gateways:
-    'Geen actieve gateways bereikbaar vanuit de browser, dus er kon geen route worden gevonden. Multi-hop-nesting is eigenlijk een functie van onze apps — de desktop- en mobiele clients (zelfde kern) peilen gateways rechtstreeks en draaien de twee tunnels voor je.',
+    'Er is op dit moment geen gateway bereikbaar, dus er kon geen route worden bepaald. Laad de pagina over een minuut opnieuw om het nog eens te proberen.',
   multihop_error_failed: 'Genereren van multi-hop mislukt.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'buiten · MTU 1420',

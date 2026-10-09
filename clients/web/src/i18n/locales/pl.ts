@@ -37,7 +37,7 @@ export const pl: Catalog = {
   connect_verify_warn:
     'Nie udało się zweryfikować podpisu katalogu — punkty końcowe są pokazane wyłącznie informacyjnie.',
   connect_notice_no_live_gateway:
-    'Żadna aktywna bramka nie jest dostępna z przeglądarki. Pokazujemy kraje z podpisanego katalogu — konfiguracje rejestrują się na aktywnej bramce, gdy tylko jakaś stanie się dostępna.',
+    'W tej chwili nie udało się połączyć z żadną bramką. Pokazujemy kraje z podpisanego katalogu — odśwież stronę za minutę, aby spróbować ponownie.',
   connect_choose_location: 'Wybierz lokalizację',
   connect_tier_free: 'DARMOWY · 100 KB/s',
   connect_loading_directory: 'Wczytywanie podpisanego katalogu i wykrywanie bramek…',
@@ -53,7 +53,7 @@ export const pl: Catalog = {
   connect_enrolling: 'Rejestracja…',
   connect_generate: 'Wygeneruj .conf',
   connect_no_gateway_in_country:
-    'Żadna aktywna bramka w {country} nie jest dostępna z przeglądarki. Rejestracja trafia do API kontrolnego bramki (http :51821), do którego strony https nie mają dostępu — działa to z klientów desktopowych i mobilnych, które współdzielą ten sam rdzeń.',
+    'Żadna bramka w {country} nie odpowiedziała w tej chwili. Wybierz inny kraj lub odśwież stronę za minutę, aby spróbować ponownie.',
   connect_error_enroll_failed: 'Rejestracja nie powiodła się.',
   connect_qr_caption: 'Zeskanuj aplikacją WireGuard',
   connect_stat_assigned_ip: 'Przypisany adres IP',
@@ -208,7 +208,7 @@ export const pl: Catalog = {
   multihop_generate: 'Wygeneruj dwie konfiguracje',
   multihop_error_no_exit: 'Multi-hop wymaga oddzielnej bramki wyjściowej; żadnej nie znaleziono.',
   multihop_error_no_gateways:
-    'Żadna aktywna bramka nie jest dostępna z przeglądarki, więc nie udało się wyznaczyć trasy. Zagnieżdżanie multi-hop to tak naprawdę funkcja naszych aplikacji — klienci desktopowi i mobilni (ten sam rdzeń) sprawdzają bramki bezpośrednio i uruchamiają oba tunele za ciebie.',
+    'W tej chwili nie udało się połączyć z żadną bramką, więc nie można było wyznaczyć trasy. Odśwież stronę za minutę, aby spróbować ponownie.',
   multihop_error_failed: 'Generowanie multi-hop nie powiodło się.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'zewnętrzny · MTU 1420',

@@ -37,7 +37,7 @@ export const vi: Catalog = {
   connect_verify_warn:
     'Không thể xác minh chữ ký của danh mục — các endpoint chỉ được hiển thị để tham khảo.',
   connect_notice_no_live_gateway:
-    'Không có gateway hoạt động nào mà trình duyệt truy cập được. Đang hiển thị các quốc gia trong danh mục đã ký — cấu hình sẽ đăng ký với một gateway hoạt động khi có gateway khả dụng.',
+    'Hiện không thể kết nối tới gateway nào. Đang hiển thị các quốc gia trong danh mục đã ký — hãy tải lại trang sau một phút để thử lại.',
   connect_choose_location: 'Chọn một vị trí',
   connect_tier_free: 'MIỄN PHÍ · 100 KB/s',
   connect_loading_directory: 'Đang phân giải danh mục đã ký & tìm gateway…',
@@ -48,7 +48,7 @@ export const vi: Catalog = {
   connect_enrolling: 'Đang đăng ký…',
   connect_generate: 'Tạo .conf',
   connect_no_gateway_in_country:
-    'Không có gateway hoạt động nào ở {country} mà trình duyệt truy cập được. Việc đăng ký được gửi tới control API của gateway (http :51821), thứ mà các trang https không thể truy cập được — cách này hoạt động từ các ứng dụng desktop và di động dùng chung lõi này.',
+    'Hiện không có gateway nào ở {country} phản hồi. Hãy chọn quốc gia khác, hoặc tải lại trang sau một phút để thử lại.',
   connect_error_enroll_failed: 'Đăng ký thất bại.',
   connect_qr_caption: 'Quét vào ứng dụng WireGuard',
   connect_stat_assigned_ip: 'IP được cấp',
@@ -201,7 +201,7 @@ export const vi: Catalog = {
   multihop_generate: 'Tạo hai cấu hình',
   multihop_error_no_exit: 'Multi-hop cần một gateway exit riêng biệt; không tìm được gateway nào.',
   multihop_error_no_gateways:
-    'Không có gateway hoạt động nào mà trình duyệt truy cập được, nên không thể xác định tuyến đường nào. Việc lồng multi-hop thực chất là một tính năng riêng của ứng dụng chúng tôi — các ứng dụng desktop và di động (cùng lõi) dò gateway trực tiếp và chạy cả hai tunnel giúp bạn.',
+    'Hiện không thể kết nối tới gateway nào, nên không thể xác định tuyến. Hãy tải lại trang sau một phút để thử lại.',
   multihop_error_failed: 'Tạo multi-hop thất bại.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'lớp ngoài · MTU 1420',

@@ -37,7 +37,7 @@ export const sw: Catalog = {
   connect_verify_warn:
     'Sahihi ya saraka haikuweza kuthibitishwa — vituo vinaonyeshwa kwa taarifa tu.',
   connect_notice_no_live_gateway:
-    'Hakuna lango tendaji linaloweza kufikiwa kutoka kwa kivinjari. Nchi za saraka iliyotiwa sahihi zinaonyeshwa — usanidi husajiliwa kwenye lango tendaji linapopatikana.',
+    'Hakuna lango lililoweza kufikiwa kwa sasa. Nchi za saraka iliyotiwa sahihi zinaonyeshwa — pakia upya ukurasa baada ya dakika moja ili ujaribu tena.',
   connect_choose_location: 'Chagua eneo',
   connect_tier_free: 'BURE · 100 KB/s',
   connect_loading_directory: 'Inatatua saraka iliyotiwa sahihi na kugundua malango…',
@@ -48,7 +48,7 @@ export const sw: Catalog = {
   connect_enrolling: 'Inasajili…',
   connect_generate: 'Tengeneza .conf',
   connect_no_gateway_in_country:
-    'Hakuna lango tendaji linaloweza kufikiwa nchini {country} kutoka kwa kivinjari. Usajili hutumwa kwa API ya udhibiti ya lango (http :51821), ambayo kurasa za https haziwezi kufikia — hii inafanya kazi kutoka kwa programu za kompyuta na simu zinazoshiriki kiini hiki.',
+    'Hakuna lango nchini {country} lililojibu kwa sasa. Chagua nchi nyingine, au pakia upya ukurasa baada ya dakika moja ili ujaribu tena.',
   connect_error_enroll_failed: 'Usajili umeshindwa.',
   connect_qr_caption: 'Changanua kwenye programu ya WireGuard',
   connect_stat_assigned_ip: 'IP iliyotolewa',
@@ -203,7 +203,7 @@ export const sw: Catalog = {
   multihop_generate: 'Tengeneza usanidi mbili',
   multihop_error_no_exit: 'Multi-hop inahitaji lango tofauti la kutokea; hakuna lililopatikana.',
   multihop_error_no_gateways:
-    'Hakuna malango tendaji yanayoweza kufikiwa kutoka kwa kivinjari, hivyo hakuna njia iliyoweza kupatikana. Uunganishaji wa multi-hop kwa kweli ni kipengele cha programu zetu — programu za kompyuta na simu (kiini kile kile) huchunguza malango moja kwa moja na kuendesha vichuguu viwili kwa niaba yako.',
+    'Hakuna lango lililoweza kufikiwa kwa sasa, kwa hivyo hakuna njia iliyoweza kubainishwa. Pakia upya ukurasa baada ya dakika moja ili ujaribu tena.',
   multihop_error_failed: 'Kutengeneza multi-hop kumeshindwa.',
   multihop_internet: 'intaneti',
   multihop_conf_outer_tag: 'nje · MTU 1420',

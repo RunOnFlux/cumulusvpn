@@ -210,7 +210,10 @@ export function ConnectPage({
           </p>
         </div>
 
-        {discovery.verified ? null : <div className="banner warn">{t('connect_verify_warn')}</div>}
+        {/* `verified` is false until the directory resolves; only a finished check can fail. */}
+        {discovery.loading || discovery.verified ? null : (
+          <div className="banner warn">{t('connect_verify_warn')}</div>
+        )}
         {discovery.notice === 'no-live-gateway' ? (
           <div className="banner info">{t('connect_notice_no_live_gateway')}</div>
         ) : null}

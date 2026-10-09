@@ -37,7 +37,7 @@ export const pt: Catalog = {
   connect_verify_warn:
     'Não foi possível verificar a assinatura do diretório — os endpoints são exibidos apenas a título informativo.',
   connect_notice_no_live_gateway:
-    'Nenhum gateway ativo acessível a partir do navegador. Exibindo os países do diretório assinado — as configurações se inscrevem em um gateway ativo quando houver um disponível.',
+    'Nenhum gateway pôde ser alcançado agora. Exibindo os países do diretório assinado — recarregue a página em um minuto para tentar novamente.',
   connect_choose_location: 'Escolha uma localização',
   connect_tier_free: 'GRÁTIS · 100 KB/s',
   connect_loading_directory: 'Resolvendo o diretório assinado e descobrindo gateways…',
@@ -48,7 +48,7 @@ export const pt: Catalog = {
   connect_enrolling: 'Inscrevendo…',
   connect_generate: 'Gerar .conf',
   connect_no_gateway_in_country:
-    'Nenhum gateway ativo acessível em {country} a partir do navegador. A inscrição é enviada à API de controle de um gateway (http :51821), que páginas https não conseguem alcançar — isso funciona nos clientes desktop e mobile, que compartilham este núcleo.',
+    'Nenhum gateway em {country} respondeu agora. Escolha outro país ou recarregue a página em um minuto para tentar novamente.',
   connect_error_enroll_failed: 'A inscrição falhou.',
   connect_qr_caption: 'Escaneie com o app WireGuard',
   connect_stat_assigned_ip: 'IP atribuído',
@@ -205,7 +205,7 @@ export const pt: Catalog = {
   multihop_error_no_exit:
     'Multi-hop precisa de um gateway de saída distinto; nenhum foi resolvido.',
   multihop_error_no_gateways:
-    'Nenhum gateway ativo acessível a partir do navegador, então nenhuma rota pôde ser resolvida. O encadeamento multi-hop é, na verdade, um recurso dos nossos apps — os clientes desktop e mobile (mesmo núcleo) sondam os gateways diretamente e rodam os dois túneis por você.',
+    'Nenhum gateway pôde ser alcançado agora, então nenhuma rota pôde ser definida. Recarregue a página em um minuto para tentar novamente.',
   multihop_error_failed: 'A geração do multi-hop falhou.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'externo · MTU 1420',

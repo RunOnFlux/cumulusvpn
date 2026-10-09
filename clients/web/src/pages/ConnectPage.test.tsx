@@ -135,8 +135,27 @@ describe('<ConnectPage />', () => {
     expect(screen.getByRole('button', { name: 'Generate .conf' })).toBeInTheDocument();
     expect(screen.getByText('This device’s identity')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('One key, every gateway.');
-    expect(screen.getByText(/No live gateway reachable from the browser\./)).toBeInTheDocument();
+    expect(screen.getByText(/Couldn’t reach any gateway just now\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'upgrade with FLUX' })).toBeInTheDocument();
+  });
+
+  // Discovery starts out unverified, so keying the warning on `verified` alone
+  // showed every visitor a forged-directory warning for the whole load.
+  it('warns about the directory signature only once the check has finished', () => {
+    const { rerender } = renderPage('en', { ...discovery, loading: true, verified: false });
+    expect(screen.queryByText(/could not be verified/)).not.toBeInTheDocument();
+
+    rerender(
+      <LocaleProvider initialLocale="en">
+        <ConnectPage
+          keypair={keypair}
+          discovery={{ ...discovery, verified: false }}
+          onRegenerate={() => {}}
+          onNavigateUpgrade={() => {}}
+        />
+      </LocaleProvider>,
+    );
+    expect(screen.getByText(/could not be verified/)).toBeInTheDocument();
   });
 
   // A .conf pins one node's endpoint, server key and peer registration, and any

@@ -37,7 +37,7 @@ export const de: Catalog = {
   connect_verify_warn:
     'Verzeichnissignatur konnte nicht verifiziert werden — Endpunkte werden nur zur Information angezeigt.',
   connect_notice_no_live_gateway:
-    'Kein aktives Gateway vom Browser aus erreichbar. Es werden die Länder des signierten Verzeichnisses angezeigt — Konfigurationen melden sich bei einem aktiven Gateway an, sobald eines erreichbar ist.',
+    'Gerade ist kein Gateway erreichbar. Es werden die Länder des signierten Verzeichnisses angezeigt — lade die Seite in einer Minute neu, um es erneut zu versuchen.',
   connect_choose_location: 'Standort wählen',
   connect_tier_free: 'KOSTENLOS · 100 KB/s',
   connect_loading_directory: 'Signiertes Verzeichnis wird aufgelöst und Gateways werden ermittelt…',
@@ -48,7 +48,7 @@ export const de: Catalog = {
   connect_enrolling: 'Anmeldung läuft…',
   connect_generate: '.conf erzeugen',
   connect_no_gateway_in_country:
-    'Kein aktives Gateway in {country} vom Browser aus erreichbar. Die Anmeldung erfolgt an der Steuer-API eines Gateways (http :51821), die https-Seiten nicht erreichen können — das funktioniert bei den Desktop- und Mobile-Clients, die diesen Kern gemeinsam nutzen.',
+    'Kein Gateway in {country} hat gerade geantwortet. Wähle ein anderes Land oder lade die Seite in einer Minute neu, um es erneut zu versuchen.',
   connect_error_enroll_failed: 'Anmeldung fehlgeschlagen.',
   connect_qr_caption: 'Mit der WireGuard-App scannen',
   connect_stat_assigned_ip: 'Zugewiesene IP',
@@ -204,7 +204,7 @@ export const de: Catalog = {
   multihop_error_no_exit:
     'Multi-Hop braucht ein eigenständiges Ausgangs-Gateway; keines wurde ermittelt.',
   multihop_error_no_gateways:
-    'Kein aktives Gateway vom Browser aus erreichbar, daher konnte keine Route ermittelt werden. Multi-Hop-Verschachtelung ist eigentlich ein Feature unserer Apps — die Desktop- und Mobile-Clients (gleicher Kern) prüfen Gateways direkt und betreiben die beiden Tunnel für dich.',
+    'Gerade ist kein Gateway erreichbar, daher konnte keine Route ermittelt werden. Lade die Seite in einer Minute neu, um es erneut zu versuchen.',
   multihop_error_failed: 'Multi-Hop-Erzeugung fehlgeschlagen.',
   multihop_internet: 'Internet',
   multihop_conf_outer_tag: 'äußerer Tunnel · MTU 1420',

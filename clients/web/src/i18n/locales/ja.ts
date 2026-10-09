@@ -37,7 +37,7 @@ export const ja: Catalog = {
   connect_verify_warn:
     'ディレクトリの署名を検証できませんでした — エンドポイントは参考情報として表示しています。',
   connect_notice_no_live_gateway:
-    'ブラウザから到達できるゲートウェイが見つかりません。署名済みディレクトリの国を表示しています — 到達可能なゲートウェイがあれば、そこに設定が登録されます。',
+    '現在、どのゲートウェイにも接続できません。署名済みディレクトリの国を表示しています — 1分ほどしてからページを再読み込みしてください。',
   connect_choose_location: '場所を選択',
   connect_tier_free: '無料 · 100 KB/s',
   connect_loading_directory: '署名済みディレクトリを解決し、ゲートウェイを探索しています…',
@@ -48,7 +48,7 @@ export const ja: Catalog = {
   connect_enrolling: '登録中…',
   connect_generate: '.conf を生成',
   connect_no_gateway_in_country:
-    'ブラウザから {country} 内のゲートウェイに到達できません。登録はゲートウェイの制御 API（http :51821）宛てに送信されますが、https のページはそこへ到達できません — これはこのコアを共有するデスクトップ版やモバイル版のクライアントでは機能します。',
+    '現在、{country} のゲートウェイから応答がありません。別の国を選ぶか、1分ほどしてからページを再読み込みしてください。',
   connect_error_enroll_failed: '登録に失敗しました。',
   connect_qr_caption: 'WireGuard アプリで読み取り',
   connect_stat_assigned_ip: '割り当てられた IP',
@@ -203,7 +203,7 @@ export const ja: Catalog = {
   multihop_error_no_exit:
     'マルチホップには独立した出口ゲートウェイが必要ですが、見つかりませんでした。',
   multihop_error_no_gateways:
-    'ブラウザから到達できるゲートウェイがないため、経路を解決できませんでした。マルチホップの入れ子構成は実質的に自社アプリ向けの機能です — デスクトップ版とモバイル版のクライアント（同じコア）がゲートウェイを直接探索し、2 本のトンネルをあなたに代わって実行します。',
+    '現在、どのゲートウェイにも接続できないため、経路を決定できませんでした。1分ほどしてからページを再読み込みしてください。',
   multihop_error_failed: 'マルチホップの生成に失敗しました。',
   multihop_internet: 'インターネット',
   multihop_conf_outer_tag: '外側 · MTU 1420',

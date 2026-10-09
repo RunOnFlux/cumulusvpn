@@ -43,7 +43,7 @@ export const en = {
   connect_verify_warn:
     'Directory signature could not be verified — endpoints are shown for information only.',
   connect_notice_no_live_gateway:
-    'No live gateway reachable from the browser. Showing the signed directory’s countries — configs enroll against a live gateway when one is reachable.',
+    'Couldn’t reach any gateway just now. Showing the signed directory’s countries — reload the page in a minute to try again.',
   connect_choose_location: 'Choose a location',
   connect_tier_free: 'FREE · 100 KB/s',
   connect_loading_directory: 'Resolving the signed directory & discovering gateways…',
@@ -54,7 +54,7 @@ export const en = {
   connect_enrolling: 'Enrolling…',
   connect_generate: 'Generate .conf',
   connect_no_gateway_in_country:
-    'No live gateway reachable in {country} from the browser. Enrollment posts to a gateway’s control API (http :51821), which https pages can’t reach — this works from the desktop and mobile clients that share this core.',
+    'No gateway in {country} answered just now. Pick another country, or reload the page in a minute to try again.',
   connect_error_enroll_failed: 'Enrollment failed.',
   connect_qr_caption: 'Scan into the WireGuard app',
   connect_stat_assigned_ip: 'Assigned IP',
@@ -204,7 +204,7 @@ export const en = {
   multihop_generate: 'Generate two configs',
   multihop_error_no_exit: 'Multi-hop needs a distinct exit gateway; none was resolved.',
   multihop_error_no_gateways:
-    'No live gateways reachable from the browser, so no route could be resolved. Multi-hop nesting is really an our-apps feature — the desktop and mobile clients (same core) probe gateways directly and run the two tunnels for you.',
+    'Couldn’t reach any gateway just now, so no route could be resolved. Reload the page in a minute to try again.',
   multihop_error_failed: 'Multi-hop generation failed.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'outer · MTU 1420',

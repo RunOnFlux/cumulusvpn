@@ -37,7 +37,7 @@ export const fr: Catalog = {
   connect_verify_warn:
     "La signature de l'annuaire n'a pas pu être vérifiée — les points de terminaison sont affichés à titre informatif uniquement.",
   connect_notice_no_live_gateway:
-    "Aucune passerelle active accessible depuis le navigateur. Les pays de l'annuaire signé sont affichés — les configurations s'inscrivent sur une passerelle active dès qu'une devient disponible.",
+    'Aucune passerelle n’a pu être jointe pour le moment. Les pays de l’annuaire signé sont affichés — rechargez la page dans une minute pour réessayer.',
   connect_choose_location: 'Choisissez un emplacement',
   connect_tier_free: 'GRATUIT · 100 KB/s',
   connect_loading_directory: "Résolution de l'annuaire signé et découverte des passerelles…",
@@ -48,7 +48,7 @@ export const fr: Catalog = {
   connect_enrolling: 'Inscription…',
   connect_generate: 'Générer le .conf',
   connect_no_gateway_in_country:
-    "Aucune passerelle active accessible dans {country} depuis le navigateur. L'inscription est envoyée à l'API de contrôle d'une passerelle (http :51821), inaccessible depuis les pages https — cela fonctionne depuis les clients desktop et mobile, qui partagent ce même cœur.",
+    'Aucune passerelle dans {country} n’a répondu pour le moment. Choisissez un autre pays, ou rechargez la page dans une minute pour réessayer.',
   connect_error_enroll_failed: "Échec de l'inscription.",
   connect_qr_caption: "Scannez avec l'app WireGuard",
   connect_stat_assigned_ip: 'IP attribuée',
@@ -204,7 +204,7 @@ export const fr: Catalog = {
   multihop_error_no_exit:
     "Le multi-hop nécessite une passerelle de sortie distincte ; aucune n'a été résolue.",
   multihop_error_no_gateways:
-    "Aucune passerelle active accessible depuis le navigateur, donc aucune route n'a pu être résolue. L'imbrication multi-hop est en réalité une fonctionnalité de nos apps — les clients desktop et mobile (même cœur) sondent les passerelles directement et font tourner les deux tunnels pour vous.",
+    'Aucune passerelle n’a pu être jointe pour le moment, aucun itinéraire n’a donc pu être déterminé. Rechargez la page dans une minute pour réessayer.',
   multihop_error_failed: 'Échec de la génération multi-hop.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'externe · MTU 1420',

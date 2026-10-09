@@ -37,7 +37,7 @@ export const id: Catalog = {
   connect_verify_warn:
     'Tanda tangan direktori tidak dapat diverifikasi — endpoint hanya ditampilkan sebagai informasi.',
   connect_notice_no_live_gateway:
-    'Tidak ada gateway aktif yang terjangkau dari browser. Menampilkan negara dari direktori bertanda tangan — config akan mendaftar ke gateway aktif begitu tersedia.',
+    'Saat ini tidak ada gateway yang bisa dijangkau. Menampilkan negara dari direktori bertanda tangan — muat ulang halaman dalam satu menit untuk mencoba lagi.',
   connect_choose_location: 'Pilih lokasi',
   connect_tier_free: 'GRATIS · 100 KB/s',
   connect_loading_directory: 'Me-resolve direktori bertanda tangan & menemukan gateway…',
@@ -48,7 +48,7 @@ export const id: Catalog = {
   connect_enrolling: 'Mendaftar…',
   connect_generate: 'Buat .conf',
   connect_no_gateway_in_country:
-    'Tidak ada gateway aktif yang terjangkau di {country} dari browser. Pendaftaran dikirim ke API kontrol gateway (http :51821), yang tidak bisa dijangkau halaman https — ini berjalan dari klien desktop dan mobile yang berbagi core yang sama.',
+    'Tidak ada gateway di {country} yang merespons saat ini. Pilih negara lain, atau muat ulang halaman dalam satu menit untuk mencoba lagi.',
   connect_error_enroll_failed: 'Pendaftaran gagal.',
   connect_qr_caption: 'Pindai ke aplikasi WireGuard',
   connect_stat_assigned_ip: 'IP yang ditetapkan',
@@ -203,7 +203,7 @@ export const id: Catalog = {
   multihop_error_no_exit:
     'Multi-hop butuh gateway exit yang berbeda; tidak ada yang berhasil ditemukan.',
   multihop_error_no_gateways:
-    'Tidak ada gateway aktif yang terjangkau dari browser, jadi tidak ada rute yang bisa ditentukan. Nesting multi-hop sebenarnya fitur aplikasi kami sendiri — klien desktop dan mobile (core yang sama) memeriksa gateway secara langsung dan menjalankan kedua tunnel untuk Anda.',
+    'Saat ini tidak ada gateway yang bisa dijangkau, jadi tidak ada rute yang bisa ditentukan. Muat ulang halaman dalam satu menit untuk mencoba lagi.',
   multihop_error_failed: 'Pembuatan multi-hop gagal.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'luar · MTU 1420',

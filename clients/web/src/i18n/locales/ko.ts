@@ -36,7 +36,7 @@ export const ko: Catalog = {
     'WireGuard 키 쌍은 여기, 브라우저 안에서 생성되며 — 개인 키는 이 탭을 벗어나지 않습니다. 국가를 선택하고 가장 가까운 Flux 게이트웨이에 등록한 뒤, 바로 가져올 수 있는<mono> .conf</mono> 파일과 QR 코드를 내보내세요. 100 KB/s로 영구 무료이며, 전체 속도를 원한다면 <upgrade>FLUX로 업그레이드</upgrade>하세요.',
   connect_verify_warn: '디렉터리 서명을 확인할 수 없습니다 — 엔드포인트는 참고용으로만 표시됩니다.',
   connect_notice_no_live_gateway:
-    '브라우저에서 접속 가능한 활성 게이트웨이가 없습니다. 서명된 디렉터리의 국가 목록을 표시하고 있으며 — 활성 게이트웨이에 접속할 수 있게 되면 그곳에 설정이 등록됩니다.',
+    '지금은 어떤 게이트웨이에도 접속할 수 없습니다. 서명된 디렉터리의 국가 목록을 표시하고 있습니다 — 1분 후 페이지를 새로고침해 다시 시도하세요.',
   connect_choose_location: '위치 선택',
   connect_tier_free: '무료 · 100 KB/s',
   connect_loading_directory: '서명된 디렉터리를 확인하고 게이트웨이를 찾는 중…',
@@ -47,7 +47,7 @@ export const ko: Catalog = {
   connect_enrolling: '등록 중…',
   connect_generate: '.conf 생성',
   connect_no_gateway_in_country:
-    '브라우저에서 {country}의 활성 게이트웨이에 접속할 수 없습니다. 등록 요청은 게이트웨이의 제어 API(http :51821)로 전송되는데, https 페이지에서는 여기에 접속할 수 없습니다 — 이는 동일한 코어를 공유하는 데스크톱 및 모바일 클라이언트에서는 정상적으로 동작합니다.',
+    '지금 {country}의 게이트웨이가 응답하지 않습니다. 다른 국가를 선택하거나 1분 후 페이지를 새로고침해 다시 시도하세요.',
   connect_error_enroll_failed: '등록에 실패했습니다.',
   connect_qr_caption: 'WireGuard 앱으로 스캔',
   connect_stat_assigned_ip: '할당된 IP',
@@ -194,7 +194,7 @@ export const ko: Catalog = {
   multihop_generate: '설정 2개 생성',
   multihop_error_no_exit: '멀티홉에는 별도의 종료 게이트웨이가 필요하지만 찾지 못했습니다.',
   multihop_error_no_gateways:
-    '브라우저에서 접속 가능한 활성 게이트웨이가 없어 경로를 정할 수 없었습니다. 멀티홉 중첩은 사실상 저희 앱 전용 기능입니다 — 데스크톱 및 모바일 클라이언트(동일한 코어)가 게이트웨이를 직접 탐색해 두 터널을 대신 실행해 줍니다.',
+    '지금은 어떤 게이트웨이에도 접속할 수 없어 경로를 정할 수 없습니다. 1분 후 페이지를 새로고침해 다시 시도하세요.',
   multihop_error_failed: '멀티홉 생성에 실패했습니다.',
   multihop_internet: '인터넷',
   multihop_conf_outer_tag: '외부 · MTU 1420',

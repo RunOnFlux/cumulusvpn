@@ -37,7 +37,7 @@ export const it: Catalog = {
   connect_verify_warn:
     'Impossibile verificare la firma della directory — gli endpoint sono mostrati solo a titolo informativo.',
   connect_notice_no_live_gateway:
-    'Nessun gateway attivo raggiungibile dal browser. Vengono mostrati i paesi della directory firmata — le configurazioni si iscrivono a un gateway attivo quando ne è raggiungibile uno.',
+    'Nessun gateway raggiungibile in questo momento. Vengono mostrati i paesi della directory firmata — ricarica la pagina tra un minuto per riprovare.',
   connect_choose_location: 'Scegli una località',
   connect_tier_free: 'GRATIS · 100 KB/s',
   connect_loading_directory: 'Risoluzione della directory firmata e scoperta dei gateway…',
@@ -48,7 +48,7 @@ export const it: Catalog = {
   connect_enrolling: 'Iscrizione in corso…',
   connect_generate: 'Genera .conf',
   connect_no_gateway_in_country:
-    "Nessun gateway attivo raggiungibile in {country} dal browser. L'iscrizione viene inviata all'API di controllo di un gateway (http :51821), non raggiungibile dalle pagine https — funziona dai client desktop e mobile, che condividono questo stesso core.",
+    'Nessun gateway in {country} ha risposto in questo momento. Scegli un altro paese, oppure ricarica la pagina tra un minuto per riprovare.',
   connect_error_enroll_failed: 'Iscrizione non riuscita.',
   connect_qr_caption: "Scansiona con l'app WireGuard",
   connect_stat_assigned_ip: 'IP assegnato',
@@ -205,7 +205,7 @@ export const it: Catalog = {
   multihop_error_no_exit:
     'Il multi-hop richiede un gateway di uscita distinto; nessuno è stato risolto.',
   multihop_error_no_gateways:
-    "Nessun gateway attivo raggiungibile dal browser, quindi non è stato possibile risolvere alcun percorso. L'annidamento multi-hop è in realtà una funzione delle nostre app — i client desktop e mobile (stesso core) verificano i gateway direttamente e gestiscono i due tunnel al posto tuo.",
+    'Nessun gateway raggiungibile in questo momento, quindi non è stato possibile determinare un percorso. Ricarica la pagina tra un minuto per riprovare.',
   multihop_error_failed: 'Generazione multi-hop non riuscita.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'esterno · MTU 1420',

@@ -37,7 +37,7 @@ export const nb: Catalog = {
   connect_verify_warn:
     'Katalogens signatur kunne ikke verifiseres — endepunkter vises kun til orientering.',
   connect_notice_no_live_gateway:
-    'Ingen aktiv gateway tilgjengelig fra nettleseren. Landene fra den signerte katalogen vises — konfigurasjoner meldes på en aktiv gateway når én er tilgjengelig.',
+    'Ingen gateway kunne nås akkurat nå. Landene fra den signerte katalogen vises — last inn siden på nytt om et minutt for å prøve igjen.',
   connect_choose_location: 'Velg et sted',
   connect_tier_free: 'GRATIS · 100 KB/s',
   connect_loading_directory: 'Løser opp den signerte katalogen og oppdager gatewayer…',
@@ -48,7 +48,7 @@ export const nb: Catalog = {
   connect_enrolling: 'Melder på…',
   connect_generate: 'Generer .conf',
   connect_no_gateway_in_country:
-    'Ingen aktiv gateway tilgjengelig i {country} fra nettleseren. Påmeldingen sendes til en gateways styrings-API (http :51821), som https-sider ikke kan nå — dette fungerer fra desktop- og mobilklientene som deler denne kjernen.',
+    'Ingen gateway i {country} svarte akkurat nå. Velg et annet land, eller last inn siden på nytt om et minutt for å prøve igjen.',
   connect_error_enroll_failed: 'Påmeldingen mislyktes.',
   connect_qr_caption: 'Skann inn i WireGuard-appen',
   connect_stat_assigned_ip: 'Tildelt IP',
@@ -200,7 +200,7 @@ export const nb: Catalog = {
   multihop_generate: 'Generer to konfigurasjoner',
   multihop_error_no_exit: 'Multi-hop trenger en egen utgangsgateway; ingen ble funnet.',
   multihop_error_no_gateways:
-    'Ingen aktive gatewayer tilgjengelige fra nettleseren, så ingen rute kunne fastsettes. Multi-hop-nøsting er egentlig en funksjon i appene våre — desktop- og mobilklientene (samme kjerne) sonderer gatewayer direkte og kjører de to tunnelene for deg.',
+    'Ingen gateway kunne nås akkurat nå, så ingen rute kunne fastsettes. Last inn siden på nytt om et minutt for å prøve igjen.',
   multihop_error_failed: 'Multi-hop-generering mislyktes.',
   multihop_internet: 'internett',
   multihop_conf_outer_tag: 'ytre · MTU 1420',

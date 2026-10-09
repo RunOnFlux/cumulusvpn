@@ -37,7 +37,7 @@ export const tr: Catalog = {
   connect_verify_warn:
     'Dizin imzası doğrulanamadı — uç noktalar yalnızca bilgi amaçlı gösteriliyor.',
   connect_notice_no_live_gateway:
-    'Tarayıcıdan erişilebilen canlı gateway yok. İmzalı dizindeki ülkeler gösteriliyor — bir canlı gateway’e erişilebildiğinde yapılandırmalar ona kaydolur.',
+    'Şu anda hiçbir gateway’e ulaşılamadı. İmzalı dizindeki ülkeler gösteriliyor — tekrar denemek için sayfayı bir dakika sonra yenile.',
   connect_choose_location: 'Bir konum seç',
   connect_tier_free: 'ÜCRETSİZ · 100 KB/s',
   connect_loading_directory: 'İmzalı dizin çözümleniyor ve gateway’ler keşfediliyor…',
@@ -48,7 +48,7 @@ export const tr: Catalog = {
   connect_enrolling: 'Kaydolunuyor…',
   connect_generate: '.conf oluştur',
   connect_no_gateway_in_country:
-    '{country} içinde tarayıcıdan erişilebilen canlı gateway yok. Kayıt, https sayfalarının erişemediği bir gateway’in kontrol API’sine (http :51821) gönderilir — bu, aynı çekirdeği paylaşan masaüstü ve mobil istemcilerden çalışır.',
+    '{country} içindeki hiçbir gateway şu anda yanıt vermedi. Başka bir ülke seç ya da tekrar denemek için sayfayı bir dakika sonra yenile.',
   connect_error_enroll_failed: 'Kayıt başarısız oldu.',
   connect_qr_caption: 'WireGuard uygulamasıyla tara',
   connect_stat_assigned_ip: 'Atanan IP',
@@ -202,7 +202,7 @@ export const tr: Catalog = {
   multihop_generate: 'İki yapılandırma oluştur',
   multihop_error_no_exit: 'Multi-hop ayrı bir çıkış gateway’i gerektirir; hiçbiri çözümlenemedi.',
   multihop_error_no_gateways:
-    'Tarayıcıdan erişilebilen canlı gateway olmadığı için hiçbir rota çözümlenemedi. Multi-hop iç içe geçirme aslında uygulamalarımıza özgü bir özelliktir — masaüstü ve mobil istemciler (aynı çekirdek) gateway’leri doğrudan yoklar ve iki tüneli senin için çalıştırır.',
+    'Şu anda hiçbir gateway’e ulaşılamadı, bu yüzden bir rota belirlenemedi. Tekrar denemek için sayfayı bir dakika sonra yenile.',
   multihop_error_failed: 'Multi-hop oluşturma başarısız oldu.',
   multihop_internet: 'internet',
   multihop_conf_outer_tag: 'dış · MTU 1420',

@@ -36,7 +36,7 @@ export const zh: Catalog = {
     '你的 WireGuard 密钥对在此生成，就在你的浏览器里——私钥永远不会离开此标签页。选择一个国家，在最近的 Flux 网关注册，然后导出可直接导入的<mono> .conf</mono> 和 QR 码。永久免费，速度 100 KB/s；<upgrade>使用 FLUX 升级</upgrade>即可获得全速。',
   connect_verify_warn: '无法验证目录签名——所显示的端点仅供参考。',
   connect_notice_no_live_gateway:
-    '浏览器无法访问到任何在线网关。目前显示的是已签名目录中的国家——一旦有可用网关，配置将向其注册。',
+    '暂时无法连接到任何网关。目前显示的是已签名目录中的国家——请一分钟后刷新页面重试。',
   connect_choose_location: '选择一个位置',
   connect_tier_free: '免费 · 100 KB/s',
   connect_loading_directory: '正在解析已签名目录并发现网关…',
@@ -47,7 +47,7 @@ export const zh: Catalog = {
   connect_enrolling: '正在注册…',
   connect_generate: '生成 .conf',
   connect_no_gateway_in_country:
-    '浏览器无法访问到 {country} 的任何在线网关。注册请求会发送到网关的控制 API（http :51821），而 https 页面无法访问该端口——这在共用同一核心的桌面端和移动端客户端上可以正常工作。',
+    '{country} 的网关暂时没有响应。请选择其他国家，或一分钟后刷新页面重试。',
   connect_error_enroll_failed: '注册失败。',
   connect_qr_caption: '在 WireGuard 应用中扫描',
   connect_stat_assigned_ip: '分配的 IP',
@@ -187,8 +187,7 @@ export const zh: Catalog = {
   multihop_enrolling: '正在注册两跳…',
   multihop_generate: '生成两份配置',
   multihop_error_no_exit: '多跳需要一个独立的出口网关；未能解析出任何出口网关。',
-  multihop_error_no_gateways:
-    '浏览器无法访问到任何在线网关，因此无法解析出路由。多跳的嵌套其实是我们自家应用的功能——桌面端和移动端客户端（同一核心）会直接探测网关，并为你运行这两条隧道。',
+  multihop_error_no_gateways: '暂时无法连接到任何网关，因此无法确定路由。请一分钟后刷新页面重试。',
   multihop_error_failed: '多跳生成失败。',
   multihop_internet: '互联网',
   multihop_conf_outer_tag: '外层 · MTU 1420',

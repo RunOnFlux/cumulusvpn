@@ -45,10 +45,10 @@ const INITIAL: RawDiscovery = {
  * network. The network work runs once on mount; the country options re-derive
  * whenever the UI locale changes (names and sort order are locale-aware).
  *
- * POC: browsers block probing plain-http gateways from an https page (mixed
- * content) and most Flux endpoints send no CORS headers, so live discovery
- * usually returns nothing here — the list then reflects the directory's spec
- * countries as `seed` rows. The desktop/mobile clients (same core) probe freely.
+ * An https page can't call the plain-http gateways directly (mixed content), so
+ * every probe goes through the site's Worker (`proxiedFetch`, clients/web/worker.js).
+ * When none answers, the list falls back to the directory's spec countries as
+ * `seed` rows.
  */
 export function useDiscovery(locale: Locale): DiscoveryState {
   const [raw, setRaw] = useState<RawDiscovery>(INITIAL);
