@@ -259,6 +259,8 @@
   .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
     letter-spacing: .06em; }
+  /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
+  .applink .tag.os { text-transform: none; }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -589,7 +591,8 @@
         <h3>Mobiili</h3>
         <p>iOS ja Android, kauppojen sääntöjen mukaiset. Tilaa sovelluksessa tai päivitä verkossa, niin puhelin siirtyy itsestään täyteen nopeuteen: premium on sidottu avaimeesi eikä tiliin, joten mikään ei sido sinua.</p>
         <div class="actions">
-          <span class="applink soon"><span>App Store · Google Play</span><span class="tag">Pian</span></span>
+          <a class="applink" href="https://apps.apple.com/app/cumulusvpn/id6792741863"><span>App Store</span><span class="tag os">iOS</span></a>
+          <a class="applink" href="https://play.google.com/store/apps/details?id=com.cumulusvpn.app"><span>Google Play</span><span class="tag os">Android</span></a>
         </div>
       </div>
 
