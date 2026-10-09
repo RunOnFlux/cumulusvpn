@@ -414,9 +414,17 @@ header.top {
   opacity: 0.5;
   pointer-events: none;
 }
+/* Stacked cards are spaced by margin; cards inside .grid are spaced by its gap,
+   so the second grid card must NOT take the stacking margin (it pushed "Your
+   config" 22px below "Choose a location"), and the first card after the grid
+   must (split tunneling sat flush against the grid). */
+.grid + .card,
 .card + .card,
 .card.ident {
   margin-top: 22px;
+}
+.grid > .card + .card {
+  margin-top: 0;
 }
 .card-head {
   display: flex;
@@ -916,11 +924,15 @@ header.top {
 /* ---- stat row (mockup) ---- */
 .stat-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   margin-top: 14px;
 }
+/* Sized from content, not split evenly: an IPv4 endpoint with its port is the
+   widest value and broke mid-number ("…238:518 / 20") in a third of the row.
+   A box that cannot fit wraps onto its own line instead. */
 .stat {
-  flex: 1;
+  flex: 1 1 auto;
   background: var(--surface-2);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -988,6 +1000,11 @@ header.top {
   color: var(--ink-2);
   font-size: 13.5px;
   margin: 0 0 12px;
+}
+/* The .conf caveat follows a block with no bottom margin of its own. */
+.stat-row + .muted-text,
+.mh-confs + .muted-text {
+  margin-top: 14px;
 }
 
 /* ---- upgrade / payment card (mockup .pay) ---- */
