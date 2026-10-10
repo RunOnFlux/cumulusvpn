@@ -424,7 +424,11 @@ export async function buildServer(deps: ServerDeps): Promise<BuiltServer> {
         req.log.info({ outcome }, 'stripe webhook');
         return reply.send(ok({ received: true }));
       } catch (e) {
-        req.log.warn({ err: e }, 'stripe webhook rejected');
+        // Message only: Stripe's verification error carries the whole event
+        // as `payload`, so logging the error object would write the buyer's
+        // name and email into our logs.
+        const message = e instanceof Error ? e.message : String(e);
+        req.log.warn({ err: { message } }, 'stripe webhook rejected');
         return badRequest(reply, 'bad_signature', 'webhook signature verification failed');
       }
     });

@@ -91,3 +91,28 @@ describe('config: bounded sandbox/test grant days', () => {
     expect(loadConfig(GOOGLE).google?.testGrants).toBe(false);
   });
 });
+
+const STRIPE: NodeJS.ProcessEnv = {
+  ...BASE,
+  STRIPE_SECRET_KEY: 'sk_test_x',
+  STRIPE_WEBHOOK_SECRET: 'whsec_abc',
+  STRIPE_PRICE_MONTHLY: 'price_m',
+  STRIPE_PRICE_ANNUAL: 'price_a',
+  STRIPE_SUCCESS_URL: 'https://vpn.cumulusvpn.com/#/upgrade?session={CHECKOUT_SESSION_ID}',
+  STRIPE_CANCEL_URL: 'https://vpn.cumulusvpn.com/#/upgrade?canceled=1',
+};
+
+describe('config: whitespace around values', () => {
+  // `docker run --env-file` keeps a trailing space or a CRLF file's \r in the
+  // value; in the webhook secret that failed every signature check.
+  it('trims required values, so a stray space or \\r cannot break the webhook HMAC', () => {
+    const cfg = loadConfig({ ...STRIPE, STRIPE_WEBHOOK_SECRET: 'whsec_abc \r' });
+    expect(cfg.stripe?.webhookSecret).toBe('whsec_abc');
+  });
+
+  it('treats a whitespace-only value as missing', () => {
+    expect(() => loadConfig({ ...STRIPE, STRIPE_WEBHOOK_SECRET: '  ' })).toThrow(
+      /STRIPE_WEBHOOK_SECRET is required/,
+    );
+  });
+});

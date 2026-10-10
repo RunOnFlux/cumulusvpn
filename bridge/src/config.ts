@@ -119,8 +119,15 @@ export interface Config {
   readonly google: GoogleConfig | undefined;
 }
 
+/**
+ * Trimmed: `docker run --env-file` keeps trailing spaces (and a CRLF file's
+ * `\r`) as part of the value. Every required value is a token, URL or JSON
+ * document, so edge whitespace is never meaningful — and in an HMAC secret it
+ * is fatal: a trailing space in STRIPE_WEBHOOK_SECRET failed every Stripe
+ * webhook's signature check, so no card payment ever settled.
+ */
 function required(env: NodeJS.ProcessEnv, key: string): string {
-  const v = env[key];
+  const v = env[key]?.trim();
   if (!v) {
     throw new Error(`config: ${key} is required`);
   }
