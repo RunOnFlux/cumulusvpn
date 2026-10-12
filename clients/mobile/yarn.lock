@@ -874,12 +874,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=23be65&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=da0d4f&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.2.0"
     "@noble/hashes": "npm:2.2.0"
     "@scure/base": "npm:2.2.0"
-  checksum: 10c0/f4527146e5af7f9887a48e8b5bf9d1816d1ad5910423c02c21f9aabe33bb5128fc433e7b2ced1896a1d0cce3ce378883392b1b740b45910fca69cffabb0ff30f
+  checksum: 10c0/c6c03c78045f81cd9ec728857f6441b248dce97ca0c33a6d67e5fecea74d9740d58db5827c8f3e3c1766d8b89986a37a3c86917bd867ea10565492a825bf5ddb
   languageName: node
   linkType: hard
 
@@ -4667,15 +4667,15 @@ __metadata:
   linkType: hard
 
 "joi@npm:^17.2.1":
-  version: 17.13.4
-  resolution: "joi@npm:17.13.4"
+  version: 17.13.8
+  resolution: "joi@npm:17.13.8"
   dependencies:
     "@hapi/hoek": "npm:^9.3.0"
     "@hapi/topo": "npm:^5.1.0"
     "@sideway/address": "npm:^4.1.5"
     "@sideway/formula": "npm:^3.0.1"
     "@sideway/pinpoint": "npm:^2.0.0"
-  checksum: 10c0/5addfef638e90eb6a45a72e3884128d8d9a80c487cb8bfcb949be179b875ad1095af347fa1bd05c4ebec2b2ccbc3f3db5f34501c8672ecd16100de2b77087122
+  checksum: 10c0/7fe2b38d26dfcbcf1836892384ba2f42f83058795f32dcb3733de4c3b97cac923a8b9053738f10701663872a994f77af351c71e1428117a20bbfc1f94768f648
   languageName: node
   linkType: hard
 
