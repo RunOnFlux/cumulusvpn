@@ -222,6 +222,73 @@ describe('stripe rail', () => {
   });
 });
 
+/** Stub the Stripe calls behind a refund: invoice lookup and the cancel. */
+function stubRefund(rail: StripeRail, invoiceId: string, subId: string) {
+  const list = vi.fn().mockResolvedValue({ data: [{ invoice: invoiceId }] });
+  const cancel = vi.fn().mockResolvedValue({});
+  const stripe = (rail as unknown as { stripe: Record<string, unknown> }).stripe;
+  stripe.invoicePayments = { list };
+  stripe.invoices = {
+    retrieve: vi.fn().mockResolvedValue({
+      id: invoiceId,
+      object: 'invoice',
+      parent: {
+        subscription_details: {
+          subscription: subId,
+          metadata: { cvpn_code: CODE, cvpn_plan: 'monthly' },
+        },
+      },
+    }),
+  };
+  stripe.subscriptions = { cancel };
+  return { list, cancel };
+}
+
+function chargeRefundedEvent(charge: object): object {
+  return {
+    id: 'evt_refund',
+    object: 'event',
+    type: 'charge.refunded',
+    data: { object: { id: 'ch_1', object: 'charge', ...charge } },
+  };
+}
+
+describe('stripe refunds', () => {
+  it('finds the invoice through the PaymentIntent (basil+ charges carry no invoice) and cancels', async () => {
+    const { rail, subs } = setup();
+    subs.upsert('stripe', 'sub_9', CODE, 'monthly');
+    const { list, cancel } = stubRefund(rail, 'in_9', 'sub_9');
+    const { raw, sig } = signedEvent(chargeRefundedEvent({ payment_intent: 'pi_9' }));
+
+    expect(await rail.handleWebhook(raw, sig)).toBe('refund:handled');
+    expect(list).toHaveBeenCalledWith({
+      payment: { type: 'payment_intent', payment_intent: 'pi_9' },
+      limit: 1,
+    });
+    expect(cancel).toHaveBeenCalledWith('sub_9');
+    expect(subs.get('stripe', 'sub_9')?.status).toBe('refunded');
+  });
+
+  it('still reads a legacy charge.invoice without the extra lookup', async () => {
+    const { rail, subs } = setup();
+    subs.upsert('stripe', 'sub_8', CODE, 'monthly');
+    const { list, cancel } = stubRefund(rail, 'in_8', 'sub_8');
+    const { raw, sig } = signedEvent(
+      chargeRefundedEvent({ invoice: 'in_8', payment_intent: 'pi_8' }),
+    );
+
+    expect(await rail.handleWebhook(raw, sig)).toBe('refund:handled');
+    expect(list).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledWith('sub_8');
+  });
+
+  it('ignores a refund that belongs to no invoice', async () => {
+    const { rail } = setup();
+    const { raw, sig } = signedEvent(chargeRefundedEvent({}));
+    expect(await rail.handleWebhook(raw, sig)).toBe('refund:no-invoice');
+  });
+});
+
 /**
  * Stub the two Stripe network calls the portal path makes. `retrieve` is given
  * the session object to return (or an Error to throw, standing in for an

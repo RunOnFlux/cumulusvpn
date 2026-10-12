@@ -672,12 +672,11 @@ export class StripeRail {
   private async onChargeRefunded(charge: Stripe.Charge): Promise<string> {
     // Chain grants are irrevocable; the response to a refund is to stop the
     // bleeding — mark the subscription and cancel it at Stripe.
-    const invoiceRef = (charge as unknown as { invoice?: string | { id: string } }).invoice;
-    const invoiceId = typeof invoiceRef === 'string' ? invoiceRef : invoiceRef?.id;
-    if (!invoiceId) {
-      return 'refund:no-invoice';
-    }
     try {
+      const invoiceId = await this.invoiceIdOfCharge(charge);
+      if (!invoiceId) {
+        return 'refund:no-invoice';
+      }
       const invoice = await this.stripe.invoices.retrieve(invoiceId);
       const bound = await this.resolveInvoiceBinding(invoice);
       if (!bound) {
@@ -688,9 +687,35 @@ export class StripeRail {
       this.log.warn({ subscription: bound.subId }, 'stripe charge refunded; subscription canceled');
       return 'refund:handled';
     } catch (e) {
-      this.log.error({ err: e, invoice: invoiceId }, 'refund handling failed');
+      this.log.error({ err: e, charge: charge.id }, 'refund handling failed');
       return 'refund:error';
     }
+  }
+
+  /**
+   * The invoice a charge paid. Legacy API versions put it on `charge.invoice`;
+   * basil and later (our webhook endpoint is on 2026-07-29.dahlia) dropped
+   * that field, and the link lives on an InvoicePayment keyed by the
+   * PaymentIntent. Without this fallback every refund stopped at
+   * 'refund:no-invoice' and the refunded subscription kept renewing.
+   */
+  private async invoiceIdOfCharge(charge: Stripe.Charge): Promise<string | null> {
+    const legacy = (charge as unknown as { invoice?: string | { id: string } | null }).invoice;
+    const direct = typeof legacy === 'string' ? legacy : legacy?.id;
+    if (direct) {
+      return direct;
+    }
+    const piRef = charge.payment_intent;
+    const pi = typeof piRef === 'string' ? piRef : piRef?.id;
+    if (!pi) {
+      return null;
+    }
+    const page = await this.stripe.invoicePayments.list({
+      payment: { type: 'payment_intent', payment_intent: pi },
+      limit: 1,
+    });
+    const inv = page.data[0]?.invoice;
+    return typeof inv === 'string' ? inv : (inv?.id ?? null);
   }
 
   private onSubscriptionDeleted(sub: Stripe.Subscription): string {
