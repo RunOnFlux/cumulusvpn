@@ -322,7 +322,7 @@ export function ConnectPage({
                     <pre className="conf mono">{result.config}</pre>
                   </div>
                   <div className="conf-qr">
-                    <Qr value={result.config} size={168} />
+                    <Qr value={result.config} size={224} />
                     <span className="qr-cap mono">{t('connect_qr_caption')}</span>
                   </div>
                 </div>

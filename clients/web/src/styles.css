@@ -924,7 +924,7 @@ header.top {
   font-size: 10px;
   color: var(--ink-3);
   text-align: center;
-  max-width: 168px;
+  max-width: 224px;
 }
 
 /* ---- stat row (mockup) ---- */
@@ -1052,8 +1052,13 @@ header.top {
   font-size: 14px;
 }
 
-/* shared QR chrome (mockup .qr) — a crisp white tile for scan contrast */
+/* shared QR chrome (mockup .qr) — a crisp white tile for scan contrast.
+   content-box: the inline width/height is the QR's own size and the 7px white
+   border sits OUTSIDE it. Under the global border-box the border ate 14px of a
+   168px code and overflow:hidden cropped ~2.6 modules off every edge — past the
+   1-module quiet zone into the finder patterns, so phones couldn't scan it. */
 .qr {
+  box-sizing: content-box;
   border-radius: 14px;
   background: #fff;
   border: 7px solid #fff;
@@ -1068,6 +1073,7 @@ header.top {
 .qr img {
   display: block;
   border-radius: 4px;
+  image-rendering: pixelated;
 }
 
 /* ---- footer ---- */

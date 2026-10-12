@@ -18,8 +18,10 @@ export function Qr({ value, size = 168 }: QrProps) {
   useEffect(() => {
     let active = true;
     QRCode.toDataURL(value, {
-      margin: 1,
-      width: size,
+      // A 2-module quiet zone, rendered at 3x and shown at `size` CSS px, so
+      // the code stays sharp on retina screens a phone camera is pointed at.
+      margin: 2,
+      width: size * 3,
       errorCorrectionLevel: 'M',
       color: { dark: '#0b0f16', light: '#e9f2fb' },
     })
