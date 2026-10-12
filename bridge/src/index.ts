@@ -8,6 +8,7 @@ import { openDb } from './db/db.js';
 import { PaymentsRepo } from './db/payments.js';
 import { SubscriptionsRepo } from './db/subscriptions.js';
 import { ChainClient } from './flux/chain.js';
+import { assertNativeSecp256k1 } from './flux/nativeSecp.js';
 import { treasuryKeyFromWif } from './flux/tx.js';
 import { VouchersRepo } from './db/vouchers.js';
 import { buildServer } from './server.js';
@@ -15,6 +16,7 @@ import { startBroadcaster } from './worker/broadcaster.js';
 import { startConfirmer } from './worker/confirmer.js';
 import { startLoop } from './worker/loop.js';
 
+assertNativeSecp256k1();
 const cfg = loadConfig();
 const db = openDb(cfg.dbPath);
 const payments = new PaymentsRepo(db);
