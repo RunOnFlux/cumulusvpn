@@ -27,7 +27,8 @@ Node 22, Corepack-pinned Yarn 4.5.0, Yarn cache keyed per lockfile.
 
 ### `ci-gateway.yml` — Go CI
 
-Runs on push to `main` and PRs touching `gateway/**`. Go 1.25.
+Runs on push to `main` and PRs touching `gateway/**`. Go 1.27 (the gateway's
+`go.mod` toolchain, go1.27.2, which `gateway/Dockerfile` also pins).
 
 - **`gateway`** — `gofmt -l` (fails if anything is unformatted), `go vet`,
   `go build ./...`, then `go test ./... -race -covermode=atomic` with a coverage

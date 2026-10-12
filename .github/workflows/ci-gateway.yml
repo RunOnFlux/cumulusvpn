@@ -44,12 +44,15 @@ jobs:
         working-directory: ${{ matrix.dir }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          # setup-go runs with GOTOOLCHAIN=local, so this must be >= every go.mod
+          # `go` line in the matrix (gateway: go 1.26.0, toolchain go1.27.2 — the
+          # same Go as gateway/Dockerfile). wgnest (go 1.25.0) builds fine on it.
+          go-version: '1.27'
           cache-dependency-path: ${{ matrix.dir }}/go.sum
 
       # gofmt is authoritative; fail the build if anything is unformatted.
@@ -82,16 +85,16 @@ jobs:
     continue-on-error: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Go
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
-          go-version: '1.25'
+          go-version: '1.27' # match the gateway's go.mod toolchain (see above)
           cache-dependency-path: gateway/go.sum
 
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v9
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           # v8 installs golangci-lint v2 (built with a current Go toolchain, so it
           # can analyze our `go 1.25` target — v1.64.x was built with go1.24 and
