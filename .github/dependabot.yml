@@ -61,6 +61,14 @@ updates:
       deploy-npm:
         patterns: ['*']
 
+  - package-ecosystem: npm
+    directory: '/bridge' # standalone fiat-payments bridge service (own yarn.lock)
+    schedule:
+      interval: weekly
+    groups:
+      bridge-npm:
+        patterns: ['*']
+
   - package-ecosystem: cargo
     directory: '/clients/desktop/src-tauri' # desktop Rust / Tauri
     schedule:
@@ -84,6 +92,14 @@ updates:
       # for newer Kotlin. (The com.wireguard.android:tunnel bumps stay allowed.)
       - dependency-name: 'gradle-wrapper'
 
+  - package-ecosystem: bundler
+    directory: '/clients/mobile' # Ruby tooling for iOS builds (CocoaPods)
+    schedule:
+      interval: weekly
+    groups:
+      mobile-bundler:
+        patterns: ['*']
+
   - package-ecosystem: gomod
     directory: '/gateway' # Go gateway
     schedule:
@@ -100,6 +116,32 @@ updates:
       - dependency-name: 'gvisor.dev/gvisor'
       - dependency-name: 'github.com/amnezia-vpn/amneziawg-go'
 
+  # Base images are pinned by tag AND digest; Dependabot bumps both together
+  # (a digest-only refresh for non-version tags like distroless `nonroot`).
+  - package-ecosystem: docker
+    directory: '/gateway' # gateway image: golang build stage + distroless runtime
+    schedule:
+      interval: weekly
+    groups:
+      gateway-docker:
+        patterns: ['*']
+
+  - package-ecosystem: docker
+    directory: '/bridge' # bridge image: node base
+    schedule:
+      interval: weekly
+    groups:
+      bridge-docker:
+        patterns: ['*']
+    ignore:
+      # The bridge runs on Node LTS (24, matching setup-node in bridge-image.yml
+      # and @types/node 24). Odd/Current majors land here first — move the
+      # major deliberately, all three places together, once it becomes LTS.
+      - dependency-name: 'node'
+        update-types: ['version-update:semver-major']
+
+  # Every `uses:` is pinned to a full commit SHA with the version in a trailing
+  # comment; Dependabot updates the SHA and the comment together.
   - package-ecosystem: github-actions
     directory: '/' # workflow action versions
     schedule:

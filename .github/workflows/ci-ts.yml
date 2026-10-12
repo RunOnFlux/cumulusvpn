@@ -55,10 +55,10 @@ jobs:
             pkg: '@cumulusvpn/desktop'
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
@@ -101,10 +101,10 @@ jobs:
         working-directory: clients/mobile
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
@@ -147,10 +147,10 @@ jobs:
         working-directory: deploy
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
 
@@ -190,11 +190,14 @@ jobs:
         working-directory: clients/desktop/src-tauri
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
         with:
+          # SHA-pinned (from master's history, per the action's README), so the
+          # toolchain comes from this input instead of the @stable ref.
+          toolchain: stable
           components: rustfmt
 
       # Tauri's Linux backend needs the webkit2gtk/gtk headers even to typecheck.
@@ -209,7 +212,7 @@ jobs:
       # type-checked without it. desktop-release does the same thing before it
       # builds; this is a pure-Go, CGO-off cross-build, so it is cheap.
       - name: Setup Go (for the wireguard-go sidecar)
-        uses: actions/setup-go@v7
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version: '1.25'
 
@@ -218,7 +221,7 @@ jobs:
         run: bash clients/desktop/scripts/fetch-wireguard-go.sh x86_64-unknown-linux-gnu
 
       - name: Cache cargo
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.cargo/registry
