@@ -13,6 +13,8 @@ export const vi: Catalog = {
 
   footer_tagline: 'CumulusVPN — VPN phi tập trung trên Flux Cloud · vpn.cumulusvpn.com',
   footer_credit: 'Kênh beta · không tài khoản · không log',
+  footer_terms: 'Điều khoản dịch vụ',
+  footer_privacy: 'Chính sách quyền riêng tư',
 
   common_copy: 'Sao chép',
   common_copied: 'Đã sao chép',
@@ -85,6 +87,8 @@ export const vi: Catalog = {
     '<strong>Trả trước:</strong> trả một bội số của số tiền để cộng thêm từng ấy tháng cùng lúc — ví dụ {amount} FLUX = 3 tháng. Các tháng dư được cộng dồn (tối đa 24), nên bạn có thể nạp thêm bất cứ lúc nào.',
   upgrade_privacy_note:
     'Mở trong Zelcore / SSP Wallet. Khoản thanh toán được xác minh trên blockchain của Flux — chúng tôi không bao giờ biết bạn là ai. Tin nhắn gắn khoản thanh toán với khóa của bạn; gửi mà không kèm tin nhắn nghĩa là tiền vẫn đến nhưng không có gì được mở khóa.',
+  upgrade_legal_note:
+    'Khi thanh toán, bạn đồng ý với <terms>Điều khoản dịch vụ</terms> và <privacy>Chính sách quyền riêng tư</privacy> của chúng tôi.',
   upgrade_back: '← Quay lại Kết nối',
 
   upgrade_eyebrow_card: 'Hoặc thanh toán bằng thẻ',

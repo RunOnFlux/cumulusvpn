@@ -13,6 +13,8 @@ export const id: Catalog = {
 
   footer_tagline: 'CumulusVPN — VPN terdesentralisasi di Flux Cloud · vpn.cumulusvpn.com',
   footer_credit: 'Jalur beta · tanpa akun · tanpa log',
+  footer_terms: 'Ketentuan Layanan',
+  footer_privacy: 'Kebijakan Privasi',
 
   common_copy: 'Salin',
   common_copied: 'Tersalin',
@@ -85,6 +87,8 @@ export const id: Catalog = {
     '<strong>Bayar di muka:</strong> bayar kelipatan jumlahnya untuk menambah bulan sebanyak itu sekaligus — misalnya {amount} FLUX = 3 bulan. Bulan tambahan bisa menumpuk (hingga 24), jadi Anda bisa top up kapan saja.',
   upgrade_privacy_note:
     'Terbuka di Zelcore / SSP Wallet. Pembayaran diverifikasi di blockchain Flux — kami tidak pernah tahu siapa Anda. Pesan mengaitkan pembayaran dengan kunci Anda; mengirim tanpa pesan berarti dana sampai tapi tidak ada yang terbuka.',
+  upgrade_legal_note:
+    'Dengan membayar, Anda menyetujui <terms>Ketentuan Layanan</terms> dan <privacy>Kebijakan Privasi</privacy> kami.',
   upgrade_back: '← Kembali ke Hubungkan',
 
   upgrade_eyebrow_card: 'Atau bayar dengan kartu',

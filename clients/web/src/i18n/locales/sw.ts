@@ -13,6 +13,8 @@ export const sw: Catalog = {
 
   footer_tagline: 'CumulusVPN — VPN isiyo na kituo kimoja kwenye Flux Cloud · vpn.cumulusvpn.com',
   footer_credit: 'Njia ya beta · bila akaunti · bila kumbukumbu',
+  footer_terms: 'Masharti ya Huduma',
+  footer_privacy: 'Sera ya Faragha',
 
   common_copy: 'Nakili',
   common_copied: 'Imenakiliwa',
@@ -85,6 +87,8 @@ export const sw: Catalog = {
     '<strong>Lipa mapema:</strong> lipa kizidishi cha kiasi ili kuongeza miezi mingi kwa wakati mmoja — mfano, FLUX {amount} = miezi 3. Miezi ya ziada hurundikana (hadi 24), hivyo unaweza kuongeza wakati wowote.',
   upgrade_privacy_note:
     'Inafungua kwenye Zelcore / SSP Wallet. Malipo yanathibitishwa kwenye mnyororo wa vizuizi wa Flux — hatuoni kamwe wewe ni nani. Ujumbe unaunganisha malipo na ufunguo wako; kutuma bila huo kunamaanisha fedha zinawasili lakini hakuna kinachofunguliwa.',
+  upgrade_legal_note:
+    'Kwa kulipa, unakubali <terms>Masharti ya Huduma</terms> na <privacy>Sera ya Faragha</privacy> yetu.',
   upgrade_back: '← Rudi kwenye Unganisha',
 
   upgrade_eyebrow_card: 'Au lipa kwa kadi',

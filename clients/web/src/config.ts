@@ -30,6 +30,11 @@ export const PRICE_USD_ANNUAL = '$14.99';
 // Payments-bridge origin (Stripe checkout, payment status). docs/18.
 export const BRIDGE_URL = 'https://pay.cumulusvpn.com';
 
+// Legal pages on the marketing site. Linked from the footer and next to every
+// pay button, so paying is an explicit acceptance of the Terms (docs/06).
+export const TERMS_URL = 'https://cumulusvpn.com/terms';
+export const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+
 // localStorage key for a payment-code override handed in via #/upgrade?code=…
 // (the desktop app deep-links here with ITS code so the payment credits the
 // desktop key, not the browser's). Persisted across the Stripe redirect.

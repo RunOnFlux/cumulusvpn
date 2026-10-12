@@ -20,6 +20,8 @@ import {
   PRICE_USD_ANNUAL,
   PRICE_USD_CAP,
   PRICE_USD_MONTHLY,
+  PRIVACY_URL,
+  TERMS_URL,
 } from '../config';
 import { useI18n } from '../hooks/useLocale';
 import { usePaymentStatus } from '../hooks/usePaymentStatus';
@@ -123,6 +125,24 @@ function rememberPortalSession(code: string, sessionId: string): void {
 
 export function UpgradePage({ keypair, directory, params, onNavigateConnect }: UpgradePageProps) {
   const { t, rich, locale } = useI18n();
+  // Under both pay buttons: paying is an explicit acceptance of the Terms.
+  // New tab, so reading them doesn't abandon the payment in progress.
+  const legalNote = (
+    <p className="pay-note">
+      {rich('upgrade_legal_note', {
+        terms: (label) => (
+          <a href={TERMS_URL} target="_blank" rel="noreferrer">
+            {label}
+          </a>
+        ),
+        privacy: (label) => (
+          <a href={PRIVACY_URL} target="_blank" rel="noreferrer">
+            {label}
+          </a>
+        ),
+      })}
+    </p>
+  );
   const session = params.get('session');
   /**
    * A Device code pasted by hand, for paying from a desktop browser on behalf
@@ -476,6 +496,7 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
           </p>
 
           <p className="pay-note">{t('upgrade_privacy_note')}</p>
+          {legalNote}
         </section>
 
         <section className="card pay-card">
@@ -515,6 +536,7 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
 
           {checkoutError && <p className="pay-note error">{t('upgrade_card_error')}</p>}
           <p className="pay-note">{t('upgrade_card_note')}</p>
+          {legalNote}
         </section>
 
         {/*

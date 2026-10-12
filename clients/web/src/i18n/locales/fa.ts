@@ -13,6 +13,8 @@ export const fa: Catalog = {
 
   footer_tagline: 'CumulusVPN — VPN غیرمتمرکز روی Flux Cloud · vpn.cumulusvpn.com',
   footer_credit: 'نسخه بتا · بدون حساب کاربری · بدون ثبت لاگ',
+  footer_terms: 'شرایط استفاده',
+  footer_privacy: 'سیاست حریم خصوصی',
 
   common_copy: 'کپی',
   common_copied: 'کپی شد',
@@ -85,6 +87,8 @@ export const fa: Catalog = {
     '<strong>پیش‌پرداخت:</strong> مضربی از مبلغ را بپردازید تا همان تعداد ماه را یک‌جا اضافه کنید — مثلاً {amount} FLUX برابر با 3 ماه است. ماه‌های اضافه روی هم انباشته می‌شوند (تا 24 ماه)، بنابراین هر زمان می‌توانید شارژ کنید.',
   upgrade_privacy_note:
     'در Zelcore / SSP Wallet باز می‌شود. پرداخت روی بلاک‌چین Flux تأیید می‌شود — ما هرگز نمی‌بینیم شما چه کسی هستید. پیام، پرداخت را به کلید شما متصل می‌کند؛ ارسال بدون آن یعنی وجه می‌رسد اما چیزی باز نمی‌شود.',
+  upgrade_legal_note:
+    'با پرداخت، <terms>شرایط استفاده</terms> و <privacy>سیاست حریم خصوصی</privacy> ما را می‌پذیرید.',
   upgrade_back: '→ بازگشت به اتصال',
 
   upgrade_eyebrow_card: 'یا با کارت پرداخت کنید',

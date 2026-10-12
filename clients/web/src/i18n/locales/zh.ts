@@ -13,6 +13,8 @@ export const zh: Catalog = {
 
   footer_tagline: 'CumulusVPN — Flux Cloud 上的去中心化 VPN · vpn.cumulusvpn.com',
   footer_credit: 'Beta 通道 · 无账号 · 无日志',
+  footer_terms: '服务条款',
+  footer_privacy: '隐私政策',
 
   common_copy: '复制',
   common_copied: '已复制',
@@ -84,6 +86,8 @@ export const zh: Catalog = {
     '<strong>提前预付：</strong>支付该金额的倍数即可一次性增加相应月数——例如 {amount} FLUX = 3 个月。多余的月数可以累积（最多 24 个月），因此你可以随时充值。',
   upgrade_privacy_note:
     '在 Zelcore / SSP Wallet 中打开。付款会在 Flux 区块链上验证——我们永远不知道你是谁。留言把付款与你的密钥绑定；不带留言发送意味着资金会到账，但不会解锁任何东西。',
+  upgrade_legal_note:
+    '付款即表示您同意我们的<terms>服务条款</terms>和<privacy>隐私政策</privacy>。',
   upgrade_back: '← 返回连接',
 
   upgrade_eyebrow_card: '或使用银行卡付款',

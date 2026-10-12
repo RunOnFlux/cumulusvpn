@@ -13,6 +13,8 @@ export const de: Catalog = {
 
   footer_tagline: 'CumulusVPN — Dezentrales VPN auf Flux Cloud · vpn.cumulusvpn.com',
   footer_credit: 'Beta-Schiene · kein Konto · keine Logs',
+  footer_terms: 'Nutzungsbedingungen',
+  footer_privacy: 'Datenschutzerklärung',
 
   common_copy: 'Kopieren',
   common_copied: 'Kopiert',
@@ -85,6 +87,8 @@ export const de: Catalog = {
     '<strong>Im Voraus zahlen:</strong> zahle ein Vielfaches des Betrags, um entsprechend viele Monate auf einmal hinzuzufügen — z. B. {amount} FLUX = 3 Monate. Zusätzliche Monate stapeln sich (bis zu 24), du kannst also jederzeit aufstocken.',
   upgrade_privacy_note:
     'Öffnet sich in Zelcore / SSP Wallet. Die Zahlung wird auf der Flux-Blockchain verifiziert — wir sehen nie, wer du bist. Die Nachricht verknüpft die Zahlung mit deinem Schlüssel; sendest du sie ohne diese, kommt das Geld an, aber nichts wird freigeschaltet.',
+  upgrade_legal_note:
+    'Mit der Zahlung stimmst du unseren <terms>Nutzungsbedingungen</terms> und unserer <privacy>Datenschutzerklärung</privacy> zu.',
   upgrade_back: '← Zurück zu Verbinden',
 
   upgrade_eyebrow_card: 'Oder mit Karte zahlen',

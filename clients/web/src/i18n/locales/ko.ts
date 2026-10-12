@@ -13,6 +13,8 @@ export const ko: Catalog = {
 
   footer_tagline: 'CumulusVPN — Flux Cloud 기반 분산형 VPN · vpn.cumulusvpn.com',
   footer_credit: '베타 채널 · 계정 없음 · 로그 없음',
+  footer_terms: '이용약관',
+  footer_privacy: '개인정보 처리방침',
 
   common_copy: '복사',
   common_copied: '복사됨',
@@ -84,6 +86,8 @@ export const ko: Catalog = {
     '<strong>미리 선결제:</strong> 금액의 배수를 결제하면 그만큼의 개월 수를 한 번에 추가할 수 있습니다 — 예: {amount} FLUX = 3개월. 추가 개월은 계속 누적되므로(최대 24개월) 언제든 충전할 수 있습니다.',
   upgrade_privacy_note:
     'Zelcore / SSP Wallet에서 열립니다. 결제는 Flux 블록체인에서 검증되며 — 당신이 누구인지는 저희도 알 수 없습니다. 메시지가 결제를 당신의 키와 연결해 주며, 메시지 없이 보내면 자금은 도착하지만 아무것도 잠금 해제되지 않습니다.',
+  upgrade_legal_note:
+    '결제하면 <terms>이용약관</terms> 및 <privacy>개인정보 처리방침</privacy>에 동의하는 것으로 간주됩니다.',
   upgrade_back: '← 연결로 돌아가기',
 
   upgrade_eyebrow_card: '또는 카드로 결제',

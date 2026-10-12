@@ -13,6 +13,8 @@ export const fi: Catalog = {
 
   footer_tagline: 'CumulusVPN — Hajautettu VPN Flux Cloudissa · vpn.cumulusvpn.com',
   footer_credit: 'Beta-kaista · ei tiliä · ei lokeja',
+  footer_terms: 'Käyttöehdot',
+  footer_privacy: 'Tietosuojaseloste',
 
   common_copy: 'Kopioi',
   common_copied: 'Kopioitu',
@@ -85,6 +87,8 @@ export const fi: Catalog = {
     '<strong>Maksa etukäteen:</strong> maksa summan monikerta lisätäksesi vastaavan määrän kuukausia kerralla — esim. {amount} FLUX = 3 kuukautta. Ylimääräiset kuukaudet kasautuvat (enintään 24), joten voit täydentää milloin tahansa.',
   upgrade_privacy_note:
     'Avautuu Zelcoressa / SSP Walletissa. Maksu vahvistetaan Fluxin lohkoketjussa — emme koskaan näe, kuka olet. Viesti sitoo maksun avaimeesi; jos lähetät ilman sitä, varat saapuvat mutta mitään ei avaudu.',
+  upgrade_legal_note:
+    'Maksamalla hyväksyt <terms>käyttöehtomme</terms> ja <privacy>tietosuojaselosteemme</privacy>.',
   upgrade_back: '← Takaisin Yhdistä-sivulle',
 
   upgrade_eyebrow_card: 'Tai maksa kortilla',

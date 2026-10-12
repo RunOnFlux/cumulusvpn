@@ -13,6 +13,8 @@ export const hi: Catalog = {
 
   footer_tagline: 'CumulusVPN — Flux Cloud पर विकेंद्रीकृत VPN · vpn.cumulusvpn.com',
   footer_credit: 'बीटा पथ · न कोई खाता · न कोई लॉग',
+  footer_terms: 'सेवा की शर्तें',
+  footer_privacy: 'प्राइवेसी नीति',
 
   common_copy: 'कॉपी करें',
   common_copied: 'कॉपी हो गया',
@@ -85,6 +87,8 @@ export const hi: Catalog = {
     '<strong>पहले से भुगतान करें:</strong> राशि का गुणक भुगतान करके उतने ही महीने एक साथ जोड़ें — जैसे {amount} FLUX = 3 महीने। अतिरिक्त महीने जुड़ते जाते हैं (24 तक), तो आप कभी भी टॉप-अप कर सकते हैं।',
   upgrade_privacy_note:
     'Zelcore / SSP Wallet में खुलता है। भुगतान Flux ब्लॉकचेन पर सत्यापित होता है — हम कभी नहीं देखते कि आप कौन हैं। मैसेज भुगतान को आपकी कुंजी से जोड़ता है; इसके बिना भेजने पर पैसे पहुँच जाते हैं पर कुछ भी अनलॉक नहीं होता।',
+  upgrade_legal_note:
+    'भुगतान करके, आप हमारी <terms>सेवा की शर्तों</terms> और <privacy>प्राइवेसी नीति</privacy> से सहमत होते हैं।',
   upgrade_back: '← कनेक्ट पर वापस जाएँ',
 
   upgrade_eyebrow_card: 'या कार्ड से भुगतान करें',

@@ -13,6 +13,8 @@ export const tr: Catalog = {
 
   footer_tagline: 'CumulusVPN — Flux Cloud üzerinde merkeziyetsiz VPN · vpn.cumulusvpn.com',
   footer_credit: 'Beta hattı · hesap yok · kayıt yok',
+  footer_terms: 'Kullanım Koşulları',
+  footer_privacy: 'Gizlilik Politikası',
 
   common_copy: 'Kopyala',
   common_copied: 'Kopyalandı',
@@ -85,6 +87,8 @@ export const tr: Catalog = {
     '<strong>Önceden öde:</strong> aynı anda o kadar ay eklemek için tutarın katını öde — örn. {amount} FLUX = 3 ay. Ekstra aylar üst üste birikir (24’e kadar), yani istediğin zaman yükleme yapabilirsin.',
   upgrade_privacy_note:
     'Zelcore / SSP Wallet içinde açılır. Ödeme, Flux blok zincirinde doğrulanır — kim olduğunu asla görmeyiz. Mesaj, ödemeyi anahtarına bağlar; mesaj olmadan göndermek, paranın ulaşıp hiçbir şeyin açılmaması anlamına gelir.',
+  upgrade_legal_note:
+    'Ödeme yaparak <terms>Kullanım Koşulları</terms> ve <privacy>Gizlilik Politikası</privacy> belgelerini kabul etmiş olursunuz.',
   upgrade_back: '← Bağlan’a dön',
 
   upgrade_eyebrow_card: 'Ya da kartla öde',

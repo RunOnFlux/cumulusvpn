@@ -302,6 +302,12 @@ header.top {
   gap: 12px;
   flex-wrap: wrap;
 }
+.footer-credit a,
+.pay-note a {
+  color: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
 .theme-toggle {
   font: inherit;
   font-size: 15px;

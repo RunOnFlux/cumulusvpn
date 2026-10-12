@@ -13,6 +13,8 @@ export const da: Catalog = {
 
   footer_tagline: 'CumulusVPN — Decentraliseret VPN på Flux Cloud · vpn.cumulusvpn.com',
   footer_credit: 'Betaspor · ingen konto · ingen logning',
+  footer_terms: 'Servicevilkår',
+  footer_privacy: 'Privatlivspolitik',
 
   common_copy: 'Kopiér',
   common_copied: 'Kopieret',
@@ -85,6 +87,8 @@ export const da: Catalog = {
     '<strong>Forudbetal:</strong> betal et multiplum af beløbet for at lægge lige så mange måneder til på én gang — f.eks. {amount} FLUX = 3 måneder. Ekstra måneder lægges oveni (op til 24), så du kan fylde op når som helst.',
   upgrade_privacy_note:
     'Åbner i Zelcore / SSP Wallet. Betalingen verificeres på Flux-blockchainen — vi ser aldrig, hvem du er. Beskeden knytter betalingen til din nøgle; sender du uden den, ankommer pengene, men intet låses op.',
+  upgrade_legal_note:
+    'Ved at betale accepterer du vores <terms>Servicevilkår</terms> og <privacy>Privatlivspolitik</privacy>.',
   upgrade_back: '← Tilbage til Forbind',
 
   upgrade_eyebrow_card: 'Eller betal med kort',

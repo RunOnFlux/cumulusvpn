@@ -13,6 +13,8 @@ export const ja: Catalog = {
 
   footer_tagline: 'CumulusVPN — Flux Cloud 上の分散型 VPN · vpn.cumulusvpn.com',
   footer_credit: 'ベータ版 · アカウント不要 · ログなし',
+  footer_terms: '利用規約',
+  footer_privacy: 'プライバシーポリシー',
 
   common_copy: 'コピー',
   common_copied: 'コピーしました',
@@ -85,6 +87,8 @@ export const ja: Catalog = {
     '<strong>先払いで積み増し：</strong>金額の倍数を支払うと、その分の月数をまとめて追加できます — 例：{amount} FLUX = 3 か月。余分な月数は積み重なり（最大 24 か月まで）、好きなタイミングでチャージできます。',
   upgrade_privacy_note:
     'Zelcore / SSP Wallet で開きます。支払いは Flux のブロックチェーン上で検証され — あなたが誰かを私たちが知ることはありません。メッセージが支払いをあなたの鍵に結びつけます。メッセージなしで送ると、資金は届いてもロックは解除されません。',
+  upgrade_legal_note:
+    'お支払いにより、<terms>利用規約</terms>および<privacy>プライバシーポリシー</privacy>に同意したものとみなされます。',
   upgrade_back: '← 接続に戻る',
 
   upgrade_eyebrow_card: 'またはカードで支払う',
