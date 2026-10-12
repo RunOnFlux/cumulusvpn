@@ -22,7 +22,7 @@ cumulusvpn-tunnel = { path = "../tunnel" }
 # is a raw binding crate — type declarations, no logic — which is what we want
 # linked into root.
 [target.'cfg(target_os = "macos")'.dependencies]
-libc = "0.2.186"
+libc = "0.2.190"
 core-foundation-sys = "0.8.7"
 
 [[bin]]
