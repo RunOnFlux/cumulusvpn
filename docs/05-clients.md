@@ -55,6 +55,17 @@ quiet power-user escape hatch.
 - Alternative considered: Electron (rejected: weight), pure native ×3 (rejected: team size),
   Mullvad-style Rust daemon (right long-term shape — the Tauri app already gives us the Rust core
   to grow into it).
+- **Status:** the tunnel engine is one shared crate (`cumulusvpn-tunnel`) with two hosts.
+  - **macOS:** the daemon split is built. The app is unprivileged and drives a
+    `cumulusvpn-helper` LaunchDaemon over a Unix socket, authenticated by code signature. The
+    helper also owns roam repair and the dead-tunnel watchdog, so recovery does not depend on
+    the app being open.
+  - **Linux and Windows:** no daemon yet. The app runs the same tunnel crate in-process and
+    must be elevated (root / Administrator). The same repair/watchdog loop runs on a thread in
+    the app, so recovery works with the window hidden in the tray, but not after the app quits.
+    The unprivileged path is still to do: a Windows service, or polkit/setcap on Linux.
+
+  See `clients/desktop/README.md` and Stages H and I of `docs/16-validation.md`.
 - Features v1: country picker, connect/disconnect, auto-reconnect + gateway failover (re-resolve
   discovery when endpoint dies), kill switch (platform firewall rules), launch at login, upgrade
   screen → opens web payment page.

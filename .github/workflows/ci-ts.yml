@@ -177,6 +177,11 @@ jobs:
   # Linux only: the crate's platform code is cfg-gated, and this job exists to
   # catch a broken build or test, not to replace the three-platform matrix that
   # desktop-release already runs before shipping installers.
+  #
+  # `--workspace` / `--all` matter: src-tauri is a workspace (app + tunnel +
+  # helper + protocol), and a bare `cargo check`/`cargo test`/`cargo fmt` only
+  # covers the root (app) package. The tunnel engine's tests and the helper's
+  # socket-server tests live in the other members.
   desktop-rust:
     name: desktop (rust)
     runs-on: ubuntu-latest
@@ -222,10 +227,10 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ hashFiles('clients/desktop/src-tauri/Cargo.lock') }}
 
       - name: cargo fmt
-        run: cargo fmt --check
+        run: cargo fmt --all --check
 
       - name: cargo check
-        run: cargo check --all-targets
+        run: cargo check --workspace --all-targets
 
       - name: cargo test
-        run: cargo test
+        run: cargo test --workspace

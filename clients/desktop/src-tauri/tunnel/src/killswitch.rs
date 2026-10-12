@@ -14,10 +14,20 @@
 //! kernel tun name (`utunN` on macOS) is not known yet. Two consequences:
 //!   - **Linux + Windows** wireguard-go uses the logical interface name, so we
 //!     allow it by the `cvpn*` prefix (covers `cvpn0`, `cvpn-entry`, `cvpn-exit`).
-//!   - **macOS** cannot name the tun, so we instead block only on the *physical*
-//!     interface — which is the actual leak path (plaintext falling back to the
-//!     physical default if the tun routes vanish). Traffic on the tun is never
-//!     touched, so we don't need its name.
+//!   - **macOS** cannot name the tun up front, so `engage` runs in two phases.
+//!     Phase 1 (before the sidecar) blocks *all* egress but loopback and the
+//!     endpoint — nothing legitimate is moving yet, so a total block is free.
+//!     Phase 2 re-engages with the real `utunN` names once `Sidecar::spawn` has
+//!     reported them, adding the pass that lets tunnel traffic out.
+//!
+//! **Never scope the block to an interface.** An earlier version blocked only on
+//! the physical default interface captured at connect time. That fails *open* the
+//! moment the machine roams: on the new interface no rule matches, and pf's
+//! default is pass, so plaintext egresses freely while the UI still reads
+//! "protected". Every backend is now interface-agnostic — a default-drop policy
+//! plus explicit passes — which is what Linux (`policy drop`) and Windows
+//! (`DefaultOutboundAction Block`) already did, and what makes the switch
+//! survive Wi-Fi changes, tethering and dock/undock without re-engaging.
 //!
 //! **Self-contained + removable.** Everything lives in a dedicated scope — a pf
 //! anchor (`com.cumulusvpn`), an nftables table (`inet cumulusvpn`), or a
@@ -27,11 +37,14 @@
 //! `DefaultOutboundAction`), which we flip to block while connected and restore
 //! on teardown — the standard "own the firewall while up" pattern.
 //!
-//! **Privilege + lifecycle (seam).** `pfctl`/`nft`/`powershell` need root/Admin;
-//! in a shipped build they run through the platform privileged helper, which must
-//! also clean up if the app dies while engaged (otherwise the fail-closed block
-//! persists — the intended behaviour for a kill switch, but the helper owns
-//! un-blocking).
+//! **Privilege + lifecycle.** `pfctl`/`nft`/`powershell` need root/Admin. On
+//! macOS they run inside the root helper daemon, which outlives the app, so an
+//! app crash leaves the switch with something that can still lift it. On Linux
+//! and Windows they run in the (elevated) app itself. A clean quit disengages
+//! (the app disconnects on exit), but if the app is killed outright the
+//! fail-closed block persists until the next connect replaces it or a
+//! disconnect clears it. That is the intended direction for a kill switch, and a
+//! remaining seam for those two platforms.
 
 #[cfg(unix)]
 use std::io::Write;
@@ -123,6 +136,11 @@ pub struct LeakPolicy<'a> {
     pub endpoint: &'a str,
     /// Logical tunnel interface label (see module docs on naming).
     pub interface: &'a str,
+    /// The **real** kernel tun names (`utun6`, `cvpn0`), once known. Empty on the
+    /// phase-1 engage that runs before the sidecar exists. Only macOS needs
+    /// these: Linux and Windows match the tun by the `cvpn*` prefix, which is
+    /// the real name there, so they ignore this field.
+    pub tun_interfaces: &'a [String],
     /// UDP for vanilla/awg, TCP for the wg-tls relay connection.
     pub proto: Proto,
     /// Prefixes allowed to egress on the physical interface (user exclusions +
@@ -144,6 +162,15 @@ fn is_safe_cidr(cidr: &str) -> bool {
             .all(|b| b.is_ascii_hexdigit() || b == b'.' || b == b':' || b == b'/')
 }
 
+/// An interface name is interpolated into rule text, so it must never carry
+/// anything but name characters — same defense-in-depth as `is_safe_cidr`.
+fn is_safe_iface(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.')
+}
+
 /// Engage the kill switch: permit loopback, the tunnel, the exact endpoint
 /// we're about to hand to wireguard-go, and the policy's bypass prefixes; drop
 /// everything else. Idempotent — re-engaging replaces the rule set.
@@ -157,6 +184,9 @@ pub fn engage(backend: Backend, policy: &LeakPolicy<'_>) -> Result<(), TunnelErr
     if !policy.bypass_cidrs.iter().all(|c| is_safe_cidr(c)) {
         return Err(TunnelError::KillSwitch("invalid bypass prefix"));
     }
+    if !policy.tun_interfaces.iter().all(|i| is_safe_iface(i)) {
+        return Err(TunnelError::KillSwitch("invalid tunnel interface name"));
+    }
     let (endpoint_ip, endpoint_port) = split_endpoint(policy.endpoint);
     match backend {
         #[cfg(target_os = "macos")]
@@ -165,6 +195,7 @@ pub fn engage(backend: Backend, policy: &LeakPolicy<'_>) -> Result<(), TunnelErr
             endpoint_port,
             policy.proto,
             policy.bypass_cidrs,
+            policy.tun_interfaces,
         ),
         #[cfg(target_os = "linux")]
         Backend::LinuxNftables => engage_linux(
@@ -234,30 +265,65 @@ fn strip_port(endpoint: &str) -> &str {
 
 // ---- macOS (pf) ------------------------------------------------------------
 
+/// Build the pf anchor rule text.
+///
+/// Pure and always compiled (not `cfg(macos)`) so the ruleset this whole
+/// security property rests on can be asserted on in tests from any host — CI
+/// runs on Linux, where nothing else would exercise it.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn macos_anchor_rules(
+    endpoint_ip: &str,
+    endpoint_port: &str,
+    proto: Proto,
+    bypass_cidrs: &[String],
+    tun_interfaces: &[String],
+) -> String {
+    let proto_s = proto.pf_nft();
+    // Our anchor, in pf evaluation order (first matching `quick` rule wins, and
+    // the unqualified block is the catch-all):
+    //
+    //   1. loopback — always;
+    //   2. the tunnel devices, once we know their names (phase 2). Before that
+    //      the list is empty and nothing is moving through a tun yet;
+    //   3. the exact WireGuard endpoint, so the tunnel's own UDP/TCP escapes;
+    //   4. every split-tunneling bypass prefix (all protocols — a bypassed
+    //      destination is fully direct);
+    //   5. drop everything else.
+    //
+    // Note what is deliberately absent from every rule: an interface. Scoping
+    // any of this to the physical NIC would fail open on the first roam (see the
+    // module docs). `proto` is udp for vanilla/awg, tcp for wg-tls.
+    let tun_rules: String = tun_interfaces
+        .iter()
+        .map(|tun| format!("pass out quick on {tun} all\n"))
+        .collect();
+    let bypass_rules: String = bypass_cidrs
+        .iter()
+        .map(|cidr| format!("pass out quick to {cidr} keep state\n"))
+        .collect();
+    format!(
+        "pass quick on lo0 all\n\
+         {tun_rules}\
+         pass out quick proto {proto_s} to {endpoint_ip} port {endpoint_port} keep state\n\
+         {bypass_rules}\
+         block drop out all\n"
+    )
+}
+
 #[cfg(target_os = "macos")]
 fn engage_macos(
     endpoint_ip: &str,
     endpoint_port: &str,
     proto: Proto,
     bypass_cidrs: &[String],
+    tun_interfaces: &[String],
 ) -> Result<(), TunnelError> {
-    let phys = default_interface().ok_or(TunnelError::KillSwitch("no default interface"))?;
-    let proto_s = proto.pf_nft();
-
-    // Our anchor: pass loopback + the WireGuard endpoint out the physical, plus
-    // every split-tunneling bypass prefix (all protocols — a bypassed
-    // destination is fully direct), then block every other plaintext egress on
-    // the physical. Tunnel traffic (out the tun) is never on the physical, so
-    // it flows untouched. `proto` is udp for vanilla/awg, tcp for wg-tls.
-    let bypass_rules: String = bypass_cidrs
-        .iter()
-        .map(|cidr| format!("pass out quick on {phys} to {cidr} keep state\n"))
-        .collect();
-    let anchor_rules = format!(
-        "pass quick on lo0 all\n\
-         pass out quick on {phys} proto {proto_s} to {endpoint_ip} port {endpoint_port} keep state\n\
-         {bypass_rules}\
-         block drop out on {phys} all\n"
+    let anchor_rules = macos_anchor_rules(
+        endpoint_ip,
+        endpoint_port,
+        proto,
+        bypass_cidrs,
+        tun_interfaces,
     );
     run_stdin(
         "pfctl",
@@ -295,23 +361,6 @@ fn disengage_macos() {
     run_best_effort("pfctl", &["-f", "/etc/pf.conf"]); // restore the default ruleset
                                                        // Leave pf enabled per /etc/pf.conf; do not force-disable (the system may
                                                        // rely on it).
-}
-
-/// The physical default-route interface (e.g. `en0`), so we can scope the block
-/// to the real leak path. Parses `route -n get default`.
-#[cfg(target_os = "macos")]
-fn default_interface() -> Option<String> {
-    let out = Command::new("route")
-        .args(["-n", "get", "default"])
-        .output()
-        .ok()?;
-    let text = String::from_utf8_lossy(&out.stdout);
-    for line in text.lines() {
-        if let Some(rest) = line.trim().strip_prefix("interface:") {
-            return Some(rest.trim().to_string());
-        }
-    }
-    None
 }
 
 // ---- Linux (nftables) ------------------------------------------------------
@@ -548,5 +597,132 @@ mod tests {
             ("1.2.3.4", DEFAULT_WG_PORT)
         );
         assert_eq!(split_endpoint("1.2.3.4:"), ("1.2.3.4", DEFAULT_WG_PORT));
+    }
+}
+
+/// The pf ruleset is where the roam-safety property lives, so it gets its
+/// own module rather than being folded into the parsing tests above.
+#[cfg(test)]
+mod macos_ruleset_tests {
+    use super::*;
+
+    fn rules(tuns: &[String], bypass: &[String]) -> String {
+        macos_anchor_rules("203.0.113.7", "51820", Proto::Udp, bypass, tuns)
+    }
+
+    /// The regression this whole change exists for. An interface-scoped block
+    /// (`block drop out on en0 all`) fails OPEN the moment the machine roams:
+    /// on the new interface nothing matches and pf's default is pass, so
+    /// plaintext egresses while the UI still reads "protected".
+    #[test]
+    fn the_block_is_never_scoped_to_an_interface() {
+        let r = rules(&["utun6".into()], &[]);
+        assert!(
+            r.contains("block drop out all\n"),
+            "expected an unqualified catch-all block, got:\n{r}"
+        );
+        assert!(
+            !r.contains("block drop out on "),
+            "block must not name an interface, got:\n{r}"
+        );
+    }
+
+    /// Same reasoning for the endpoint pass: pinned to the connect-time NIC it
+    /// would stop matching after a roam, and the tunnel could never recover.
+    #[test]
+    fn the_endpoint_pass_is_never_scoped_to_an_interface() {
+        let r = rules(&["utun6".into()], &[]);
+        assert!(r.contains("pass out quick proto udp to 203.0.113.7 port 51820 keep state"));
+        assert!(!r.contains("pass out quick on en"), "got:\n{r}");
+    }
+
+    /// Phase 1 runs before any sidecar exists. A total block is correct there —
+    /// nothing legitimate is moving yet — but it must still let the handshake
+    /// out, or the tunnel it is protecting could never come up.
+    #[test]
+    fn phase_one_blocks_everything_but_loopback_and_the_endpoint() {
+        let r = rules(&[], &[]);
+        assert!(r.contains("pass quick on lo0 all"));
+        assert!(r.contains("port 51820"));
+        assert!(!r.contains("on utun"), "no tun exists yet, got:\n{r}");
+        assert!(r.contains("block drop out all"));
+    }
+
+    /// Phase 2: once the kernel names are known, tunnel traffic has to be passed
+    /// explicitly — the catch-all block would otherwise swallow it.
+    #[test]
+    fn phase_two_passes_every_tunnel_device() {
+        let r = rules(&["utun6".into(), "utun7".into()], &[]);
+        assert!(r.contains("pass out quick on utun6 all"));
+        assert!(r.contains("pass out quick on utun7 all"));
+    }
+
+    /// pf takes the first matching `quick` rule, so every pass must precede the
+    /// catch-all block or it is dead text.
+    #[test]
+    fn passes_precede_the_catch_all_block() {
+        let r = rules(&["utun6".into()], &["192.168.0.0/16".into()]);
+        let block = r.find("block drop out all").expect("block rule");
+        for pass in ["on lo0", "on utun6", "port 51820", "192.168.0.0/16"] {
+            let at = r
+                .find(pass)
+                .unwrap_or_else(|| panic!("missing rule: {pass}"));
+            assert!(at < block, "{pass} must come before the block, got:\n{r}");
+        }
+    }
+
+    /// Split bypass prefixes are fully direct, so they carry no interface either
+    /// — the routing table decides where they go (docs/17 §7.1).
+    #[test]
+    fn bypass_prefixes_are_passed_unscoped() {
+        let r = rules(&["utun6".into()], &["10.0.0.0/8".into()]);
+        assert!(r.contains("pass out quick to 10.0.0.0/8 keep state"));
+    }
+
+    /// The exact anchor text, verified to parse with `pfctl -n -f -` on macOS
+    /// 15. Pinned in full because the properties above are about individual
+    /// lines, and pf cares about the whole file: a stray blank line or a
+    /// mis-stripped continuation is a load failure at connect time, on the
+    /// user's machine, with the tunnel half-up. Re-run `pfctl -n -f` against the
+    /// new text if you change this.
+    #[test]
+    fn the_anchor_text_is_exactly_this() {
+        let r = rules(&["utun6".into(), "utun7".into()], &["10.0.0.0/8".into()]);
+        assert_eq!(
+            r,
+            "pass quick on lo0 all\n\
+             pass out quick on utun6 all\n\
+             pass out quick on utun7 all\n\
+             pass out quick proto udp to 203.0.113.7 port 51820 keep state\n\
+             pass out quick to 10.0.0.0/8 keep state\n\
+             block drop out all\n"
+        );
+    }
+
+    #[test]
+    fn rule_text_inputs_are_validated() {
+        assert!(is_safe_iface("utun6"));
+        assert!(is_safe_iface("cvpn-entry"));
+        assert!(!is_safe_iface(""));
+        // Anything that could break out of the rule line and inject its own.
+        assert!(!is_safe_iface("utun6\nblock drop"));
+        assert!(!is_safe_iface("utun6 all\npass out quick all"));
+        assert!(!is_safe_iface("en0;rm"));
+    }
+
+    /// A tun name reaches pf as rule text, so a bad one must be refused by
+    /// `engage` rather than interpolated.
+    #[test]
+    fn engage_rejects_an_unsafe_interface_name() {
+        let bad = ["utun6\nblock drop out all".to_string()];
+        let policy = LeakPolicy {
+            endpoint: "203.0.113.7:51820",
+            interface: "utun",
+            tun_interfaces: &bad,
+            proto: Proto::Udp,
+            bypass_cidrs: &[],
+            bypass_apps: &[],
+        };
+        assert!(engage(Backend::MacosPf, &policy).is_err());
     }
 }

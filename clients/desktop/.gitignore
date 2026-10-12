@@ -1,6 +1,8 @@
 dist
 node_modules
 src-tauri/target
+# Privileged helper staged for bundling by scripts/build-helper.sh
+src-tauri/helper/build/
 src-tauri/gen
 src-tauri/binaries/wireguard-go*
 # NOTE: src-tauri/icons/* are build INPUTS (tauri.conf.json bundle.icon reads them

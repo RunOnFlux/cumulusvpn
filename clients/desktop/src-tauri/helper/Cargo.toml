@@ -1,0 +1,30 @@
+[package]
+name = "cumulusvpn-helper"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+description = "CumulusVPN privileged helper — the macOS root daemon that owns the tunnel, routes and kill switch."
+
+# Runs as root. Every dependency is attack surface at that privilege level, so
+# this list is deliberately the tunnel's real needs and nothing else — no Tauri,
+# no webview, no HTTP client.
+#
+# macOS only. On Linux and Windows the app runs `cumulusvpn-tunnel` in-process,
+# and this binary only prints that and exits. It still builds there so that
+# `cargo check --workspace` stays green on every desktop OS, and on Linux the
+# socket server's tests run in CI.
+[dependencies]
+cumulusvpn-protocol = { path = "../protocol" }
+cumulusvpn-tunnel = { path = "../tunnel" }
+
+# Peer authentication (see src/peer.rs) and the root check. `core-foundation-sys`
+# is a raw binding crate — type declarations, no logic — which is what we want
+# linked into root.
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2.186"
+core-foundation-sys = "0.8.7"
+
+[[bin]]
+name = "cumulusvpn-helper"
+path = "src/main.rs"

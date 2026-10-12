@@ -4,6 +4,7 @@ import { normalizeSplitRule } from '@cumulusvpn/core';
 import type { SplitMode, SplitPolicy, Tier } from '@cumulusvpn/core';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory.js';
 import { loadSplitPolicy, saveSplitPolicy } from '../lib/storage.js';
+import { useEscape } from '../hooks/useEscape.js';
 
 /** App version — matches the release tag. */
 const APP_VERSION = '1.2.0';
@@ -30,50 +31,62 @@ export function Settings({
   onStealth,
   onClose,
 }: Props): JSX.Element {
+  useEscape(onClose);
   return (
     <div className="sheet">
-      <h2>Settings</h2>
+      <div className="sheet-inner">
+        <h2>Settings</h2>
 
-      <div className="setsec">Connection</div>
-      <SettingToggle
-        label="Auto-connect on launch"
-        sub="Connect automatically when the app opens"
-        value={autoConnect}
-        onChange={onAutoConnect}
-      />
-      <SettingToggle
-        label="Kill switch"
-        sub="Block all traffic if the VPN drops"
-        value={killSwitch}
-        onChange={onKillSwitch}
-      />
-      <SettingToggle
-        label="Stealth mode"
-        sub="Disguise VPN traffic to bypass blocking"
-        value={stealth}
-        onChange={onStealth}
-      />
+        {/* The About block and the split-tunnel editor together overflow any
+            reasonable window height — this region is what scrolls. */}
+        <div className="sheet-body scroll-y">
+          <div className="setsec">Connection</div>
+          <SettingToggle
+            label="Auto-connect on launch"
+            sub="Connect automatically when the app opens"
+            value={autoConnect}
+            onChange={onAutoConnect}
+          />
+          <SettingToggle
+            label="Kill switch"
+            sub="Block all traffic if the VPN drops"
+            value={killSwitch}
+            onChange={onKillSwitch}
+          />
+          <SettingToggle
+            label="Stealth mode"
+            sub="Disguise VPN traffic to bypass blocking"
+            value={stealth}
+            onChange={onStealth}
+          />
 
-      <div className="setsec">Split tunneling · Premium</div>
-      <SplitTunneling tier={tier} killSwitch={killSwitch} />
+          <div className="setsec">Split tunneling · Premium</div>
+          <SplitTunneling tier={tier} killSwitch={killSwitch} />
 
-      <div className="setsec">About</div>
-      <div className="setinfo">
-        <span>Version</span>
-        <span className="lat">CumulusVPN {APP_VERSION}</span>
+          <div className="setsec">About</div>
+          <div className="setinfo">
+            <span>Version</span>
+            <span className="lat">CumulusVPN {APP_VERSION}</span>
+          </div>
+          <div className="setinfo">
+            <span>Directory trust key</span>
+            <span className="lat">{CVPN_DIRECTORY_PUBKEY.slice(0, 16)}…</span>
+          </div>
+          <a
+            className="setinfo setlink"
+            href="https://cumulusvpn.com"
+            target="_blank"
+            rel="noreferrer"
+          >
+            <span>cumulusvpn.com</span>
+            <span className="chev">›</span>
+          </a>
+        </div>
+
+        <button className="close" onClick={onClose}>
+          Close
+        </button>
       </div>
-      <div className="setinfo">
-        <span>Directory trust key</span>
-        <span className="lat">{CVPN_DIRECTORY_PUBKEY.slice(0, 16)}…</span>
-      </div>
-      <a className="setinfo setlink" href="https://cumulusvpn.com" target="_blank" rel="noreferrer">
-        <span>cumulusvpn.com</span>
-        <span className="chev">›</span>
-      </a>
-
-      <button className="close" onClick={onClose}>
-        Close
-      </button>
     </div>
   );
 }

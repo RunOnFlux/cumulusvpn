@@ -1,7 +1,9 @@
 /**
  * Typed bridge to the Rust/Tauri backend commands defined in
  * `src-tauri/src/commands.rs`: `connect`, `connect_multihop`, `disconnect`,
- * `status`.
+ * `status`, plus the helper setup commands. The same commands work on every
+ * desktop OS: on macOS they reach the privileged helper daemon, on Linux and
+ * Windows the tunnel runs inside the app (`src-tauri/src/backend.rs`).
  *
  * When the frontend runs outside a Tauri window (plain `vite dev`, CI build,
  * Storybook), `isTauri()` is false and we fall back to an in-memory mock tunnel
@@ -225,4 +227,65 @@ export async function status(): Promise<TunnelStatus> {
 /** True when running inside a real Tauri window (native tunnel available). */
 export function nativeAvailable(): boolean {
   return isTauri();
+}
+
+/**
+ * Setup state of the tunnel engine.
+ *
+ * - `notNeeded` — Linux and Windows (and macOS launched as root): the tunnel
+ *   runs inside the app, so there is no helper to install. Ready.
+ * - `enabled` — macOS: the privileged helper is approved and running. Ready.
+ * - `requiresApproval` / `notRegistered` / `notFound` — macOS only (helper
+ *   registration via `SMAppService`). On macOS the app has no privileges of its
+ *   own (the helper daemon owns the tunnel, the routes and the kill switch), so
+ *   until the helper is approved nothing can connect. That is a setup step with
+ *   an obvious fix, not an error, and the UI says so rather than letting Connect
+ *   fail with a transport message.
+ */
+export type HelperRegistration =
+  'notNeeded' | 'enabled' | 'requiresApproval' | 'notRegistered' | 'notFound';
+
+/** Whether Connect can work in this setup state (no setup step outstanding). */
+export function helperReady(state: HelperRegistration): boolean {
+  return state === 'enabled' || state === 'notNeeded';
+}
+
+/** Outside Tauri there is no daemon and none is needed — the mock tunnel is it. */
+export async function helperRegistration(): Promise<HelperRegistration> {
+  if (!isTauri()) {
+    return 'notNeeded';
+  }
+  try {
+    return await invoke<HelperRegistration>('helper_registration');
+  } catch {
+    // Registration itself failing (an incomplete bundle, an OS too old) is
+    // indistinguishable to the user from "not set up", and has the same answer.
+    // Only the macOS helper path can fail here; the in-process backend always
+    // answers `notNeeded`.
+    return 'notRegistered';
+  }
+}
+
+/** Whether the helper is answering on its socket right now (always true off macOS). */
+export async function helperReachable(): Promise<boolean> {
+  if (!isTauri()) {
+    return true;
+  }
+  try {
+    return await invoke<boolean>('helper_status');
+  } catch {
+    return false;
+  }
+}
+
+/** Open System Settings at the pane where the helper is approved (macOS; no-op elsewhere). */
+export async function openHelperSettings(): Promise<void> {
+  if (!isTauri()) {
+    return;
+  }
+  try {
+    await invoke('open_helper_settings');
+  } catch {
+    /* the user can still navigate there by hand */
+  }
 }
