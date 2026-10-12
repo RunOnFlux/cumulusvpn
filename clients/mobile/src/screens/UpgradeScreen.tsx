@@ -69,8 +69,12 @@ const WEB_PAY_URL = 'https://vpn.cumulusvpn.com/#/upgrade';
 export function webPayUrl(code: string): string {
   return `${WEB_PAY_URL}?code=${encodeURIComponent(code)}`;
 }
-/** Apple's standard EULA for auto-renewable subscriptions. */
-const TERMS_URL = 'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/';
+/**
+ * Our Terms of Service — the Terms of Use both stores require next to a
+ * subscription. Section 6.3 incorporates Apple's standard EULA for App Store
+ * installs, so this one link serves iOS and Android alike.
+ */
+const TERMS_URL = 'https://cumulusvpn.com/terms';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 

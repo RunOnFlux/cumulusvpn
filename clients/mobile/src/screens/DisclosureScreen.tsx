@@ -16,6 +16,7 @@ import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from
 import { color, radius, space } from '../theme/tokens';
 
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+const TERMS_URL = 'https://cumulusvpn.com/terms';
 
 interface Props {
   /** Acknowledge the disclosure and enter the app (first-run gate). */
@@ -109,10 +110,40 @@ export function DisclosureScreen({ onAccept, onClose }: Props): React.JSX.Elemen
           <Text style={styles.linkText}>Read the full privacy policy</Text>
           <Text style={styles.chev}>›</Text>
         </Pressable>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => void Linking.openURL(TERMS_URL)}
+          accessibilityRole="link"
+          accessibilityLabel="Read the terms of service"
+        >
+          <Text style={styles.linkText}>Read the terms of service</Text>
+          <Text style={styles.chev}>›</Text>
+        </Pressable>
       </ScrollView>
 
       {onAccept ? (
         <View style={styles.footer}>
+          {/* Continuing is the explicit acceptance of the Terms — the only
+              moment every user passes, since there is no sign-up. */}
+          <Text style={styles.consent}>
+            By continuing, you agree to our{' '}
+            <Text
+              style={styles.consentLink}
+              onPress={() => void Linking.openURL(TERMS_URL)}
+              accessibilityRole="link"
+            >
+              Terms of Service
+            </Text>{' '}
+            and{' '}
+            <Text
+              style={styles.consentLink}
+              onPress={() => void Linking.openURL(PRIVACY_URL)}
+              accessibilityRole="link"
+            >
+              Privacy Policy
+            </Text>
+            .
+          </Text>
           <Pressable
             style={styles.cta}
             onPress={onAccept}
@@ -188,6 +219,14 @@ const styles = StyleSheet.create({
   linkText: { color: color.cyan, fontSize: 15, fontWeight: '600' },
   chev: { color: color.inkDim, fontSize: 20 },
   footer: { paddingVertical: space.md },
+  consent: {
+    color: color.inkDim,
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+    marginBottom: space.sm,
+  },
+  consentLink: { color: color.cyan, fontWeight: '600' },
   cta: {
     backgroundColor: color.cyan,
     borderRadius: radius.pill,

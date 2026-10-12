@@ -108,7 +108,9 @@ export async function loadActiveRoute(): Promise<PersistedRoute | null> {
 // app" claim was replaced with the store-payment disclosure.
 // '3': identity backup — "the private key never leaves this device" became the
 // Keychain / Block Store copy (on by default, switchable in Settings).
-export const DISCLOSURE_VERSION = '3';
+// '4': Terms of Service — Continue now accepts cumulusvpn.com/terms, so every
+// existing user passes the gate once more and accepts them too.
+export const DISCLOSURE_VERSION = '4';
 
 /** The route styles a user may persist (mirrors core `RouteStyle`). */
 const ROUTE_STYLES: readonly RouteStyle[] = [

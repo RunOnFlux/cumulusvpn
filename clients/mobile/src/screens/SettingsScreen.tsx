@@ -32,6 +32,7 @@ const SITE_URL = 'https://cumulusvpn.com';
 // Both stores require the privacy policy to be reachable from INSIDE the app,
 // not only from the store listing. Support is Apple's required support URL.
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+const TERMS_URL = 'https://cumulusvpn.com/terms';
 const SUPPORT_URL = 'https://cumulusvpn.com/support';
 
 interface Props {
@@ -201,6 +202,14 @@ export function SettingsScreen({
           accessibilityRole="link"
         >
           <Text style={styles.linkText}>Privacy Policy</Text>
+          <Text style={styles.chev}>›</Text>
+        </Pressable>
+        <Pressable
+          style={styles.linkRow}
+          onPress={() => void Linking.openURL(TERMS_URL)}
+          accessibilityRole="link"
+        >
+          <Text style={styles.linkText}>Terms of Service</Text>
           <Text style={styles.chev}>›</Text>
         </Pressable>
         <Pressable
