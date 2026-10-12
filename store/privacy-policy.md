@@ -1,6 +1,6 @@
 # CumulusVPN Privacy Policy
 
-**Last updated: 30 September 2026**
+**Last updated: 12 October 2026**
 **Effective date: 16 July 2026**
 
 CumulusVPN is a decentralized VPN service. This policy explains, in plain language, exactly
@@ -23,10 +23,11 @@ Abuse reports: **info@cumulusvpn.com**
   to you.
 - **Gateways keep peer state in RAM only.** When a server restarts, that state is gone. There
   is no traffic database to seize, subpoena, or leak.
-- **Payments are optional.** You can subscribe in-app through Apple's App Store or Google
-  Play, pay by card via Stripe on our website, or pay in FLUX cryptocurrency on a public
-  blockchain. Whichever you choose, we never receive card details and never learn your name
-  from a payment — we only receive the confirmation needed to unlock premium.
+- **Payments are optional.** You can pay on our website in FLUX cryptocurrency on a public
+  blockchain or by card via Stripe; where an app offers an in-app subscription, Apple's App
+  Store or Google Play handles it; and a voucher can add free days. Whichever you choose, we
+  never receive card details and never learn your name from a payment — we only receive the
+  confirmation needed to unlock premium.
 - **No trackers, no advertising SDKs, no analytics that identify you.** The apps contain no
   third-party advertising or behavioural-tracking code.
 - **We are not a data business.** We have no user data to sell, and we do not sell data.
@@ -35,14 +36,15 @@ Abuse reports: **info@cumulusvpn.com**
 
 ## 2. Who we are
 
-CumulusVPN ("we", "us") is a VPN service operated by the CumulusVPN team, built on the Flux
-decentralized cloud network (https://runonflux.io). VPN exit servers ("gateways") run as
-containerized apps on Flux datacenter nodes operated by independent, KYC-verified datacenter
-operators. We publish the service; the underlying compute is decentralized.
+CumulusVPN ("we", "us") is a VPN service operated by InFlux Technologies LLC, 651 N Broad St,
+Ste 205 #9147, Middletown, DE 19709, USA. It is built on the Flux decentralized cloud network
+(https://runonflux.io). VPN exit servers ("gateways") run as containerized apps on Flux nodes
+with static IP addresses, owned and operated by independent third-party node operators, not by
+us. We publish the service; the underlying compute is decentralized.
 
 For the purposes of the EU/UK General Data Protection Regulation (GDPR), to the very limited
-extent any of the information below is "personal data", the CumulusVPN operating entity is the
-data controller. The lawful basis we rely on is our legitimate interest (Article 6(1)(f)) in
+extent any of the information below is "personal data", InFlux Technologies LLC is the data
+controller; you can reach us at info@cumulusvpn.com. The lawful basis we rely on is our legitimate interest (Article 6(1)(f)) in
 providing a functioning, abuse-resistant VPN, and — for payments — performance of the service
 you request (Article 6(1)(b)). Because the service is designed to be anonymous, in most cases
 we hold no data that can be linked to you at all.
@@ -108,8 +110,8 @@ DNS look-ups are resolved on your behalf through the encrypted tunnel so your lo
 ISP cannot see them. We do not keep DNS query logs.
 
 ### 4.5 What gateway operators can and cannot see
-Gateways are run on Flux datacenter nodes. Like any VPN exit, an operator observing their own
-server can see encrypted flow metadata in real time (that a peer is sending traffic), but not a
+Gateways run on Flux nodes owned and operated by independent third-party node operators, not
+by us. Like any VPN exit, an operator observing their own server can see encrypted flow metadata in real time (that a peer is sending traffic), but not a
 persistent log we create, and not the tunnel contents. For users who do not want any single
 server to see both their IP and their destination, CumulusVPN offers an **optional multi-hop
 mode**: your traffic is routed through two gateways so that no single server sees both who you
@@ -121,26 +123,35 @@ are and where you are going. Multi-hop is off by default and is described honest
 
 CumulusVPN has a free tier that requires **no payment and no identifying information**.
 
-If you choose to upgrade to premium (higher speed), you have several options. One is to pay in
-**FLUX cryptocurrency** on the Flux public blockchain, from our website or desktop app.
-Important points about the FLUX option:
+If you choose to upgrade to premium (higher speed), you can pay in **FLUX cryptocurrency** from
+your own wallet, by card through Stripe, or through an in-app subscription where an app offers
+one, and you can redeem a voucher for free days. Premium belongs to your device's anonymous
+payment code, not to a person or an account. Important points:
 
-- You send FLUX from **your own wallet** to our published payment address, including a short
+- **Where you pay.** On the web at vpn.cumulusvpn.com you can pay in FLUX or by card. An app may
+  also let you pay inside it; where an app offers an in-app subscription, Apple or Google
+  handles it. A voucher adds free days of premium to the device that redeems it.
+- You can send FLUX from **your own wallet** to our published payment address, including a short
   memo derived from your public key so the network can credit the right key. We do **not**
   collect card numbers, billing addresses, or names.
-- **Blockchain transactions are public by nature.** Anyone, including us, can see on the public
-  ledger that a payment of a certain amount was made to our address with a given memo. That
-  ledger is operated by the Flux blockchain, not by us. We do not link that transaction to your
-  real-world identity, and the memo is derived one-way from your public key — it does not reveal
-  your key or your traffic. Please understand that publishing a transaction to a public
-  blockchain is inherently public; treat your wallet's privacy accordingly.
+- **Blockchain transactions are public by nature.** However you pay, premium is granted by a
+  FLUX transaction to our payment address that carries your memo; if you pay by card, through
+  an app store or with a voucher, we send that transaction for you. Anyone, including us, can
+  see on the public ledger that a payment of a certain amount was made to our address with a
+  given memo. That ledger is operated by the Flux blockchain, not by us. We do not link that
+  transaction to your real-world identity, and the memo is derived one-way from your public key
+  — it does not reveal your key or your traffic. Please understand that publishing a transaction
+  to a public blockchain is inherently public; treat your wallet's privacy accordingly.
 - Entitlement (whether a key is premium and until when) is computed deterministically from the
-  public blockchain and keyed only to the public key. We store no separate customer billing
-  record with your name in it, because we do not have your name.
+  public blockchain and keyed only to the public key. For card and in-app payments we also store
+  the payment code and the processor's transaction id, so renewals can be credited to the right
+  key; when you redeem a voucher we store which payment code redeemed it, so each device can use
+  a code only once. We store no separate customer billing record with your name in it, because
+  we do not have your name.
 
-If you use the in-app subscription offered through Apple's App Store or Google Play (a monthly
-or annual premium subscription), that transaction is processed by Apple or Google under their
-own privacy policies. We receive only the purchase confirmation — a store transaction
+If you subscribe through Apple's App Store or Google Play where an app offers it (a monthly or
+annual premium subscription), that transaction is processed by Apple or Google under their own
+privacy policies. We receive only the purchase confirmation — a store transaction
 identifier / purchase token — tied to your pseudonymous payment code, so the network can grant
 premium to the right key. We never receive your payment card data, billing address, or name;
 Apple or Google holds those.

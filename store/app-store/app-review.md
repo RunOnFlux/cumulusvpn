@@ -186,5 +186,5 @@ or require a government license we do not hold. At minimum exclude:
   **Turkmenistan**, **Belarus**, and any market our launch legal review flags.
 
 Rationale and cross-reference: docs/05 (Apple 5.4 regional availability) and docs/06 (legal &
-abuse — datacenter-only placement, no-logs posture). Finalize the exact exclusion list with
-counsel at launch (docs/08 open question #10). Keep the list identical on Play where possible.
+abuse — no-logs posture). Finalize the exact exclusion list with counsel at launch (docs/08 open
+question #10). Keep the list identical on Play where possible.

@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy door architectuur</span>
     <h1>Privacybeleid</h1>
-    <p class="doc-meta">Laatst bijgewerkt: 30 september 2026 · Van kracht: 14 augustus 2026</p>
+    <p class="doc-meta">Laatst bijgewerkt: 12 oktober 2026 · Van kracht: 14 augustus 2026</p>
 
   <p class="doc-meta">Deze vertaling wordt aangeboden voor het gemak; de Engelse versie op cumulusvpn.com/privacy is leidend.</p>
   </div>
@@ -110,12 +110,14 @@
     </ul>
 
     <h2>2. Wie we zijn</h2>
-    <p>CumulusVPN (“we”, “ons”) is een VPN-dienst, beheerd door het CumulusVPN-team, gebouwd op het gedecentraliseerde
-      cloudnetwerk van Flux (<a href="https://runonflux.io">runonflux.io</a>). VPN-exitservers
-      (“gateways”) draaien als gecontaineriseerde apps op Flux-datacenternodes, beheerd door onafhankelijke,
-      KYC-geverifieerde datacenteroperators. Wij publiceren de dienst; de onderliggende rekenkracht is gedecentraliseerd.</p>
-    <p>Voor de toepassing van de EU-/VK-Algemene Verordening Gegevensbescherming (AVG) is CumulusVPN, voor zover
-      onderstaande informatie in zeer beperkte mate “persoonsgegevens” is, de verwerkingsverantwoordelijke.
+    <p>CumulusVPN (“we”, “ons”) is een VPN-dienst die wordt beheerd door InFlux Technologies LLC, 651 N Broad St, Ste 205 #9147,
+      Middletown, DE 19709, USA. De dienst is gebouwd op het gedecentraliseerde cloudnetwerk van Flux
+      (<a href="https://runonflux.io">runonflux.io</a>). VPN-exitservers (“gateways”) draaien als gecontaineriseerde apps
+      op Flux-nodes met vaste IP-adressen, die eigendom zijn van en beheerd worden door onafhankelijke externe node-operators, niet door
+      ons. Wij publiceren de dienst; de onderliggende rekenkracht is gedecentraliseerd.</p>
+    <p>Voor de toepassing van de EU-/VK-Algemene Verordening Gegevensbescherming (AVG) is InFlux Technologies LLC, voor zover
+      onderstaande informatie in zeer beperkte mate “persoonsgegevens” is, de verwerkingsverantwoordelijke; je
+      kunt ons bereiken via info@cumulusvpn.com.
       De rechtsgrond waarop we ons beroepen is ons gerechtvaardigd belang (artikel 6, lid 1, onder f) bij het leveren van een
       werkende, misbruikbestendige VPN, en — voor betalingen — de uitvoering van de door jou gevraagde dienst
       (artikel 6, lid 1, onder b). Omdat de dienst is ontworpen om anoniem te zijn, hebben we in de meeste gevallen helemaal geen gegevens
@@ -176,7 +178,7 @@
       komt van de handtekening, niet van een certificaat. Je eigenlijke internetverkeer staat hier los van en is
       <strong>end-to-end versleuteld door WireGuard</strong>, tussen je apparaat en de gateway.</p>
     <h3>4.6 Wat gateway-operators wel en niet kunnen zien</h3>
-    <p>Gateways draaien op Flux-datacenternodes. Zoals bij elke VPN-exit kan een operator die zijn eigen server observeert
+    <p>Gateways draaien op Flux-nodes die eigendom zijn van en beheerd worden door onafhankelijke externe node-operators, niet door ons. Zoals bij elke VPN-exit kan een operator die zijn eigen server observeert
       realtime versleutelde flow-metadata zien (dat een peer verkeer verstuurt), maar geen door ons aangemaakte blijvende
       log, en niet de inhoud van de tunnel. Voor gebruikers die niet willen dat één enkele server zowel
       hun IP als hun bestemming ziet, biedt CumulusVPN een <strong>optionele multi-hop-modus</strong>: je
@@ -185,19 +187,24 @@
 
     <h2>5. Betalingen (alleen als je upgradet naar premium)</h2>
     <p>CumulusVPN heeft een gratis laag waarvoor <strong>geen betaling en geen identificerende informatie</strong> nodig is.</p>
-    <p>Als je ervoor kiest te upgraden naar premium (hogere snelheid), betaal je in de
-      <strong>cryptovaluta FLUX</strong> op de publieke Flux-blockchain. Belangrijke punten:</p>
+    <p>Als je ervoor kiest te upgraden naar premium (hogere snelheid), kun je betalen in de
+      <strong>cryptovaluta FLUX</strong> vanuit je eigen wallet, met kaart via Stripe, of via een in-app-abonnement als een app dat
+      aanbiedt, en je kunt een voucher inwisselen voor gratis dagen. Premium hoort bij de anonieme betaalcode van je apparaat,
+      niet bij een persoon of een account. Belangrijke punten:</p>
     <ul>
-      <li><strong>Betalen gebeurt op het web of desktop, niet in de mobiele apps.</strong> De mobiele apps
-        bevatten geen aankoopscherm; ze tonen alleen je huidige laag.</li>
+      <li><strong>Waar je betaalt.</strong> Op het web via vpn.cumulusvpn.com kun je betalen in FLUX of met kaart. Een app
+        kan je ook in de app zelf laten betalen; als een app een in-app-abonnement aanbiedt, handelt Apple of Google dat af. Een
+        voucher voegt gratis premiumdagen toe aan het apparaat dat hem inwisselt.</li>
       <li>Je kunt FLUX vanuit <strong>je eigen wallet</strong> naar ons gepubliceerde betaaladres sturen, met een korte memo afgeleid van je publieke sleutel zodat het netwerk de juiste sleutel crediteert. Betaal je in plaats daarvan met kaart of via een appwinkel, dan verzamelt die verwerker die gegevens onder zijn eigen privacybeleid en ontvangen wij alleen een bevestiging. Hoe dan ook verzamelen wij <strong>geen</strong> kaartnummers, factuuradressen of namen.</li>
-      <li><strong>Blockchaintransacties zijn van nature openbaar.</strong> Iedereen, ook wij, kan op het
+      <li><strong>Blockchaintransacties zijn van nature openbaar.</strong> Hoe je ook betaalt, premium wordt toegekend via een
+        FLUX-transactie naar ons betaaladres die je memo bevat; als je met kaart, via een appstore of met een voucher betaalt,
+        versturen wij die transactie voor je. Iedereen, ook wij, kan op het
         openbare grootboek zien dat een betaling van een bepaald bedrag naar ons adres is gegaan met een gegeven memo. Dat
         grootboek wordt beheerd door de Flux-blockchain, niet door ons. We koppelen die transactie niet aan je
         identiteit in de echte wereld, en het memo is eenrichtings afgeleid van je publieke sleutel — het onthult je
         sleutel of je verkeer niet. Besef dat het publiceren van een transactie op een publieke blockchain
         inherent openbaar is; behandel de privacy van je wallet dienovereenkomstig.</li>
-      <li>De aanspraak (of een sleutel premium is en tot wanneer) wordt deterministisch berekend uit de openbare blockchain en is uitsluitend gekoppeld aan de publieke sleutel. Voor kaart- en in-app-betalingen bewaren we daarnaast de betaalcode en het transactie-id van de verwerker, zodat verlengingen aan de juiste sleutel worden toegekend. We bewaren geen apart factureringsdossier met je naam erin, omdat we je naam niet hebben.</li>
+      <li>De aanspraak (of een sleutel premium is en tot wanneer) wordt deterministisch berekend uit de openbare blockchain en is uitsluitend gekoppeld aan de publieke sleutel. Voor kaart- en in-app-betalingen bewaren we daarnaast de betaalcode en het transactie-id van de verwerker, zodat verlengingen aan de juiste sleutel worden toegekend; als je een voucher inwisselt, bewaren we welke betaalcode hem heeft ingewisseld, zodat elk apparaat een code maar één keer kan gebruiken. We bewaren geen apart factureringsdossier met je naam erin, omdat we je naam niet hebben.</li>
     </ul>
     <p>Als je je abonneert via Apple’s App Store of Google Play, wordt die transactie verwerkt door Apple of Google onder hun eigen privacybeleid; wij ontvangen alleen de bevestiging die nodig is om premium toe te kennen, niet je kaartgegevens.</p>
 
@@ -211,8 +218,8 @@
       geen browse-activiteit, en kan op elk moment worden uitgeschakeld.</p>
 
     <h2>7. Cookies en de website</h2>
-    <p>De CumulusVPN-website (cumulusvpn.com) is een statische site voor downloads, documentatie, de
-      betaalpagina en het hosten van onze gesigneerde serverdirectory. Ze gebruikt geen advertentiecookies of
+    <p>De CumulusVPN-website (cumulusvpn.com) is een statische site voor downloads en documentatie. De webapp op
+      vpn.cumulusvpn.com host de betaalpagina en onze gesigneerde serverdirectory. Geen van beide gebruikt advertentiecookies of
       gedragsvolgers van derden. Eventuele gebruikte cookies zijn strikt functioneel (bijvoorbeeld om het
       licht/donker-thema te onthouden).</p>
 

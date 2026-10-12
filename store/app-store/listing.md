@@ -98,7 +98,9 @@ CumulusVPN is a decentralized VPN that respects your privacy by design — not b
 
 NO ACCOUNT, EVER
 There is no sign-up, no email, no password, no phone number. Open the app and it generates a
-private key on your device. That key is your only identity, and it never leaves your phone.
+private key on your device. That key is your only identity, and it is never sent to us or to any
+VPN server. The app keeps one encrypted backup of it in your iPhone's Keychain, so reinstalling
+keeps it — on by default, and you can turn it off in the app's Settings.
 
 NO LOGS, AND WE MEAN IT
 We do not record the sites you visit, your DNS queries, your traffic, or your connection
@@ -125,9 +127,9 @@ Terms of Use (EULA): https://www.apple.com/legal/internet-services/itunes/dev/st
 Privacy Policy: https://cumulusvpn.com/privacy
 
 RUN ON A DECENTRALIZED NETWORK
-CumulusVPN servers run as apps on the Flux decentralized cloud, hosted in commercial
-datacenters by independent operators — not on a single company's servers. It is a different,
-more resilient shape for a VPN.
+CumulusVPN servers run as apps on the Flux decentralized cloud, on nodes with static IPs run
+by independent operators — not on a single company's servers, and never on other users'
+devices. It is a different, more resilient shape for a VPN.
 
 OPTIONAL MULTI-HOP FOR MAXIMUM PRIVACY
 Turn on multi-hop and your traffic is routed through two servers, so that no single server ever

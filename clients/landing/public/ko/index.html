@@ -5,10 +5,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 
 <title>CumulusVPN — Flux Cloud 기반 분산형 VPN</title>
-<meta name="description" content="Flux 네트워크에서 한 번의 탭으로 쓰는 프라이빗 VPN. 계정 없음, 로그 없음, 이메일 없음. 100 KB/s는 영원히 무료 — 최고 속도는 FLUX로 월 0.99달러부터, 카드로는 월 1.99달러." />
+<meta name="description" content="Flux 네트워크에서 한 번의 탭으로 쓰는 프라이빗 VPN. 계정 없음, 로그 없음, 이메일 없음. 100 KB/s는 영원히 무료 — 최고 속도는 FLUX로 월 0.99달러, 카드로는 월 1.99달러." />
 <meta name="theme-color" content="#070B11" />
 <meta property="og:title" content="CumulusVPN — 계정도 로그도 없는 프라이빗 인터넷." />
-<meta property="og:description" content="Flux Cloud의 분산형 VPN. Powered by RunOnFlux. 100 KB/s 무료, 최고 속도는 FLUX로 월 0.99달러부터 또는 카드로 1.99달러." />
+<meta property="og:description" content="Flux Cloud의 분산형 VPN. Powered by RunOnFlux. 100 KB/s 무료, 최고 속도는 FLUX로 월 0.99달러 또는 카드로 1.99달러." />
 <meta property="og:type" content="website" />
 <meta property="og:url" content="https://cumulusvpn.com/ko/" />
 <meta property="og:site_name" content="CumulusVPN" />
@@ -18,7 +18,7 @@
 <meta property="og:image:height" content="630" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="CumulusVPN — 계정도 로그도 없는 프라이빗 인터넷." />
-<meta name="twitter:description" content="Flux Cloud의 분산형 VPN. Powered by RunOnFlux. 100 KB/s 무료, 최고 속도는 FLUX로 월 0.99달러부터 또는 카드로 1.99달러." />
+<meta name="twitter:description" content="Flux Cloud의 분산형 VPN. Powered by RunOnFlux. 100 KB/s 무료, 최고 속도는 FLUX로 월 0.99달러 또는 카드로 1.99달러." />
 <meta name="twitter:image" content="https://cumulusvpn.com/og-image.png" />
 <link rel="canonical" href="https://cumulusvpn.com/ko/" />
 <link rel="alternate" hreflang="en" href="https://cumulusvpn.com/" />
@@ -445,7 +445,7 @@
     <div>
       <span class="eyebrow">Flux Cloud 기반 분산형 VPN</span>
       <h1>계정도 로그도 없는<br><span class="glow">프라이빗 인터넷.</span></h1>
-      <p class="lede">한 번의 탭으로 수십 개국의 데이터센터 노드를 통해 연결됩니다. 100&nbsp;KB/s는 영원히 무료. 최고 속도는 본인 지갑에서 FLUX로 결제하면 월 0.99달러부터, 카드로는 월 1.99달러입니다. 이메일도 계정도 없으니, 애초에 가진 적 없는 것을 넘길 회사도 없습니다.</p>
+      <p class="lede">한 번의 탭으로 수십 개국의 독립 Flux 노드를 통해 연결됩니다. 100&nbsp;KB/s는 영원히 무료. 최고 속도는 본인 지갑에서 FLUX로 결제하면 월 0.99달러, 카드로는 월 1.99달러입니다. 이메일도 계정도 없으니, 애초에 가진 적 없는 것을 넘길 회사도 없습니다.</p>
       <div class="cta">
         <a class="btn primary" href="#apps">앱 받기</a>
         <a class="btn ghost" href="#how">작동 방식</a>
@@ -505,14 +505,14 @@
       <div class="step">
         <div class="num">1단계</div>
         <h3>생성 &amp; 연결</h3>
-        <p>앱이 사용자 기기에서 WireGuard 키 쌍을 생성하고 가장 가까운 데이터센터
+        <p>앱이 사용자 기기에서 WireGuard 키 쌍을 생성하고 가장 가까운
           게이트웨이에 등록합니다. 무료 등급은 서버 측에서 100&nbsp;KB/s로 제한됩니다 — 몇 초 만에 연결되며, 가입 절차는 없습니다.</p>
         <div class="code">pubkey → POST /v1/enroll → tunnel up</div>
       </div>
       <div class="step">
         <div class="num">2단계</div>
         <h3>FLUX로 결제</h3>
-        <p>결제 주소로 12&nbsp;FLUX(&lt; $0.99)를 보내고, 거래 메시지에
+        <p>결제 주소로 12&nbsp;FLUX(월 0.99달러)를 보내고, 거래 메시지에
           본인 키의 코드를 함께 적어주세요. 탭 한 번으로 내용이 미리 채워진 지갑이 열립니다.</p>
         <div class="code">memo: CVPN1:&lt;code(pubkey)&gt;</div>
       </div>
@@ -549,7 +549,7 @@
       </div>
       <div class="tier prem">
         <div class="name"><span class="tier-pill prem">프리미엄</span></div>
-        <div class="price">12 FLUX<span class="per"> / 월</span><small>&lt; $0.99 · 온체인 결제, 누적 가능</small></div>
+        <div class="price">12 FLUX<span class="per"> / 월</span><small>월 0.99달러 · 온체인 결제, 누적 가능</small></div>
         <ul>
           <li><span class="ck">✓</span> 전체 속도 — 기기당 최대 50 Mbit/s</li>
           <li><span class="ck">✓</span> 모든 게이트웨이에서 동시에 잠금 해제</li>
@@ -567,8 +567,8 @@
     <div class="sec-head">
       <span class="eyebrow">앱 받기</span>
       <h2>연결 버튼 하나로, 당신이 가진 모든 화면에.</h2>
-      <p>웹, 데스크톱, 모바일 모두 동일한 세련된 클라이언트 — 하나의 디자인 언어와 하나의
-        키를 공유합니다. 결제는 웹이나 데스크톱에서 하세요. 스마트폰은 체인을 통해 1분 안에 자동으로 잠금 해제됩니다.</p>
+      <p>웹과 모바일에서 동일한 세련된 클라이언트, 데스크톱 버전은 출시 예정 — 모든 화면에서 하나의
+        디자인 언어를 씁니다. 휴대폰의 기기 코드로 웹에서 결제하면 휴대폰이 체인을 통해 1분 안에 자동으로 잠금 해제됩니다.</p>
     </div>
     <div class="apps">
 
@@ -595,7 +595,7 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>모바일</h3>
-        <p>iOS와 Android, 스토어 정책을 준수합니다. 앱에서 구독하거나 웹에서 업그레이드하면 휴대폰이 알아서 최고 속도로 전환됩니다. 프리미엄은 계정이 아니라 키에 붙어 있으므로 종속되지 않습니다.</p>
+        <p>iOS와 Android, 스토어 정책을 준수합니다. 웹에서 업그레이드하면(앱에서 구독을 제공하는 경우 앱에서도) 휴대폰이 알아서 최고 속도로 전환됩니다. 프리미엄은 계정이 아니라 키에 붙어 있으므로 종속되지 않습니다.</p>
         <div class="actions">
           <span class="applink soon"><span>App Store · Google Play</span><span class="tag">출시 예정</span></span>
         </div>
@@ -633,9 +633,9 @@
       </div>
       <div class="trust">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M7 7h.01M7 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-        <h3>실제 데이터센터 노드</h3>
-        <p>종료 노드는 Flux 데이터센터 인프라에서 운영됩니다 — 가정용 봇넷이 아닙니다. 안정적인 IP, 실제
-          대역폭, 네트워크 전체 6,500개 이상의 노드.</p>
+        <h3>독립 Flux 노드</h3>
+        <p>종료 노드는 독립적인 제3자가 운영하는, 고정 IP를 가진 Flux 노드에서 앱으로 실행됩니다 — 다른 사용자의
+          기기에서는 절대 실행되지 않으므로 가정용 봇넷이 아닙니다. 네트워크 전체 6,500개 이상의 노드.</p>
       </div>
       <div class="trust">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.7"/><path d="M3 12h18M12 3c2.5 2.5 3.8 5.7 3.8 9S14.5 18.5 12 21C9.5 18.5 8.2 15.3 8.2 12S9.5 5.5 12 3Z" stroke="currentColor" stroke-width="1.5"/></svg>
@@ -703,9 +703,8 @@
       <p class="disclaimer">
         Flux Cloud 기반 분산형 VPN · cumulusvpn.com. CumulusVPN은 Flux 인프라 위에
         구축된 독립 프로젝트이며, WireGuard 개발사와는 관련이 없습니다. WireGuard는
-        Jason A. Donenfeld의 등록 상표입니다. 표시된 FLUX 가격(약 $0.99)은 근사치이며
-        시장에 따라 변동됩니다. VPN이 불법인 지역에서는 이용이 제한될 수 있습니다.
-        <span class="mono">POC 프리뷰 — 메인넷 출시 전까지 수치는 예시용입니다.</span>
+        Jason A. Donenfeld의 등록 상표입니다. FLUX로 결제하는 프리미엄은 월 0.99달러입니다. 한 달분 FLUX 금액은
+        FLUX 환율 변동에 따라 조정될 수 있습니다. VPN이 불법인 지역에서는 이용이 제한될 수 있습니다.
       </p>
     </div>
     <div class="mono" style="align-self:flex-end;white-space:nowrap">© 2026 CumulusVPN</div>

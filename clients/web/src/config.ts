@@ -14,10 +14,12 @@ export const DIRECTORY_PUBKEY = '1e+42nEpmdjf/cAHs+yE2E2iwmAADpWiLy1VMepsKKw=';
 // Path the signed directory is served from (this app hosts it at /directory.json).
 export const DIRECTORY_URL = '/directory.json';
 
-// The USD ceiling shown next to the FLUX price ("< $0.99 · per 30 days"). The
-// FLUX price itself is `price_flux` from the signed directory (chain-anchored);
-// it is repriced to stay under this as FLUX/USD moves, and an hourly watcher
-// alerts when it doesn't (deploy/scripts/price-watch.mjs, docs/04).
+// The marketed USD price shown next to the FLUX price ("$0.99/month · 30 days").
+// Public copy always states it as "$0.99/month", never "< $0.99" or a converted
+// figure. The FLUX price itself is `price_flux` from the signed directory
+// (chain-anchored); it is repriced to stay at or under this as FLUX/USD moves,
+// and an hourly watcher alerts when it doesn't (deploy/scripts/price-watch.mjs,
+// docs/04).
 export const PRICE_USD_CAP = '$0.99';
 
 // Fiat (card) subscription prices. Display-only — the authoritative prices

@@ -30,7 +30,9 @@ by promise.
 
 NO ACCOUNT, EVER
 No sign-up, no email, no password, no phone number. Install the app and it generates a private
-key right on your device. That key is your only identity, and it never leaves your phone.
+key right on your device. That key is your only identity, and it is never sent to us or to any
+VPN server. The app keeps one encrypted backup of it in Android's Block Store, so reinstalling
+keeps it — on by default, and you can turn it off in the app's Settings.
 
 NO LOGS — AND WE MEAN IT
 We do not record the sites you visit, your DNS queries, your traffic, or your connection
@@ -47,8 +49,9 @@ Every install includes a genuinely free tier — no trial, no card, no account. 
 for higher speeds whenever you like.
 
 BUILT ON A DECENTRALIZED NETWORK
-CumulusVPN servers run as apps on the Flux decentralized cloud, hosted in commercial datacenters
-by independent operators — not on one company's servers. A more resilient shape for a VPN.
+CumulusVPN servers run as apps on the Flux decentralized cloud, on nodes with static IPs run by
+independent operators — not on one company's servers, and never on other users' devices. A more
+resilient shape for a VPN.
 
 OPTIONAL MULTI-HOP FOR MAXIMUM PRIVACY
 Turn on multi-hop and your traffic passes through two servers, so no single server ever sees both

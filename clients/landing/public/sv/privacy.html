@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Integritet genom arkitektur</span>
     <h1>Integritetspolicy</h1>
-    <p class="doc-meta">Senast uppdaterad: 30 september 2026 · Gäller från: 14 augusti 2026</p>
+    <p class="doc-meta">Senast uppdaterad: 12 oktober 2026 · Gäller från: 14 augusti 2026</p>
 
   <p class="doc-meta">Denna översättning tillhandahålls för bekvämlighets skull; den engelska versionen på cumulusvpn.com/privacy är auktoritativ.</p>
   </div>
@@ -110,13 +110,14 @@
     </ul>
 
     <h2>2. Vilka vi är</h2>
-    <p>CumulusVPN (”vi”, ”oss”) är en VPN-tjänst som drivs av CumulusVPN-teamet, byggd på Flux
-      decentraliserade molnnätverk (<a href="https://runonflux.io">runonflux.io</a>). VPN-utgångsservrar
-      (”gateways”) körs som containeriserade appar på Flux datacenternoder som drivs av oberoende,
-      KYC-verifierade datacenteroperatörer. Vi publicerar tjänsten; den underliggande beräkningskraften är decentraliserad.</p>
+    <p>CumulusVPN (”vi”, ”oss”) är en VPN-tjänst som drivs av InFlux Technologies LLC, 651 N Broad St, Ste 205 #9147,
+      Middletown, DE 19709, USA. Den är byggd på Flux decentraliserade molnnätverk
+      (<a href="https://runonflux.io">runonflux.io</a>). VPN-utgångsservrar (”gateways”) körs som containeriserade appar
+      på Flux-noder med statiska IP-adresser, som ägs och drivs av oberoende tredjepartsoperatörer av noder, inte av
+      oss. Vi publicerar tjänsten; den underliggande beräkningskraften är decentraliserad.</p>
     <p>Vid tillämpningen av EU:s/Storbritanniens dataskyddsförordning (GDPR) är, i den mycket begränsade utsträckning
-      som någon av informationen nedan utgör ”personuppgifter”, den driftansvariga enheten för CumulusVPN
-      personuppgiftsansvarig. Den rättsliga grunden vi förlitar oss på är vårt berättigade intresse (artikel 6.1 f) av att tillhandahålla
+      som någon av informationen nedan utgör ”personuppgifter”, InFlux Technologies LLC
+      personuppgiftsansvarig; du når oss på info@cumulusvpn.com. Den rättsliga grunden vi förlitar oss på är vårt berättigade intresse (artikel 6.1 f) av att tillhandahålla
       ett fungerande, missbruksresistent VPN, och — för betalningar — fullgörande av den tjänst du begär
       (artikel 6.1 b). Eftersom tjänsten är utformad för att vara anonym har vi i de flesta fall ingen data
       som kan kopplas till dig alls.</p>
@@ -176,7 +177,7 @@
       kommer från signaturen, inte från ett certifikat. Din faktiska internettrafik är separat och
       är <strong>ände-till-ände-krypterad av WireGuard</strong> mellan din enhet och gatewayen.</p>
     <h3>4.6 Vad gatewayoperatörer kan och inte kan se</h3>
-    <p>Gateways körs på Flux datacenternoder. Precis som med vilken VPN-utgång som helst kan en operatör som observerar sin egen server
+    <p>Gateways körs på Flux-noder som ägs och drivs av oberoende tredjepartsoperatörer av noder, inte av oss. Precis som med vilken VPN-utgång som helst kan en operatör som observerar sin egen server
       se krypterad flödesmetadata i realtid (att en peer skickar trafik), men ingen beständig
       logg vi skapar, och inte tunnelns innehåll. För användare som inte vill att en enskild server ska se både
       deras IP och deras destination erbjuder CumulusVPN ett <strong>valfritt multi-hop-läge</strong>: din
@@ -185,19 +186,24 @@
 
     <h2>5. Betalningar (endast om du uppgraderar till premium)</h2>
     <p>CumulusVPN har en gratis nivå som varken kräver <strong>betalning eller identifierande information</strong>.</p>
-    <p>Om du väljer att uppgradera till premium (högre hastighet) betalar du i <strong>kryptovalutan FLUX</strong>
-      på Flux offentliga blockkedja. Viktiga punkter:</p>
+    <p>Om du väljer att uppgradera till premium (högre hastighet) kan du betala i <strong>kryptovalutan FLUX</strong>
+      från din egen plånbok, med kort via Stripe eller med en prenumeration i appen där en app erbjuder en,
+      och du kan lösa in en värdekod för gratisdagar. Premium tillhör din enhets anonyma betalningskod, inte
+      en person eller ett konto. Viktiga punkter:</p>
     <ul>
-      <li><strong>Betalning sker på webben eller datorn, inte i mobilapparna.</strong> Mobilapparna
-        innehåller ingen köpskärm; de visar bara din nuvarande nivå.</li>
+      <li><strong>Var du betalar.</strong> På webben på vpn.cumulusvpn.com kan du betala i FLUX eller med kort. En app
+        kan också låta dig betala i appen; där en app erbjuder en prenumeration i appen hanteras den av Apple eller Google. En
+        värdekod lägger till gratisdagar med premium på den enhet som löser in den.</li>
       <li>Du kan skicka FLUX från <strong>din egen plånbok</strong> till vår publicerade betaladress, med ett kort meddelande härlett ur din publika nyckel så att nätverket krediterar rätt nyckel. Betalar du i stället med kort eller via en appbutik samlar den betalleverantören in de uppgifterna enligt sin egen integritetspolicy och vi får bara en bekräftelse. Oavsett vilket samlar vi <strong>inte</strong> in kortnummer, faktureringsadresser eller namn.</li>
-      <li><strong>Blockkedjetransaktioner är offentliga till sin natur.</strong> Vem som helst, inklusive vi, kan se i den
+      <li><strong>Blockkedjetransaktioner är offentliga till sin natur.</strong> Hur du än betalar beviljas premium genom en
+        FLUX-transaktion till vår betalningsadress som bär ditt meddelande; betalar du med kort, via en appbutik
+        eller med en värdekod skickar vi den transaktionen åt dig. Vem som helst, inklusive vi, kan se i den
         offentliga liggaren att en betalning av ett visst belopp gjordes till vår adress med ett givet meddelande. Den
         liggaren drivs av Flux-blockkedjan, inte av oss. Vi kopplar inte den transaktionen till din
         verkliga identitet, och meddelandet är enkelriktat härlett från din publika nyckel — det avslöjar varken din
         nyckel eller din trafik. Var medveten om att det är i sig offentligt att publicera en transaktion på en offentlig blockkedja;
         behandla din plånboks integritet därefter.</li>
-      <li>Rättigheten (om en nyckel är premium och hur länge) beräknas deterministiskt från den publika blockkedjan och är kopplad enbart till den publika nyckeln. För kort- och appbetalningar lagrar vi dessutom betalningskoden och betalleverantörens transaktions-id, så att förnyelser krediteras rätt nyckel. Vi för inget separat faktureringsregister med ditt namn i, eftersom vi inte har ditt namn.</li>
+      <li>Rättigheten (om en nyckel är premium och hur länge) beräknas deterministiskt från den publika blockkedjan och är kopplad enbart till den publika nyckeln. För kort- och appbetalningar lagrar vi dessutom betalningskoden och betalleverantörens transaktions-id, så att förnyelser krediteras rätt nyckel; när du löser in en värdekod lagrar vi vilken betalningskod som löste in den, så att varje enhet bara kan använda en kod en gång. Vi för inget separat faktureringsregister med ditt namn i, eftersom vi inte har ditt namn.</li>
     </ul>
     <p>Om du prenumererar via Apples App Store eller Google Play hanteras transaktionen av Apple eller Google enligt deras egna integritetspolicyer; vi får bara den bekräftelse som behövs för att bevilja premium, inte dina kortuppgifter.</p>
 
@@ -211,8 +217,8 @@
       ingen surfaktivitet, och kan stängas av när som helst.</p>
 
     <h2>7. Kakor och webbplatsen</h2>
-    <p>CumulusVPN-webbplatsen (cumulusvpn.com) är en statisk sajt som används för nedladdningar, dokumentation,
-      betalningssidan och för att vara värd för vår signerade serverkatalog. Den använder inga annonskakor eller
+    <p>CumulusVPN-webbplatsen (cumulusvpn.com) är en statisk sajt som används för nedladdningar och dokumentation. Webbappen på
+      vpn.cumulusvpn.com är värd för betalningssidan och vår signerade serverkatalog. Ingen av dem använder annonskakor eller
       tredjepartsbeteendespårare. Eventuella kakor som används är strikt funktionella (till exempel för att
       komma ihåg ljust/mörkt tema).</p>
 

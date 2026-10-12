@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Quyền riêng tư từ kiến trúc</span>
     <h1>Chính sách quyền riêng tư</h1>
-    <p class="doc-meta">Cập nhật lần cuối: 30 tháng 9 năm 2026 · Có hiệu lực: 14 tháng 8 năm 2026</p>
+    <p class="doc-meta">Cập nhật lần cuối: 12 tháng 10 năm 2026 · Có hiệu lực: 14 tháng 8 năm 2026</p>
 
   <p class="doc-meta">Bản dịch này được cung cấp để thuận tiện; phiên bản tiếng Anh tại cumulusvpn.com/privacy có giá trị pháp lý cao nhất.</p>
   </div>
@@ -110,11 +110,12 @@
     </ul>
 
     <h2>2. Chúng tôi là ai</h2>
-    <p>CumulusVPN ("chúng tôi") là một dịch vụ VPN được vận hành bởi đội ngũ CumulusVPN, xây dựng trên mạng cloud phi tập trung của Flux
-      (<a href="https://runonflux.io">runonflux.io</a>). Các máy chủ exit VPN
-      ("gateway") chạy dưới dạng ứng dụng đóng container trên các node trung tâm dữ liệu Flux do các nhà vận hành trung tâm dữ liệu độc lập, đã xác minh
-      KYC vận hành. Chúng tôi công bố dịch vụ; phần compute bên dưới là phi tập trung.</p>
-    <p>Đối với mục đích của Quy định chung về Bảo vệ Dữ liệu của EU/Vương quốc Anh (GDPR), trong phạm vi rất hạn chế mà bất kỳ thông tin nào dưới đây có thể được coi là "dữ liệu cá nhân", thực thể vận hành CumulusVPN là bên kiểm soát dữ liệu. Cơ sở pháp lý mà chúng tôi dựa vào là lợi ích hợp pháp của chúng tôi
+    <p>CumulusVPN ("chúng tôi") là một dịch vụ VPN được vận hành bởi InFlux Technologies LLC, 651 N Broad St, Ste 205 #9147,
+      Middletown, DE 19709, USA, xây dựng trên mạng cloud phi tập trung của Flux
+      (<a href="https://runonflux.io">runonflux.io</a>). Các máy chủ exit VPN ("gateway") chạy dưới dạng ứng dụng đóng container
+      trên các node Flux có địa chỉ IP tĩnh, do các nhà vận hành node bên thứ ba độc lập sở hữu và vận hành, không phải chúng tôi.
+      Chúng tôi công bố dịch vụ; phần compute bên dưới là phi tập trung.</p>
+    <p>Đối với mục đích của Quy định chung về Bảo vệ Dữ liệu của EU/Vương quốc Anh (GDPR), trong phạm vi rất hạn chế mà bất kỳ thông tin nào dưới đây có thể được coi là "dữ liệu cá nhân", InFlux Technologies LLC là bên kiểm soát dữ liệu; bạn có thể liên hệ với chúng tôi tại info@cumulusvpn.com. Cơ sở pháp lý mà chúng tôi dựa vào là lợi ích hợp pháp của chúng tôi
       (Điều 6(1)(f)) trong việc cung cấp một dịch vụ VPN hoạt động tốt, chống lạm dụng, và — đối với thanh toán — thực hiện dịch vụ mà bạn yêu cầu
       (Điều 6(1)(b)). Vì dịch vụ được thiết kế để ẩn danh, trong hầu hết các trường hợp chúng tôi không nắm giữ dữ liệu
       nào có thể liên kết được với bạn.</p>
@@ -173,7 +174,7 @@
       về tính toàn vẹn đến từ chữ ký, chứ không phải từ một chứng chỉ. Lưu lượng internet thực tế của bạn hoàn toàn tách biệt
       và <strong>được mã hóa đầu cuối bằng WireGuard</strong> giữa thiết bị của bạn và gateway.</p>
     <h3>4.6 Những gì nhà vận hành gateway có thể và không thể thấy</h3>
-    <p>Các gateway chạy trên các node trung tâm dữ liệu của Flux. Giống như bất kỳ điểm exit VPN nào, một nhà vận hành quan sát máy chủ của riêng họ
+    <p>Các gateway chạy trên các node Flux do các nhà vận hành node bên thứ ba độc lập sở hữu và vận hành, không phải chúng tôi. Giống như bất kỳ điểm exit VPN nào, một nhà vận hành quan sát máy chủ của riêng họ
       có thể thấy metadata luồng mã hóa theo thời gian thực (rằng một peer đang gửi lưu lượng), nhưng không phải một log vĩnh viễn
       do chúng tôi tạo ra, và không phải nội dung tunnel. Đối với những người dùng không muốn bất kỳ máy chủ đơn lẻ nào thấy cả
       IP và đích đến của họ, CumulusVPN cung cấp một <strong>chế độ multi-hop tùy chọn</strong>: lưu lượng của bạn được
@@ -182,18 +183,23 @@
 
     <h2>5. Thanh toán (chỉ khi bạn nâng cấp lên premium)</h2>
     <p>CumulusVPN có một gói miễn phí không yêu cầu <strong>thanh toán và không yêu cầu bất kỳ thông tin nhận dạng nào</strong>.</p>
-    <p>Nếu bạn chọn nâng cấp lên premium (tốc độ cao hơn), bạn thanh toán bằng <strong>tiền mã hóa FLUX</strong>
-      trên blockchain công khai của Flux. Những điểm quan trọng:</p>
+    <p>Nếu bạn chọn nâng cấp lên premium (tốc độ cao hơn), bạn có thể thanh toán bằng <strong>tiền mã hóa FLUX</strong>
+      từ ví của chính bạn, bằng thẻ qua Stripe, hoặc qua gói đăng ký trong ứng dụng nếu ứng dụng có cung cấp,
+      và bạn có thể đổi voucher để nhận ngày dùng miễn phí. Premium thuộc về mã thanh toán ẩn danh của thiết bị bạn, không phải
+      của một người hay một tài khoản. Những điểm quan trọng:</p>
     <ul>
-      <li><strong>Thanh toán diễn ra trên web hoặc desktop, không phải bên trong các ứng dụng di động.</strong> Các ứng dụng di động
-        không chứa màn hình mua hàng; chúng chỉ hiển thị gói hiện tại của bạn.</li>
+      <li><strong>Nơi bạn thanh toán.</strong> Trên web tại vpn.cumulusvpn.com, bạn có thể thanh toán bằng FLUX hoặc bằng thẻ. Ứng dụng
+        cũng có thể cho phép bạn thanh toán ngay bên trong; nếu ứng dụng có cung cấp gói đăng ký trong ứng dụng, Apple hoặc Google sẽ xử lý việc đó. Một
+        voucher cộng thêm ngày premium miễn phí cho thiết bị đổi nó.</li>
       <li>Bạn có thể gửi FLUX từ <strong>ví của chính bạn</strong> tới địa chỉ thanh toán mà chúng tôi công bố, kèm một memo ngắn dẫn xuất từ khoá công khai của bạn để mạng lưới ghi có cho đúng khoá. Nếu bạn trả bằng thẻ hoặc qua một cửa hàng ứng dụng, bên xử lý đó sẽ thu thập những thông tin ấy theo chính sách quyền riêng tư của họ và chúng tôi chỉ nhận được một xác nhận. Dù bằng cách nào, chúng tôi <strong>không</strong> thu thập số thẻ, địa chỉ thanh toán hay tên.</li>
-      <li><strong>Các giao dịch blockchain vốn dĩ mang tính công khai.</strong> Bất kỳ ai, kể cả chúng tôi, đều có thể thấy trên
+      <li><strong>Các giao dịch blockchain vốn dĩ mang tính công khai.</strong> Dù bạn thanh toán bằng cách nào, premium đều được cấp bằng một
+        giao dịch FLUX gửi đến địa chỉ thanh toán của chúng tôi kèm ghi chú của bạn; nếu bạn trả bằng thẻ, qua cửa hàng ứng dụng
+        hoặc bằng voucher, chúng tôi sẽ gửi giao dịch đó thay bạn. Bất kỳ ai, kể cả chúng tôi, đều có thể thấy trên
         sổ cái công khai rằng một khoản thanh toán với số tiền nhất định đã được gửi đến địa chỉ của chúng tôi kèm một ghi chú cụ thể. Sổ cái đó
         do blockchain của Flux vận hành, không phải bởi chúng tôi. Chúng tôi không liên kết giao dịch đó với danh tính thực của bạn, và ghi chú
         được suy ra một chiều từ khóa công khai của bạn — nó không tiết lộ khóa hay lưu lượng của bạn. Xin hãy hiểu rằng
         việc công bố một giao dịch lên blockchain công khai vốn dĩ là công khai; hãy tự cân nhắc về quyền riêng tư của ví bạn cho phù hợp.</li>
-      <li>Quyền sử dụng (một khoá có phải premium hay không và đến khi nào) được tính toán tất định từ blockchain công khai và chỉ gắn với khoá công khai. Với thanh toán bằng thẻ và trong ứng dụng, chúng tôi còn lưu mã thanh toán và mã giao dịch của bên xử lý, để các lần gia hạn được ghi có đúng khoá. Chúng tôi không lưu hồ sơ thanh toán riêng có tên bạn, bởi chúng tôi không có tên bạn.</li>
+      <li>Quyền sử dụng (một khoá có phải premium hay không và đến khi nào) được tính toán tất định từ blockchain công khai và chỉ gắn với khoá công khai. Với thanh toán bằng thẻ và trong ứng dụng, chúng tôi còn lưu mã thanh toán và mã giao dịch của bên xử lý, để các lần gia hạn được ghi có đúng khoá; khi bạn đổi voucher, chúng tôi lưu mã thanh toán nào đã đổi nó, để mỗi thiết bị chỉ dùng được một mã một lần. Chúng tôi không lưu hồ sơ thanh toán riêng có tên bạn, bởi chúng tôi không có tên bạn.</li>
     </ul>
     <p>Nếu bạn đăng ký qua App Store của Apple hoặc Google Play, giao dịch đó do Apple hoặc Google xử lý theo chính sách quyền riêng tư của họ; chúng tôi chỉ nhận được xác nhận cần thiết để cấp premium, không phải dữ liệu thẻ thanh toán của bạn.</p>
 
@@ -206,8 +212,8 @@
       để giúp chúng tôi sửa lỗi. Tính năng này <strong>mặc định tắt</strong>, không chứa hoạt động duyệt web nào, và có thể tắt bất cứ lúc nào.</p>
 
     <h2>7. Cookie và trang web</h2>
-    <p>Trang web CumulusVPN (cumulusvpn.com) là một trang web tĩnh dùng để tải xuống, tài liệu hướng dẫn, trang
-      thanh toán, và lưu trữ danh mục máy chủ đã ký của chúng tôi. Nó không sử dụng cookie quảng cáo hay
+    <p>Trang web CumulusVPN (cumulusvpn.com) là một trang web tĩnh dùng để tải xuống và tài liệu hướng dẫn. Ứng dụng web tại
+      vpn.cumulusvpn.com lưu trữ trang thanh toán và danh mục máy chủ đã ký của chúng tôi. Cả hai đều không sử dụng cookie quảng cáo hay
       trình theo dõi hành vi từ bên thứ ba. Bất kỳ cookie nào được sử dụng đều hoàn toàn mang tính chức năng (ví dụ ghi nhớ
       giao diện sáng/tối).</p>
 

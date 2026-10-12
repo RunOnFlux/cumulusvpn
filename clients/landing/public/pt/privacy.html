@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacidade pela arquitetura</span>
     <h1>Política de privacidade</h1>
-    <p class="doc-meta">Última atualização: 30 de setembro de 2026 · Em vigor desde: 14 de agosto de 2026</p>
+    <p class="doc-meta">Última atualização: 12 de outubro de 2026 · Em vigor desde: 14 de agosto de 2026</p>
 
   <p class="doc-meta">Esta tradução é fornecida por conveniência; a versão em inglês em cumulusvpn.com/privacy é a
       autoritativa.</p>
@@ -111,13 +111,14 @@
     </ul>
 
     <h2>2. Quem somos</h2>
-    <p>A CumulusVPN ("nós") é um serviço de VPN operado pela equipe CumulusVPN, construído sobre a
-      rede de nuvem descentralizada da Flux (<a href="https://runonflux.io">runonflux.io</a>). Os servidores de saída de VPN
-      ("gateways") rodam como apps em contêineres em nós de datacenter da Flux operados por operadores de
-      datacenter independentes e verificados por KYC. Nós publicamos o serviço; o poder computacional subjacente é descentralizado.</p>
+    <p>A CumulusVPN ("nós") é um serviço de VPN operado pela InFlux Technologies LLC, 651 N Broad St, Ste 205 #9147,
+      Middletown, DE 19709, USA. Ela é construída sobre a rede de nuvem descentralizada da Flux
+      (<a href="https://runonflux.io">runonflux.io</a>). Os servidores de saída de VPN ("gateways") rodam como apps em contêineres
+      em nós da Flux com endereços IP fixos, que pertencem a operadores terceiros independentes e são operados por eles, não
+      por nós. Nós publicamos o serviço; o poder computacional subjacente é descentralizado.</p>
     <p>Para os fins do Regulamento Geral de Proteção de Dados da UE/Reino Unido (GDPR), na medida bem limitada em que
-      qualquer uma das informações abaixo seja "dado pessoal", a entidade operadora da CumulusVPN é a
-      controladora dos dados. A base legal em que nos apoiamos é nosso interesse legítimo (Artigo 6(1)(f)) em oferecer
+      qualquer uma das informações abaixo seja "dado pessoal", a InFlux Technologies LLC é a controladora dos
+      dados; você pode falar conosco em info@cumulusvpn.com. A base legal em que nos apoiamos é nosso interesse legítimo (Artigo 6(1)(f)) em oferecer
       uma VPN funcional e resistente a abusos, e — para pagamentos — a execução do serviço que você solicita
       (Artigo 6(1)(b)). Como o serviço é projetado para ser anônimo, na maioria dos casos não temos nenhum dado
       que possa ser ligado a você.</p>
@@ -177,7 +178,8 @@
       vem da assinatura, não de um certificado. Seu tráfego real de internet é separado e é
       <strong>criptografado de ponta a ponta pelo WireGuard</strong> entre seu dispositivo e o gateway.</p>
     <h3>4.6 O que operadores de gateway podem e não podem ver</h3>
-    <p>Os gateways rodam em nós de datacenter da Flux. Como em qualquer saída de VPN, um operador observando seu próprio servidor
+    <p>Os gateways rodam em nós da Flux que pertencem a operadores terceiros independentes e são operados por eles, não por nós. Como
+      em qualquer saída de VPN, um operador observando seu próprio servidor
       pode ver metadados de fluxo criptografado em tempo real (que um peer está enviando tráfego), mas não um registro persistente que
       nós criamos, e não o conteúdo do túnel. Para usuários que não querem que nenhum servidor sozinho veja ao mesmo tempo
       seu IP e seu destino, a CumulusVPN oferece um <strong>modo multi-hop opcional</strong>: seu
@@ -186,19 +188,24 @@
 
     <h2>5. Pagamentos (só se você fizer upgrade para premium)</h2>
     <p>A CumulusVPN tem um nível grátis que não exige <strong>pagamento nem informação de identificação</strong>.</p>
-    <p>Se você escolher fazer upgrade para premium (velocidade maior), você paga em <strong>criptomoeda FLUX</strong>
-      na blockchain pública da Flux. Pontos importantes:</p>
+    <p>Se você escolher fazer upgrade para premium (velocidade maior), pode pagar em <strong>criptomoeda FLUX</strong>
+      da sua própria carteira, no cartão pela Stripe ou por uma assinatura dentro do app, quando um app oferecer uma,
+      e pode resgatar um voucher por dias grátis. O premium pertence ao código de pagamento anônimo do seu dispositivo, não
+      a uma pessoa ou a uma conta. Pontos importantes:</p>
     <ul>
-      <li><strong>O pagamento acontece na web ou no desktop, não dentro dos apps mobile.</strong> Os apps mobile
-        não têm tela de compra; eles só exibem seu nível atual.</li>
+      <li><strong>Onde você paga.</strong> Na web, em vpn.cumulusvpn.com, você pode pagar em FLUX ou no cartão. Um app
+        também pode permitir que você pague dentro dele; quando um app oferece uma assinatura dentro do app, quem cuida dela é a Apple ou o Google. Um
+        voucher adiciona dias grátis de premium ao dispositivo que o resgata.</li>
       <li>Você pode enviar FLUX da <strong>sua própria carteira</strong> para o nosso endereço de pagamento publicado, incluindo um memo curto derivado da sua chave pública para que a rede credite a chave certa. Se você pagar com cartão ou por uma loja de aplicativos, esse processador coleta esses dados sob a própria política de privacidade e nós recebemos apenas uma confirmação. De todo modo, <strong>não</strong> coletamos números de cartão, endereços de cobrança ou nomes.</li>
-      <li><strong>Transações em blockchain são públicas por natureza.</strong> Qualquer pessoa, inclusive nós, pode ver no
+      <li><strong>Transações em blockchain são públicas por natureza.</strong> Seja qual for a forma de pagamento, o premium é concedido por uma
+        transação de FLUX para o nosso endereço de pagamento que leva o seu memo; se você paga no cartão, por uma loja de apps
+        ou com um voucher, nós enviamos essa transação por você. Qualquer pessoa, inclusive nós, pode ver no
         livro-razão público que um pagamento de determinado valor foi feito ao nosso endereço com um determinado memo. Esse
         livro-razão é operado pela blockchain da Flux, não por nós. Não ligamos essa transação à sua
         identidade real, e o memo é derivado de forma unidirecional a partir da sua chave pública — ele não revela sua
         chave nem seu tráfego. Entenda que publicar uma transação em uma blockchain pública é
         inerentemente público; trate a privacidade da sua carteira de acordo.</li>
-      <li>O direito ao serviço (se uma chave é premium e até quando) é calculado de forma determinística a partir do blockchain público e vinculado apenas à chave pública. Para pagamentos no cartão e dentro do app também armazenamos o código de pagamento e o id de transação do processador, para que as renovações sejam creditadas à chave certa. Não guardamos nenhum registro de cobrança com o seu nome, porque não temos o seu nome.</li>
+      <li>O direito ao serviço (se uma chave é premium e até quando) é calculado de forma determinística a partir do blockchain público e vinculado apenas à chave pública. Para pagamentos no cartão e dentro do app também armazenamos o código de pagamento e o id de transação do processador, para que as renovações sejam creditadas à chave certa; quando você resgata um voucher, guardamos qual código de pagamento o resgatou, para que cada dispositivo possa usar um código só uma vez. Não guardamos nenhum registro de cobrança com o seu nome, porque não temos o seu nome.</li>
     </ul>
     <p>Se você assinar pela App Store da Apple ou pelo Google Play, essa transação é processada pela Apple ou pelo Google sob as respectivas políticas de privacidade; recebemos apenas a confirmação necessária para conceder o premium, não os dados do seu cartão.</p>
 
@@ -213,8 +220,8 @@
       atividade de navegação, e pode ser desligado a qualquer momento.</p>
 
     <h2>7. Cookies e o site</h2>
-    <p>O site da CumulusVPN (cumulusvpn.com) é um site estático usado para downloads, documentação, a
-      página de pagamento e hospedagem do nosso diretório de servidores assinado. Ele não usa cookies publicitários nem
+    <p>O site da CumulusVPN (cumulusvpn.com) é um site estático usado para downloads e documentação. O app web em
+      vpn.cumulusvpn.com hospeda a página de pagamento e o nosso diretório de servidores assinado. Nenhum dos dois usa cookies publicitários nem
       rastreadores comportamentais de terceiros. Quaisquer cookies usados são estritamente funcionais (por exemplo, para lembrar
       o tema claro/escuro).</p>
 

@@ -19,10 +19,10 @@
 [github.com/CumulusVPN](https://github.com/CumulusVPN). See `docs/08-open-questions.md` for the
 naming trail and the remaining trademark knockout.
 
-A fully decentralized VPN that runs entirely as **enterprise Flux apps** on datacenter nodes
-across the Flux network (6,500+ nodes worldwide). No accounts, no central server, no cards.
-Client and gateway **source are open**; the _deployment_ (image, private registry, which nodes)
-is enterprise-encrypted — deployment privacy, not closed source.
+A fully decentralized VPN that runs entirely as **Flux apps** on independent nodes of the Flux
+network (6,500+ nodes worldwide), operated by third-party node operators, with static IPs. No
+accounts, no central server. Client and gateway **source are open**, and gateways deploy as open
+(non-enterprise) Flux app specs from a public container image.
 
 ## The pitch
 
@@ -30,11 +30,12 @@ is enterprise-encrypted — deployment privacy, not closed source.
 - **$0.99/month** (paid in FLUX on the native chain) for full speed.
 - **No accounts.** Your WireGuard public key _is_ your identity. You generate it on your device;
   we never see an email, name, or card.
-- **No central authority.** Gateways are enterprise Flux app instances on datacenter nodes across
-  dozens of countries. Payments are verified by every gateway independently by scanning the Flux
-  blockchain. If our company disappears, the deployed gateways keep working until their spec expires.
-- **Open source** — gateway and client source, fully. (Deployment image/registry are private; the
-  build is reproducible so anyone can verify the source matches.)
+- **No central authority.** Gateways are Flux app instances on independent, operator-run Flux
+  nodes with static IPs across dozens of countries. Payments are verified by every gateway
+  independently by scanning the Flux blockchain. If our company disappears, the deployed gateways
+  keep working until their spec expires.
+- **Open source** — gateway and client source, fully. The gateway image is built from this repo
+  by CI and published at `ghcr.io/runonflux/cumulusvpn-gateway`.
 
 ## How it works (30 seconds)
 
