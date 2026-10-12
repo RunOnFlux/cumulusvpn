@@ -9,15 +9,24 @@ knowing it** unless we design otherwise. That is the central issue.
 
 ## Position we should take (recommendation)
 
-1. **Datacenter-only placement (decided) — the single biggest risk reduction.**
-   - All specs are **enterprise + `datacenter: true`**, so instances run only on KYC'd ArcaneOS
-     datacenter nodes, never residential machines. This removes the Mysterium failure mode (police
-     at a private node-runner's home) almost entirely: exits sit in commercial datacenters whose
-     operators run infrastructure knowingly and have abuse processes. Costs ~1.6× (docs/02) — worth
-     it. Enterprise KYC'd operators have also opted into hosting arbitrary enterprise workloads.
-   - Still work with the Flux team on an explicit operator-level "no VPN-exit apps" preference for
-     belt-and-suspenders (a per-node opt-out honored at spawn time). Enterprise placement is the
-     default protection; the opt-out flag is the additional courtesy.
+1. **Placement: open specs on any static-IP Flux node (decided 2026-10-12 — datacenter-only is
+   NOT required).**
+   - The fleet is registered as the OPEN v8 variant with `staticip: true` and no `datacenter` flag
+     (deploy/countries.yaml): instances can land on any Flux node with a static IP, not only on
+     KYC'd ArcaneOS datacenter nodes. The original plan here (enterprise + `datacenter: true`) was
+     never deployable — the encrypted path's `encrypt.mjs` is a stub — and the owner decided it is
+     not needed: datacenter-only would empty the countries that have no such nodes.
+   - In practice most of the fleet still lands in datacenters, because static IPs are mostly a
+     datacenter trait: 22 of 27 countries demand `staticip`. The 5 that can't — mx, za, my, hk,
+     ae (0 static nodes, per countries.yaml) — run on any node, possibly residential. Static IP
+     does not guarantee a datacenter, so public copy says neither.
+   - Consequence for copy: never claim "datacenter nodes", "KYC-verified operators" or
+     "enterprise apps" anywhere public (site, privacy policy, store text, README). The accurate
+     line is "independent Flux node operators", and the Terms (cumulusvpn.com/terms §2) say we
+     don't own or access those machines.
+   - The Mysterium risk (an exit on a private node-runner's machine drawing complaints) is
+     therefore carried by the mitigations below rather than by placement. Still worth asking the
+     Flux team for an operator-level "no VPN-exit apps" opt-out honored at spawn time.
 2. **Run the abuse desk ourselves.** Reverse-DNS is not ours to set on Flux nodes, but we can:
    port-80 notice page on the gateway ("this IP is a VPN egress of CumulusVPN (RunOnFlux), abuse@…, we hold no
    user data"), published abuse contact, response SLAs and templates, and a public transparency
