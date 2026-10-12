@@ -2341,6 +2341,11 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/privacy" />
   </url>
   <url>
+    <loc>https://cumulusvpn.com/terms</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://cumulusvpn.com/terms" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://cumulusvpn.com/terms" />
+  </url>
+  <url>
     <loc>https://cumulusvpn.com/network</loc>
   </url>
 </urlset>

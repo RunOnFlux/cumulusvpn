@@ -55,11 +55,28 @@ export const PAGES = [
   { slug: '', template: 'index.html', out: 'index.html' },
   { slug: 'support', template: 'support.html', out: 'support.html' },
   { slug: 'privacy', template: 'privacy.html', out: 'privacy.html' },
+  // English only until it is translated: every other locale links to /terms.
+  // Its keys (terms.*, meta.terms_*) live in en.json alone and are exempt from
+  // the key-parity check — drop `locales` once every catalog carries them.
+  { slug: 'terms', template: 'terms.html', out: 'terms.html', locales: ['en'] },
 ];
 
 export const localeBase = (code) => (code === 'en' ? '/' : `/${code}/`);
 export const pagePath = (code, slug) => localeBase(code) + slug;
 export const pageUrl = (code, slug) => ORIGIN + pagePath(code, slug);
+
+// The locales a page is generated in: every active one, unless it lists its own.
+export const pageLocales = (page, active) =>
+  page.locales ? active.filter((l) => page.locales.includes(l.code)) : active;
+
+// Link from a `code` page to `slug`: its translation if one is generated, else English.
+function pageHref(code, slug, active) {
+  const page = PAGES.find((p) => p.slug === slug);
+  return pageLocales(page, active).some((l) => l.code === code) ? pagePath(code, slug) : pagePath('en', slug);
+}
+
+// Catalog keys that belong to one page: `<slug>.*` and `meta.<slug>_*`.
+const isPageKey = (key, slug) => key.startsWith(`${slug}.`) || key.startsWith(`meta.${slug}_`);
 
 export function flatten(catalog) {
   const out = new Map();
@@ -84,26 +101,30 @@ export function render(templateText, locale, page, catalog, activeLocales, price
     if (typeof val !== 'string') throw new Error(`${locale.code}/${page.template}: missing catalog key ${path}`);
     return val;
   });
+  // Translations of THIS page; an English-only page gets no stored-locale redirect.
+  const langs = pageLocales(page, activeLocales);
   const tokens = {
     '%HOME%': localeBase(locale.code),
     '%SUPPORT%': localeBase(locale.code) + 'support',
     '%PRIVACY%': localeBase(locale.code) + 'privacy',
+    '%TERMS%': pageHref(locale.code, 'terms', activeLocales),
     '%LANG%': locale.code,
     '%DIR%': locale.rtl ? ' dir="rtl"' : '',
     '%CANONICAL%': pageUrl(locale.code, page.slug),
     '%OG_LOCALE%': locale.og,
     '%ALTERNATES%': [
-      ...activeLocales.map((l) => `<link rel="alternate" hreflang="${l.code}" href="${pageUrl(l.code, page.slug)}" />`),
+      ...langs.map((l) => `<link rel="alternate" hreflang="${l.code}" href="${pageUrl(l.code, page.slug)}" />`),
       `<link rel="alternate" hreflang="x-default" href="${pageUrl('en', page.slug)}" />`,
     ].join('\n'),
     '%PAGE%': page.slug,
+    '%PAGE_LOCALES%': JSON.stringify(langs.map((l) => l.code)),
     '%PRICE_FLUX%': price,
     '%LOCALE_OPTIONS%': activeLocales
       .map((l) => `<option value="${l.code}"${l.code === locale.code ? ' selected' : ''}>${l.endonym}</option>`)
       .join(''),
     '%REDIRECT_SCRIPT%':
-      locale.code === 'en'
-        ? `<script>(function(){try{var v=${JSON.stringify(activeLocales.map((l) => l.code))},s=localStorage.getItem('cumulusvpn-locale');if(s&&s!=='en'&&v.indexOf(s)>-1)location.replace('/'+s+'/${page.slug}');}catch(e){}})();</script>`
+      locale.code === 'en' && langs.length > 1
+        ? `<script>(function(){try{var v=${JSON.stringify(langs.map((l) => l.code))},s=localStorage.getItem('cumulusvpn-locale');if(s&&s!=='en'&&v.indexOf(s)>-1)location.replace('/'+s+'/${page.slug}');}catch(e){}})();</script>`
         : '',
     '%TRANSLATION_NOTE%':
       page.slug === 'privacy' && locale.code !== 'en'
@@ -125,7 +146,7 @@ export function buildAll() {
   for (const page of PAGES) {
     if (!existsSync(join(SRC, 'templates', page.template))) continue;
     const templateText = readFileSync(join(SRC, 'templates', page.template), 'utf8');
-    for (const locale of active) {
+    for (const locale of pageLocales(page, active)) {
       const rel = locale.code === 'en' ? page.out : `${locale.code}/${page.out}`;
       out.set(rel, render(templateText, locale, page, catalogs.get(locale.code), active, price));
     }
@@ -136,9 +157,10 @@ export function buildAll() {
 function sitemapXml(active) {
   const urls = [];
   for (const page of PAGES) {
-    for (const l of active) {
+    const langs = pageLocales(page, active);
+    for (const l of langs) {
       const links = [
-        ...active.map((a) => `    <xhtml:link rel="alternate" hreflang="${a.code}" href="${pageUrl(a.code, page.slug)}" />`),
+        ...langs.map((a) => `    <xhtml:link rel="alternate" hreflang="${a.code}" href="${pageUrl(a.code, page.slug)}" />`),
         `    <xhtml:link rel="alternate" hreflang="x-default" href="${pageUrl('en', page.slug)}" />`,
       ].join('\n');
       urls.push(`  <url>\n    <loc>${pageUrl(l.code, page.slug)}</loc>\n${links}\n  </url>`);
@@ -160,7 +182,7 @@ function write() {
 }
 
 const TAG_RE = /<([a-zA-Z][a-zA-Z0-9]*)/g;
-const LINK_TOKEN_RE = /%(HOME|SUPPORT|PRIVACY)%/g;
+const LINK_TOKEN_RE = /%(HOME|SUPPORT|PRIVACY|TERMS)%/g;
 
 function tagMultiset(s) {
   return (s.match(TAG_RE) ?? []).map((t) => t.slice(1).toLowerCase()).sort().join(',');
@@ -187,6 +209,14 @@ function check(allowMissing) {
   for (const l of LOCALES) {
     if (!catalogs.has(l.code) && existsSync(join(PUB, l.code))) errors.push(`stale: public/${l.code}/ has no catalog`);
   }
+  // Stale translations of a page that is no longer generated in that locale.
+  for (const page of PAGES) {
+    const langs = pageLocales(page, active);
+    for (const l of active) {
+      if (l.code === 'en' || langs.includes(l)) continue;
+      if (existsSync(join(PUB, l.code, page.out))) errors.push(`stale: public/${l.code}/${page.out} is not generated`);
+    }
+  }
 
   // 3. Placeholder/token leaks in rendered output.
   for (const [rel, content] of out) {
@@ -200,7 +230,11 @@ function check(allowMissing) {
   else {
     for (const [code, cat] of catalogs) {
       if (code === 'en') continue;
-      for (const key of en.keys()) if (!cat.has(key)) errors.push(`${code}: missing key ${key}`);
+      // Pages not generated in this locale need none of their keys here.
+      const untranslated = PAGES.filter((p) => !pageLocales(p, active).some((l) => l.code === code)).map((p) => p.slug);
+      for (const key of en.keys()) {
+        if (!cat.has(key) && !untranslated.some((slug) => isPageKey(key, slug))) errors.push(`${code}: missing key ${key}`);
+      }
       for (const key of cat.keys()) if (!en.has(key)) errors.push(`${code}: extra key ${key}`);
       for (const [key, val] of cat) {
         if (!en.has(key)) continue;
@@ -220,18 +254,19 @@ function check(allowMissing) {
     try { JSON.parse(m[1]); } catch { errors.push(`jsonld: ${rel} is not valid JSON`); }
   }
 
-  // 6. hreflang integrity: every page lists exactly active+x-default, correct doc.
+  // 6. hreflang integrity: every page lists exactly its locales+x-default, correct doc.
   for (const page of PAGES) {
-    const expected = new Set([...active.map((l) => pageUrl(l.code, page.slug)), pageUrl('en', page.slug)]);
-    for (const l of active) {
+    const langs = pageLocales(page, active);
+    const expected = new Set([...langs.map((l) => pageUrl(l.code, page.slug)), pageUrl('en', page.slug)]);
+    for (const l of langs) {
       const rel = l.code === 'en' ? page.out : `${l.code}/${page.out}`;
       const found = [...out.get(rel).matchAll(/<link rel="alternate" hreflang="([^"]+)" href="([^"]+)" \/>/g)];
-      if (found.length !== active.length + 1) errors.push(`hreflang: ${rel} has ${found.length}, want ${active.length + 1}`);
+      if (found.length !== langs.length + 1) errors.push(`hreflang: ${rel} has ${found.length}, want ${langs.length + 1}`);
       for (const [, , href] of found) if (!expected.has(href)) errors.push(`hreflang: ${rel} stray href ${href}`);
     }
   }
   // 7. Sitemap: <loc> set == generated page URL set; drift vs disk.
-  const expectedLocs = new Set(PAGES.flatMap((p) => active.map((l) => pageUrl(l.code, p.slug))));
+  const expectedLocs = new Set(PAGES.flatMap((p) => pageLocales(p, active).map((l) => pageUrl(l.code, p.slug))));
   expectedLocs.add(`${ORIGIN}/network`);
   const sm = sitemapXml(active);
   const locs = new Set([...sm.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]));
