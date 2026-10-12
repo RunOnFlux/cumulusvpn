@@ -2,7 +2,7 @@
   "name": "cumulusvpn",
   "version": "0.1.0",
   "private": true,
-  "description": "CumulusVPN \u2014 decentralized VPN on Flux Cloud (monorepo)",
+  "description": "CumulusVPN — decentralized VPN on Flux Cloud (monorepo)",
   "packageManager": "yarn@4.5.0",
   "workspaces": [
     "clients/core-ts",
@@ -24,6 +24,6 @@
     "deploy:landing": "node clients/landing/build.mjs --check && npx wrangler deploy --config clients/landing/wrangler.jsonc"
   },
   "devDependencies": {
-    "prettier": "3.9.6"
+    "prettier": "3.9.10"
   }
 }

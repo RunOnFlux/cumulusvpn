@@ -77,3 +77,6 @@ clients/mobile/ios/.xcode.env.local
 # specs, rebuilt on demand and never a source of truth.
 deploy/specs/update/
 .x-queue/
+
+# Yarn berry install state is per-machine (regenerated on every install).
+**/.yarn/install-state.gz
