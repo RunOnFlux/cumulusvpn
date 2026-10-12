@@ -9,7 +9,7 @@ gem 'cocoapods', '>= 1.13', '!= 1.15.0', '!= 1.15.1'
 # GHSA-cg4j-q9v8-6v38, GHSA-89vf-4333-qx8v and GHSA-2j26-frm8-cmj9 (fixed in
 # 7.2.3.1). activesupport 7.2 needs Ruby >= 3.1.
 gem 'activesupport', '>= 7.2.3.1'
-gem 'xcodeproj', '< 1.26.0'
+gem 'xcodeproj', '< 1.29.0'
 # The RN template caps this at '< 1.3.4' because 1.3.5 stopped requiring
 # 'logger', which activesupport < 7.1 relied on. activesupport >= 7.1 requires
 # 'logger' itself, so the cap is obsolete here; upstream React Native lifted it
