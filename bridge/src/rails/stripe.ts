@@ -97,6 +97,11 @@ export class StripeRail {
     private readonly vouchers: VouchersRepo,
     private readonly log: FastifyBaseLogger,
   ) {
+    // No explicit apiVersion: outgoing calls use the SDK's pinned version
+    // (2026-09-30.endive on stripe 23), while webhook payloads arrive in the
+    // endpoint's own version (2026-07-29.dahlia). Every field this rail reads
+    // has the same shape in both. A new SDK major moves outgoing calls to a
+    // new, breaking API major, so the stripe tests pin the reviewed major.
     this.stripe = new Stripe(cfg.secretKey);
   }
 

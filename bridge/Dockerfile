@@ -4,8 +4,14 @@
 # Build:  docker build -t ghcr.io/runonflux/cumulusvpn-bridge:0.1.0 .
 # Run:    docker run -v bridge-data:/data --env-file .env ghcr.io/runonflux/cumulusvpn-bridge
 
+# Base image: pinned to an exact Node LTS patch AND its multi-arch index
+# digest, so a rebuild can never pull a different image under the same tag.
+# Dependabot's docker ecosystem keeps it updated (tag and digest together).
+# Keep both stages on the same reference, and the Node major in step with
+# setup-node in .github/workflows/bridge-image.yml.
+
 # ---- build stage ------------------------------------------------------------
-FROM node:24-bookworm-slim AS build
+FROM node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS build
 
 WORKDIR /app
 
@@ -14,13 +20,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 
 COPY package.json yarn.lock .yarnrc.yml* ./
 RUN corepack enable && yarn install --immutable
+# secp256k1's install script swallows a failed native build and falls back to
+# pure-JS elliptic (CVE-2025-14505) for treasury signing — fail the image
+# build instead. src/flux/nativeSecp.ts enforces the same at boot.
+RUN node -e "require('secp256k1/bindings')"
 
 COPY tsconfig.json ./
 COPY src ./src
 RUN yarn build
 
 # ---- runtime stage ----------------------------------------------------------
-FROM node:24-bookworm-slim
+FROM node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
 
 ENV NODE_ENV=production
 WORKDIR /app
