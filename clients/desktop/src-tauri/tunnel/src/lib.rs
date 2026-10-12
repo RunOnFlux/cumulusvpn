@@ -1,10 +1,24 @@
 //! Tunnel manager — the Rust core that owns the wireguard-go sidecar, the UAPI
-//! configuration, and the kill switch. The Tauri commands in `commands.rs` are
-//! thin wrappers over `TunnelManager`.
+//! configuration, and the kill switch.
 //!
-//! This is deliberately shaped like the seed of a Mullvad-style daemon: a
-//! single owner of tunnel state behind a mutex, with the platform-specific work
-//! isolated in `wggo` (crypto/data plane) and `killswitch` (firewall).
+//! A single owner of tunnel state behind a mutex, with the platform-specific
+//! work isolated in `wggo` (crypto/data plane), `routing` (routes, addresses)
+//! and `killswitch` (firewall).
+//!
+//! **Where it runs.** There is exactly one copy of this code, and it runs in
+//! one of two places:
+//!
+//! * **macOS**: inside the root `cumulusvpn-helper` LaunchDaemon. The app
+//!   reaches it over the helper's socket, so the app stays unprivileged.
+//! * **Linux and Windows**: inside the app process, as it always has. The app
+//!   needs root or Administrator there, and `ensure_elevated` says so up front
+//!   on Windows.
+//!
+//! Both hosts drive it the same way. They pass the wire-level requests from
+//! `cumulusvpn-protocol` ([`TunnelManager::connect_request`],
+//! [`TunnelManager::connect_multihop_request`]), and they run
+//! [`spawn_repair_loop`] so that roam repair and the dead-tunnel watchdog keep
+//! working when no UI is polling.
 
 pub mod killswitch;
 pub mod routing;
@@ -12,10 +26,15 @@ pub mod tlsbridge;
 pub mod wggo;
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::{Duration, Instant};
 
-use serde::Serialize;
 use thiserror::Error;
+
+pub use cumulusvpn_protocol::{
+    ConnectRequest, MultihopRequest, SplitParams, TlsParams, TunnelState, TunnelStatus,
+};
 
 use killswitch::Backend;
 use wggo::{Sidecar, WgConfig};
@@ -62,9 +81,10 @@ fn ensure_elevated() -> Result<(), TunnelError> {
     }
 }
 
-/// macOS/Linux equally require root, but their commands fail with clear
-/// "needs root" errors until the privileged-helper seam is wired — no separate
-/// pre-check needed.
+/// macOS and Linux need root too. On macOS this code normally runs inside the
+/// root helper daemon. On Linux, and in the macOS run-as-root fallback, the app
+/// itself must be root. Unelevated, their commands fail with clear "needs root"
+/// errors, so no separate pre-check is needed.
 #[cfg(not(windows))]
 fn ensure_elevated() -> Result<(), TunnelError> {
     Ok(())
@@ -91,24 +111,11 @@ fn strip_endpoint_port(endpoint: &str) -> &str {
     e
 }
 
-/// Compiled split-tunneling routes for one session (docs/17-split-tunneling.md).
-///
-/// Produced by core-ts `compileSplitPolicy` in the frontend (the policy model
-/// and CIDR arithmetic live there — this side only ever sees primitives) and
-/// recompiled on every (re)connect against the fresh endpoint. At most one of
-/// the two lists is non-empty: `bypass_routes` for exclude-direction policies,
-/// `tunnel_routes` for include mode.
-#[derive(Debug, Clone, Default)]
-pub struct SplitParams {
-    /// Prefixes that MUST egress on the physical path (exclude mode + LAN
-    /// bypass). Installed as more-specific routes and punched through the kill
-    /// switch as `LeakPolicy.bypass_cidrs`.
-    pub bypass_routes: Vec<String>,
-    /// Include mode: ONLY these prefixes are routed into the tunnel; the
-    /// default route stays physical. Incompatible with the kill switch (the UI
-    /// enforces that); when non-empty the split-default install is skipped.
-    pub tunnel_routes: Vec<String>,
-}
+// The status, parameter and request types are defined in `cumulusvpn-protocol`.
+// They cross the app<->helper socket on macOS and are the in-process interface
+// on Linux/Windows, so the wire definition is the single source of truth.
+// Re-exported above for this crate's callers. `MultihopParams` stays here: it
+// borrows, and never crosses the wire.
 
 /// Parameters for [`TunnelManager::connect_multihop`]: the two nested WireGuard
 /// configs from core-ts `buildMultihopConfig` plus the routing facts.
@@ -137,19 +144,6 @@ pub struct MultihopParams<'a> {
     pub split: Option<&'a SplitParams>,
 }
 
-/// Parameters for the `wg-tls` transport on [`TunnelManager::connect`]. When
-/// present, the WG device is pointed at a local UDP<->TLS bridge instead of
-/// dialing the gateway directly, so the tunnel rides a TLS/TCP session that
-/// survives UDP-blocking (see [`tlsbridge`]).
-#[derive(Debug, Clone)]
-pub struct TlsParams {
-    /// `<gatewayIp>:<tlsPort>` — the TLS relay to bridge to (TCP).
-    pub server_addr: String,
-    /// SNI / cert name to present. Camouflage only (not verified), but a
-    /// plausible value blends in.
-    pub sni: String,
-}
-
 /// Anything that can go wrong bringing a tunnel up or down.
 #[derive(Debug, Error)]
 pub enum TunnelError {
@@ -163,32 +157,6 @@ pub enum TunnelError {
     Sidecar(&'static str),
     #[error("no active tunnel")]
     NotConnected,
-}
-
-/// Lifecycle of the local WireGuard interface. Serialized lowercase to match
-/// the `TunnelState` union in the TypeScript frontend (`src/lib/tauri.ts`).
-#[derive(Debug, Clone, Copy, Serialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum TunnelState {
-    Down,
-    Connecting,
-    Up,
-    Error,
-}
-
-/// Status snapshot returned to the frontend. `camelCase` to match the TS
-/// `TunnelStatus` interface field-for-field.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TunnelStatus {
-    pub state: TunnelState,
-    pub endpoint: Option<String>,
-    pub assigned_ip: Option<String>,
-    pub country: Option<String>,
-    pub rx_bytes: u64,
-    pub tx_bytes: u64,
-    pub last_handshake: Option<i64>,
-    pub error: Option<String>,
 }
 
 /// Mutable inner state guarded by the manager's mutex.
@@ -221,6 +189,9 @@ struct Inner {
     rx_bytes: u64,
     tx_bytes: u64,
     last_handshake: Option<i64>,
+    /// When the last roam repair succeeded, so the watchdog can give it a moment
+    /// to prove itself. See `is_dead`.
+    repaired_at: Option<Instant>,
 }
 
 impl Inner {
@@ -238,7 +209,6 @@ impl Inner {
     }
 }
 
-/// The single owner of tunnel state; registered as Tauri managed state.
 impl Inner {
     /// Notice that the machine changed network, and put the tunnel back.
     ///
@@ -287,6 +257,20 @@ impl Inner {
             self.error = Some("network changed — reconnecting".into());
             return;
         }
+
+        // Fix the ROUTE before the socket. The endpoint bypass is a host route
+        // to the gateway via the router that was default at connect time; on the
+        // new network that next hop is unreachable, so the sidecar's packets are
+        // blackholed no matter which interface its socket is bound to. Rebinding
+        // without this repairs nothing.
+        if let Err(e) = routing::repoint_endpoint_bypass(strip_endpoint_port(&endpoint)) {
+            // No usable default route yet — mid-switch. Restore the recorded
+            // address so the next poll sees the change afresh and retries.
+            self.local_src = previous;
+            self.error = Some(format!("route repair after network change failed: {e}"));
+            return;
+        }
+
         // Outer device for multi-hop, the only device for single-hop.
         if let Some(sidecar) = self.sidecar.as_ref() {
             if let Err(e) = sidecar.rebind() {
@@ -295,9 +279,97 @@ impl Inner {
                 // tries again, rather than deciding nothing moved.
                 self.local_src = previous;
                 self.error = Some(format!("rebind after network change failed: {e}"));
+                return;
             }
         }
+        // A repair clears the previous attempt's error; the tunnel is whole.
+        self.error = None;
+        self.repaired_at = Some(Instant::now());
     }
+
+    /// Is the tunnel dead despite the OS reporting it up?
+    ///
+    /// The backstop for every break that `repair_after_roam` cannot see. It keys
+    /// on the source address for the gateway changing, which covers a roam — but
+    /// says nothing about a DHCP renewal that returns the SAME address, a NAT
+    /// rebind upstream, a wake-from-sleep on the same network, or the gateway
+    /// simply dying. In all of those the interface stays up and no error is ever
+    /// raised, so without this the UI reads "protected" over a tunnel that has
+    /// been carrying nothing for minutes. Mirrors `isTunnelDead` in the mobile
+    /// client (`useVpn.ts`) — same threshold, same reasoning.
+    fn is_dead(&self) -> bool {
+        if self.state != TunnelState::Up {
+            return false;
+        }
+        // A repair that lands on an already-stale handshake would otherwise be
+        // torn down before its first keepalive: the rebind is instant, but the
+        // handshake that proves it worked is up to a keepalive interval (25s)
+        // behind. Give a fresh repair that long plus margin to show a result.
+        if self.repaired_at.is_some_and(|t| t.elapsed() < REPAIR_GRACE) {
+            return false;
+        }
+        let Some(last) = self.last_handshake else {
+            // No handshake recorded yet: still coming up, not dead. A connect
+            // that never completes is caught by the connect path, not here.
+            return false;
+        };
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        now - last > HANDSHAKE_DEAD_SEC
+    }
+}
+
+/// How stale the last handshake may get before the tunnel counts as dead.
+///
+/// The threshold cannot be tightened much. A healthy tunnel's handshake age
+/// sawtooths between 0 and ~120s (`REKEY_AFTER_TIME`) — keepalives count as
+/// sends, so a rekey is attempted about every two minutes. Anything below that
+/// would tear down working tunnels on the ordinary rekey sawtooth. 200s is
+/// unambiguously dead rather than merely idle, with margin for clock skew
+/// between our clock and the sidecar's counter. Same value as the mobile client.
+const HANDSHAKE_DEAD_SEC: i64 = 200;
+
+/// How long a successful roam repair is shielded from the watchdog — one
+/// WireGuard keepalive interval (25s) plus margin for the handshake to complete.
+const REPAIR_GRACE: Duration = Duration::from_secs(40);
+
+/// Whether the kill switch needs the phase-2 re-engage once the kernel tun
+/// names are known. Only macOS does: pf cannot name `utunN` up front, so phase 1
+/// blocks it and phase 2 passes it. Linux (nftables) and Windows (WFP) already
+/// allow the tun by the `cvpn*` prefix in phase 1 and ignore `tun_interfaces`,
+/// so re-engaging there would only re-apply the identical ruleset. On Windows
+/// that costs several PowerShell round-trips per hop. Skipping it keeps their
+/// connect sequence exactly what it was before the helper split: one engage.
+const KILL_SWITCH_NEEDS_TUN_PASS: bool = cfg!(target_os = "macos");
+
+/// Phase-2 kill-switch engage: replace the ruleset with one that also passes
+/// traffic out the named kernel tun devices.
+///
+/// Split out because both `connect` and `connect_multihop` need it, and multi-hop
+/// needs it twice — the exit device's handshake travels through the entry tunnel,
+/// so the entry tun must be passable before the exit sidecar is configured.
+/// Re-engaging is an atomic replace, so there is never an unprotected window.
+fn engage_with_tuns(
+    backend: killswitch::Backend,
+    endpoint: &str,
+    interface: &str,
+    proto: killswitch::Proto,
+    bypass_cidrs: &[String],
+    tuns: &[String],
+) -> Result<(), TunnelError> {
+    killswitch::engage(
+        backend,
+        &killswitch::LeakPolicy {
+            endpoint,
+            interface,
+            tun_interfaces: tuns,
+            proto,
+            bypass_cidrs,
+            bypass_apps: &[],
+        },
+    )
 }
 
 /// The address the OS would send from to reach `endpoint`, or `None` if it has
@@ -324,6 +396,8 @@ fn local_source_for(endpoint: &str) -> Option<IpAddr> {
     Some(sock.local_addr().ok()?.ip())
 }
 
+/// The single owner of tunnel state. Held by the helper daemon on macOS, and as
+/// the app's managed state on Linux/Windows.
 pub struct TunnelManager {
     inner: Mutex<Inner>,
 }
@@ -334,7 +408,65 @@ impl Default for TunnelManager {
     }
 }
 
+/// Cadence of the background repair/watchdog poll. Matches the UI's status
+/// poll, which this replaces whenever the window is hidden or throttled.
+pub const REPAIR_POLL_INTERVAL: Duration = Duration::from_millis(1500);
+
+/// Drive [`TunnelManager::status`] forever on a dedicated thread.
+///
+/// Roam repair and the dead-tunnel watchdog both run inside `status()`. If the
+/// webview's poll were the only caller, a hidden, minimised or throttled window
+/// would stop the tunnel recovering from a Wi-Fi change. Both hosts call this:
+/// the macOS helper daemon at startup, and the app on Linux/Windows when it
+/// builds its in-process tunnel.
+///
+/// The cost is negligible. A down tunnel is a mutex lock and a clone. An up one
+/// adds a route lookup that sends no packet, and a UAPI `get`.
+pub fn spawn_repair_loop(manager: Arc<TunnelManager>) -> thread::JoinHandle<()> {
+    thread::spawn(move || loop {
+        thread::sleep(REPAIR_POLL_INTERVAL);
+        let _ = manager.status();
+    })
+}
+
 impl TunnelManager {
+    /// Bring a single-hop tunnel up from its wire-level request.
+    ///
+    /// The one place a [`ConnectRequest`] is unpacked into [`Self::connect`],
+    /// shared by the macOS helper's socket dispatch and the app's in-process
+    /// path on Linux/Windows, so the two cannot drift apart.
+    pub fn connect_request(&self, r: &ConnectRequest) -> Result<TunnelStatus, TunnelError> {
+        self.connect(
+            &r.country,
+            &r.wg_config,
+            &r.endpoint,
+            &r.assigned_ip,
+            r.kill_switch,
+            r.tls.clone(),
+            r.split.as_ref(),
+        )
+    }
+
+    /// Bring a multi-hop tunnel up from its wire-level request. See
+    /// [`Self::connect_request`].
+    pub fn connect_multihop_request(
+        &self,
+        r: &MultihopRequest,
+    ) -> Result<TunnelStatus, TunnelError> {
+        self.connect_multihop(&MultihopParams {
+            entry_country: &r.entry_country,
+            exit_country: &r.exit_country,
+            outer: &r.outer,
+            inner: &r.inner,
+            entry_endpoint: &r.entry_endpoint,
+            exit_endpoint: &r.exit_endpoint,
+            inner_mtu: r.inner_mtu,
+            assigned_ip: &r.assigned_ip,
+            kill_switch: r.kill_switch,
+            split: r.split.as_ref(),
+        })
+    }
+
     pub fn new() -> Self {
         TunnelManager {
             inner: Mutex::new(Inner {
@@ -353,6 +485,7 @@ impl TunnelManager {
                 rx_bytes: 0,
                 tx_bytes: 0,
                 last_handshake: None,
+                repaired_at: None,
             }),
         }
     }
@@ -361,6 +494,7 @@ impl TunnelManager {
     /// push the parsed `.conf` over UAPI. `country` is retained for status and
     /// kill-switch scoping. Ordering matters — the kill switch is engaged
     /// *before* any traffic can flow, and torn down if a later step fails.
+    #[allow(clippy::too_many_arguments)]
     pub fn connect(
         &self,
         country: &str,
@@ -433,6 +567,10 @@ impl TunnelManager {
                 &killswitch::LeakPolicy {
                     endpoint,
                     interface: IFACE,
+                    // Phase 1: the sidecar does not exist yet, so there is no tun
+                    // name to allow — and nothing to allow it for. Phase 2 runs
+                    // below, once `Sidecar::spawn` reports the real name.
+                    tun_interfaces: &[],
                     proto,
                     bypass_cidrs: split_bypass,
                     bypass_apps: &[],
@@ -474,6 +612,24 @@ impl TunnelManager {
                 return Err(e);
             }
         };
+
+        // Phase 2: the kernel tun name is known now, so re-engage with the pass
+        // that lets tunnel traffic out. Before `configure`, so the rule is in
+        // place ahead of the first handshake rather than racing it. macOS only:
+        // on Linux and Windows the `cvpn*` prefix already covers the real name
+        // (see `KILL_SWITCH_NEEDS_TUN_PASS`).
+        if kill_switch && KILL_SWITCH_NEEDS_TUN_PASS {
+            let tuns = [sidecar.interface.clone()];
+            if let Err(e) =
+                engage_with_tuns(inner.backend, endpoint, IFACE, proto, split_bypass, &tuns)
+            {
+                let _ = sidecar.kill();
+                let _ = killswitch::disengage(inner.backend);
+                inner.state = TunnelState::Error;
+                inner.error = Some(e.to_string());
+                return Err(e);
+            }
+        }
 
         if let Err(e) = sidecar.configure(&config) {
             let _ = sidecar.kill();
@@ -606,6 +762,8 @@ impl TunnelManager {
                 &killswitch::LeakPolicy {
                     endpoint: params.entry_endpoint,
                     interface: IFACE_ENTRY,
+                    // Phase 1 — no devices yet. See connect().
+                    tun_interfaces: &[],
                     proto: killswitch::Proto::Udp,
                     bypass_cidrs: split_bypass,
                     bypass_apps: &[],
@@ -645,6 +803,23 @@ impl TunnelManager {
             Ok(s) => s,
             Err(e) => return fail(&mut inner, None, None, false, e),
         };
+        // Phase 2a: allow the entry tun. This is not just for the entry's own
+        // payload — the EXIT device's handshake is encapsulated and leaves the
+        // host through this device, so it must be passable before the exit
+        // sidecar is configured below. macOS only (`KILL_SWITCH_NEEDS_TUN_PASS`).
+        if params.kill_switch && KILL_SWITCH_NEEDS_TUN_PASS {
+            let tuns = [entry_sidecar.interface.clone()];
+            if let Err(e) = engage_with_tuns(
+                inner.backend,
+                params.entry_endpoint,
+                IFACE_ENTRY,
+                killswitch::Proto::Udp,
+                split_bypass,
+                &tuns,
+            ) {
+                return fail(&mut inner, Some(entry_sidecar), None, false, e);
+            }
+        }
         if let Err(e) = entry_sidecar.configure(&outer_cfg) {
             return fail(&mut inner, Some(entry_sidecar), None, false, e);
         }
@@ -654,6 +829,29 @@ impl TunnelManager {
             Ok(s) => s,
             Err(e) => return fail(&mut inner, Some(entry_sidecar), None, false, e),
         };
+        // Phase 2b: both devices known. macOS only, as above.
+        if params.kill_switch && KILL_SWITCH_NEEDS_TUN_PASS {
+            let tuns = [
+                entry_sidecar.interface.clone(),
+                exit_sidecar.interface.clone(),
+            ];
+            if let Err(e) = engage_with_tuns(
+                inner.backend,
+                params.entry_endpoint,
+                IFACE_ENTRY,
+                killswitch::Proto::Udp,
+                split_bypass,
+                &tuns,
+            ) {
+                return fail(
+                    &mut inner,
+                    Some(entry_sidecar),
+                    Some(exit_sidecar),
+                    false,
+                    e,
+                );
+            }
+        }
         if let Err(e) = exit_sidecar.configure(&inner_cfg) {
             return fail(
                 &mut inner,
@@ -747,6 +945,14 @@ impl TunnelManager {
                     }
                 }
             }
+            // Checked after the counters are refreshed, so it judges the newest
+            // handshake rather than the previous poll's. Flipping to Error is
+            // what the frontend's auto-reconnect watches for; the kill switch
+            // stays engaged throughout, so a dead tunnel fails closed.
+            if inner.is_dead() {
+                inner.state = TunnelState::Error;
+                inner.error = Some("connection lost — no handshake".into());
+            }
         }
         inner.snapshot()
     }
@@ -796,6 +1002,7 @@ impl TunnelManager {
             rx_bytes: 0,
             tx_bytes: 0,
             last_handshake: None,
+            repaired_at: None,
         };
         Ok(inner.snapshot())
     }
@@ -831,5 +1038,79 @@ mod roam_tests {
     fn local_source_for_handles_ipv6_endpoints() {
         // Must not panic or bind the v4 wildcard for a v6 endpoint.
         let _ = local_source_for("[2606:4700:4700::1111]:51820");
+    }
+
+    /// An `Inner` in the state the watchdog judges: up, with a handshake this
+    /// many seconds old.
+    fn up_with_handshake_age(age_secs: i64) -> Inner {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .expect("system clock before the unix epoch")
+            .as_secs() as i64;
+        let mut inner = TunnelManager::new()
+            .inner
+            .into_inner()
+            .expect("fresh mutex");
+        inner.state = TunnelState::Up;
+        inner.last_handshake = Some(now - age_secs);
+        inner
+    }
+
+    /// A healthy tunnel's handshake age sawtooths up to ~120s between rekeys, so
+    /// anything at or below that must read as alive — a watchdog that fires on
+    /// the ordinary sawtooth would tear down working tunnels every two minutes.
+    #[test]
+    fn an_idle_but_rekeying_tunnel_is_not_dead() {
+        assert!(!up_with_handshake_age(0).is_dead());
+        assert!(!up_with_handshake_age(120).is_dead());
+        assert!(!up_with_handshake_age(HANDSHAKE_DEAD_SEC).is_dead());
+    }
+
+    /// Past the threshold nothing has been received for over three minutes —
+    /// the silent-roam / dead-gateway case that raises no error anywhere else.
+    #[test]
+    fn a_tunnel_past_the_threshold_is_dead() {
+        assert!(up_with_handshake_age(HANDSHAKE_DEAD_SEC + 1).is_dead());
+        assert!(up_with_handshake_age(3600).is_dead());
+    }
+
+    /// Coming up is not the same as dead. A tunnel that has never handshaken is
+    /// the connect path's problem; firing here would abort every connection
+    /// attempt before it finished.
+    #[test]
+    fn a_tunnel_that_has_never_handshaken_is_not_dead() {
+        let mut inner = up_with_handshake_age(3600);
+        inner.last_handshake = None;
+        assert!(!inner.is_dead());
+    }
+
+    /// A repair is instant but the handshake proving it worked is up to a
+    /// keepalive behind. Without the grace window a roam detected on an already
+    /// stale tunnel would be repaired and then immediately torn down, turning a
+    /// working seamless recovery into a visible reconnect.
+    #[test]
+    fn a_freshly_repaired_tunnel_is_shielded_from_the_watchdog() {
+        let mut inner = up_with_handshake_age(3600);
+        assert!(inner.is_dead(), "stale and unrepaired: dead");
+        inner.repaired_at = Some(Instant::now());
+        assert!(!inner.is_dead(), "just repaired: give it a chance");
+        // ...but the shield expires, so a repair that did not take is still caught.
+        inner.repaired_at = Some(Instant::now() - REPAIR_GRACE - Duration::from_secs(1));
+        assert!(inner.is_dead(), "grace expired and still stale: dead");
+    }
+
+    /// Only an "up" tunnel can go stale; a down one is already handled, and
+    /// re-flagging it would stomp the real error with a generic one.
+    #[test]
+    fn a_tunnel_that_is_not_up_is_never_dead() {
+        for state in [
+            TunnelState::Down,
+            TunnelState::Connecting,
+            TunnelState::Error,
+        ] {
+            let mut inner = up_with_handshake_age(3600);
+            inner.state = state;
+            assert!(!inner.is_dead(), "{state:?} must not be judged dead");
+        }
     }
 }

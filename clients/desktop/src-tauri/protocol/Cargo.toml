@@ -1,0 +1,13 @@
+[package]
+name = "cumulusvpn-protocol"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+license = "MIT"
+description = "Wire types shared by the CumulusVPN app and its privileged helper."
+
+# Deliberately dependency-light: this crate is linked into a root daemon, so
+# every dependency here is attack surface running as root.
+[dependencies]
+serde = { version = "1.0.210", features = ["derive"] }
+serde_json = "1.0.128"

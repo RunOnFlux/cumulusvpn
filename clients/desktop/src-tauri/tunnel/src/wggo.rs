@@ -14,13 +14,14 @@
 //! **What is real here:** binary resolution, process spawn, waiting for the TUN
 //! device + UAPI endpoint, the UAPI client (UnixStream on Unix, named pipe on
 //! Windows — set/get), address + MTU + route programming (via
-//! [`super::routing`]), and process reaping. **What remains a marked seam:**
-//! elevation — creating a TUN device and editing the routing table require
-//! root/Admin, so in a shipped build the spawn + route calls run through the
-//! platform privileged helper (macOS `SMAppService`, Linux `polkit`, Windows
-//! service). Run unelevated, `spawn` fails cleanly ("needs elevated
-//! privileges"); Windows additionally refuses up front with an actionable
-//! message (`super::ensure_elevated`).
+//! [`super::routing`]), and process reaping. **Elevation:** creating a TUN
+//! device and editing the routing table require root/Admin. On macOS this
+//! crate runs inside the root `cumulusvpn-helper` daemon (registered with
+//! `SMAppService`). On Linux and Windows it runs in the app, which must itself
+//! be elevated; a polkit policy or Windows service is the remaining seam there.
+//! Run unelevated, `spawn` fails cleanly ("needs elevated privileges"); Windows
+//! additionally refuses up front with an actionable message
+//! (`super::ensure_elevated`).
 //!
 //! **Windows specifics:** wireguard-go's Windows `main` takes exactly one
 //! argument (the interface name), is always foreground (no `-f`), never writes
@@ -219,7 +220,7 @@ pub fn parse_uapi_get(response: &str) -> WgStats {
 }
 
 /// Rust host target triple, used only to locate the vendored dev sidecar under
-/// `CARGO_MANIFEST_DIR/binaries/` (see [`resolve_wireguard_go`]). A shipped
+/// `src-tauri/binaries/` (see [`resolve_wireguard_go`]). A shipped
 /// build finds the binary next to the app executable and never uses this.
 #[cfg(all(target_arch = "aarch64", target_os = "macos"))]
 const HOST_TRIPLE: &str = "aarch64-apple-darwin";
@@ -245,8 +246,9 @@ const HOST_TRIPLE: &str = "";
 /// 1. `CVPN_WIREGUARD_GO` env override (dev / tests / custom installs).
 /// 2. Next to the app executable — where Tauri copies the sidecar (stripping
 ///    the target-triple suffix) in a packaged build.
-/// 3. The vendored, triple-suffixed binary under the crate's `binaries/` dir,
-///    so `cargo run` / `tauri dev` work after `scripts/fetch-wireguard-go.sh`.
+/// 3. The vendored, triple-suffixed binary under `src-tauri/binaries/` (the
+///    sibling of this crate's directory, where `scripts/fetch-wireguard-go.sh`
+///    puts it), so `cargo run` / `tauri dev` work without a bundle.
 fn resolve_wireguard_go() -> Result<PathBuf, TunnelError> {
     let exe_name = if cfg!(windows) {
         "wireguard-go.exe"
@@ -272,7 +274,10 @@ fn resolve_wireguard_go() -> Result<PathBuf, TunnelError> {
 
     if !HOST_TRIPLE.is_empty() {
         let suffix = if cfg!(windows) { ".exe" } else { "" };
+        // This crate lives at src-tauri/tunnel; the sidecars are vendored for
+        // the Tauri bundler at src-tauri/binaries.
         let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("..")
             .join("binaries")
             .join(format!("wireguard-go-{HOST_TRIPLE}{suffix}"));
         if dev.is_file() {

@@ -674,15 +674,45 @@ checksum = "52560adf09603e58c9a7ee1fe1dcb95a16927b17c127f0ac02d6e768a0e25bc1"
 name = "cumulusvpn-desktop"
 version = "0.1.0"
 dependencies = [
- "base64 0.23.1",
- "rcgen",
- "rustls",
+ "cumulusvpn-protocol",
+ "cumulusvpn-tunnel",
+ "libc",
+ "objc2",
+ "objc2-foundation",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
  "tauri-plugin-shell",
+]
+
+[[package]]
+name = "cumulusvpn-helper"
+version = "0.1.0"
+dependencies = [
+ "core-foundation-sys",
+ "cumulusvpn-protocol",
+ "cumulusvpn-tunnel",
+ "libc",
+]
+
+[[package]]
+name = "cumulusvpn-protocol"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cumulusvpn-tunnel"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "cumulusvpn-protocol",
+ "rcgen",
+ "rustls",
  "thiserror 2.0.19",
  "tokio",
  "tokio-rustls",
@@ -2329,6 +2359,7 @@ checksum = "e3e0adef53c21f888deb4fa59fc59f7eb17404926ee8a6f59f5df0fd7f9f3272"
 dependencies = [
  "bitflags 2.13.1",
  "block2",
+ "libc",
  "objc2",
  "objc2-core-foundation",
 ]

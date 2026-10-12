@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Must equal the plist filename without .plist: SMAppService looks the
+         daemon up by that name inside Contents/Library/LaunchDaemons/. -->
+    <key>Label</key>
+    <string>com.cumulusvpn.helper</string>
+
+    <!-- BundleProgram is relative to the .app root, which is what lets the
+         daemon ship inside the bundle instead of being copied into /Library.
+         That is the whole reason the app no longer needs an admin password. -->
+    <key>BundleProgram</key>
+    <string>Contents/MacOS/cumulusvpn-helper</string>
+
+    <!-- The daemon owns roam repair and the dead-tunnel watchdog, so it has to
+         be resident rather than started on demand: a tunnel must keep healing
+         across a Wi-Fi change even with the app quit. -->
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Makes System Settings list this under "CumulusVPN" rather than as a
+         bare bundle id, so the user knows what they are approving. -->
+    <key>AssociatedBundleIdentifiers</key>
+    <array>
+        <string>com.cumulusvpn.desktop</string>
+    </array>
+</dict>
+</plist>

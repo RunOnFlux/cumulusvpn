@@ -8,6 +8,7 @@ import { TierBadge } from './components/TierBadge.js';
 import { StatBar } from './components/StatBar.js';
 import { SessionTimer } from './components/SessionTimer.js';
 import { Settings } from './components/Settings.js';
+import { helperReady, openHelperSettings } from './lib/tauri.js';
 import { upgradeUrl } from './lib/directory.js';
 import { loadOrCreateKeypair } from './lib/storage.js';
 import { paymentCode } from '@cumulusvpn/core';
@@ -56,6 +57,7 @@ export function App(): JSX.Element {
   const connected = conn.phase === 'connected';
   const busy = conn.phase === 'connecting';
   const locked = connected || busy;
+  const ready = helperReady(conn.helperState);
   const { selected } = conn;
 
   return (
@@ -70,96 +72,120 @@ export function App(): JSX.Element {
         </button>
       </div>
 
-      <ConnectOrb
-        phase={conn.phase}
-        onToggle={connected || busy ? conn.disconnect : conn.connect}
-      />
-
-      {connected && conn.connectedSince && <SessionTimer since={conn.connectedSince} />}
-      {/* docs/17 §8: with split rules active, the user must never be unsure
-          whether they are fully protected — say so persistently. */}
-      {connected && conn.splitActive && <div className="split-on">Split tunneling on</div>}
-
-      <button
-        className="loc-btn"
-        onClick={() => setPicker('entry')}
-        disabled={conn.countries.length === 0}
-      >
-        {conn.multihop && <span className="hop-tag entry">ENTRY</span>}
-        <span className="flag">{selected?.flag ?? '🌐'}</span>
-        <span className="meta">
-          <span className="n">{selected?.name ?? 'No locations'}</span>
-          <span className="s">
-            {selected
-              ? `${selected.city || selected.code} · ${selected.gatewayIp}`
-              : 'discovering fleet…'}
-          </span>
-        </span>
-        {selected && <span className={pingClass(selected.load)} />}
-        <span className="chev">›</span>
-      </button>
-
-      <MultihopPanel
-        multihop={conn.multihop}
-        onToggle={conn.setMultihop}
-        routeStyle={conn.routeStyle}
-        onRouteStyle={conn.setRouteStyle}
-        exit={conn.exit}
-        onOpenExit={() => setPicker('exit')}
-        locked={locked}
-      />
-
-      <button
-        type="button"
-        className="ks-row"
-        role="switch"
-        aria-checked={conn.killSwitch}
-        onClick={() => !locked && conn.setKillSwitch(!conn.killSwitch)}
-        disabled={locked}
-      >
-        <span className="ks-icon">🛡️</span>
-        <span className="ks-meta">
-          <span className="ks-title">Kill switch</span>
-          <span className="ks-sub">
-            {conn.killSwitch
-              ? 'Blocks all traffic if the VPN drops'
-              : 'Off — traffic can leak if the VPN drops'}
-          </span>
-        </span>
-        <span className={`ks-track ${conn.killSwitch ? 'on' : ''}`}>
-          <span className="ks-thumb" />
-        </span>
-      </button>
-
-      {connected && <StatBar tunnel={conn.tunnel} />}
-
-      {conn.error && <div className="err">{conn.error}</div>}
-
-      <div className="spacer" />
-
-      <TierBadge entitlement={conn.entitlement} onUpgrade={openUpgrade} />
-
-      {connected || busy ? (
-        <button className="btn-disc" onClick={conn.disconnect}>
-          Disconnect
-        </button>
-      ) : (
-        <button
-          className="btn-primary"
-          onClick={conn.connect}
-          disabled={
-            !selected ||
-            conn.phase === 'loading' ||
-            (conn.multihop && conn.routeStyle === 'multihop-cross-jurisdiction' && !conn.exit)
-          }
-        >
-          {conn.phase === 'loading'
-            ? 'Loading…'
-            : conn.multihop
-              ? 'Connect · multi-hop'
-              : 'Connect'}
-        </button>
+      {/* macOS only: the app holds no privileges there, so without the helper
+          approved Connect cannot work. Say that up front with the fix
+          attached, rather than letting the user press Connect and meet a
+          transport error. Linux/Windows report `notNeeded` and never show it. */}
+      {!ready && (
+        <div className="setup">
+          <div className="setup-text">
+            {conn.helperState === 'requiresApproval'
+              ? 'Allow the CumulusVPN network helper in System Settings to finish setup.'
+              : conn.helperState === 'notFound'
+                ? 'macOS could not verify CumulusVPN’s network helper — try reinstalling.'
+                : 'CumulusVPN needs to install its network helper before it can connect.'}
+          </div>
+          {conn.helperState !== 'notFound' && (
+            <button className="setup-btn" onClick={() => void openHelperSettings()}>
+              Open Settings
+            </button>
+          )}
+        </div>
       )}
+
+      <div className="shell-body scroll-y">
+        <ConnectOrb
+          phase={conn.phase}
+          onToggle={connected || busy ? conn.disconnect : conn.connect}
+        />
+
+        {connected && conn.connectedSince && <SessionTimer since={conn.connectedSince} />}
+        {/* docs/17 §8: with split rules active, the user must never be unsure
+            whether they are fully protected — say so persistently. */}
+        {connected && conn.splitActive && <div className="split-on">Split tunneling on</div>}
+
+        <button
+          className="loc-btn"
+          onClick={() => setPicker('entry')}
+          disabled={conn.countries.length === 0}
+        >
+          {conn.multihop && <span className="hop-tag entry">ENTRY</span>}
+          <span className="flag">{selected?.flag ?? '🌐'}</span>
+          <span className="meta">
+            <span className="n">{selected?.name ?? 'No locations'}</span>
+            <span className="s">
+              {selected
+                ? `${selected.city || selected.code} · ${selected.gatewayIp}`
+                : 'discovering fleet…'}
+            </span>
+          </span>
+          {selected && <span className={pingClass(selected.load)} />}
+          <span className="chev">›</span>
+        </button>
+
+        <MultihopPanel
+          multihop={conn.multihop}
+          onToggle={conn.setMultihop}
+          routeStyle={conn.routeStyle}
+          onRouteStyle={conn.setRouteStyle}
+          exit={conn.exit}
+          onOpenExit={() => setPicker('exit')}
+          locked={locked}
+        />
+
+        <button
+          type="button"
+          className="ks-row"
+          role="switch"
+          aria-checked={conn.killSwitch}
+          onClick={() => !locked && conn.setKillSwitch(!conn.killSwitch)}
+          disabled={locked}
+        >
+          <span className="ks-icon">🛡️</span>
+          <span className="ks-meta">
+            <span className="ks-title">Kill switch</span>
+            <span className="ks-sub">
+              {conn.killSwitch
+                ? 'Blocks all traffic if the VPN drops'
+                : 'Off — traffic can leak if the VPN drops'}
+            </span>
+          </span>
+          <span className={`ks-track ${conn.killSwitch ? 'on' : ''}`}>
+            <span className="ks-thumb" />
+          </span>
+        </button>
+
+        {connected && <StatBar tunnel={conn.tunnel} />}
+
+        {conn.error && <div className="err">{conn.error}</div>}
+      </div>
+
+      <div className="shell-foot">
+        <TierBadge entitlement={conn.entitlement} onUpgrade={openUpgrade} />
+
+        {connected || busy ? (
+          <button className="btn-disc" onClick={conn.disconnect}>
+            Disconnect
+          </button>
+        ) : (
+          <button
+            className="btn-primary"
+            onClick={conn.connect}
+            disabled={
+              !selected ||
+              !ready ||
+              conn.phase === 'loading' ||
+              (conn.multihop && conn.routeStyle === 'multihop-cross-jurisdiction' && !conn.exit)
+            }
+          >
+            {conn.phase === 'loading'
+              ? 'Loading…'
+              : conn.multihop
+                ? 'Connect · multi-hop'
+                : 'Connect'}
+          </button>
+        )}
+      </div>
 
       {picker !== null && (
         <CountryPicker

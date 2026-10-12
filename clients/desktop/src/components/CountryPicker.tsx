@@ -3,6 +3,7 @@ import type { JSX } from 'react';
 import { gatewayQuality } from '@cumulusvpn/core';
 import type { QualityTone } from '@cumulusvpn/core';
 import type { CountryOption } from '../lib/session.js';
+import { useEscape } from '../hooks/useEscape.js';
 
 interface Props {
   readonly countries: readonly CountryOption[];
@@ -37,6 +38,7 @@ export function CountryPicker({
 }: Props): JSX.Element {
   const [q, setQ] = useState('');
   const [refreshing, setRefreshing] = useState(false);
+  useEscape(onClose);
   const doRefresh = async (): Promise<void> => {
     setRefreshing(true);
     try {
@@ -60,61 +62,63 @@ export function CountryPicker({
 
   return (
     <div className="sheet">
-      <div className="sheethead">
-        <h2>Choose location</h2>
-        <button className="retest" disabled={refreshing} onClick={() => void doRefresh()}>
-          {refreshing ? 'Testing…' : '↻ Re-test'}
-        </button>
-      </div>
-      <input
-        className="searchbar"
-        placeholder="Search country…"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        autoFocus
-      />
-      <div className="clist">
-        {filtered.map((c) => {
-          const q = gatewayQuality(null, c.load);
-          return (
-            <button
-              key={c.code}
-              className={`crow ${c.code === selectedCode ? 'sel' : ''}`}
-              onClick={() => {
-                onPick(c.code);
-                onClose();
-              }}
-            >
-              <span
-                className={`star ${favorites.includes(c.code) ? 'on' : ''}`}
-                role="button"
-                aria-label={favorites.includes(c.code) ? 'Unpin' : 'Pin'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleFavorite(c.code);
+      <div className="sheet-inner">
+        <div className="sheethead">
+          <h2>Choose location</h2>
+          <button className="retest" disabled={refreshing} onClick={() => void doRefresh()}>
+            {refreshing ? 'Testing…' : '↻ Re-test'}
+          </button>
+        </div>
+        <input
+          className="searchbar"
+          placeholder="Search country…"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          autoFocus
+        />
+        <div className="clist scroll-y">
+          {filtered.map((c) => {
+            const q = gatewayQuality(null, c.load);
+            return (
+              <button
+                key={c.code}
+                className={`crow ${c.code === selectedCode ? 'sel' : ''}`}
+                onClick={() => {
+                  onPick(c.code);
+                  onClose();
                 }}
               >
-                {favorites.includes(c.code) ? '★' : '☆'}
-              </span>
-              <span className="flag">{c.flag}</span>
-              <span className="cn">{c.name}</span>
-              <span className="qlabel" style={{ color: TONE_VAR[q.tone] }}>
-                {q.label}
-              </span>
-              <span className="qdot" style={{ background: TONE_VAR[q.tone] }} />
-              <span className="lat">{q.loadPct}%</span>
-            </button>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div className="lat" style={{ padding: '12px 4px' }}>
-            No matching locations.
-          </div>
-        )}
+                <span
+                  className={`star ${favorites.includes(c.code) ? 'on' : ''}`}
+                  role="button"
+                  aria-label={favorites.includes(c.code) ? 'Unpin' : 'Pin'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleFavorite(c.code);
+                  }}
+                >
+                  {favorites.includes(c.code) ? '★' : '☆'}
+                </span>
+                <span className="flag">{c.flag}</span>
+                <span className="cn">{c.name}</span>
+                <span className="qlabel" style={{ color: TONE_VAR[q.tone] }}>
+                  {q.label}
+                </span>
+                <span className="qdot" style={{ background: TONE_VAR[q.tone] }} />
+                <span className="lat">{q.loadPct}%</span>
+              </button>
+            );
+          })}
+          {filtered.length === 0 && (
+            <div className="lat" style={{ padding: '12px 4px' }}>
+              No matching locations.
+            </div>
+          )}
+        </div>
+        <button className="close" onClick={onClose}>
+          Close
+        </button>
       </div>
-      <button className="close" onClick={onClose}>
-        Close
-      </button>
     </div>
   );
 }

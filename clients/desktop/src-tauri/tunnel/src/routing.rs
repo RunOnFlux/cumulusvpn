@@ -30,10 +30,9 @@
 //!
 //! **Privilege:** every route/ifconfig edit needs root/Admin. Run unelevated
 //! they fail and the connect attempt reports an error (Windows checks up front
-//! — see `super::ensure_elevated`); in a shipped build these commands run
-//! through the platform privileged helper (macOS `SMAppService`, Linux
-//! `polkit`, Windows service). The command construction is real; only the
-//! elevation transport is the seam.
+//! — see `super::ensure_elevated`). On macOS these commands run inside the root
+//! `cumulusvpn-helper` daemon. On Linux and Windows they run in the app, which
+//! must be elevated (a polkit policy or Windows service is the remaining seam).
 
 use std::process::Command;
 
@@ -334,6 +333,23 @@ pub fn remove_endpoint_bypass(endpoint_ip: &str) {
     let _ = endpoint_ip;
 }
 
+/// Re-point the endpoint bypass at the CURRENT default gateway.
+///
+/// The bypass installed at connect time is a `<gateway_ip>/32` host route via
+/// whatever router was default *then*. Roam to another network and that next hop
+/// is on a subnet the machine can no longer reach, so the tunnel's own packets
+/// are blackholed — rebinding the sidecar's socket does not help, because the
+/// route they would take is the broken part. Nothing raises an error: the route
+/// is still in the table and the interface is still up.
+///
+/// Delete-then-add rather than replace: `route change` is macOS-only, `ip route
+/// replace` is Linux-only, and the delete is best-effort anyway (the route may
+/// already have gone with its interface).
+pub fn repoint_endpoint_bypass(endpoint_ip: &str) -> Result<(), TunnelError> {
+    remove_endpoint_bypass(endpoint_ip);
+    add_endpoint_bypass(endpoint_ip)
+}
+
 /// Pin a single host (`<dest_ip>/32`) to a specific interface. Used to force the
 /// exit's UDP endpoint through the entry (outer) tunnel in multi-hop.
 pub fn add_host_route(dest_ip: &str, via_interface: &str) -> Result<(), TunnelError> {
@@ -624,12 +640,7 @@ pub fn add_bypass_routes(cidrs: &[String]) -> Result<(), TunnelError> {
                 } else {
                     vec!["route", "add", cidr]
                 };
-                if link {
-                    let Some(phys) = phys.as_deref() else {
-                        continue;
-                    };
-                    args.extend(["dev", phys]);
-                } else if v6 {
+                if link || v6 {
                     let Some(phys) = phys.as_deref() else {
                         continue;
                     };

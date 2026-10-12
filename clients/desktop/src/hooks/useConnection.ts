@@ -15,8 +15,8 @@ import {
   teardown,
 } from '../lib/session.js';
 import type { CountryOption } from '../lib/session.js';
-import { status as nativeStatus } from '../lib/tauri.js';
-import type { TunnelStatus } from '../lib/tauri.js';
+import { status as nativeStatus, helperRegistration, helperReady } from '../lib/tauri.js';
+import type { TunnelStatus, HelperRegistration } from '../lib/tauri.js';
 
 export type Phase = 'loading' | 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -37,6 +37,14 @@ export interface Entitlement {
 
 export interface ConnectionModel {
   readonly phase: Phase;
+  /**
+   * Setup state of the tunnel engine. `notNeeded` (Linux/Windows: the tunnel
+   * runs in-process) and `enabled` (macOS: the privileged helper is approved
+   * and running) are ready; anything else is a macOS helper setup step, and no
+   * tunnel is possible until the user finishes it — on macOS the app itself
+   * holds no privileges. See `helperReady`.
+   */
+  readonly helperState: HelperRegistration;
   readonly countries: readonly CountryOption[];
   /** Single-hop location, or the ENTRY hop when multi-hop is on. */
   readonly selected: CountryOption | null;
@@ -102,6 +110,18 @@ function messageOf(err: unknown): string {
   return String(err);
 }
 
+/**
+ * Backoff for auto-reconnect attempts, in milliseconds.
+ *
+ * Starts at 5s, not 3: a reconnect re-runs the whole transport sweep, which
+ * begins with a fresh enrollment, and the gateway rate-limits enroll to one per
+ * source IP per 2s. Too eager a retry collides with the enroll the failed
+ * attempt just made and fails on the rate limit rather than the actual
+ * condition. Doubling from there gives a roam ~3 minutes to settle, which
+ * covers a slow DHCP lease or a phone bringing up a hotspot.
+ */
+const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 40000, 60000, 60000] as const;
+
 export function useConnection(): ConnectionModel {
   const keypairRef = useRef<Keypair | null>(null);
   if (keypairRef.current === null) {
@@ -152,6 +172,14 @@ export function useConnection(): ConnectionModel {
   // whether we ever reached 'connected' this session (for auto-reconnect).
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
   const wasConnectedRef = useRef(false);
+  // Consecutive failed auto-reconnects, for the backoff below. Reset on every
+  // successful connect.
+  const reconnectAttemptsRef = useRef(0);
+  // Setup state of the tunnel engine (the macOS helper, or `notNeeded` where
+  // the tunnel runs in-process). Optimistic default: assume it is fine until
+  // told otherwise, so the setup banner never flashes on a normal launch before
+  // the first check comes back.
+  const [helperState, setHelperState] = useState<HelperRegistration>('notNeeded');
   const [favorites, setFavorites] = useState<readonly string[]>(() =>
     (localStorage.getItem('cvpn.favorites') ?? '').split(',').filter(Boolean),
   );
@@ -383,6 +411,7 @@ export function useConnection(): ConnectionModel {
   useEffect(() => {
     if (phase === 'connected') {
       wasConnectedRef.current = true;
+      reconnectAttemptsRef.current = 0;
       setConnectedSince((prev) => prev ?? Date.now());
     } else if (phase === 'idle') {
       setConnectedSince(null);
@@ -391,21 +420,63 @@ export function useConnection(): ConnectionModel {
 
   // Auto-reconnect an unexpected drop: if the tunnel errors out after having been
   // connected (not a user disconnect, not an initial connect failure), bring it
-  // back up shortly.
+  // back up.
+  //
+  // Retried with backoff rather than once. The single attempt this replaced was
+  // written for a tunnel that drops while the network is fine, where one retry
+  // is enough. The cases the native watchdog now surfaces are the opposite: a
+  // roam or a wake-from-sleep fires while the new interface is still coming up,
+  // so the first attempt is the one most likely to fail — and giving up there
+  // left the user in Error with the kill switch engaged and nothing retrying.
+  //
+  // The tunnel is NOT torn down between attempts, so leak protection stays on
+  // for the whole sequence; failing closed while we retry is the point.
   useEffect(() => {
-    if (phase === 'error' && wasConnectedRef.current) {
-      wasConnectedRef.current = false;
-      setConnectedSince(null);
-      // 5s, not 3: a reconnect re-runs the whole transport sweep, which starts
-      // with a fresh enrollment, and the gateway rate-limits enroll to one per
-      // source IP per 2s. Too eager a retry can collide with the enroll that the
-      // failed attempt just made and fail on the rate limit rather than the
-      // actual condition. Still one-shot — wasConnectedRef is cleared above.
-      const id = setTimeout(() => connect(), 5000);
-      return () => clearTimeout(id);
+    if (phase !== 'error' || !wasConnectedRef.current) {
+      return undefined;
     }
-    return undefined;
+    const attempt = reconnectAttemptsRef.current;
+    if (attempt >= RECONNECT_DELAYS_MS.length) {
+      // Out of attempts (~3 minutes). Stop, and leave the error on screen for
+      // the user to act on rather than churning against a gateway that is gone.
+      wasConnectedRef.current = false;
+      return undefined;
+    }
+    reconnectAttemptsRef.current = attempt + 1;
+    setConnectedSince(null);
+    const id = setTimeout(() => connect(), RECONNECT_DELAYS_MS[attempt]);
+    return () => clearTimeout(id);
   }, [phase, connect]);
+
+  // Watch the helper's registration state.
+  //
+  // Re-checked on an interval only while it is NOT ready: the user is over in
+  // System Settings flipping the approval switch, and the app should notice when
+  // they come back rather than making them relaunch. Once ready, the polling
+  // stops — nothing revokes it behind our back except the user, who is then
+  // looking at Settings anyway. On Linux/Windows the first check answers
+  // `notNeeded` and nothing is ever polled.
+  useEffect(() => {
+    let alive = true;
+    const check = (): void => {
+      void helperRegistration().then((s) => {
+        if (alive) {
+          setHelperState(s);
+        }
+      });
+    };
+    check();
+    if (helperReady(helperState)) {
+      return () => {
+        alive = false;
+      };
+    }
+    const id = setInterval(check, 3000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, [helperState]);
 
   // Auto-connect on launch (opt-in): once discovery settles and a location is
   // selected, bring the tunnel up automatically.
@@ -416,7 +487,15 @@ export function useConnection(): ConnectionModel {
     }
   }, [autoConnect, phase, selected, connect]);
 
-  // Poll native tunnel status (byte counters, handshake) while connected.
+  // Poll native tunnel status for the counters the UI renders.
+  //
+  // This used to be the only thing calling `status()`, which made roam repair
+  // and the dead-tunnel watchdog depend on a live foreground webview. Both now
+  // run on a native thread (`spawn_repair_loop` in the tunnel crate): inside the
+  // helper daemon on macOS, inside the app process on Linux/Windows (see
+  // `src-tauri/src/backend.rs`). So this poll is purely cosmetic — it may be
+  // throttled or stop entirely with the window hidden without affecting
+  // whether the tunnel recovers.
   useEffect(() => {
     if (phase !== 'connected') {
       return;
@@ -442,6 +521,7 @@ export function useConnection(): ConnectionModel {
 
   return {
     phase,
+    helperState,
     countries,
     selected,
     tunnel,

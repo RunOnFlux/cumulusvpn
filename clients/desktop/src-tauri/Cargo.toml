@@ -1,3 +1,16 @@
+# The privileged core lives in its own crates so the root daemon never links the
+# webview:
+#   - `tunnel`: the tunnel engine (sidecar, routes, kill switch). There is one
+#     copy of it, and it runs in one of two places. On macOS that is the root
+#     helper. On Linux and Windows it is the app process itself.
+#   - `helper`: the macOS root daemon. A socket server and peer authentication
+#     wrapped around `tunnel`.
+#   - `protocol`: the request and status types. They go over the helper socket,
+#     and they are also what the in-process path takes, so both paths have the
+#     same interface.
+[workspace]
+members = ["protocol", "tunnel", "helper"]
+
 [package]
 name = "cumulusvpn-desktop"
 version = "0.1.0"
@@ -7,8 +20,7 @@ license = "MIT"
 edition = "2021"
 rust-version = "1.77"
 
-# The library the Tauri app links against; `main.rs` is a thin launcher so the
-# same core can later grow into a Mullvad-style privileged daemon.
+# The library the Tauri app links against; `main.rs` is a thin launcher.
 [lib]
 name = "cumulusvpn_desktop_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -21,22 +33,21 @@ tauri = { version = "2.0.0", features = ["tray-icon"] }
 tauri-plugin-shell = "2.0.0"
 tauri-plugin-opener = "2.0.0"
 serde = { version = "1.0.210", features = ["derive"] }
+# Required in scope by `tauri::generate_context!`, not used directly.
 serde_json = "1.0.128"
-thiserror = "2.0.18"
-base64 = "0.23.1"
-# POC: reserved for real UAPI socket IO / counter polling of wireguard-go.
-tokio = { version = "1.40.0", features = ["rt-multi-thread", "macros", "sync", "io-util", "net", "time"] }
-# wg-tls transport: the client-side UDP<->TLS bridge (see tunnel::tlsbridge).
-# rustls is pure Rust (no OpenSSL) so it cross-compiles as cleanly as the
-# amneziawg-go sidecar; the cert is NOT verified (camouflage only — trust is the
-# inner WireGuard handshake), so no root store / webpki is needed.
-rustls = { version = "0.23.14", default-features = false, features = ["ring", "std", "tls12", "logging"] }
-tokio-rustls = { version = "0.26.0", default-features = false, features = ["ring", "tls12", "logging"] }
+cumulusvpn-protocol = { path = "protocol" }
+# The in-process tunnel. On Linux and Windows it is the only path. On macOS it
+# is used only when the app itself runs as root (an unsigned build launched
+# with sudo, the pre-helper behaviour); otherwise the app talks to the helper
+# daemon. See src/backend.rs.
+cumulusvpn-tunnel = { path = "tunnel" }
 
-[dev-dependencies]
-# Self-signed cert generation for the wg-tls bridge loopback test (ring backend,
-# matching the runtime crypto provider — no aws-lc-rs/cmake).
-rcgen = { version = "0.14.8", default-features = false, features = ["ring"] }
+# SMAppService (helper registration) and the euid check that picks the root
+# fallback. objc2 and libc are already in the tree via Tauri.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.4"
+objc2-foundation = "0.3.2"
+libc = "0.2.186"
 
 [features]
 # Enables Tauri's custom-protocol asset loading in release builds.

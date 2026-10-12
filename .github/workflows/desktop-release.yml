@@ -6,6 +6,14 @@ name: desktop-release
 #
 # Platform notes:
 # - Intel Macs are deliberately dropped (obsolete).
+# - Where the tunnel runs differs per leg (see clients/desktop/README.md):
+#   macOS bundles the privileged `cumulusvpn-helper` LaunchDaemon (built and
+#   staged by scripts/build-helper.sh, wired in by tauri.macos.conf.json, which
+#   Tauri merges only on macOS). Linux and Windows run the same tunnel crate
+#   in-process, ship no helper, and their beforeBuildCommand is plain
+#   `yarn build`. While Apple signing is off, the macOS build cannot register
+#   its helper; it works only when launched as root (sudo), which uses the
+#   in-process tunnel.
 # - Windows: routing.rs drives netsh/PowerShell and wggo.rs speaks UAPI over
 #   the named pipe, so the installer produces a working tunnel. wireguard-go
 #   needs wintun.dll next to the exe: the step below fetches the pinned

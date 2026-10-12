@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "build": {
+    "beforeBuildCommand": "yarn build && bash scripts/build-helper.sh"
+  },
+  "bundle": {
+    "macOS": {
+      "files": {
+        "Library/LaunchDaemons/com.cumulusvpn.helper.plist": "helper/launchd.plist",
+        "MacOS/cumulusvpn-helper": "helper/build/cumulusvpn-helper"
+      }
+    }
+  }
+}
