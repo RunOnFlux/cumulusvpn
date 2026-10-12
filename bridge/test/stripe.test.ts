@@ -95,6 +95,16 @@ function invoicePaidEvent(
 }
 
 describe('stripe rail', () => {
+  it('runs on the reviewed Stripe API major', () => {
+    // Outgoing calls use the SDK's pinned API version (the rail passes none),
+    // and every test here mocks Stripe, so an SDK major bump would otherwise
+    // move the bridge onto a new, breaking API major with all tests green.
+    // On failure: check the shapes this rail reads (invoice parent/lines,
+    // subscription items, charge -> invoicePayments) against that major's
+    // changelog and the webhook endpoint's version, then update this.
+    expect(Stripe.MAJOR_API_VERSION).toBe('endive');
+  });
+
   it('rejects a forged signature', async () => {
     const { rail } = setup();
     const raw = Buffer.from(JSON.stringify({ type: 'invoice.paid' }), 'utf8');
