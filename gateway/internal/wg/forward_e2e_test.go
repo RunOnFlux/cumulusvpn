@@ -118,6 +118,7 @@ func startTunnel(t *testing.T, obfs *ObfsParams, setup func(*Forwarder)) *netsta
 	if err := gw.AddPeer(cpub, clientIP); err != nil {
 		t.Fatalf("AddPeer: %v", err)
 	}
+	settleAfterPeerChange(t, gw)
 
 	// --- client userspace WG over netstack ---
 	tun, tnet, err := netstack.CreateNetTUN(
@@ -150,6 +151,26 @@ func startTunnel(t *testing.T, obfs *ObfsParams, setup func(*Forwarder)) *netsta
 	}
 
 	return tnet
+}
+
+// settleAfterPeerChange restarts the gateway device's receive goroutines after
+// a peer change, before any client traffic. amneziawg-go v0.2.19's IpcSet
+// rewrites the device's AWG header pointers (to the same values) without a
+// lock, while those goroutines read them for every packet: a benign upstream
+// race that the race detector reports whenever nothing happens to order the
+// two — and what orders them is incidental (sync.Pool hand-offs), so it
+// flaked: main's ci-gateway failed on it 2026-08-25 (x2) and 2026-09-29, then
+// on every run once one more tunnel test joined the package. Down/Up starts
+// fresh goroutines after the write, which is the missing edge. Test-only: a
+// live gateway can't pause every peer per enroll, and the race is benign there.
+func settleAfterPeerChange(t *testing.T, gw *Device) {
+	t.Helper()
+	if err := gw.dev.Down(); err != nil {
+		t.Fatalf("gateway Down: %v", err)
+	}
+	if err := gw.dev.Up(); err != nil {
+		t.Fatalf("gateway Up: %v", err)
+	}
 }
 
 // fetchThroughTunnel GETs url over the client's netstack transport and asserts
@@ -242,6 +263,7 @@ func TestTLSTunnelDataPlaneEndToEnd(t *testing.T) {
 	if err := gw.AddPeer(cpub, clientIP); err != nil {
 		t.Fatalf("AddPeer: %v", err)
 	}
+	settleAfterPeerChange(t, gw)
 
 	tun, tnet, err := netstack.CreateNetTUN(
 		[]netip.Addr{clientIP},
