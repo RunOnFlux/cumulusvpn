@@ -31,8 +31,8 @@ UDP 51820 (host-mapped by Flux, TCP+UDP)
 │        ▼                                               │
 │  forwarder: for each netstack flow, net.Dial() an      │
 │  ordinary host socket outward (TCP splice / UDP relay) │
-│  == userspace NAT. DNS: in-process resolver → upstream │
-│  DoH/DoT (so client DNS never leaks via node resolver) │
+│  == userspace NAT. DNS to known resolvers: answered   │
+│  in-process, sent on as DoH (internal/dnsproxy)        │
 └────────────────────────────────────────────────────────┘
 ```
 
@@ -178,6 +178,39 @@ See `04-payments.md` for the protocol. Implementation notes:
   allowlist (~80/443/8080/DNS/QUIC/common app ports, expand over time — the Tor playbook).
 - Per-peer connection-rate ceilings (SYN/s, new-flows/s) to blunt scanners and DDoS-via-us.
 - No traffic logging. Volume counters per peer in memory only (for rate limiting and `/v1/status`).
+
+### DNS (gateway 0.4.2+)
+Clients are told to use `1.1.1.1` (enroll `dns`), so their lookups travel inside the tunnel and
+never touch their own network's resolver. Relayed as-is, though, they would leave the gateway as
+plain DNS — readable by the Flux node's operator and network, and rewritable by networks in the
+gateway's own country that intercept port 53. So the forwarder doesn't relay port-53 flows to
+a known public resolver: `internal/dnsproxy` answers them in-process and sends each lookup on as
+**DNS over HTTPS** (RFC 8484, HTTP/2) to the **same provider the client addressed**:
+
+| Client sends to | Answered over DoH by |
+|---|---|
+| `1.1.1.1`, `1.0.0.1` (the default) | Cloudflare `cloudflare-dns.com` |
+| `1.1.1.2`, `1.0.0.2` / `1.1.1.3`, `1.0.0.3` | Cloudflare for Families: malware / malware + adult |
+| `9.9.9.9`, `149.112.112.112` | Quad9 `dns.quad9.net` |
+| `94.140.14.14`, `94.140.15.15` | AdGuard DNS `dns.adguard-dns.com` (ads + trackers) |
+| `8.8.8.8`, `8.8.4.4` | Google `dns.google` |
+
+- **Choice by address.** Because the provider follows the destination, a client picks its
+  resolver just by its `DNS =` address — the basis for the apps' DNS choice — and apps that
+  hard-code a resolver keep getting that resolver. Any other destination isn't intercepted.
+- **No bootstrap.** DoH dials the provider's own addresses (TLS verified against its hostname),
+  so the node's resolver is never consulted.
+- **Fallback.** If DoH to a provider fails, the lookup goes out as ordinary DNS to the same
+  address (availability over strictness); three failures in a row skip DoH for a minute so a
+  network that blocks DoH costs one slow lookup per minute, not every lookup.
+  `/v1/info` `dns` counts `encrypted` vs `fallbacks`, so a node stuck in fallback is visible.
+- **UDP sizing.** DoH answers can exceed what the client accepts over UDP; they are fitted to the
+  client's EDNS size (512 without EDNS, at most 1232) or truncated (TC), and the client's TCP
+  retry is answered the same way.
+- **Not DNS on port 53** (another protocol tunnelled over it): detected on a flow's first message,
+  which is then relayed unchanged.
+- **No logs.** Lookups live in memory for their round trip; only lifetime counters exist.
+- `CVPN_DNS_DOH=false` turns it off (plain relay, `dns.mode: "plain"`) — an operational escape hatch.
 
 ### Self-description
 - On boot, read `http://fluxnode.service:16101/hostinfo` → node public IP, geo

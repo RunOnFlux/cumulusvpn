@@ -88,6 +88,7 @@ chain-anchored source of truth all gateways share).
 | `CVPN_TLS_SNI` | no | — | SNI / self-signed cert CN (camouflage only; never verified) |
 | `CVPN_TLS_PREMIUM` | no | `false` | Reserve `wg-tls` for paying users (intended for the scarce 443 tier). The relay then fronts a premium-only WG device on the container-internal port 51822 — **never list 51822 in a Flux spec**, or clients bypass the relay |
 | `CVPN_ALLOW_PRIVATE_EGRESS` | no | `false` | Allow forwarding to private/loopback destinations (dev/test only; off = SSRF guard) |
+| `CVPN_DNS_DOH` | no | `true` | Answer port-53 lookups to known public resolvers in the gateway and send them on as DNS over HTTPS (docs/03 "DNS"); `false` relays plain DNS |
 | `FLUX_NODE_HOST_IP` | injected | — | Host node public IP (endpoint + daemon API) |
 | `FLUX_APP_NAME` | injected | — | Flux app name (spec self-watch) |
 

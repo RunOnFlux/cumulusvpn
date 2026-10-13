@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/runonflux/cumulusvpn-gateway/internal/config"
+	"github.com/runonflux/cumulusvpn-gateway/internal/dnsproxy"
 	"github.com/runonflux/cumulusvpn-gateway/internal/entitle"
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
 	"github.com/runonflux/cumulusvpn-gateway/internal/wg"
@@ -30,7 +31,7 @@ import (
 // Version is the gateway build version, surfaced in /v1/info. Keep it in step
 // with the released image tag by hand: it is a CONST, so the Dockerfile's
 // -ldflags -X cannot stamp it (the Go linker only patches string *variables*).
-const Version = "0.4.0"
+const Version = "0.4.2"
 
 // MinClientVersion is the oldest client the gateway will happily serve.
 //
@@ -49,9 +50,9 @@ const MinClientVersion = "0.1.0"
 // string alone can't — it doesn't change between rebuilds of the same tag).
 var BuildCommit = "dev"
 
-// dnsServer is advertised to clients; forwarded like any other flow so client
-// DNS never leaks via the node resolver (POC: run an in-process DoH/DoT
-// resolver and hand out 10.8.0.1 as the DNS instead — docs/03-gateway.md).
+// dnsServer is advertised to clients. Lookups to it travel inside the tunnel
+// (never via the node's resolver), and the gateway answers them in-process
+// and sends them on to Cloudflare as DNS over HTTPS (internal/dnsproxy).
 const dnsServer = "1.1.1.1"
 
 // Transport is one dialable way into this gateway, advertised so clients can
@@ -94,6 +95,22 @@ type Info struct {
 	// PeersPersisted.
 	PriceFlux     float64 `json:"price_flux,omitempty"`
 	PriceSchedule string  `json:"price_schedule,omitempty"`
+	// DNS reports how this gateway handles its peers' DNS (docs/03-gateway.md
+	// "DNS"). Additive: a pre-0.4.2 gateway omits it and relays DNS in plain
+	// text.
+	DNS *DNSInfo `json:"dns,omitempty"`
+}
+
+// DNSInfo is /v1/info's view of the DNS proxy.
+type DNSInfo struct {
+	// Mode is "doh" when lookups to known resolvers are answered here and sent
+	// on as DNS over HTTPS, "plain" when relayed as ordinary DNS
+	// (CVPN_DNS_DOH=false).
+	Mode string `json:"mode"`
+	// Lifetime lookup counters (doh mode only). Fallbacks climbing against
+	// Encrypted means DoH is failing from this node (blocked or unreachable)
+	// and lookups are going out as plain DNS.
+	*dnsproxy.Stats
 }
 
 // ExtraTransport pairs an additional listener's device with the transport entry
@@ -122,6 +139,7 @@ type Server struct {
 	info         Info
 	signKey      ed25519.PrivateKey
 	nodePublicIP string // fallback endpoint IP from fluxnode hostinfo
+	dns          *dnsproxy.Proxy
 
 	mu       sync.Mutex
 	nextHost uint32                   // rolling host part for 10.8.x.y assignment
@@ -178,6 +196,9 @@ func New(cfg *config.Config, dev *wg.Device, ent *entitle.Engine, lim *limiter.M
 	}
 	return s
 }
+
+// SetDNS reports p's mode and counters in /v1/info (nil = plain DNS).
+func (s *Server) SetDNS(p *dnsproxy.Proxy) { s.dns = p }
 
 // Handler builds the HTTP routes.
 func (s *Server) Handler() http.Handler {
@@ -416,6 +437,12 @@ func (s *Server) handleInfo(w http.ResponseWriter, _ *http.Request) {
 	// Read live rather than from the cached struct: persistence health flips at
 	// runtime the moment /data stops accepting writes.
 	info.PeersPersisted = s.dev.PersistHealthy()
+	if s.dns != nil {
+		st := s.dns.Stats()
+		info.DNS = &DNSInfo{Mode: "doh", Stats: &st}
+	} else {
+		info.DNS = &DNSInfo{Mode: "plain"}
+	}
 	// Load is the BINDING constraint — whichever of peer-occupancy or real
 	// bandwidth is more saturated — so clients load-balance on what actually
 	// limits a node. Peer ratio catches "full of idle peers"; throughput ratio

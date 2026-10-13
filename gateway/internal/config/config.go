@@ -95,6 +95,13 @@ type Config struct {
 	// private-network deployment.
 	AllowPrivateEgress bool
 
+	// DNSDoH, when true (default), answers peers' port-53 lookups to known
+	// public resolvers (1.1.1.1, 9.9.9.9, ...) in the gateway and sends them on
+	// as DNS over HTTPS, so they never leave the node in plain text
+	// (internal/dnsproxy, docs/03-gateway.md "DNS"). CVPN_DNS_DOH=false relays
+	// them as ordinary DNS again — an operational escape hatch, not a mode.
+	DNSDoH bool
+
 	// NodeHostIP is the public IP of the Flux node hosting this container
 	// (FLUX_NODE_HOST_IP, injected by FluxOS). Used for daemon API calls.
 	NodeHostIP string
@@ -173,6 +180,7 @@ func Load() (*Config, error) {
 		EntitleStateFile:   envStr("CVPN_ENTITLE_STATE_FILE", "/data/entitle.state"),
 		GatewayFleetAllow:  envBool("CVPN_GATEWAY_FLEET_ALLOW", true),
 		AllowPrivateEgress: envBool("CVPN_ALLOW_PRIVATE_EGRESS", false),
+		DNSDoH:             envBool("CVPN_DNS_DOH", true),
 		ObfsEnable:         envBool("CVPN_OBFS_ENABLE", false),
 		TLSEnable:          envBool("CVPN_TLS_ENABLE", false),
 		TLSPort:            envInt("CVPN_TLS_PORT", WGListenPort),

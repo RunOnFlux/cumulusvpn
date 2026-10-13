@@ -41,11 +41,10 @@ func TestObfuscatedTunnelDataPlaneEndToEnd(t *testing.T) {
 	runTunnelDataPlaneE2E(t, &p)
 }
 
-// runTunnelDataPlaneE2E stands up an in-process gateway (WG device + netstack
-// forwarder) and a client (userspace WG via netstack), does a real handshake
-// over UDP loopback, and fetches an HTTP server through the tunnel — asserting
-// the bytes round-trip. obfs==nil is vanilla WireGuard; non-nil applies the
-// AmneziaWG obfuscation profile on BOTH the gateway device and the client.
+// runTunnelDataPlaneE2E stands up a gateway and client (startTunnel), does a
+// real handshake over UDP loopback, and fetches an HTTP server through the
+// tunnel — asserting the bytes round-trip. obfs==nil is vanilla WireGuard;
+// non-nil applies the AmneziaWG obfuscation profile on BOTH ends.
 //
 // This specifically pins the netstack stack.Options{HandleLocal:false} decision:
 // with HandleLocal=true, promiscuous-mode exit routing makes gVisor drop every
@@ -74,10 +73,25 @@ func runTunnelDataPlaneE2E(t *testing.T, obfs *ObfsParams) {
 	origin.Start()
 	defer origin.Close()
 
+	tnet := startTunnel(t, obfs, nil)
+	fetchThroughTunnel(t, tnet, origin.URL, want)
+}
+
+// startTunnel stands up an in-process gateway (WG device + netstack forwarder,
+// private egress allowed for LAN-bound test origins) and an enrolled client
+// (userspace WG over netstack, routing 0.0.0.0/0 into the tunnel), and returns
+// the client's network for dialing through the tunnel. obfs==nil is vanilla
+// WireGuard; non-nil applies the AmneziaWG profile on BOTH ends. setup, when
+// non-nil, configures the forwarder before it starts.
+func startTunnel(t *testing.T, obfs *ObfsParams, setup func(*Forwarder)) *netstack.Net {
+	t.Helper()
 	// --- gateway (vanilla or obfuscated, same server identity path) ---
 	port := freeUDPPort(t)
 	key := t.TempDir() + "/srv.key"
-	var gw *Device
+	var (
+		gw  *Device
+		err error
+	)
 	if obfs != nil {
 		gw, err = NewObfuscated(port, key, *obfs)
 	} else {
@@ -90,6 +104,9 @@ func runTunnelDataPlaneE2E(t *testing.T, obfs *ObfsParams) {
 
 	fwd := NewForwarder(gw, limiter.New(100, 50), nil, true)
 	fwd.SetAllowPrivateEgress(true) // e2e origin binds a LAN (private) IP
+	if setup != nil {
+		setup(fwd)
+	}
 	if err := fwd.Start(); err != nil {
 		t.Fatalf("forwarder Start: %v", err)
 	}
@@ -132,8 +149,7 @@ func runTunnelDataPlaneE2E(t *testing.T, obfs *ObfsParams) {
 		t.Fatalf("client Up: %v", err)
 	}
 
-	// --- fetch the origin through the tunnel ---
-	fetchThroughTunnel(t, tnet, origin.URL, want)
+	return tnet
 }
 
 // fetchThroughTunnel GETs url over the client's netstack transport and asserts

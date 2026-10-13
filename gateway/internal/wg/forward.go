@@ -15,6 +15,8 @@ package wg
 
 import (
 	"context"
+	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -23,6 +25,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/runonflux/cumulusvpn-gateway/internal/dnsproxy"
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
 
 	"gvisor.dev/gvisor/pkg/tcpip"
@@ -64,6 +67,17 @@ const copyBufSize = 32 * 1024
 // untouched.
 const maxFlows = 1024
 
+// dnsPort is where intercepted lookups arrive (see Forwarder.SetDNS).
+const dnsPort uint16 = 53
+
+// dnsIdle closes an intercepted DNS flow after this long without a query,
+// matching the UDP relay's idle timeout.
+const dnsIdle = 30 * time.Second
+
+// dnsFlowInFlight bounds concurrent lookups on one UDP flow; datagrams past it
+// are dropped (the client retries), so a single flow can't pile up goroutines.
+const dnsFlowInFlight = 64
+
 // Forwarder wires the gVisor stack's TCP/UDP forwarders to host sockets.
 type Forwarder struct {
 	dev          *Device
@@ -72,6 +86,7 @@ type Forwarder struct {
 	allow        map[uint16]struct{} // egress allowlist; empty = allow all (minus SMTP)
 	fleetAllow   bool                // implicitly permit UDP 51820 to peer gateways (multi-hop)
 	allowPrivate bool                // permit egress to private/loopback dsts (dev/test only)
+	dns          *dnsproxy.Proxy     // answers port-53 lookups to known resolvers; nil = relay them
 	stk          *stack.Stack        // cached from dev.Stack() at Start
 	udpConn      sync.WaitGroup
 	// Live flow counts, bounding concurrent resource use (see maxFlows).
@@ -115,6 +130,17 @@ func NewForwarder(dev *Device, lim *limiter.Manager, allowPorts []uint16, fleetA
 // destinations. Default OFF (the SSRF guard). Intended only for dev/test or a
 // deliberately private-network deployment (CVPN_ALLOW_PRIVATE_EGRESS).
 func (f *Forwarder) SetAllowPrivateEgress(v bool) { f.allowPrivate = v }
+
+// SetDNS makes the forwarder answer port-53 lookups addressed to a resolver p
+// knows (1.1.1.1, 9.9.9.9, ...) in-process and send them on encrypted, instead
+// of relaying them in plain text from the node (internal/dnsproxy). Call it
+// before Start. nil (the default) relays DNS like any other flow.
+func (f *Forwarder) SetDNS(p *dnsproxy.Proxy) { f.dns = p }
+
+// interceptDNS reports whether a flow to dst:port is answered by the DNS proxy.
+func (f *Forwarder) interceptDNS(dst netip.Addr, port uint16) bool {
+	return port == dnsPort && f.dns != nil && f.dns.Handles(dst)
+}
 
 // Start enables promiscuous mode + spoofing on the NIC and registers the
 // TCP and UDP forwarders on the stack's transport protocol dispatch.
@@ -181,6 +207,15 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 	}
 	r.Complete(false)
 	clientConn := gonet.NewTCPConn(&wq, ep)
+	lp := f.lim.Get(peer)
+
+	if f.interceptDNS(dstIP, dstPort) {
+		go func() {
+			defer releaseFlow(&f.tcpFlows)
+			f.serveDNSTCP(clientConn, dstIP, lp)
+		}()
+		return
+	}
 
 	// Dial the real destination on the HOST network stack.
 	dst := net.JoinHostPort(dstIP.String(), fmt.Sprintf("%d", dstPort))
@@ -191,7 +226,6 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 		return
 	}
 
-	lp := f.lim.Get(peer)
 	go func() {
 		defer releaseFlow(&f.tcpFlows)
 		f.splice(clientConn, hostConn, lp)
@@ -271,6 +305,17 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 		return
 	}
 	clientConn := gonet.NewUDPConn(f.stk, &wq, ep)
+	lp := f.lim.Get(peer)
+
+	if f.interceptDNS(dstIP, dstPort) {
+		f.udpConn.Add(1)
+		go func() {
+			defer f.udpConn.Done()
+			defer releaseFlow(&f.udpFlows)
+			f.serveDNSUDP(clientConn, dstIP, dstPort, lp)
+		}()
+		return
+	}
 
 	dst := net.JoinHostPort(dstIP.String(), fmt.Sprintf("%d", dstPort))
 	hostConn, err := f.dialer.Dial("udp", dst)
@@ -280,7 +325,6 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 		return
 	}
 
-	lp := f.lim.Get(peer)
 	f.udpConn.Add(1)
 	go func() {
 		defer f.udpConn.Done()
@@ -320,6 +364,151 @@ func (f *Forwarder) relayUDP(client, host net.Conn, lp *limiter.Peer) {
 	go func() { defer wg.Done(); pump(host, client); closeBoth() }()
 	go func() { defer wg.Done(); pump(client, host); closeBoth() }()
 	wg.Wait()
+}
+
+// serveDNSUDP answers the lookups on one client UDP flow in-process until it
+// idles. Lookups run concurrently (stub resolvers send A and AAAA back to back
+// from one socket) and each answer is written back as it completes, fitted to
+// the client's UDP size. A first datagram that isn't a DNS query means the
+// flow isn't DNS at all (some apps tunnel other protocols over port 53), so it
+// is relayed to the real destination unchanged.
+func (f *Forwarder) serveDNSUDP(client net.Conn, dst netip.Addr, port uint16, lp *limiter.Peer) {
+	var (
+		writeMu  sync.Mutex
+		inflight sync.WaitGroup
+	)
+	slots := make(chan struct{}, dnsFlowInFlight)
+	handedOff := false // the plain relay owns (and closes) client from then on
+	defer func() {
+		// Close first so late answers fail fast, then wait for them: the flow
+		// slot is released (by the caller) only once nothing of it is left.
+		if !handedOff {
+			client.Close()
+		}
+		inflight.Wait()
+	}()
+
+	buf := make([]byte, 64*1024)
+	for first := true; ; first = false {
+		_ = client.SetReadDeadline(time.Now().Add(dnsIdle))
+		n, rerr := client.Read(buf)
+		if n > 0 {
+			if err := lp.WaitN(context.Background(), n); err != nil {
+				return
+			}
+			lp.Count(n)
+			query := append([]byte(nil), buf[:n]...)
+			if first && !dnsproxy.IsQuery(query) {
+				if host := f.dialNonDNSUDP(dst, port, query); host != nil {
+					handedOff = true
+					f.relayUDP(client, host, lp)
+				}
+				return
+			}
+			select {
+			case slots <- struct{}{}:
+			default:
+				continue // this flow already has plenty in flight: drop, client retries
+			}
+			inflight.Add(1)
+			go func() {
+				defer inflight.Done()
+				defer func() { <-slots }()
+				resp, err := f.dns.Exchange(context.Background(), dst, query)
+				if err != nil {
+					return // no answer; the client's own timeout retries
+				}
+				resp = dnsproxy.FitUDP(query, resp)
+				if err := lp.WaitN(context.Background(), len(resp)); err != nil {
+					return
+				}
+				writeMu.Lock()
+				_, werr := client.Write(resp)
+				writeMu.Unlock()
+				if werr == nil {
+					lp.Count(len(resp))
+				}
+			}()
+		}
+		if rerr != nil {
+			return
+		}
+	}
+}
+
+// dialNonDNSUDP opens the real destination for a port-53 UDP flow that turned
+// out not to be DNS and sends it first (already read and charged), so the
+// ordinary relay can take over. nil if that failed.
+func (f *Forwarder) dialNonDNSUDP(dst netip.Addr, port uint16, first []byte) net.Conn {
+	host, err := f.dialer.Dial("udp", netip.AddrPortFrom(dst, port).String())
+	if err != nil {
+		return nil
+	}
+	if _, err := host.Write(first); err != nil {
+		host.Close()
+		return nil
+	}
+	return host
+}
+
+// serveDNSTCP answers DNS over TCP (RFC 7766: a 2-byte length, then the
+// message) in-process, one message at a time, until the client closes or
+// idles. Clients use TCP when a UDP answer came back truncated. As with UDP, a
+// first message that isn't a DNS query turns the flow into an ordinary splice
+// to the real destination, replaying the bytes already read.
+func (f *Forwarder) serveDNSTCP(client net.Conn, dst netip.Addr, lp *limiter.Peer) {
+	var lenBuf [2]byte
+	for first := true; ; first = false {
+		_ = client.SetReadDeadline(time.Now().Add(dnsIdle))
+		if _, err := io.ReadFull(client, lenBuf[:]); err != nil {
+			client.Close()
+			return
+		}
+		query := make([]byte, binary.BigEndian.Uint16(lenBuf[:]))
+		if _, err := io.ReadFull(client, query); err != nil {
+			client.Close()
+			return
+		}
+		if err := lp.WaitN(context.Background(), 2+len(query)); err != nil {
+			client.Close()
+			return
+		}
+		lp.Count(2 + len(query))
+
+		resp, err := f.dns.Exchange(context.Background(), dst, query)
+		if errors.Is(err, dnsproxy.ErrNotDNS) && first {
+			_ = client.SetReadDeadline(time.Time{})
+			host, derr := f.dialer.Dial("tcp", netip.AddrPortFrom(dst, dnsPort).String())
+			if derr != nil {
+				client.Close()
+				return
+			}
+			if _, werr := host.Write(append(lenBuf[:], query...)); werr != nil {
+				client.Close()
+				host.Close()
+				return
+			}
+			f.splice(client, host, lp)
+			return
+		}
+		if err != nil {
+			client.Close() // no answer: the client retries on a fresh connection
+			return
+		}
+
+		out := make([]byte, 2+len(resp))
+		binary.BigEndian.PutUint16(out, uint16(len(resp)))
+		copy(out[2:], resp)
+		if err := lp.WaitN(context.Background(), len(out)); err != nil {
+			client.Close()
+			return
+		}
+		if _, err := client.Write(out); err != nil {
+			client.Close()
+			return
+		}
+		lp.Count(len(out))
+	}
 }
 
 // portAllowed applies the SMTP hard-block then the optional allowlist.
