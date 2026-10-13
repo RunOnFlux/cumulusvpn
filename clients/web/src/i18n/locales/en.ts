@@ -76,9 +76,28 @@ export const en = {
   connect_identity_title: 'This device’s identity',
   connect_regenerate: 'Regenerate key',
   connect_identity_note:
-    'One keypair per device enrolls at many gateways; premium follows the key on all of them via the chain. The payment code below is what ties a FLUX payment to this key.',
+    'Your Premium belongs to your key, not to one device. Save your recovery key to restore it on any phone, tablet or computer — it works best on one device at a time, or on devices connected to different countries. The payment code below is what ties a payment to this key.',
   connect_field_public_key: 'WireGuard public key',
   connect_field_payment_code: 'Payment code (memo)',
+  identity_show_key: 'Show recovery key',
+  identity_hide_key: 'Hide recovery key',
+  identity_key_label: 'Recovery key',
+  identity_key_warn:
+    'Anyone with this key gets this identity and its Premium. Keep it private — a password manager is a good place.',
+  identity_restore_open: 'Restore from recovery key',
+  identity_continue: 'Continue',
+  identity_cancel: 'Cancel',
+  identity_restore_confirm:
+    'Replace this browser’s identity with {next}? Premium paid to the current identity ({current}) stays with that key — save its recovery key first if it has any.',
+  identity_restore_cta: 'Replace identity',
+  identity_restored: 'Restored. Premium on this identity shows here within a minute.',
+  identity_regen_confirm:
+    'Make a new key? This browser gets a new identity and payment code. Premium paid to the current identity ({current}) stays with that key — save its recovery key first if it has any.',
+  identity_regen_cta: 'Make a new key',
+  identity_err_same: 'That is already this browser’s identity.',
+  identity_err_format: 'That doesn’t look like a CumulusVPN recovery key.',
+  identity_err_checksum: 'That key has a typo. Check it character by character.',
+  identity_err_version: 'That key is from a newer CumulusVPN. Reload the page, then try again.',
 
   upgrade_loading: 'Loading payment details…',
   upgrade_eyebrow: 'Upgrade · pay in FLUX',
@@ -118,9 +137,15 @@ export const en = {
   upgrade_activating_hint: 'You can close this page — activation completes on its own.',
   upgrade_activated_cta: 'Back to Connect →',
 
+  recovery_nudge: 'Save your recovery key so you don’t lose Premium if you clear this browser.',
+  recovery_nudge_other:
+    'Premium goes to the device whose code you are paying for. Save its recovery key in that device’s settings, so a reinstall doesn’t lose it.',
+  recovery_nudge_dismiss: 'Not now',
+  recovery_nudge_done: 'Done',
+
   otherdev_eyebrow: 'Paying for another device?',
   otherdev_lede:
-    'Premium is tied to one device key. To pay for your phone from here, open the app → Settings → About and copy its Device code.',
+    'Premium goes to the key whose code you pay for. To pay for your phone from here, open the app → Settings → About and copy its Device code.',
   otherdev_placeholder: 'Device code',
   otherdev_apply: 'Use this code',
   otherdev_paste: 'Paste',
@@ -158,7 +183,7 @@ export const en = {
 
   redeem_eyebrow: 'Have a code?',
   redeem_lede:
-    'Redeem a voucher or promo code. Free-time codes activate on the Flux network for this device; discount codes apply to the card checkout above.',
+    'Redeem a voucher or promo code. Free-time codes activate on the Flux network for this key; discount codes apply to the card checkout above.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Redeem',
   redeem_cta_busy: 'Checking…',
@@ -167,7 +192,7 @@ export const en = {
   redeem_err_invalid: 'That code isn’t valid. Check for typos and try again.',
   redeem_err_expired: 'This code has expired.',
   redeem_err_exhausted: 'This code has already been fully used.',
-  redeem_err_already: 'This device has already redeemed this code.',
+  redeem_err_already: 'This key has already redeemed this code.',
   redeem_err_later: 'Redemption is briefly unavailable — please try again in a few minutes.',
 
   split_summary_title: 'Advanced: split tunneling',

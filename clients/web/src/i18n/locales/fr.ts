@@ -70,9 +70,30 @@ export const fr: Catalog = {
   connect_identity_title: 'Identité de cet appareil',
   connect_regenerate: 'Régénérer la clé',
   connect_identity_note:
-    "Une paire de clés par appareil s'inscrit sur de nombreuses passerelles ; le premium suit la clé sur toutes via la chaîne. Le code de paiement ci-dessous relie un paiement en FLUX à cette clé.",
+    'Votre premium appartient à votre clé, pas à un appareil. Enregistrez votre clé de récupération pour la restaurer sur n’importe quel téléphone, tablette ou ordinateur — elle fonctionne mieux sur un seul appareil à la fois, ou sur des appareils connectés à des pays différents. Le code de paiement ci-dessous relie un paiement à cette clé.',
   connect_field_public_key: 'Clé publique WireGuard',
   connect_field_payment_code: 'Code de paiement (mémo)',
+  identity_show_key: 'Afficher la clé de récupération',
+  identity_hide_key: 'Masquer la clé de récupération',
+  identity_key_label: 'Clé de récupération',
+  identity_key_warn:
+    'Quiconque possède cette clé obtient cette identité et son premium. Gardez-la secrète — un gestionnaire de mots de passe est un bon endroit.',
+  identity_restore_open: 'Restaurer depuis une clé de récupération',
+  identity_continue: 'Continuer',
+  identity_cancel: 'Annuler',
+  identity_restore_confirm:
+    'Remplacer l’identité de ce navigateur par {next} ? Le premium payé pour l’identité actuelle ({current}) reste avec cette clé — enregistrez d’abord sa clé de récupération si elle a du premium.',
+  identity_restore_cta: 'Remplacer l’identité',
+  identity_restored: 'Restaurée. Le premium de cette identité s’affiche ici d’ici une minute.',
+  identity_regen_confirm:
+    'Créer une nouvelle clé ? Ce navigateur reçoit une nouvelle identité et un nouveau code de paiement. Le premium payé pour l’identité actuelle ({current}) reste avec cette clé — enregistrez d’abord sa clé de récupération si elle a du premium.',
+  identity_regen_cta: 'Créer une nouvelle clé',
+  identity_err_same: 'C’est déjà l’identité de ce navigateur.',
+  identity_err_format: 'Cela ne ressemble pas à une clé de récupération CumulusVPN.',
+  identity_err_checksum:
+    'Cette clé contient une faute de frappe. Vérifiez-la caractère par caractère.',
+  identity_err_version:
+    'Cette clé provient d’une version plus récente de CumulusVPN. Rechargez la page, puis réessayez.',
 
   upgrade_loading: 'Chargement des détails de paiement…',
   upgrade_eyebrow: 'Premium · payez en FLUX',
@@ -113,9 +134,16 @@ export const fr: Catalog = {
   upgrade_activating_hint: "Vous pouvez fermer cette page — l'activation se termine toute seule.",
   upgrade_activated_cta: 'Retour à Connexion →',
 
+  recovery_nudge:
+    'Enregistrez votre clé de récupération pour ne pas perdre le premium si vous effacez les données de ce navigateur.',
+  recovery_nudge_other:
+    'Le premium va à l’appareil dont vous payez le code. Enregistrez sa clé de récupération dans les réglages de cet appareil, pour ne pas le perdre en cas de réinstallation.',
+  recovery_nudge_dismiss: 'Plus tard',
+  recovery_nudge_done: 'Terminé',
+
   otherdev_eyebrow: 'Vous payez pour un autre appareil ?',
   otherdev_lede:
-    'Le premium est lié à la clé d’un appareil. Pour payer pour votre téléphone depuis ici, ouvrez l’application → Réglages → À propos et copiez son code d’appareil.',
+    'Le premium va à la clé dont vous payez le code. Pour payer pour votre téléphone depuis ici, ouvrez l’application → Réglages → À propos et copiez son code d’appareil.',
   otherdev_placeholder: 'Code d’appareil',
   otherdev_apply: 'Utiliser ce code',
   otherdev_paste: 'Coller',
@@ -154,7 +182,7 @@ export const fr: Catalog = {
 
   redeem_eyebrow: 'Vous avez un code ?',
   redeem_lede:
-    "Utilisez un bon ou un code promo. Les codes de temps gratuit s'activent sur le réseau Flux pour cet appareil ; les codes de réduction s'appliquent au paiement par carte ci-dessus.",
+    "Utilisez un bon ou un code promo. Les codes de temps gratuit s'activent sur le réseau Flux pour cette clé ; les codes de réduction s'appliquent au paiement par carte ci-dessus.",
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Utiliser',
   redeem_cta_busy: 'Vérification…',
@@ -163,7 +191,7 @@ export const fr: Catalog = {
   redeem_err_invalid: "Ce code n'est pas valide. Vérifiez les fautes de frappe et réessayez.",
   redeem_err_expired: 'Ce code a expiré.',
   redeem_err_exhausted: 'Ce code a déjà été entièrement utilisé.',
-  redeem_err_already: 'Cet appareil a déjà utilisé ce code.',
+  redeem_err_already: 'Cette clé a déjà utilisé ce code.',
   redeem_err_later:
     "L'utilisation des codes est momentanément indisponible — veuillez réessayer dans quelques minutes.",
 

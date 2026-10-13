@@ -5,10 +5,12 @@ import { copyText } from '../lib/download';
 interface CopyFieldProps {
   readonly label: string;
   readonly value: string;
+  /** Called after a successful copy (e.g. to note that a recovery key was saved). */
+  readonly onCopied?: () => void;
 }
 
 /** A labelled, monospaced value with an inline copy affordance (mockup `.field`). */
-export function CopyField({ label, value }: CopyFieldProps) {
+export function CopyField({ label, value, onCopied }: CopyFieldProps) {
   const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
@@ -16,6 +18,7 @@ export function CopyField({ label, value }: CopyFieldProps) {
     const ok = await copyText(value);
     if (ok) {
       setCopied(true);
+      onCopied?.();
       setTimeout(() => setCopied(false), 1400);
     }
   };

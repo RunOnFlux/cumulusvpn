@@ -70,9 +70,29 @@ export const pt: Catalog = {
   connect_identity_title: 'Identidade deste dispositivo',
   connect_regenerate: 'Regenerar chave',
   connect_identity_note:
-    'Um par de chaves por dispositivo se inscreve em vários gateways; o premium acompanha a chave em todos eles pela chain. O código de pagamento abaixo é o que vincula um pagamento em FLUX a esta chave.',
+    'Seu premium pertence à sua chave, não a um dispositivo. Salve sua chave de recuperação para restaurá-la em qualquer celular, tablet ou computador — funciona melhor em um dispositivo por vez, ou em dispositivos conectados a países diferentes. O código de pagamento abaixo é o que vincula um pagamento a esta chave.',
   connect_field_public_key: 'Chave pública WireGuard',
   connect_field_payment_code: 'Código de pagamento (memo)',
+  identity_show_key: 'Mostrar chave de recuperação',
+  identity_hide_key: 'Ocultar chave de recuperação',
+  identity_key_label: 'Chave de recuperação',
+  identity_key_warn:
+    'Quem tiver esta chave fica com esta identidade e o premium dela. Mantenha-a em sigilo — um gerenciador de senhas é um bom lugar.',
+  identity_restore_open: 'Restaurar com chave de recuperação',
+  identity_continue: 'Continuar',
+  identity_cancel: 'Cancelar',
+  identity_restore_confirm:
+    'Substituir a identidade deste navegador por {next}? O premium pago à identidade atual ({current}) continua com aquela chave — salve antes a chave de recuperação dela, se ela tiver premium.',
+  identity_restore_cta: 'Substituir identidade',
+  identity_restored: 'Restaurada. O premium desta identidade aparece aqui em até um minuto.',
+  identity_regen_confirm:
+    'Criar uma chave nova? Este navegador recebe uma nova identidade e um novo código de pagamento. O premium pago à identidade atual ({current}) continua com aquela chave — salve antes a chave de recuperação dela, se ela tiver premium.',
+  identity_regen_cta: 'Criar chave nova',
+  identity_err_same: 'Essa já é a identidade deste navegador.',
+  identity_err_format: 'Isso não parece uma chave de recuperação do CumulusVPN.',
+  identity_err_checksum: 'Essa chave tem um erro de digitação. Confira caractere por caractere.',
+  identity_err_version:
+    'Essa chave é de uma versão mais nova do CumulusVPN. Recarregue a página e tente de novo.',
 
   upgrade_loading: 'Carregando dados de pagamento…',
   upgrade_eyebrow: 'Upgrade · pague em FLUX',
@@ -113,9 +133,16 @@ export const pt: Catalog = {
   upgrade_activating_hint: 'Você pode fechar esta página — a ativação termina sozinha.',
   upgrade_activated_cta: 'Voltar para Conectar →',
 
+  recovery_nudge:
+    'Salve sua chave de recuperação para não perder o premium se você limpar os dados deste navegador.',
+  recovery_nudge_other:
+    'O premium vai para o dispositivo cujo código você está pagando. Salve a chave de recuperação dele nas configurações daquele dispositivo, para não perdê-lo ao reinstalar.',
+  recovery_nudge_dismiss: 'Agora não',
+  recovery_nudge_done: 'Pronto',
+
   otherdev_eyebrow: 'Pagando por outro dispositivo?',
   otherdev_lede:
-    'O premium está vinculado à chave de um dispositivo. Para pagar pelo seu celular daqui, abra o app → Configurações → Sobre e copie o código do dispositivo.',
+    'O premium vai para a chave cujo código você paga. Para pagar pelo seu celular daqui, abra o app → Configurações → Sobre e copie o código do dispositivo.',
   otherdev_placeholder: 'Código do dispositivo',
   otherdev_apply: 'Usar este código',
   otherdev_paste: 'Colar',
@@ -154,7 +181,7 @@ export const pt: Catalog = {
 
   redeem_eyebrow: 'Tem um código?',
   redeem_lede:
-    'Resgate um voucher ou código promocional. Códigos de tempo grátis são ativados na rede Flux para este dispositivo; códigos de desconto valem para o checkout com cartão acima.',
+    'Resgate um voucher ou código promocional. Códigos de tempo grátis são ativados na rede Flux para esta chave; códigos de desconto valem para o checkout com cartão acima.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Resgatar',
   redeem_cta_busy: 'Verificando…',
@@ -164,7 +191,7 @@ export const pt: Catalog = {
     'Esse código não é válido. Confira se não há erros de digitação e tente de novo.',
   redeem_err_expired: 'Este código expirou.',
   redeem_err_exhausted: 'Este código já foi totalmente utilizado.',
-  redeem_err_already: 'Este dispositivo já resgatou este código.',
+  redeem_err_already: 'Esta chave já resgatou este código.',
   redeem_err_later:
     'O resgate está temporariamente indisponível — tente de novo em alguns minutos.',
 

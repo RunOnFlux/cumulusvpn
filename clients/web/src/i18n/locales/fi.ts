@@ -70,9 +70,29 @@ export const fi: Catalog = {
   connect_identity_title: 'Tämän laitteen identiteetti',
   connect_regenerate: 'Luo avain uudelleen',
   connect_identity_note:
-    'Yksi avainpari per laite rekisteröityy moneen yhdyskäytävään; premium seuraa avainta niissä kaikissa ketjun kautta. Alla oleva maksukoodi on se, mikä sitoo FLUX-maksun tähän avaimeen.',
+    'Premium kuuluu avaimellesi, ei yhdelle laitteelle. Tallenna palautusavain, niin voit palauttaa sen mille tahansa puhelimelle, tabletille tai tietokoneelle — se toimii parhaiten yhdellä laitteella kerrallaan tai laitteilla, jotka on yhdistetty eri maihin. Alla oleva maksukoodi yhdistää maksun tähän avaimeen.',
   connect_field_public_key: 'WireGuardin julkinen avain',
   connect_field_payment_code: 'Maksukoodi (viesti)',
+  identity_show_key: 'Näytä palautusavain',
+  identity_hide_key: 'Piilota palautusavain',
+  identity_key_label: 'Palautusavain',
+  identity_key_warn:
+    'Kuka tahansa, jolla on tämä avain, saa tämän identiteetin ja sen Premiumin. Pidä se yksityisenä — salasanojen hallintasovellus on hyvä paikka.',
+  identity_restore_open: 'Palauta palautusavaimella',
+  identity_continue: 'Jatka',
+  identity_cancel: 'Peruuta',
+  identity_restore_confirm:
+    'Korvataanko tämän selaimen identiteetti identiteetillä {next}? Nykyiselle identiteetille ({current}) maksettu Premium jää sille avaimelle — tallenna ensin sen palautusavain, jos sillä on Premiumia.',
+  identity_restore_cta: 'Korvaa identiteetti',
+  identity_restored: 'Palautettu. Tämän identiteetin Premium näkyy täällä minuutin kuluessa.',
+  identity_regen_confirm:
+    'Luodaanko uusi avain? Tämä selain saa uuden identiteetin ja maksukoodin. Nykyiselle identiteetille ({current}) maksettu Premium jää sille avaimelle — tallenna ensin sen palautusavain, jos sillä on Premiumia.',
+  identity_regen_cta: 'Luo uusi avain',
+  identity_err_same: 'Se on jo tämän selaimen identiteetti.',
+  identity_err_format: 'Tämä ei näytä CumulusVPN-palautusavaimelta.',
+  identity_err_checksum: 'Avaimessa on kirjoitusvirhe. Tarkista se merkki merkiltä.',
+  identity_err_version:
+    'Avain on uudemmasta CumulusVPN-versiosta. Lataa sivu uudelleen ja yritä sitten uudestaan.',
 
   upgrade_loading: 'Ladataan maksutietoja…',
   upgrade_eyebrow: 'Päivitys · maksa FLUXilla',
@@ -113,9 +133,16 @@ export const fi: Catalog = {
   upgrade_activating_hint: 'Voit sulkea tämän sivun — aktivointi valmistuu itsestään.',
   upgrade_activated_cta: 'Takaisin Yhdistä-sivulle →',
 
+  recovery_nudge:
+    'Tallenna palautusavain, jotta et menetä Premiumia, jos tyhjennät tämän selaimen tiedot.',
+  recovery_nudge_other:
+    'Premium menee laitteelle, jonka koodin maksat. Tallenna sen palautusavain kyseisen laitteen asetuksista, jotta se ei katoa uudelleenasennuksessa.',
+  recovery_nudge_dismiss: 'Ei nyt',
+  recovery_nudge_done: 'Valmis',
+
   otherdev_eyebrow: 'Maksatko toisen laitteen puolesta?',
   otherdev_lede:
-    'Premium on sidottu yhden laitteen avaimeen. Jos haluat maksaa puhelimestasi täältä, avaa sovellus → Asetukset → Tietoja ja kopioi sen laitekoodi.',
+    'Premium menee avaimelle, jonka koodin maksat. Jos haluat maksaa puhelimestasi täältä, avaa sovellus → Asetukset → Tietoja ja kopioi sen laitekoodi.',
   otherdev_placeholder: 'Laitekoodi',
   otherdev_apply: 'Käytä tätä koodia',
   otherdev_paste: 'Liitä',
@@ -153,7 +180,7 @@ export const fi: Catalog = {
 
   redeem_eyebrow: 'Onko sinulla koodi?',
   redeem_lede:
-    'Lunasta kuponki tai kampanjakoodi. Ilmaisajan koodit aktivoidaan Flux-verkossa tälle laitteelle; alennuskoodit koskevat yllä olevaa korttimaksua.',
+    'Lunasta kuponki tai kampanjakoodi. Ilmaisajan koodit aktivoidaan Flux-verkossa tälle avaimelle; alennuskoodit koskevat yllä olevaa korttimaksua.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Lunasta',
   redeem_cta_busy: 'Tarkistetaan…',
@@ -162,7 +189,7 @@ export const fi: Catalog = {
   redeem_err_invalid: 'Koodi ei kelpaa. Tarkista kirjoitusvirheet ja yritä uudelleen.',
   redeem_err_expired: 'Tämä koodi on vanhentunut.',
   redeem_err_exhausted: 'Tämä koodi on jo käytetty kokonaan.',
-  redeem_err_already: 'Tämä laite on jo lunastanut tämän koodin.',
+  redeem_err_already: 'Tämä avain on jo lunastanut tämän koodin.',
   redeem_err_later:
     'Lunastus on hetkellisesti poissa käytöstä — yritä uudelleen muutaman minuutin kuluttua.',
 

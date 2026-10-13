@@ -23,13 +23,21 @@ export function loadOrCreateKeypair(): Keypair {
   return regenerateKeypair();
 }
 
-/** Generate a new keypair and persist it, replacing any existing one. */
-export function regenerateKeypair(): Keypair {
-  const keypair = generateKeypair();
+/**
+ * Persist `keypair` as this browser's identity, replacing any existing one —
+ * e.g. one restored from a recovery key.
+ */
+export function saveKeypair(keypair: Keypair): void {
   try {
     localStorage.setItem(KEYPAIR_STORAGE_KEY, JSON.stringify(keypair));
   } catch {
     // Storage disabled (private mode) — the key still works for this session.
   }
+}
+
+/** Generate a new keypair and persist it, replacing any existing one. */
+export function regenerateKeypair(): Keypair {
+  const keypair = generateKeypair();
+  saveKeypair(keypair);
   return keypair;
 }

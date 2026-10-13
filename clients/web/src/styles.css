@@ -1007,6 +1007,50 @@ header.top {
   font-size: 13.5px;
   margin: 0 0 12px;
 }
+/* ---- recovery key (IdentityPanel, RecoveryNudge) ---- */
+.ident-warn {
+  color: var(--ink-3);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 8px 0 0;
+}
+.ident-banner p,
+.nudge p {
+  margin: 0;
+  line-height: 1.5;
+}
+.ident-banner .btn-row,
+.nudge .btn-row,
+.ident-restore .btn-row {
+  margin-top: 10px;
+}
+.btn-row .btn.sm {
+  flex: 0 1 auto;
+}
+.ident-restore {
+  margin-top: 14px;
+}
+.rk-input {
+  display: block;
+  width: 100%;
+  resize: vertical;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 11px;
+}
+.rk-input:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--cyan) 60%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 22%, transparent);
+}
+.nudge {
+  margin: 0 0 18px;
+}
+
 /* The .conf caveat follows a block with no bottom margin of its own. */
 .stat-row + .muted-text,
 .mh-confs + .muted-text {
@@ -1240,6 +1284,7 @@ footer .wrap {
 [dir='rtl'] .conf,
 [dir='rtl'] .val,
 [dir='rtl'] .fname,
+[dir='rtl'] .rk-input,
 [dir='rtl'] .src-pill {
   direction: ltr;
   unicode-bidi: isolate;

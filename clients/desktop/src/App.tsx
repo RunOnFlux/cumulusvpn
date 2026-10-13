@@ -13,18 +13,17 @@ import { desktopOs, setupBanner } from './lib/setup.js';
 import { upgradeUrl } from './lib/directory.js';
 import { loadOrCreateKeypair } from './lib/storage.js';
 import { paymentCode } from '@cumulusvpn/core';
+import { openExternal } from './lib/opener.js';
+import { RecoveryNudge } from './components/RecoveryNudge.js';
 
 /** Which hop the country picker is currently editing, or closed. */
 type PickerTarget = 'entry' | 'exit' | null;
 
 /**
- * Open the upgrade/payment page with THIS app's payment code (`?code=`), so
- * a payment made in the browser — FLUX or card — credits the desktop key
- * rather than the browser's own keypair.
- *
- * // POC: uses `window.open`; a shipped Tauri build opens it in the system
- * browser via `@tauri-apps/plugin-opener`, or hosts it in a dedicated embedded
- * WebviewWindow so the FLUX QR / wallet deep link render in-app.
+ * Open the upgrade/payment page in the system browser with THIS app's payment
+ * code (`?code=`), so a payment made there — FLUX or card — credits the
+ * desktop key rather than the browser's own keypair. Goes through the opener
+ * plugin: the webview does not hand `window.open` to the system browser.
  */
 function openUpgrade(): void {
   let code = '';
@@ -33,11 +32,7 @@ function openUpgrade(): void {
   } catch {
     /* fall back to the un-prefilled page */
   }
-  try {
-    window.open(upgradeUrl(code), '_blank', 'noopener');
-  } catch {
-    /* no-op in headless contexts */
-  }
+  void openExternal(upgradeUrl(code));
 }
 
 function pingClass(load: number): string {
@@ -54,6 +49,8 @@ export function App(): JSX.Element {
   const conn = useConnection();
   const [picker, setPicker] = useState<PickerTarget>(null);
   const [showSettings, setShowSettings] = useState(false);
+  // Settings opened from the "save your recovery key" nudge shows the key.
+  const [revealKey, setRevealKey] = useState(false);
 
   const connected = conn.phase === 'connected';
   const busy = conn.phase === 'connecting';
@@ -166,6 +163,13 @@ export function App(): JSX.Element {
       </div>
 
       <div className="shell-foot">
+        <RecoveryNudge
+          entitlement={conn.entitlement}
+          onShowKey={() => {
+            setRevealKey(true);
+            setShowSettings(true);
+          }}
+        />
         <TierBadge entitlement={conn.entitlement} onUpgrade={openUpgrade} />
 
         {connected || busy ? (
@@ -213,7 +217,11 @@ export function App(): JSX.Element {
           onAutoConnect={conn.setAutoConnect}
           onKillSwitch={conn.setKillSwitch}
           onStealth={(v) => conn.setTransportMode(v ? 'stealth' : 'auto')}
-          onClose={() => setShowSettings(false)}
+          revealRecoveryKey={revealKey}
+          onClose={() => {
+            setShowSettings(false);
+            setRevealKey(false);
+          }}
         />
       )}
     </div>

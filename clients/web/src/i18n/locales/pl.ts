@@ -75,9 +75,29 @@ export const pl: Catalog = {
   connect_identity_title: 'Tożsamość tego urządzenia',
   connect_regenerate: 'Wygeneruj klucz ponownie',
   connect_identity_note:
-    'Jedna para kluczy na urządzenie rejestruje się na wielu bramkach; wersja premium podąża za kluczem na wszystkich z nich poprzez chain. Poniższy kod płatności wiąże płatność w FLUX z tym kluczem.',
+    'Twoje Premium należy do Twojego klucza, a nie do jednego urządzenia. Zapisz klucz odzyskiwania, aby przywrócić go na dowolnym telefonie, tablecie lub komputerze — najlepiej działa na jednym urządzeniu naraz albo na urządzeniach połączonych z różnymi krajami. Kod płatności poniżej łączy płatność z tym kluczem.',
   connect_field_public_key: 'Klucz publiczny WireGuard',
   connect_field_payment_code: 'Kod płatności (notatka)',
+  identity_show_key: 'Pokaż klucz odzyskiwania',
+  identity_hide_key: 'Ukryj klucz odzyskiwania',
+  identity_key_label: 'Klucz odzyskiwania',
+  identity_key_warn:
+    'Każdy, kto ma ten klucz, dostaje tę tożsamość i jej Premium. Zachowaj go w tajemnicy — menedżer haseł to dobre miejsce.',
+  identity_restore_open: 'Przywróć z klucza odzyskiwania',
+  identity_continue: 'Dalej',
+  identity_cancel: 'Anuluj',
+  identity_restore_confirm:
+    'Zastąpić tożsamość tej przeglądarki tożsamością {next}? Premium opłacone dla obecnej tożsamości ({current}) zostaje przy tamtym kluczu — jeśli je ma, najpierw zapisz jej klucz odzyskiwania.',
+  identity_restore_cta: 'Zastąp tożsamość',
+  identity_restored: 'Przywrócono. Premium tej tożsamości pojawi się tutaj w ciągu minuty.',
+  identity_regen_confirm:
+    'Utworzyć nowy klucz? Ta przeglądarka dostanie nową tożsamość i nowy kod płatności. Premium opłacone dla obecnej tożsamości ({current}) zostaje przy tamtym kluczu — jeśli je ma, najpierw zapisz jej klucz odzyskiwania.',
+  identity_regen_cta: 'Utwórz nowy klucz',
+  identity_err_same: 'To już jest tożsamość tej przeglądarki.',
+  identity_err_format: 'To nie wygląda na klucz odzyskiwania CumulusVPN.',
+  identity_err_checksum: 'W tym kluczu jest literówka. Sprawdź go znak po znaku.',
+  identity_err_version:
+    'Ten klucz pochodzi z nowszej wersji CumulusVPN. Odśwież stronę i spróbuj ponownie.',
 
   upgrade_loading: 'Wczytywanie danych płatności…',
   upgrade_eyebrow: 'Ulepszenie · płatność w FLUX',
@@ -118,9 +138,16 @@ export const pl: Catalog = {
   upgrade_activating_hint: 'Możesz zamknąć tę stronę — aktywacja dokończy się sama.',
   upgrade_activated_cta: 'Wróć do Połącz →',
 
+  recovery_nudge:
+    'Zapisz klucz odzyskiwania, aby nie stracić Premium, jeśli wyczyścisz dane tej przeglądarki.',
+  recovery_nudge_other:
+    'Premium trafia do urządzenia, za którego kod płacisz. Zapisz jego klucz odzyskiwania w ustawieniach tamtego urządzenia, aby nie stracić Premium po ponownej instalacji.',
+  recovery_nudge_dismiss: 'Nie teraz',
+  recovery_nudge_done: 'Gotowe',
+
   otherdev_eyebrow: 'Płacisz za inne urządzenie?',
   otherdev_lede:
-    'Premium jest powiązane z kluczem jednego urządzenia. Aby zapłacić stąd za telefon, otwórz aplikację → Ustawienia → Informacje i skopiuj jego kod urządzenia.',
+    'Premium trafia do klucza, za którego kod płacisz. Aby zapłacić stąd za telefon, otwórz aplikację → Ustawienia → Informacje i skopiuj jego kod urządzenia.',
   otherdev_placeholder: 'Kod urządzenia',
   otherdev_apply: 'Użyj tego kodu',
   otherdev_paste: 'Wklej',
@@ -159,7 +186,7 @@ export const pl: Catalog = {
 
   redeem_eyebrow: 'Masz kod?',
   redeem_lede:
-    'Wykorzystaj voucher lub kod promocyjny. Kody na darmowy czas aktywują się w sieci Flux dla tego urządzenia; kody rabatowe dotyczą płatności kartą powyżej.',
+    'Wykorzystaj voucher lub kod promocyjny. Kody na darmowy czas aktywują się w sieci Flux dla tego klucza; kody rabatowe dotyczą płatności kartą powyżej.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Wykorzystaj',
   redeem_cta_busy: 'Sprawdzanie…',
@@ -169,7 +196,7 @@ export const pl: Catalog = {
     'Ten kod jest nieprawidłowy. Sprawdź, czy nie ma literówek, i spróbuj ponownie.',
   redeem_err_expired: 'Ten kod wygasł.',
   redeem_err_exhausted: 'Ten kod został już w pełni wykorzystany.',
-  redeem_err_already: 'To urządzenie już wykorzystało ten kod.',
+  redeem_err_already: 'Ten klucz już wykorzystał ten kod.',
   redeem_err_later: 'Realizacja kodów jest chwilowo niedostępna — spróbuj ponownie za kilka minut.',
 
   split_summary_title: 'Zaawansowane: split tunneling',

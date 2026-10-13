@@ -70,9 +70,29 @@ export const id: Catalog = {
   connect_identity_title: 'Identitas perangkat ini',
   connect_regenerate: 'Buat ulang kunci',
   connect_identity_note:
-    'Satu pasangan kunci per perangkat mendaftar di banyak gateway; premium mengikuti kunci itu di semuanya lewat chain. Kode pembayaran di bawah inilah yang mengaitkan pembayaran FLUX dengan kunci ini.',
+    'Premium-mu milik kuncimu, bukan milik satu perangkat. Simpan kunci pemulihanmu untuk memulihkannya di ponsel, tablet, atau komputer mana pun — paling baik dipakai di satu perangkat dalam satu waktu, atau di perangkat yang terhubung ke negara berbeda. Kode pembayaran di bawah inilah yang menautkan pembayaran ke kunci ini.',
   connect_field_public_key: 'Kunci publik WireGuard',
   connect_field_payment_code: 'Kode pembayaran (memo)',
+  identity_show_key: 'Tampilkan kunci pemulihan',
+  identity_hide_key: 'Sembunyikan kunci pemulihan',
+  identity_key_label: 'Kunci pemulihan',
+  identity_key_warn:
+    'Siapa pun yang memiliki kunci ini mendapatkan identitas ini beserta Premium-nya. Jaga kerahasiaannya — pengelola kata sandi adalah tempat yang baik.',
+  identity_restore_open: 'Pulihkan dari kunci pemulihan',
+  identity_continue: 'Lanjut',
+  identity_cancel: 'Batal',
+  identity_restore_confirm:
+    'Ganti identitas peramban ini dengan {next}? Premium yang dibayar untuk identitas saat ini ({current}) tetap pada kunci itu — simpan dulu kunci pemulihannya jika ada Premium-nya.',
+  identity_restore_cta: 'Ganti identitas',
+  identity_restored: 'Dipulihkan. Premium identitas ini muncul di sini dalam satu menit.',
+  identity_regen_confirm:
+    'Buat kunci baru? Peramban ini mendapat identitas dan kode pembayaran baru. Premium yang dibayar untuk identitas saat ini ({current}) tetap pada kunci itu — simpan dulu kunci pemulihannya jika ada Premium-nya.',
+  identity_regen_cta: 'Buat kunci baru',
+  identity_err_same: 'Itu sudah menjadi identitas peramban ini.',
+  identity_err_format: 'Itu tidak terlihat seperti kunci pemulihan CumulusVPN.',
+  identity_err_checksum: 'Kunci itu salah ketik. Periksa karakter demi karakter.',
+  identity_err_version:
+    'Kunci itu berasal dari CumulusVPN versi yang lebih baru. Muat ulang halaman, lalu coba lagi.',
 
   upgrade_loading: 'Memuat detail pembayaran…',
   upgrade_eyebrow: 'Upgrade · bayar dengan FLUX',
@@ -113,9 +133,16 @@ export const id: Catalog = {
   upgrade_activating_hint: 'Anda bisa menutup halaman ini — aktivasi selesai dengan sendirinya.',
   upgrade_activated_cta: 'Kembali ke Hubungkan →',
 
+  recovery_nudge:
+    'Simpan kunci pemulihanmu agar Premium tidak hilang jika kamu menghapus data peramban ini.',
+  recovery_nudge_other:
+    'Premium masuk ke perangkat yang kodenya sedang kamu bayar. Simpan kunci pemulihannya dari pengaturan perangkat itu, agar tidak hilang saat instal ulang.',
+  recovery_nudge_dismiss: 'Nanti saja',
+  recovery_nudge_done: 'Selesai',
+
   otherdev_eyebrow: 'Membayar untuk perangkat lain?',
   otherdev_lede:
-    'Premium terikat pada kunci satu perangkat. Untuk membayar ponselmu dari sini, buka aplikasi → Pengaturan → Tentang lalu salin kode perangkatnya.',
+    'Premium masuk ke kunci yang kodenya kamu bayar. Untuk membayar ponselmu dari sini, buka aplikasi → Pengaturan → Tentang lalu salin kode perangkatnya.',
   otherdev_placeholder: 'Kode perangkat',
   otherdev_apply: 'Gunakan kode ini',
   otherdev_paste: 'Tempel',
@@ -154,7 +181,7 @@ export const id: Catalog = {
 
   redeem_eyebrow: 'Punya kode?',
   redeem_lede:
-    'Tukarkan voucher atau kode promo. Kode waktu gratis diaktifkan di jaringan Flux untuk perangkat ini; kode diskon berlaku untuk checkout kartu di atas.',
+    'Tukarkan voucher atau kode promo. Kode waktu gratis diaktifkan di jaringan Flux untuk kunci ini; kode diskon berlaku untuk checkout kartu di atas.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Tukarkan',
   redeem_cta_busy: 'Memeriksa…',
@@ -163,7 +190,7 @@ export const id: Catalog = {
   redeem_err_invalid: 'Kode itu tidak valid. Periksa salah ketik dan coba lagi.',
   redeem_err_expired: 'Kode ini sudah kedaluwarsa.',
   redeem_err_exhausted: 'Kode ini sudah terpakai sepenuhnya.',
-  redeem_err_already: 'Perangkat ini sudah menukarkan kode ini.',
+  redeem_err_already: 'Kunci ini sudah menukarkan kode ini.',
   redeem_err_later: 'Penukaran sementara tidak tersedia — silakan coba lagi dalam beberapa menit.',
 
   split_summary_title: 'Lanjutan: split tunneling',

@@ -70,9 +70,28 @@ export const sv: Catalog = {
   connect_identity_title: 'Den här enhetens identitet',
   connect_regenerate: 'Generera ny nyckel',
   connect_identity_note:
-    'Ett nyckelpar per enhet registrerar sig hos många gateways; premium följer nyckeln på alla via kedjan. Betalningskoden nedan är det som knyter en FLUX-betalning till den här nyckeln.',
+    'Ditt Premium hör till din nyckel, inte till en enhet. Spara din återställningsnyckel för att återställa den på valfri telefon, surfplatta eller dator — det fungerar bäst på en enhet i taget, eller på enheter som är anslutna till olika länder. Betalkoden nedan är det som knyter en betalning till den här nyckeln.',
   connect_field_public_key: 'WireGuard publik nyckel',
   connect_field_payment_code: 'Betalningskod (meddelande)',
+  identity_show_key: 'Visa återställningsnyckel',
+  identity_hide_key: 'Dölj återställningsnyckel',
+  identity_key_label: 'Återställningsnyckel',
+  identity_key_warn:
+    'Den som har den här nyckeln får den här identiteten och dess Premium. Håll den privat — en lösenordshanterare är ett bra ställe.',
+  identity_restore_open: 'Återställ från återställningsnyckel',
+  identity_continue: 'Fortsätt',
+  identity_cancel: 'Avbryt',
+  identity_restore_confirm:
+    'Ersätta den här webbläsarens identitet med {next}? Premium som betalats för den nuvarande identiteten ({current}) stannar hos den nyckeln — spara först dess återställningsnyckel om den har Premium.',
+  identity_restore_cta: 'Ersätt identitet',
+  identity_restored: 'Återställd. Premium för den här identiteten syns här inom en minut.',
+  identity_regen_confirm:
+    'Skapa en ny nyckel? Den här webbläsaren får en ny identitet och betalkod. Premium som betalats för den nuvarande identiteten ({current}) stannar hos den nyckeln — spara först dess återställningsnyckel om den har Premium.',
+  identity_regen_cta: 'Skapa ny nyckel',
+  identity_err_same: 'Det är redan den här webbläsarens identitet.',
+  identity_err_format: 'Det ser inte ut som en återställningsnyckel för CumulusVPN.',
+  identity_err_checksum: 'Nyckeln har ett skrivfel. Kontrollera den tecken för tecken.',
+  identity_err_version: 'Nyckeln kommer från en nyare CumulusVPN. Ladda om sidan och försök igen.',
 
   upgrade_loading: 'Laddar betalningsuppgifter…',
   upgrade_eyebrow: 'Uppgradera · betala i FLUX',
@@ -112,9 +131,16 @@ export const sv: Catalog = {
   upgrade_activating_hint: 'Du kan stänga den här sidan — aktiveringen slutförs av sig själv.',
   upgrade_activated_cta: 'Tillbaka till Anslut →',
 
+  recovery_nudge:
+    'Spara din återställningsnyckel så att du inte förlorar Premium om du rensar den här webbläsarens data.',
+  recovery_nudge_other:
+    'Premium går till den enhet vars kod du betalar för. Spara dess återställningsnyckel i den enhetens inställningar, så att det inte går förlorat vid en ominstallation.',
+  recovery_nudge_dismiss: 'Inte nu',
+  recovery_nudge_done: 'Klar',
+
   otherdev_eyebrow: 'Betalar du för en annan enhet?',
   otherdev_lede:
-    'Premium är knutet till en enhets nyckel. Vill du betala för din telefon härifrån, öppna appen → Inställningar → Om och kopiera dess enhetskod.',
+    'Premium går till den nyckel vars kod du betalar för. Vill du betala för din telefon härifrån, öppna appen → Inställningar → Om och kopiera dess enhetskod.',
   otherdev_placeholder: 'Enhetskod',
   otherdev_apply: 'Använd den här koden',
   otherdev_paste: 'Klistra in',
@@ -152,7 +178,7 @@ export const sv: Catalog = {
 
   redeem_eyebrow: 'Har du en kod?',
   redeem_lede:
-    'Lös in en värdekod eller kampanjkod. Koder för gratistid aktiveras på Flux-nätverket för den här enheten; rabattkoder gäller kortbetalningen ovan.',
+    'Lös in en värdekod eller kampanjkod. Koder för gratistid aktiveras på Flux-nätverket för den här nyckeln; rabattkoder gäller kortbetalningen ovan.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Lös in',
   redeem_cta_busy: 'Kontrollerar…',
@@ -161,7 +187,7 @@ export const sv: Catalog = {
   redeem_err_invalid: 'Den koden är inte giltig. Kontrollera stavningen och försök igen.',
   redeem_err_expired: 'Den här koden har gått ut.',
   redeem_err_exhausted: 'Den här koden är redan helt förbrukad.',
-  redeem_err_already: 'Den här enheten har redan löst in den här koden.',
+  redeem_err_already: 'Den här nyckeln har redan löst in den här koden.',
   redeem_err_later: 'Inlösen är tillfälligt otillgänglig — försök igen om några minuter.',
 
   split_summary_title: 'Avancerat: split tunneling',

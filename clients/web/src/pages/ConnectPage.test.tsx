@@ -40,7 +40,9 @@ function renderPage(locale: 'en' | 'es' = 'en', state: DiscoveryState = discover
       <ConnectPage
         keypair={keypair}
         discovery={state}
+        identityRestored={false}
         onRegenerate={() => {}}
+        onRestore={() => {}}
         onNavigateUpgrade={() => {}}
       />
     </LocaleProvider>,
@@ -180,7 +182,9 @@ describe('<ConnectPage />', () => {
         <ConnectPage
           keypair={keypair}
           discovery={{ ...discovery, verified: false }}
+          identityRestored={false}
           onRegenerate={() => {}}
+          onRestore={() => {}}
           onNavigateUpgrade={() => {}}
         />
       </LocaleProvider>,

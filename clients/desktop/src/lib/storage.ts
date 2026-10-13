@@ -1,11 +1,12 @@
 /**
- * Local persistence for the device keypair and last-selected country.
+ * Local persistence for the identity keypair and last-selected country.
  *
- * One WireGuard keypair per device enrolls at many gateways; entitlement
- * follows the key on the chain (see `docs/05-clients.md`). // POC: stored in
- * `localStorage`; a real desktop build persists the private key in the OS
+ * The WireGuard keypair is the identity: it enrolls at many gateways, and
+ * entitlement follows the key on the chain (see `docs/05-clients.md`), not the
+ * computer — the recovery key (Settings → Identity) carries it to another
+ * device. Kept in the webview's `localStorage` by owner decision; the OS
  * keychain (macOS Keychain / Windows Credential Manager / libsecret) via a
- * Tauri command, never in the webview's storage.
+ * Tauri command is the hardening path.
  */
 import { EMPTY_POLICY, generateKeypair, sanitizeSplitPolicy } from '@cumulusvpn/core';
 import type { Keypair, SplitPolicy } from '@cumulusvpn/core';
@@ -49,8 +50,13 @@ export function loadOrCreateKeypair(): Keypair {
     }
   }
   const fresh = generateKeypair();
-  safeSet(KEYPAIR_KEY, JSON.stringify(fresh));
+  saveKeypair(fresh);
   return fresh;
+}
+
+/** Make `keypair` this device's identity (e.g. one restored from a recovery key). */
+export function saveKeypair(keypair: Keypair): void {
+  safeSet(KEYPAIR_KEY, JSON.stringify(keypair));
 }
 
 /** Read the last-selected country code, if any. */

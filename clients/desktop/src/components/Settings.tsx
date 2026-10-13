@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { JSX } from 'react';
 import { normalizeSplitRule } from '@cumulusvpn/core';
 import type { SplitMode, SplitPolicy, Tier } from '@cumulusvpn/core';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory.js';
-import { loadSplitPolicy, saveSplitPolicy } from '../lib/storage.js';
+import { codeOf, copyText } from '../lib/identity.js';
+import { loadOrCreateKeypair, loadSplitPolicy, saveSplitPolicy } from '../lib/storage.js';
 import { useEscape } from '../hooks/useEscape.js';
+import { IdentitySection } from './IdentitySection.js';
 
 /** App version — matches the release tag. */
 const APP_VERSION = '1.2.0';
@@ -18,6 +20,8 @@ interface Props {
   readonly onKillSwitch: (v: boolean) => void;
   readonly onStealth: (v: boolean) => void;
   readonly onClose: () => void;
+  /** Open with the recovery key showing (from the "save your key" nudge). */
+  readonly revealRecoveryKey?: boolean;
 }
 
 /** Full-window settings sheet: connection preferences + about. */
@@ -30,6 +34,7 @@ export function Settings({
   onKillSwitch,
   onStealth,
   onClose,
+  revealRecoveryKey = false,
 }: Props): JSX.Element {
   useEscape(onClose);
   return (
@@ -60,6 +65,9 @@ export function Settings({
             onChange={onStealth}
           />
 
+          <div className="setsec">Identity · Recovery key</div>
+          <IdentitySection revealKey={revealRecoveryKey} />
+
           <div className="setsec">Split tunneling · Premium</div>
           <SplitTunneling tier={tier} killSwitch={killSwitch} />
 
@@ -68,6 +76,7 @@ export function Settings({
             <span>Version</span>
             <span className="lat">CumulusVPN {APP_VERSION}</span>
           </div>
+          <DeviceCodeRow />
           <div className="setinfo">
             <span>Directory trust key</span>
             <span className="lat">{CVPN_DIRECTORY_PUBKEY.slice(0, 16)}…</span>
@@ -240,6 +249,34 @@ function SplitTunneling({
         <div className="st-note">Rules apply the next time you connect.</div>
       )}
     </div>
+  );
+}
+
+/**
+ * This computer's Device code — the payment code Premium is bound to. Copied
+ * from here to pay for this computer from another browser, or to give support.
+ */
+function DeviceCodeRow(): JSX.Element {
+  const code = useMemo(() => codeOf(loadOrCreateKeypair()), []);
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      className="setinfo setcopy"
+      title="Copy"
+      disabled={!code}
+      onClick={() =>
+        void copyText(code).then((ok) => {
+          if (ok) {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1400);
+          }
+        })
+      }
+    >
+      <span>Device code</span>
+      <span className="lat">{copied ? 'Copied' : code}</span>
+    </button>
   );
 }
 

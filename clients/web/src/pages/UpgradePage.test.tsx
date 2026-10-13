@@ -1,12 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type * as CoreModule from '@cumulusvpn/core';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { encodeRecoveryKey, generateKeypair, paymentCode } from '@cumulusvpn/core';
 import type { Directory, Keypair } from '@cumulusvpn/core';
 import { LocaleProvider } from '../hooks/useLocale';
 import {
   PAY_CHECKOUT_STARTED_STORAGE_KEY,
   PAY_CODE_OVERRIDE_STORAGE_KEY,
   PAY_PORTAL_SESSIONS_STORAGE_KEY,
+  RECOVERY_KEY_SAVED_STORAGE_KEY,
 } from '../config';
 import { UpgradePage } from './UpgradePage';
 
@@ -41,11 +43,11 @@ const directory: Directory = {
   sig: 'sig',
 };
 
-function renderPage(params = new URLSearchParams()) {
+function renderPage(params = new URLSearchParams(), kp: Keypair = keypair) {
   return render(
     <LocaleProvider initialLocale="en">
       <UpgradePage
-        keypair={keypair}
+        keypair={kp}
         directory={directory}
         params={params}
         onNavigateConnect={() => {}}
@@ -231,7 +233,7 @@ describe('UpgradePage voucher redemption', () => {
     });
     fireEvent.click(screen.getByText('Redeem'));
     await waitFor(() =>
-      expect(screen.getByText('This device has already redeemed this code.')).toBeTruthy(),
+      expect(screen.getByText('This key has already redeemed this code.')).toBeTruthy(),
     );
   });
 
@@ -520,5 +522,65 @@ describe('UpgradePage pay-for-another-device', () => {
     } finally {
       Object.defineProperty(navigator, 'clipboard', { value: undefined, configurable: true });
     }
+  });
+});
+
+describe('UpgradePage recovery-key nudge', () => {
+  // A real key, so this browser has a recovery key to offer.
+  const real = generateKeypair();
+  const NUDGE = /Save your recovery key so you don’t lose Premium/;
+
+  beforeEach(() => {
+    sessionStorage.clear();
+  });
+
+  it('offers this browser’s recovery key before paying, and reveals it on request', () => {
+    renderPage(new URLSearchParams(), real);
+    expect(screen.getByText(NUDGE)).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Show recovery key' }));
+    expect(screen.getByText(encodeRecoveryKey(real.privateKey))).toBeTruthy();
+  });
+
+  it('stays dismissed for the rest of the session', () => {
+    const { unmount } = renderPage(new URLSearchParams(), real);
+    fireEvent.click(screen.getByRole('button', { name: 'Not now' }));
+    expect(screen.queryByText(NUDGE)).toBeNull();
+    unmount();
+    renderPage(new URLSearchParams(), real);
+    expect(screen.queryByText(NUDGE)).toBeNull();
+  });
+
+  it('stops once this identity’s key has been saved', () => {
+    localStorage.setItem(RECOVERY_KEY_SAVED_STORAGE_KEY, paymentCode(real.publicKey));
+    renderPage(new URLSearchParams(), real);
+    expect(screen.queryByText(NUDGE)).toBeNull();
+  });
+
+  // Paying for the desktop (?code=) must not hand out the BROWSER's key as if
+  // it were the one that just got Premium.
+  it('points at the other device instead of offering this browser’s key', () => {
+    renderPage(new URLSearchParams('code=2bmMSbm88eN6MA6RuDiFKjNAZEuk'), real);
+    expect(screen.queryByText(NUDGE)).toBeNull();
+    expect(screen.getByText(/Save its recovery key in that device’s settings/)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Show recovery key' })).toBeNull();
+  });
+
+  it('reminds again right after a payment confirms', async () => {
+    const code = paymentCode(real.publicKey);
+    localStorage.setItem(PAY_CHECKOUT_STARTED_STORAGE_KEY, '0');
+    statusMock.mockResolvedValue({
+      code,
+      payments: [{ rail: 'stripe', months: 1, status: 'confirmed', txid: 't', created_at: 1 }],
+    });
+    // Dismissed on the pay page earlier this session — the confirmation is a
+    // separate, more important moment.
+    sessionStorage.setItem('cvpn.recoverynudge.dismissed.v1:upgrade', '1');
+    renderPage(new URLSearchParams('session=cs_nudge_1'), real);
+    await waitFor(() =>
+      expect(
+        screen.getByText('Confirmed! Full speed unlocks on all servers within a minute.'),
+      ).toBeTruthy(),
+    );
+    expect(screen.getByText(NUDGE)).toBeTruthy();
   });
 });

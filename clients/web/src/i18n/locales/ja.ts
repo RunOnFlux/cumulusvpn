@@ -70,9 +70,29 @@ export const ja: Catalog = {
   connect_identity_title: 'このデバイスの識別情報',
   connect_regenerate: '鍵を再生成',
   connect_identity_note:
-    'デバイスごとの鍵ペアは複数のゲートウェイに登録できます。プレミアムはチェーンを通じて、その鍵が使われるすべてのゲートウェイに適用されます。下記の支払いコードが、FLUX の支払いをこの鍵に結びつけます。',
+    'プレミアムは端末ではなく、あなたの鍵に属します。リカバリーキーを保存しておけば、どのスマートフォン、タブレット、パソコンでも復元できます。同時に使うのは 1 台だけにするか、別々の国に接続した端末どうしにするのがおすすめです。下記の支払いコードが、支払いをこの鍵に結びつけます。',
   connect_field_public_key: 'WireGuard 公開鍵',
   connect_field_payment_code: '支払いコード（メモ）',
+  identity_show_key: 'リカバリーキーを表示',
+  identity_hide_key: 'リカバリーキーを隠す',
+  identity_key_label: 'リカバリーキー',
+  identity_key_warn:
+    'この鍵を持つ人は誰でも、この識別情報とそのプレミアムを使えます。他人に知られないよう保管してください。パスワードマネージャーがおすすめです。',
+  identity_restore_open: 'リカバリーキーから復元',
+  identity_continue: '次へ',
+  identity_cancel: 'キャンセル',
+  identity_restore_confirm:
+    'このブラウザの識別情報を {next} に置き換えますか？ 現在の識別情報（{current}）に支払われたプレミアムは、その鍵に残ります。プレミアムがある場合は、先にそのリカバリーキーを保存してください。',
+  identity_restore_cta: '識別情報を置き換える',
+  identity_restored: '復元しました。この識別情報のプレミアムは 1 分以内にここに表示されます。',
+  identity_regen_confirm:
+    '新しい鍵を作成しますか？ このブラウザには新しい識別情報と支払いコードが割り当てられます。現在の識別情報（{current}）に支払われたプレミアムは、その鍵に残ります。プレミアムがある場合は、先にそのリカバリーキーを保存してください。',
+  identity_regen_cta: '新しい鍵を作成',
+  identity_err_same: 'これはすでにこのブラウザの識別情報です。',
+  identity_err_format: 'CumulusVPN のリカバリーキーではないようです。',
+  identity_err_checksum: 'この鍵には入力ミスがあります。1 文字ずつ確認してください。',
+  identity_err_version:
+    'この鍵は新しいバージョンの CumulusVPN のものです。ページを再読み込みしてから、もう一度お試しください。',
 
   upgrade_loading: '支払い情報を読み込んでいます…',
   upgrade_eyebrow: 'アップグレード · FLUX で支払う',
@@ -113,9 +133,16 @@ export const ja: Catalog = {
   upgrade_activating_hint: 'このページは閉じてもかまいません — 有効化は自動で完了します。',
   upgrade_activated_cta: '接続に戻る →',
 
+  recovery_nudge:
+    'このブラウザのデータを消去してもプレミアムを失わないよう、リカバリーキーを保存してください。',
+  recovery_nudge_other:
+    'プレミアムは、支払い対象のコードの端末に付与されます。再インストールで失わないよう、その端末の設定からリカバリーキーを保存してください。',
+  recovery_nudge_dismiss: '後で',
+  recovery_nudge_done: '完了',
+
   otherdev_eyebrow: '別の端末の分を支払いますか？',
   otherdev_lede:
-    'プレミアムは端末ごとの鍵に紐づきます。ここからスマートフォンの分を支払うには、アプリを開き → 設定 → このアプリについて で端末コードをコピーしてください。',
+    'プレミアムは、支払ったコードに対応する鍵に付与されます。ここからスマートフォンの分を支払うには、アプリを開き → 設定 → このアプリについて で端末コードをコピーしてください。',
   otherdev_placeholder: '端末コード',
   otherdev_apply: 'このコードを使う',
   otherdev_paste: '貼り付け',
@@ -154,7 +181,7 @@ export const ja: Catalog = {
 
   redeem_eyebrow: 'コードをお持ちですか？',
   redeem_lede:
-    'バウチャーやプロモコードを引き換えられます。無料期間コードはこのデバイス向けに Flux ネットワーク上で有効化され、割引コードは上のカード決済に適用されます。',
+    'バウチャーやプロモコードを引き換えられます。無料期間コードはこの鍵向けに Flux ネットワーク上で有効化され、割引コードは上のカード決済に適用されます。',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: '引き換える',
   redeem_cta_busy: '確認中…',
@@ -164,7 +191,7 @@ export const ja: Catalog = {
     'このコードは有効ではありません。入力ミスがないか確認して、もう一度お試しください。',
   redeem_err_expired: 'このコードは有効期限が切れています。',
   redeem_err_exhausted: 'このコードはすでに使い切られています。',
-  redeem_err_already: 'このデバイスではこのコードをすでに引き換え済みです。',
+  redeem_err_already: 'この鍵ではこのコードをすでに引き換え済みです。',
   redeem_err_later: '引き換えは一時的にご利用いただけません — 数分後にもう一度お試しください。',
 
   split_summary_title: '上級者向け: スプリットトンネリング',

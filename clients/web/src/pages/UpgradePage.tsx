@@ -27,6 +27,7 @@ import { useI18n } from '../hooks/useLocale';
 import { usePaymentStatus } from '../hooks/usePaymentStatus';
 import { CopyField } from '../components/CopyField';
 import { Qr } from '../components/Qr';
+import { RecoveryNudge } from '../components/RecoveryNudge';
 
 interface UpgradePageProps {
   readonly keypair: Keypair;
@@ -446,11 +447,15 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
               <p className="pay-note">{t('upgrade_activating_hint')}</p>
             )}
             {phase === 'confirmed' && (
-              <div className="btn-row">
-                <button className="btn amber block" onClick={onNavigateConnect}>
-                  {t('upgrade_activated_cta')}
-                </button>
-              </div>
+              <>
+                {/* The moment Premium exists is the moment losing the key costs something. */}
+                <RecoveryNudge keypair={keypair} code={code} context="confirmed" />
+                <div className="btn-row">
+                  <button className="btn amber block" onClick={onNavigateConnect}>
+                    {t('upgrade_activated_cta')}
+                  </button>
+                </div>
+              </>
             )}
           </section>
         </div>
@@ -466,6 +471,8 @@ export function UpgradePage({ keypair, directory, params, onNavigateConnect }: U
           <h1>{t('upgrade_title')}</h1>
           <p className="lede">{t('upgrade_lede')}</p>
         </div>
+
+        <RecoveryNudge keypair={keypair} code={code} context="upgrade" />
 
         <section className="card pay-card">
           <div className="amount">

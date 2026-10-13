@@ -70,9 +70,30 @@ export const it: Catalog = {
   connect_identity_title: 'Identità di questo dispositivo',
   connect_regenerate: 'Rigenera chiave',
   connect_identity_note:
-    'Una coppia di chiavi per dispositivo si iscrive a molti gateway; il premium segue la chiave su tutti tramite la chain. Il codice di pagamento qui sotto collega un pagamento in FLUX a questa chiave.',
+    'Il tuo premium appartiene alla tua chiave, non a un dispositivo. Salva la tua chiave di recupero per ripristinarla su qualsiasi telefono, tablet o computer: funziona meglio su un dispositivo alla volta, o su dispositivi collegati a paesi diversi. Il codice di pagamento qui sotto è ciò che collega un pagamento a questa chiave.',
   connect_field_public_key: 'Chiave pubblica WireGuard',
   connect_field_payment_code: 'Codice di pagamento (memo)',
+  identity_show_key: 'Mostra chiave di recupero',
+  identity_hide_key: 'Nascondi chiave di recupero',
+  identity_key_label: 'Chiave di recupero',
+  identity_key_warn:
+    'Chiunque abbia questa chiave ottiene questa identità e il suo premium. Tienila privata: un gestore di password è un buon posto.',
+  identity_restore_open: 'Ripristina da chiave di recupero',
+  identity_continue: 'Continua',
+  identity_cancel: 'Annulla',
+  identity_restore_confirm:
+    'Sostituire l’identità di questo browser con {next}? Il premium pagato per l’identità attuale ({current}) resta a quella chiave: salva prima la sua chiave di recupero, se ha del premium.',
+  identity_restore_cta: 'Sostituisci identità',
+  identity_restored: 'Ripristinata. Il premium di questa identità compare qui entro un minuto.',
+  identity_regen_confirm:
+    'Creare una nuova chiave? Questo browser riceve una nuova identità e un nuovo codice di pagamento. Il premium pagato per l’identità attuale ({current}) resta a quella chiave: salva prima la sua chiave di recupero, se ha del premium.',
+  identity_regen_cta: 'Crea una nuova chiave',
+  identity_err_same: 'Questa è già l’identità di questo browser.',
+  identity_err_format: 'Non sembra una chiave di recupero di CumulusVPN.',
+  identity_err_checksum:
+    'Questa chiave contiene un errore di battitura. Controllala carattere per carattere.',
+  identity_err_version:
+    'Questa chiave proviene da una versione più recente di CumulusVPN. Ricarica la pagina e riprova.',
 
   upgrade_loading: 'Caricamento dei dettagli di pagamento…',
   upgrade_eyebrow: 'Upgrade · paga in FLUX',
@@ -113,9 +134,16 @@ export const it: Catalog = {
   upgrade_activating_hint: "Puoi chiudere questa pagina — l'attivazione si completa da sola.",
   upgrade_activated_cta: 'Torna a Connetti →',
 
+  recovery_nudge:
+    'Salva la tua chiave di recupero per non perdere il premium se cancelli i dati di questo browser.',
+  recovery_nudge_other:
+    'Il premium va al dispositivo di cui stai pagando il codice. Salva la sua chiave di recupero nelle impostazioni di quel dispositivo, così non lo perdi reinstallando.',
+  recovery_nudge_dismiss: 'Non ora',
+  recovery_nudge_done: 'Fatto',
+
   otherdev_eyebrow: 'Stai pagando per un altro dispositivo?',
   otherdev_lede:
-    'Il premium è legato alla chiave di un dispositivo. Per pagare per il tuo telefono da qui, apri l’app → Impostazioni → Info e copia il suo codice dispositivo.',
+    'Il premium va alla chiave di cui paghi il codice. Per pagare per il tuo telefono da qui, apri l’app → Impostazioni → Info e copia il suo codice dispositivo.',
   otherdev_placeholder: 'Codice dispositivo',
   otherdev_apply: 'Usa questo codice',
   otherdev_paste: 'Incolla',
@@ -154,7 +182,7 @@ export const it: Catalog = {
 
   redeem_eyebrow: 'Hai un codice?',
   redeem_lede:
-    'Riscatta un voucher o un codice promozionale. I codici di tempo gratuito si attivano sulla rete Flux per questo dispositivo; i codici sconto valgono per il checkout con carta qui sopra.',
+    'Riscatta un voucher o un codice promozionale. I codici di tempo gratuito si attivano sulla rete Flux per questa chiave; i codici sconto valgono per il checkout con carta qui sopra.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Riscatta',
   redeem_cta_busy: 'Verifica in corso…',
@@ -164,7 +192,7 @@ export const it: Catalog = {
     'Questo codice non è valido. Controlla eventuali errori di battitura e riprova.',
   redeem_err_expired: 'Questo codice è scaduto.',
   redeem_err_exhausted: 'Questo codice è già stato utilizzato completamente.',
-  redeem_err_already: 'Questo dispositivo ha già riscattato questo codice.',
+  redeem_err_already: 'Questa chiave ha già riscattato questo codice.',
   redeem_err_later: 'Il riscatto è momentaneamente non disponibile — riprova tra qualche minuto.',
 
   split_summary_title: 'Avanzato: split tunneling',

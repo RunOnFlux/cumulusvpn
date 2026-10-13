@@ -70,9 +70,29 @@ export const vi: Catalog = {
   connect_identity_title: 'Danh tính của thiết bị này',
   connect_regenerate: 'Tạo lại khóa',
   connect_identity_note:
-    'Mỗi thiết bị dùng một cặp khóa để đăng ký ở nhiều gateway; premium đi theo khóa đó trên tất cả các gateway thông qua chain. Mã thanh toán bên dưới chính là thứ gắn khoản thanh toán FLUX với khóa này.',
+    'Premium của bạn thuộc về khóa của bạn, không thuộc về một thiết bị. Lưu khóa khôi phục để khôi phục nó trên bất kỳ điện thoại, máy tính bảng hay máy tính nào — tốt nhất là dùng trên một thiết bị mỗi lúc, hoặc trên các thiết bị kết nối tới những quốc gia khác nhau. Mã thanh toán bên dưới là thứ gắn một khoản thanh toán với khóa này.',
   connect_field_public_key: 'Khóa công khai WireGuard',
   connect_field_payment_code: 'Mã thanh toán (memo)',
+  identity_show_key: 'Hiện khóa khôi phục',
+  identity_hide_key: 'Ẩn khóa khôi phục',
+  identity_key_label: 'Khóa khôi phục',
+  identity_key_warn:
+    'Bất kỳ ai có khóa này đều nhận được danh tính này và Premium của nó. Hãy giữ kín — trình quản lý mật khẩu là nơi phù hợp.',
+  identity_restore_open: 'Khôi phục từ khóa khôi phục',
+  identity_continue: 'Tiếp tục',
+  identity_cancel: 'Huỷ',
+  identity_restore_confirm:
+    'Thay danh tính của trình duyệt này bằng {next}? Premium đã trả cho danh tính hiện tại ({current}) vẫn ở với khóa đó — hãy lưu khóa khôi phục của nó trước nếu có Premium.',
+  identity_restore_cta: 'Thay danh tính',
+  identity_restored: 'Đã khôi phục. Premium của danh tính này sẽ hiện ở đây trong vòng một phút.',
+  identity_regen_confirm:
+    'Tạo khóa mới? Trình duyệt này sẽ nhận danh tính và mã thanh toán mới. Premium đã trả cho danh tính hiện tại ({current}) vẫn ở với khóa đó — hãy lưu khóa khôi phục của nó trước nếu có Premium.',
+  identity_regen_cta: 'Tạo khóa mới',
+  identity_err_same: 'Đó đã là danh tính của trình duyệt này.',
+  identity_err_format: 'Đó có vẻ không phải là khóa khôi phục CumulusVPN.',
+  identity_err_checksum: 'Khóa đó có lỗi gõ. Hãy kiểm tra từng ký tự.',
+  identity_err_version:
+    'Khóa đó đến từ phiên bản CumulusVPN mới hơn. Hãy tải lại trang rồi thử lại.',
 
   upgrade_loading: 'Đang tải thông tin thanh toán…',
   upgrade_eyebrow: 'Nâng cấp · thanh toán bằng FLUX',
@@ -113,9 +133,15 @@ export const vi: Catalog = {
   upgrade_activating_hint: 'Bạn có thể đóng trang này — quá trình kích hoạt sẽ tự hoàn tất.',
   upgrade_activated_cta: 'Quay lại Kết nối →',
 
+  recovery_nudge: 'Lưu khóa khôi phục để không mất Premium nếu bạn xóa dữ liệu trình duyệt này.',
+  recovery_nudge_other:
+    'Premium thuộc về thiết bị có mã mà bạn đang thanh toán. Hãy lưu khóa khôi phục của thiết bị đó trong phần cài đặt của nó, để cài lại không làm mất Premium.',
+  recovery_nudge_dismiss: 'Để sau',
+  recovery_nudge_done: 'Xong',
+
   otherdev_eyebrow: 'Bạn đang trả cho thiết bị khác?',
   otherdev_lede:
-    'Premium gắn với khoá của một thiết bị. Để trả cho điện thoại của bạn từ đây, mở ứng dụng → Cài đặt → Giới thiệu và sao chép mã thiết bị.',
+    'Premium thuộc về khóa có mã mà bạn thanh toán. Để trả cho điện thoại của bạn từ đây, mở ứng dụng → Cài đặt → Giới thiệu và sao chép mã thiết bị.',
   otherdev_placeholder: 'Mã thiết bị',
   otherdev_apply: 'Dùng mã này',
   otherdev_paste: 'Dán',
@@ -153,7 +179,7 @@ export const vi: Catalog = {
 
   redeem_eyebrow: 'Bạn có mã?',
   redeem_lede:
-    'Đổi voucher hoặc mã khuyến mãi. Mã thời gian miễn phí được kích hoạt trên mạng Flux cho thiết bị này; mã giảm giá áp dụng cho phần thanh toán bằng thẻ ở trên.',
+    'Đổi voucher hoặc mã khuyến mãi. Mã thời gian miễn phí được kích hoạt trên mạng Flux cho khóa này; mã giảm giá áp dụng cho phần thanh toán bằng thẻ ở trên.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Đổi mã',
   redeem_cta_busy: 'Đang kiểm tra…',
@@ -162,7 +188,7 @@ export const vi: Catalog = {
   redeem_err_invalid: 'Mã đó không hợp lệ. Kiểm tra lỗi gõ phím và thử lại.',
   redeem_err_expired: 'Mã này đã hết hạn.',
   redeem_err_exhausted: 'Mã này đã được dùng hết.',
-  redeem_err_already: 'Thiết bị này đã đổi mã này rồi.',
+  redeem_err_already: 'Khóa này đã đổi mã này rồi.',
   redeem_err_later: 'Tính năng đổi mã tạm thời không khả dụng — vui lòng thử lại sau vài phút.',
 
   split_summary_title: 'Nâng cao: split tunneling',

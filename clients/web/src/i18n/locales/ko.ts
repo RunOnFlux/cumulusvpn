@@ -69,9 +69,29 @@ export const ko: Catalog = {
   connect_identity_title: '이 기기의 신원',
   connect_regenerate: '키 재생성',
   connect_identity_note:
-    '기기당 하나의 키 쌍으로 여러 게이트웨이에 등록할 수 있으며, 프리미엄은 체인을 통해 그 키가 쓰이는 모든 게이트웨이에 함께 적용됩니다. 아래 결제 코드가 FLUX 결제를 이 키와 연결해 줍니다.',
+    '프리미엄은 기기가 아니라 내 키에 속합니다. 복구 키를 저장해 두면 어떤 휴대폰, 태블릿, 컴퓨터에서도 복원할 수 있습니다. 한 번에 기기 하나에서 쓰거나, 서로 다른 국가에 연결된 기기에서 쓰는 것이 가장 좋습니다. 아래 결제 코드가 결제를 이 키에 연결합니다.',
   connect_field_public_key: 'WireGuard 공개 키',
   connect_field_payment_code: '결제 코드 (메모)',
+  identity_show_key: '복구 키 보기',
+  identity_hide_key: '복구 키 숨기기',
+  identity_key_label: '복구 키',
+  identity_key_warn:
+    '이 키를 가진 사람은 누구나 이 신원과 그 프리미엄을 얻습니다. 비공개로 보관하세요. 비밀번호 관리자에 두는 것이 좋습니다.',
+  identity_restore_open: '복구 키로 복원',
+  identity_continue: '계속',
+  identity_cancel: '취소',
+  identity_restore_confirm:
+    '이 브라우저의 신원을 {next}(으)로 바꿀까요? 현재 신원({current})에 결제된 프리미엄은 그 키에 남습니다. 프리미엄이 있다면 먼저 그 복구 키를 저장하세요.',
+  identity_restore_cta: '신원 바꾸기',
+  identity_restored: '복원했습니다. 이 신원의 프리미엄이 1분 안에 여기에 표시됩니다.',
+  identity_regen_confirm:
+    '새 키를 만들까요? 이 브라우저는 새 신원과 결제 코드를 받습니다. 현재 신원({current})에 결제된 프리미엄은 그 키에 남습니다. 프리미엄이 있다면 먼저 그 복구 키를 저장하세요.',
+  identity_regen_cta: '새 키 만들기',
+  identity_err_same: '이미 이 브라우저의 신원입니다.',
+  identity_err_format: 'CumulusVPN 복구 키가 아닌 것 같습니다.',
+  identity_err_checksum: '이 키에 오타가 있습니다. 한 글자씩 확인하세요.',
+  identity_err_version:
+    '이 키는 더 새로운 버전의 CumulusVPN에서 만든 것입니다. 페이지를 새로고침한 뒤 다시 시도하세요.',
 
   upgrade_loading: '결제 정보를 불러오는 중…',
   upgrade_eyebrow: '업그레이드 · FLUX로 결제',
@@ -111,9 +131,15 @@ export const ko: Catalog = {
   upgrade_activating_hint: '이 페이지를 닫아도 됩니다 — 활성화는 저절로 완료됩니다.',
   upgrade_activated_cta: '연결로 돌아가기 →',
 
+  recovery_nudge: '이 브라우저 데이터를 지워도 프리미엄을 잃지 않도록 복구 키를 저장하세요.',
+  recovery_nudge_other:
+    '프리미엄은 결제 중인 코드의 기기에 적용됩니다. 재설치 후에도 잃지 않도록 그 기기의 설정에서 복구 키를 저장하세요.',
+  recovery_nudge_dismiss: '나중에',
+  recovery_nudge_done: '완료',
+
   otherdev_eyebrow: '다른 기기 요금을 결제하시나요?',
   otherdev_lede:
-    '프리미엄은 기기 하나의 키에 연결됩니다. 여기서 휴대폰 요금을 결제하려면 앱을 열고 → 설정 → 정보에서 기기 코드를 복사하세요.',
+    '프리미엄은 결제한 코드에 해당하는 키에 적용됩니다. 여기서 휴대폰 요금을 결제하려면 앱을 열고 → 설정 → 정보에서 기기 코드를 복사하세요.',
   otherdev_placeholder: '기기 코드',
   otherdev_apply: '이 코드 사용',
   otherdev_paste: '붙여넣기',
@@ -149,7 +175,7 @@ export const ko: Catalog = {
 
   redeem_eyebrow: '코드가 있으신가요?',
   redeem_lede:
-    '바우처나 프로모션 코드를 사용해 보세요. 무료 이용 코드는 이 기기를 위해 Flux 네트워크에서 활성화되며, 할인 코드는 위의 카드 결제에 적용됩니다.',
+    '바우처나 프로모션 코드를 사용해 보세요. 무료 이용 코드는 이 키를 위해 Flux 네트워크에서 활성화되며, 할인 코드는 위의 카드 결제에 적용됩니다.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: '사용하기',
   redeem_cta_busy: '확인 중…',
@@ -158,7 +184,7 @@ export const ko: Catalog = {
   redeem_err_invalid: '유효하지 않은 코드입니다. 오타가 없는지 확인하고 다시 시도해 주세요.',
   redeem_err_expired: '이 코드는 만료되었습니다.',
   redeem_err_exhausted: '이 코드는 이미 모두 사용되었습니다.',
-  redeem_err_already: '이 기기에서는 이미 이 코드를 사용했습니다.',
+  redeem_err_already: '이 키로는 이미 이 코드를 사용했습니다.',
   redeem_err_later: '코드 사용이 잠시 불가능합니다 — 몇 분 후에 다시 시도해 주세요.',
 
   split_summary_title: '고급: 스플릿 터널링',

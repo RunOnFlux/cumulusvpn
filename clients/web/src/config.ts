@@ -62,6 +62,16 @@ export const PAY_PORTAL_SESSIONS_STORAGE_KEY = 'cvpn.payportal.sessions.v1';
 // the payment code stays stable across the Connect and Upgrade pages.
 export const KEYPAIR_STORAGE_KEY = 'cvpn.keypair.v1';
 
+// localStorage key for the payment code whose recovery key was last copied in
+// this browser. Once the user has it, the save-your-recovery-key nudge stops —
+// until the identity changes (a new code has a new key to save).
+export const RECOVERY_KEY_SAVED_STORAGE_KEY = 'cvpn.recovery.saved.v1';
+
+// sessionStorage key prefix for "Not now" on that nudge, one per place it
+// appears (`:upgrade`, `:confirmed`). Session-only on purpose: losing the key
+// loses paid Premium, so the reminder comes back on the next visit.
+export const RECOVERY_NUDGE_DISMISSED_SESSION_KEY = 'cvpn.recoverynudge.dismissed.v1';
+
 // localStorage key for the gateway behind the last issued .conf (ip + server
 // pubkey + country + issue time). Lets a return visit detect that the gateway
 // was replaced — the one failure a static .conf can neither survive nor report,

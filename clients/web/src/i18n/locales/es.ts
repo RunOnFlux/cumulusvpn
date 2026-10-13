@@ -70,9 +70,30 @@ export const es: Catalog = {
   connect_identity_title: 'Identidad de este dispositivo',
   connect_regenerate: 'Regenerar clave',
   connect_identity_note:
-    'Un par de claves por dispositivo se inscribe en muchos gateways; el premium sigue a la clave en todos ellos a través de la cadena. El código de pago de abajo es lo que vincula un pago en FLUX con esta clave.',
+    'Tu premium pertenece a tu clave, no a un dispositivo. Guarda tu clave de recuperación para restaurarla en cualquier teléfono, tableta u ordenador: funciona mejor en un dispositivo a la vez, o en dispositivos conectados a países distintos. El código de pago de abajo es lo que vincula un pago a esta clave.',
   connect_field_public_key: 'Clave pública WireGuard',
   connect_field_payment_code: 'Código de pago (memo)',
+  identity_show_key: 'Mostrar clave de recuperación',
+  identity_hide_key: 'Ocultar clave de recuperación',
+  identity_key_label: 'Clave de recuperación',
+  identity_key_warn:
+    'Quien tenga esta clave obtiene esta identidad y su premium. Mantenla en privado: un gestor de contraseñas es un buen lugar.',
+  identity_restore_open: 'Restaurar desde una clave de recuperación',
+  identity_continue: 'Continuar',
+  identity_cancel: 'Cancelar',
+  identity_restore_confirm:
+    '¿Reemplazar la identidad de este navegador por {next}? El premium pagado a la identidad actual ({current}) se queda con esa clave: guarda antes su clave de recuperación si tiene premium.',
+  identity_restore_cta: 'Reemplazar identidad',
+  identity_restored:
+    'Restaurada. El premium de esta identidad aparecerá aquí en menos de un minuto.',
+  identity_regen_confirm:
+    '¿Crear una clave nueva? Este navegador recibe una identidad y un código de pago nuevos. El premium pagado a la identidad actual ({current}) se queda con esa clave: guarda antes su clave de recuperación si tiene premium.',
+  identity_regen_cta: 'Crear una clave nueva',
+  identity_err_same: 'Esa ya es la identidad de este navegador.',
+  identity_err_format: 'Eso no parece una clave de recuperación de CumulusVPN.',
+  identity_err_checksum: 'Esa clave tiene un error. Revísala carácter por carácter.',
+  identity_err_version:
+    'Esa clave es de una versión más nueva de CumulusVPN. Recarga la página e inténtalo de nuevo.',
 
   upgrade_loading: 'Cargando datos de pago…',
   upgrade_eyebrow: 'Mejora · paga en FLUX',
@@ -113,9 +134,16 @@ export const es: Catalog = {
   upgrade_activating_hint: 'Puedes cerrar esta página — la activación se completa sola.',
   upgrade_activated_cta: 'Volver a Conectar →',
 
+  recovery_nudge:
+    'Guarda tu clave de recuperación para no perder el premium si borras los datos de este navegador.',
+  recovery_nudge_other:
+    'El premium va al dispositivo cuyo código estás pagando. Guarda su clave de recuperación en los ajustes de ese dispositivo, para no perderlo al reinstalar.',
+  recovery_nudge_dismiss: 'Ahora no',
+  recovery_nudge_done: 'Listo',
+
   otherdev_eyebrow: '¿Pagas por otro dispositivo?',
   otherdev_lede:
-    'El premium está ligado a la clave de un dispositivo. Para pagar por tu teléfono desde aquí, abre la app → Ajustes → Acerca de y copia su código de dispositivo.',
+    'El premium va a la clave cuyo código pagas. Para pagar por tu teléfono desde aquí, abre la app → Ajustes → Acerca de y copia su código de dispositivo.',
   otherdev_placeholder: 'Código de dispositivo',
   otherdev_apply: 'Usar este código',
   otherdev_paste: 'Pegar',
@@ -153,7 +181,7 @@ export const es: Catalog = {
 
   redeem_eyebrow: '¿Tienes un código?',
   redeem_lede:
-    'Canjea un cupón o código promocional. Los códigos de tiempo gratis se activan en la red de Flux para este dispositivo; los códigos de descuento se aplican al pago con tarjeta de arriba.',
+    'Canjea un cupón o código promocional. Los códigos de tiempo gratis se activan en la red de Flux para esta clave; los códigos de descuento se aplican al pago con tarjeta de arriba.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Canjear',
   redeem_cta_busy: 'Comprobando…',
@@ -163,7 +191,7 @@ export const es: Catalog = {
     'Ese código no es válido. Revisa que no haya errores de escritura e inténtalo de nuevo.',
   redeem_err_expired: 'Este código ha caducado.',
   redeem_err_exhausted: 'Este código ya se ha usado por completo.',
-  redeem_err_already: 'Este dispositivo ya ha canjeado este código.',
+  redeem_err_already: 'Esta clave ya ha canjeado este código.',
   redeem_err_later:
     'El canje no está disponible por un momento — inténtalo de nuevo en unos minutos.',
 

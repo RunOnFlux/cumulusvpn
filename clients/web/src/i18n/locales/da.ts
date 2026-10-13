@@ -70,9 +70,28 @@ export const da: Catalog = {
   connect_identity_title: 'Denne enheds identitet',
   connect_regenerate: 'Generér ny nøgle',
   connect_identity_note:
-    'Ét nøglepar pr. enhed tilmelder sig mange gateways; premium følger nøglen på dem alle via kæden. Betalingskoden nedenfor er det, der knytter en FLUX-betaling til denne nøgle.',
+    'Dit Premium hører til din nøgle, ikke til én enhed. Gem din gendannelsesnøgle for at gendanne den på enhver telefon, tablet eller computer — det fungerer bedst på én enhed ad gangen eller på enheder, der er forbundet til forskellige lande. Betalingskoden nedenfor er det, der knytter en betaling til denne nøgle.',
   connect_field_public_key: 'WireGuard offentlig nøgle',
   connect_field_payment_code: 'Betalingskode (besked)',
+  identity_show_key: 'Vis gendannelsesnøgle',
+  identity_hide_key: 'Skjul gendannelsesnøgle',
+  identity_key_label: 'Gendannelsesnøgle',
+  identity_key_warn:
+    'Alle med denne nøgle får denne identitet og dens Premium. Hold den privat — en adgangskodeadministrator er et godt sted.',
+  identity_restore_open: 'Gendan fra gendannelsesnøgle',
+  identity_continue: 'Fortsæt',
+  identity_cancel: 'Annuller',
+  identity_restore_confirm:
+    'Erstat denne browsers identitet med {next}? Premium betalt til den nuværende identitet ({current}) bliver hos den nøgle — gem først dens gendannelsesnøgle, hvis den har Premium.',
+  identity_restore_cta: 'Erstat identitet',
+  identity_restored: 'Gendannet. Premium for denne identitet vises her inden for et minut.',
+  identity_regen_confirm:
+    'Lav en ny nøgle? Denne browser får en ny identitet og betalingskode. Premium betalt til den nuværende identitet ({current}) bliver hos den nøgle — gem først dens gendannelsesnøgle, hvis den har Premium.',
+  identity_regen_cta: 'Lav en ny nøgle',
+  identity_err_same: 'Det er allerede denne browsers identitet.',
+  identity_err_format: 'Det ligner ikke en CumulusVPN-gendannelsesnøgle.',
+  identity_err_checksum: 'Nøglen har en tastefejl. Tjek den tegn for tegn.',
+  identity_err_version: 'Nøglen er fra en nyere CumulusVPN. Genindlæs siden, og prøv igen.',
 
   upgrade_loading: 'Indlæser betalingsoplysninger…',
   upgrade_eyebrow: 'Opgradér · betal i FLUX',
@@ -112,9 +131,16 @@ export const da: Catalog = {
   upgrade_activating_hint: 'Du kan lukke denne side — aktiveringen fuldføres af sig selv.',
   upgrade_activated_cta: 'Tilbage til Forbind →',
 
+  recovery_nudge:
+    'Gem din gendannelsesnøgle, så du ikke mister Premium, hvis du rydder denne browsers data.',
+  recovery_nudge_other:
+    'Premium går til den enhed, hvis kode du betaler for. Gem dens gendannelsesnøgle i den enheds indstillinger, så det ikke går tabt ved en geninstallation.',
+  recovery_nudge_dismiss: 'Ikke nu',
+  recovery_nudge_done: 'Færdig',
+
   otherdev_eyebrow: 'Betaler du for en anden enhed?',
   otherdev_lede:
-    'Premium er knyttet til én enheds nøgle. Vil du betale for din telefon herfra, så åbn appen → Indstillinger → Om og kopiér dens enhedskode.',
+    'Premium går til den nøgle, hvis kode du betaler for. Vil du betale for din telefon herfra, så åbn appen → Indstillinger → Om og kopiér dens enhedskode.',
   otherdev_placeholder: 'Enhedskode',
   otherdev_apply: 'Brug denne kode',
   otherdev_paste: 'Indsæt',
@@ -152,7 +178,7 @@ export const da: Catalog = {
 
   redeem_eyebrow: 'Har du en kode?',
   redeem_lede:
-    'Indløs en voucher eller rabatkode. Koder med gratis tid aktiveres på Flux-netværket for denne enhed; rabatkoder gælder for kortbetalingen ovenfor.',
+    'Indløs en voucher eller rabatkode. Koder med gratis tid aktiveres på Flux-netværket for denne nøgle; rabatkoder gælder for kortbetalingen ovenfor.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Indløs',
   redeem_cta_busy: 'Kontrollerer…',
@@ -161,7 +187,7 @@ export const da: Catalog = {
   redeem_err_invalid: 'Den kode er ikke gyldig. Tjek for tastefejl, og prøv igen.',
   redeem_err_expired: 'Denne kode er udløbet.',
   redeem_err_exhausted: 'Denne kode er allerede brugt fuldt ud.',
-  redeem_err_already: 'Denne enhed har allerede indløst denne kode.',
+  redeem_err_already: 'Denne nøgle har allerede indløst denne kode.',
   redeem_err_later: 'Indløsning er kortvarigt utilgængelig — prøv igen om et par minutter.',
 
   split_summary_title: 'Avanceret: split tunneling',

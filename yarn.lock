@@ -341,6 +341,7 @@ __metadata:
     "@cumulusvpn/core": "workspace:*"
     "@tauri-apps/api": "npm:2.12.3"
     "@tauri-apps/cli": "npm:2.12.2"
+    "@tauri-apps/plugin-opener": "npm:2.7.1"
     "@testing-library/dom": "npm:10.4.2"
     "@testing-library/jest-dom": "npm:7.0.1"
     "@testing-library/react": "npm:16.3.3"
@@ -718,7 +719,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tauri-apps/api@npm:2.12.3":
+"@tauri-apps/api@npm:2.12.3, @tauri-apps/api@npm:^2.12.0":
   version: 2.12.3
   resolution: "@tauri-apps/api@npm:2.12.3"
   checksum: 10c0/80a2fc50e39960ac0270940f73b9ba81b8bc3c1518355cdd54490d2d906f8da18da9b46d8b31b9b1cfda874c65272a56a1b536ceba0b965cc3a1e547423e82c9
@@ -843,6 +844,15 @@ __metadata:
   bin:
     tauri: tauri.js
   checksum: 10c0/39b9c09b4bd4dd4f08e2b9c4d2867f94c7d6976a5ffb29452d8745b2f722c8b88ff512b24422d54699839ee46f7e4b23571a0edf5ab1c4955c13e8d46e27a9a3
+  languageName: node
+  linkType: hard
+
+"@tauri-apps/plugin-opener@npm:2.7.1":
+  version: 2.7.1
+  resolution: "@tauri-apps/plugin-opener@npm:2.7.1"
+  dependencies:
+    "@tauri-apps/api": "npm:^2.12.0"
+  checksum: 10c0/98dd27bcd52f31fd4d4ed29952e48e4f27a94c9c003b7b895ea551b918c56ed2f8f6299b08d88d34afb07057c03101d125fed4a517b0454a75a2e4188fe3dfaf
   languageName: node
   linkType: hard
 

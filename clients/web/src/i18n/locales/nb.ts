@@ -70,9 +70,29 @@ export const nb: Catalog = {
   connect_identity_title: 'Identiteten til denne enheten',
   connect_regenerate: 'Generer ny nøkkel',
   connect_identity_note:
-    'Ett nøkkelpar per enhet melder seg på mange gatewayer; premium følger nøkkelen på alle via kjeden. Betalingskoden nedenfor er det som knytter en FLUX-betaling til denne nøkkelen.',
+    'Premium hører til nøkkelen din, ikke til én enhet. Lagre gjenopprettingsnøkkelen for å gjenopprette den på hvilken som helst telefon, nettbrett eller datamaskin — det fungerer best på én enhet om gangen, eller på enheter som er koblet til forskjellige land. Betalingskoden nedenfor er det som knytter en betaling til denne nøkkelen.',
   connect_field_public_key: 'Offentlig WireGuard-nøkkel',
   connect_field_payment_code: 'Betalingskode (notat)',
+  identity_show_key: 'Vis gjenopprettingsnøkkel',
+  identity_hide_key: 'Skjul gjenopprettingsnøkkel',
+  identity_key_label: 'Gjenopprettingsnøkkel',
+  identity_key_warn:
+    'Alle som har denne nøkkelen, får denne identiteten og Premium som hører til den. Hold den privat — en passordbehandler er et godt sted.',
+  identity_restore_open: 'Gjenopprett fra gjenopprettingsnøkkel',
+  identity_continue: 'Fortsett',
+  identity_cancel: 'Avbryt',
+  identity_restore_confirm:
+    'Erstatte identiteten til denne nettleseren med {next}? Premium betalt for den nåværende identiteten ({current}) blir værende hos den nøkkelen — lagre gjenopprettingsnøkkelen dens først hvis den har Premium.',
+  identity_restore_cta: 'Erstatt identitet',
+  identity_restored: 'Gjenopprettet. Premium for denne identiteten vises her i løpet av et minutt.',
+  identity_regen_confirm:
+    'Lage en ny nøkkel? Denne nettleseren får en ny identitet og betalingskode. Premium betalt for den nåværende identiteten ({current}) blir værende hos den nøkkelen — lagre gjenopprettingsnøkkelen dens først hvis den har Premium.',
+  identity_regen_cta: 'Lag ny nøkkel',
+  identity_err_same: 'Det er allerede identiteten til denne nettleseren.',
+  identity_err_format: 'Det ser ikke ut som en gjenopprettingsnøkkel for CumulusVPN.',
+  identity_err_checksum: 'Nøkkelen har en skrivefeil. Sjekk den tegn for tegn.',
+  identity_err_version:
+    'Nøkkelen er fra en nyere CumulusVPN. Last inn siden på nytt, og prøv igjen.',
 
   upgrade_loading: 'Laster betalingsdetaljer…',
   upgrade_eyebrow: 'Oppgrader · betal i FLUX',
@@ -112,9 +132,16 @@ export const nb: Catalog = {
   upgrade_activating_hint: 'Du kan lukke denne siden — aktiveringen fullføres av seg selv.',
   upgrade_activated_cta: 'Tilbake til Koble til →',
 
+  recovery_nudge:
+    'Lagre gjenopprettingsnøkkelen så du ikke mister Premium hvis du tømmer dataene i denne nettleseren.',
+  recovery_nudge_other:
+    'Premium går til enheten du betaler for koden til. Lagre gjenopprettingsnøkkelen dens i innstillingene på den enheten, så det ikke går tapt ved en ny installasjon.',
+  recovery_nudge_dismiss: 'Ikke nå',
+  recovery_nudge_done: 'Ferdig',
+
   otherdev_eyebrow: 'Betaler du for en annen enhet?',
   otherdev_lede:
-    'Premium er knyttet til nøkkelen til én enhet. Vil du betale for telefonen din herfra, åpne appen → Innstillinger → Om og kopier enhetskoden.',
+    'Premium går til nøkkelen du betaler for koden til. Vil du betale for telefonen din herfra, åpne appen → Innstillinger → Om og kopier enhetskoden.',
   otherdev_placeholder: 'Enhetskode',
   otherdev_apply: 'Bruk denne koden',
   otherdev_paste: 'Lim inn',
@@ -152,7 +179,7 @@ export const nb: Catalog = {
 
   redeem_eyebrow: 'Har du en kode?',
   redeem_lede:
-    'Løs inn en verdikupong eller kampanjekode. Koder for gratistid aktiveres på Flux-nettverket for denne enheten; rabattkoder gjelder kortbetalingen ovenfor.',
+    'Løs inn en verdikupong eller kampanjekode. Koder for gratistid aktiveres på Flux-nettverket for denne nøkkelen; rabattkoder gjelder kortbetalingen ovenfor.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Løs inn',
   redeem_cta_busy: 'Sjekker…',
@@ -161,7 +188,7 @@ export const nb: Catalog = {
   redeem_err_invalid: 'Den koden er ikke gyldig. Sjekk for skrivefeil og prøv igjen.',
   redeem_err_expired: 'Denne koden er utløpt.',
   redeem_err_exhausted: 'Denne koden er allerede brukt opp.',
-  redeem_err_already: 'Denne enheten har allerede løst inn denne koden.',
+  redeem_err_already: 'Denne nøkkelen har allerede løst inn denne koden.',
   redeem_err_later: 'Innløsning er midlertidig utilgjengelig — prøv igjen om noen minutter.',
 
   split_summary_title: 'Avansert: split tunneling',

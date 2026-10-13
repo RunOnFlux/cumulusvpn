@@ -435,6 +435,84 @@ button {
   color: var(--ink-3);
   font-size: 18px;
 }
+/* Device code row: the whole row copies the code. */
+.setcopy {
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+.setcopy:hover:not(:disabled) .lat {
+  color: var(--cyan);
+}
+
+/* Settings → Identity (recovery key). */
+.id-wrap {
+  gap: 10px;
+}
+.id-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.id-key {
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+  word-break: break-all;
+  user-select: text;
+  padding: 8px 10px;
+  border-radius: 9px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+}
+.id-input {
+  width: 100%;
+  resize: vertical;
+  line-height: 1.5;
+}
+.st-addbtn.id-primary {
+  border-color: color-mix(in srgb, var(--cyan) 55%, var(--line));
+  color: var(--cyan);
+  font-weight: 600;
+}
+.id-confirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* "Save your recovery key" nudge above the tier row. Calm, not a warning. */
+.nudge {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--cyan) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--cyan) 30%, transparent);
+}
+.nudge-text {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-2);
+}
+.nudge-btns {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.nudge-btn {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+}
+.nudge-btn.primary {
+  color: var(--cyan-ink);
+  background: var(--cyan);
+  border-color: transparent;
+}
 
 .session-timer {
   text-align: center;

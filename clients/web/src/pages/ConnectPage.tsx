@@ -5,7 +5,6 @@ import {
   checkIssuedConfig,
   compileSplitPolicy,
   enroll,
-  paymentMemo,
   status,
 } from '@cumulusvpn/core';
 import type { CompiledSplit, ConfHealth, EnrollResponse, Keypair } from '@cumulusvpn/core';
@@ -17,7 +16,7 @@ import { proxiedFetch } from '../lib/gatewayFetch';
 import { loadIssuedConfig, saveIssuedConfig } from '../lib/issuedConfig';
 import { loadSplitPolicy } from '../lib/splitPolicy';
 import { CountryPicker } from '../components/CountryPicker';
-import { CopyField } from '../components/CopyField';
+import { IdentityPanel } from '../components/IdentityPanel';
 import { MultihopSection } from '../components/MultihopSection';
 import { Qr } from '../components/Qr';
 import { SplitSection } from '../components/SplitSection';
@@ -25,7 +24,10 @@ import { SplitSection } from '../components/SplitSection';
 interface ConnectPageProps {
   readonly keypair: Keypair;
   readonly discovery: DiscoveryState;
+  /** True right after this identity was restored from a recovery key. */
+  readonly identityRestored: boolean;
   readonly onRegenerate: () => void;
+  readonly onRestore: (keypair: Keypair) => void;
   readonly onNavigateUpgrade: () => void;
 }
 
@@ -58,7 +60,9 @@ function formatDay(iso: string, locale: string): string {
 export function ConnectPage({
   keypair,
   discovery,
+  identityRestored,
   onRegenerate,
+  onRestore,
   onNavigateUpgrade,
 }: ConnectPageProps) {
   const { t, rich, locale } = useI18n();
@@ -112,14 +116,6 @@ export function ConnectPage({
       cancelled = true;
     };
   }, [tierGateway, keypair.publicKey]);
-
-  const memo = useMemo(() => {
-    try {
-      return paymentMemo(keypair.publicKey);
-    } catch {
-      return '';
-    }
-  }, [keypair.publicKey]);
 
   useEffect(() => {
     if (!prior) {
@@ -424,17 +420,12 @@ export function ConnectPage({
 
         <MultihopSection keypair={keypair} discovery={discovery} />
 
-        <section className="card ident">
-          <div className="card-head">
-            <h2>{t('connect_identity_title')}</h2>
-            <button type="button" className="btn ghost sm" onClick={onRegenerate}>
-              {t('connect_regenerate')}
-            </button>
-          </div>
-          <p className="muted-text">{t('connect_identity_note')}</p>
-          <CopyField label={t('connect_field_public_key')} value={keypair.publicKey} />
-          {memo ? <CopyField label={t('connect_field_payment_code')} value={memo} /> : null}
-        </section>
+        <IdentityPanel
+          keypair={keypair}
+          restored={identityRestored}
+          onRegenerate={onRegenerate}
+          onRestore={onRestore}
+        />
       </div>
     </main>
   );

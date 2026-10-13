@@ -70,9 +70,31 @@ export const de: Catalog = {
   connect_identity_title: 'Identität dieses Geräts',
   connect_regenerate: 'Schlüssel neu erzeugen',
   connect_identity_note:
-    'Ein Schlüsselpaar pro Gerät meldet sich bei vielen Gateways an; Premium folgt dem Schlüssel über die Chain auf allen davon. Der Zahlungscode unten verknüpft eine FLUX-Zahlung mit diesem Schlüssel.',
+    'Dein Premium gehört zu deinem Schlüssel, nicht zu einem Gerät. Speichere deinen Wiederherstellungsschlüssel, um ihn auf jedem Handy, Tablet oder Computer wiederherzustellen — das klappt am besten auf jeweils einem Gerät oder auf Geräten, die mit verschiedenen Ländern verbunden sind. Der Zahlungscode unten verknüpft eine Zahlung mit diesem Schlüssel.',
   connect_field_public_key: 'WireGuard-Public-Key',
   connect_field_payment_code: 'Zahlungscode (Memo)',
+  identity_show_key: 'Wiederherstellungsschlüssel anzeigen',
+  identity_hide_key: 'Wiederherstellungsschlüssel ausblenden',
+  identity_key_label: 'Wiederherstellungsschlüssel',
+  identity_key_warn:
+    'Wer diesen Schlüssel hat, bekommt diese Identität und ihr Premium. Halte ihn geheim — ein Passwortmanager ist ein guter Ort dafür.',
+  identity_restore_open: 'Aus Wiederherstellungsschlüssel wiederherstellen',
+  identity_continue: 'Weiter',
+  identity_cancel: 'Abbrechen',
+  identity_restore_confirm:
+    'Die Identität dieses Browsers durch {next} ersetzen? Premium, das für die aktuelle Identität ({current}) bezahlt wurde, bleibt bei diesem Schlüssel — speichere vorher seinen Wiederherstellungsschlüssel, falls darauf Premium ist.',
+  identity_restore_cta: 'Identität ersetzen',
+  identity_restored:
+    'Wiederhergestellt. Premium dieser Identität erscheint hier innerhalb einer Minute.',
+  identity_regen_confirm:
+    'Neuen Schlüssel erzeugen? Dieser Browser bekommt eine neue Identität und einen neuen Zahlungscode. Premium, das für die aktuelle Identität ({current}) bezahlt wurde, bleibt bei diesem Schlüssel — speichere vorher seinen Wiederherstellungsschlüssel, falls darauf Premium ist.',
+  identity_regen_cta: 'Neuen Schlüssel erzeugen',
+  identity_err_same: 'Das ist bereits die Identität dieses Browsers.',
+  identity_err_format: 'Das sieht nicht nach einem CumulusVPN-Wiederherstellungsschlüssel aus.',
+  identity_err_checksum:
+    'Dieser Schlüssel enthält einen Tippfehler. Prüfe ihn Zeichen für Zeichen.',
+  identity_err_version:
+    'Dieser Schlüssel stammt aus einer neueren CumulusVPN-Version. Lade die Seite neu und versuche es dann erneut.',
 
   upgrade_loading: 'Zahlungsdetails werden geladen…',
   upgrade_eyebrow: 'Upgrade · Zahlung in FLUX',
@@ -114,9 +136,16 @@ export const de: Catalog = {
     'Du kannst diese Seite schließen — die Aktivierung läuft von selbst weiter.',
   upgrade_activated_cta: 'Zurück zu Verbinden →',
 
+  recovery_nudge:
+    'Speichere deinen Wiederherstellungsschlüssel, damit du Premium nicht verlierst, wenn du die Daten dieses Browsers löschst.',
+  recovery_nudge_other:
+    'Premium geht an das Gerät, dessen Code du bezahlst. Speichere dessen Wiederherstellungsschlüssel in den Einstellungen dieses Geräts, damit es bei einer Neuinstallation nicht verloren geht.',
+  recovery_nudge_dismiss: 'Später',
+  recovery_nudge_done: 'Fertig',
+
   otherdev_eyebrow: 'Zahlst du für ein anderes Gerät?',
   otherdev_lede:
-    'Premium hängt am Schlüssel eines Geräts. Um von hier aus für dein Telefon zu zahlen, öffne die App → Einstellungen → Info und kopiere den Gerätecode.',
+    'Premium geht an den Schlüssel, dessen Code du bezahlst. Um von hier aus für dein Telefon zu zahlen, öffne die App → Einstellungen → Info und kopiere den Gerätecode.',
   otherdev_placeholder: 'Gerätecode',
   otherdev_apply: 'Diesen Code verwenden',
   otherdev_paste: 'Einfügen',
@@ -154,7 +183,7 @@ export const de: Catalog = {
 
   redeem_eyebrow: 'Hast du einen Code?',
   redeem_lede:
-    'Löse einen Gutschein- oder Aktionscode ein. Codes für Gratiszeit werden im Flux-Netzwerk für dieses Gerät aktiviert; Rabattcodes gelten für den Karten-Checkout oben.',
+    'Löse einen Gutschein- oder Aktionscode ein. Codes für Gratiszeit werden im Flux-Netzwerk für diesen Schlüssel aktiviert; Rabattcodes gelten für den Karten-Checkout oben.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Einlösen',
   redeem_cta_busy: 'Wird geprüft…',
@@ -163,7 +192,7 @@ export const de: Catalog = {
   redeem_err_invalid: 'Dieser Code ist nicht gültig. Prüfe auf Tippfehler und versuche es erneut.',
   redeem_err_expired: 'Dieser Code ist abgelaufen.',
   redeem_err_exhausted: 'Dieser Code wurde bereits vollständig eingelöst.',
-  redeem_err_already: 'Dieses Gerät hat diesen Code bereits eingelöst.',
+  redeem_err_already: 'Dieser Schlüssel hat diesen Code bereits eingelöst.',
   redeem_err_later:
     'Das Einlösen ist kurzzeitig nicht verfügbar — bitte versuche es in ein paar Minuten erneut.',
 

@@ -70,9 +70,29 @@ export const nl: Catalog = {
   connect_identity_title: 'Identiteit van dit apparaat',
   connect_regenerate: 'Sleutel opnieuw genereren',
   connect_identity_note:
-    'Eén sleutelpaar per apparaat schrijft zich in bij veel gateways; premium volgt de sleutel overal via de chain. De betaalcode hieronder koppelt een FLUX-betaling aan deze sleutel.',
+    'Je Premium hoort bij je sleutel, niet bij één apparaat. Bewaar je herstelsleutel om hem op elke telefoon, tablet of computer terug te zetten — dat werkt het best op één apparaat tegelijk, of op apparaten die met verschillende landen verbonden zijn. De betaalcode hieronder koppelt een betaling aan deze sleutel.',
   connect_field_public_key: 'WireGuard publieke sleutel',
   connect_field_payment_code: 'Betaalcode (memo)',
+  identity_show_key: 'Herstelsleutel tonen',
+  identity_hide_key: 'Herstelsleutel verbergen',
+  identity_key_label: 'Herstelsleutel',
+  identity_key_warn:
+    'Wie deze sleutel heeft, krijgt deze identiteit en het Premium ervan. Houd hem privé — een wachtwoordmanager is een goede plek.',
+  identity_restore_open: 'Herstellen met herstelsleutel',
+  identity_continue: 'Doorgaan',
+  identity_cancel: 'Annuleren',
+  identity_restore_confirm:
+    'De identiteit van deze browser vervangen door {next}? Premium dat voor de huidige identiteit ({current}) is betaald, blijft bij die sleutel — bewaar eerst de herstelsleutel ervan als daar Premium op staat.',
+  identity_restore_cta: 'Identiteit vervangen',
+  identity_restored: 'Hersteld. Premium van deze identiteit verschijnt hier binnen een minuut.',
+  identity_regen_confirm:
+    'Een nieuwe sleutel maken? Deze browser krijgt een nieuwe identiteit en betaalcode. Premium dat voor de huidige identiteit ({current}) is betaald, blijft bij die sleutel — bewaar eerst de herstelsleutel ervan als daar Premium op staat.',
+  identity_regen_cta: 'Nieuwe sleutel maken',
+  identity_err_same: 'Dat is al de identiteit van deze browser.',
+  identity_err_format: 'Dat lijkt geen CumulusVPN-herstelsleutel.',
+  identity_err_checksum: 'Die sleutel bevat een typefout. Controleer hem teken voor teken.',
+  identity_err_version:
+    'Die sleutel komt van een nieuwere CumulusVPN. Laad de pagina opnieuw en probeer het dan nog eens.',
 
   upgrade_loading: 'Betaalgegevens worden geladen…',
   upgrade_eyebrow: 'Upgrade · betaal in FLUX',
@@ -113,9 +133,16 @@ export const nl: Catalog = {
   upgrade_activating_hint: 'Je kunt deze pagina sluiten — de activering wordt vanzelf afgerond.',
   upgrade_activated_cta: 'Terug naar Verbinden →',
 
+  recovery_nudge:
+    'Bewaar je herstelsleutel, zodat je Premium niet kwijtraakt als je de gegevens van deze browser wist.',
+  recovery_nudge_other:
+    'Premium gaat naar het apparaat waarvan je de code betaalt. Bewaar de herstelsleutel ervan via de instellingen van dat apparaat, zodat je het bij een herinstallatie niet kwijtraakt.',
+  recovery_nudge_dismiss: 'Niet nu',
+  recovery_nudge_done: 'Klaar',
+
   otherdev_eyebrow: 'Betaal je voor een ander apparaat?',
   otherdev_lede:
-    'Premium hangt aan de sleutel van één apparaat. Wil je hier voor je telefoon betalen, open dan de app → Instellingen → Over en kopieer de apparaatcode.',
+    'Premium gaat naar de sleutel waarvan je de code betaalt. Wil je hier voor je telefoon betalen, open dan de app → Instellingen → Over en kopieer de apparaatcode.',
   otherdev_placeholder: 'Apparaatcode',
   otherdev_apply: 'Deze code gebruiken',
   otherdev_paste: 'Plakken',
@@ -153,7 +180,7 @@ export const nl: Catalog = {
 
   redeem_eyebrow: 'Heb je een code?',
   redeem_lede:
-    'Wissel een voucher of promocode in. Codes voor gratis tijd worden op het Flux-netwerk geactiveerd voor dit apparaat; kortingscodes gelden voor de kaartcheckout hierboven.',
+    'Wissel een voucher of promocode in. Codes voor gratis tijd worden op het Flux-netwerk geactiveerd voor deze sleutel; kortingscodes gelden voor de kaartcheckout hierboven.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Inwisselen',
   redeem_cta_busy: 'Controleren…',
@@ -162,7 +189,7 @@ export const nl: Catalog = {
   redeem_err_invalid: 'Die code is niet geldig. Controleer op typefouten en probeer het opnieuw.',
   redeem_err_expired: 'Deze code is verlopen.',
   redeem_err_exhausted: 'Deze code is al volledig gebruikt.',
-  redeem_err_already: 'Dit apparaat heeft deze code al ingewisseld.',
+  redeem_err_already: 'Deze sleutel heeft deze code al ingewisseld.',
   redeem_err_later:
     'Inwisselen is even niet beschikbaar — probeer het over een paar minuten opnieuw.',
 

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { KEYPAIR_STORAGE_KEY } from '../config';
-import { loadOrCreateKeypair, regenerateKeypair } from './keypair';
+import { loadOrCreateKeypair, regenerateKeypair, saveKeypair } from './keypair';
 
 beforeEach(() => {
   localStorage.clear();
@@ -53,5 +53,17 @@ describe('loadOrCreateKeypair', () => {
     localStorage.setItem(KEYPAIR_STORAGE_KEY, JSON.stringify({ publicKey: 'x' }));
     const kp = loadOrCreateKeypair();
     expect(isBase64Key(kp.privateKey)).toBe(true);
+  });
+});
+
+describe('saveKeypair', () => {
+  // A restored identity must survive a reload, or the restore silently undoes
+  // itself and the next payment lands on a key nobody kept.
+  it('persists the given keypair as the one loaded next time', () => {
+    loadOrCreateKeypair();
+    const restored = regenerateKeypair();
+    localStorage.clear();
+    saveKeypair(restored);
+    expect(loadOrCreateKeypair()).toEqual(restored);
   });
 });

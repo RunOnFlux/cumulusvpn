@@ -70,9 +70,31 @@ export const sw: Catalog = {
   connect_identity_title: 'Utambulisho wa kifaa hiki',
   connect_regenerate: 'Tengeneza upya ufunguo',
   connect_identity_note:
-    'Jozi moja ya funguo kwa kila kifaa husajili kwenye malango mengi; huduma ya premium hufuata ufunguo kwenye yote kupitia mnyororo. Msimbo wa malipo ulio hapa chini ndio unaounganisha malipo ya FLUX na ufunguo huu.',
+    'Premium yako ni ya ufunguo wako, si ya kifaa kimoja. Hifadhi ufunguo wako wa kurejesha ili uurejeshe kwenye simu, kompyuta kibao au kompyuta yoyote — hufanya kazi vizuri zaidi kwenye kifaa kimoja kwa wakati mmoja, au kwenye vifaa vilivyounganishwa na nchi tofauti. Msimbo wa malipo ulio hapa chini ndio unaounganisha malipo na ufunguo huu.',
   connect_field_public_key: 'Ufunguo wa umma wa WireGuard',
   connect_field_payment_code: 'Msimbo wa malipo (ujumbe)',
+  identity_show_key: 'Onyesha ufunguo wa kurejesha',
+  identity_hide_key: 'Ficha ufunguo wa kurejesha',
+  identity_key_label: 'Ufunguo wa kurejesha',
+  identity_key_warn:
+    'Yeyote mwenye ufunguo huu anapata utambulisho huu na Premium yake. Uweke siri — kidhibiti cha manenosiri ni mahali pazuri.',
+  identity_restore_open: 'Rejesha kwa ufunguo wa kurejesha',
+  identity_continue: 'Endelea',
+  identity_cancel: 'Ghairi',
+  identity_restore_confirm:
+    'Ungependa kubadilisha utambulisho wa kivinjari hiki kuwa {next}? Premium iliyolipiwa utambulisho wa sasa ({current}) inabaki na ufunguo huo — hifadhi kwanza ufunguo wake wa kurejesha ikiwa una Premium.',
+  identity_restore_cta: 'Badilisha utambulisho',
+  identity_restored:
+    'Imerejeshwa. Premium ya utambulisho huu itaonekana hapa ndani ya dakika moja.',
+  identity_regen_confirm:
+    'Ungependa kutengeneza ufunguo mpya? Kivinjari hiki kitapata utambulisho mpya na msimbo mpya wa malipo. Premium iliyolipiwa utambulisho wa sasa ({current}) inabaki na ufunguo huo — hifadhi kwanza ufunguo wake wa kurejesha ikiwa una Premium.',
+  identity_regen_cta: 'Tengeneza ufunguo mpya',
+  identity_err_same: 'Huo tayari ni utambulisho wa kivinjari hiki.',
+  identity_err_format: 'Huo hauonekani kama ufunguo wa kurejesha wa CumulusVPN.',
+  identity_err_checksum:
+    'Ufunguo huo una kosa la uandishi. Uangalie herufi moja baada ya nyingine.',
+  identity_err_version:
+    'Ufunguo huo ni wa toleo jipya zaidi la CumulusVPN. Pakia upya ukurasa, kisha ujaribu tena.',
 
   upgrade_loading: 'Inapakia maelezo ya malipo…',
   upgrade_eyebrow: 'Boresha · lipa kwa FLUX',
@@ -113,9 +135,16 @@ export const sw: Catalog = {
   upgrade_activating_hint: 'Unaweza kufunga ukurasa huu — uwashaji utakamilika wenyewe.',
   upgrade_activated_cta: 'Rudi kwenye Unganisha →',
 
+  recovery_nudge:
+    'Hifadhi ufunguo wako wa kurejesha ili usipoteze Premium ukifuta data ya kivinjari hiki.',
+  recovery_nudge_other:
+    'Premium huenda kwa kifaa ambacho unalipia msimbo wake. Hifadhi ufunguo wake wa kurejesha kwenye mipangilio ya kifaa hicho, ili usiipoteze ukisakinisha upya.',
+  recovery_nudge_dismiss: 'Si sasa',
+  recovery_nudge_done: 'Nimemaliza',
+
   otherdev_eyebrow: 'Unalipia kifaa kingine?',
   otherdev_lede:
-    'Premium imefungwa kwenye ufunguo wa kifaa kimoja. Ili kulipia simu yako kutoka hapa, fungua programu → Mipangilio → Kuhusu na unakili msimbo wa kifaa.',
+    'Premium huenda kwa ufunguo ambao unalipia msimbo wake. Ili kulipia simu yako kutoka hapa, fungua programu → Mipangilio → Kuhusu na unakili msimbo wa kifaa.',
   otherdev_placeholder: 'Msimbo wa kifaa',
   otherdev_apply: 'Tumia msimbo huu',
   otherdev_paste: 'Bandika',
@@ -154,7 +183,7 @@ export const sw: Catalog = {
 
   redeem_eyebrow: 'Una msimbo?',
   redeem_lede:
-    'Tumia vocha au msimbo wa ofa. Misimbo ya muda wa bure inawashwa kwenye mtandao wa Flux kwa kifaa hiki; misimbo ya punguzo inatumika kwenye malipo ya kadi hapo juu.',
+    'Tumia vocha au msimbo wa ofa. Misimbo ya muda wa bure inawashwa kwenye mtandao wa Flux kwa ufunguo huu; misimbo ya punguzo inatumika kwenye malipo ya kadi hapo juu.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Tumia msimbo',
   redeem_cta_busy: 'Inakagua…',
@@ -163,7 +192,7 @@ export const sw: Catalog = {
   redeem_err_invalid: 'Msimbo huo si sahihi. Angalia makosa ya uandishi kisha ujaribu tena.',
   redeem_err_expired: 'Msimbo huu umekwisha muda wake.',
   redeem_err_exhausted: 'Msimbo huu tayari umetumika wote.',
-  redeem_err_already: 'Kifaa hiki tayari kimetumia msimbo huu.',
+  redeem_err_already: 'Ufunguo huu tayari umetumia msimbo huu.',
   redeem_err_later:
     'Utumiaji wa misimbo haupatikani kwa sasa — jaribu tena baada ya dakika chache.',
 

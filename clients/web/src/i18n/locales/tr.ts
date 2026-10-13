@@ -70,9 +70,29 @@ export const tr: Catalog = {
   connect_identity_title: 'Bu cihazın kimliği',
   connect_regenerate: 'Anahtarı yeniden oluştur',
   connect_identity_note:
-    'Cihaz başına bir anahtar çifti birçok gateway’e kaydolur; premium, chain üzerinden anahtarı hepsinde takip eder. Aşağıdaki ödeme kodu, bir FLUX ödemesini bu anahtara bağlar.',
+    'Premium’un tek bir cihaza değil, anahtarına aittir. Kurtarma anahtarını kaydet; böylece onu herhangi bir telefona, tablete veya bilgisayara geri yükleyebilirsin — en iyi aynı anda tek bir cihazda ya da farklı ülkelere bağlı cihazlarda çalışır. Aşağıdaki ödeme kodu, bir ödemeyi bu anahtara bağlar.',
   connect_field_public_key: 'WireGuard açık anahtarı',
   connect_field_payment_code: 'Ödeme kodu (not)',
+  identity_show_key: 'Kurtarma anahtarını göster',
+  identity_hide_key: 'Kurtarma anahtarını gizle',
+  identity_key_label: 'Kurtarma anahtarı',
+  identity_key_warn:
+    'Bu anahtara sahip olan herkes bu kimliği ve Premium’unu alır. Gizli tut — bir parola yöneticisi bunun için iyi bir yerdir.',
+  identity_restore_open: 'Kurtarma anahtarından geri yükle',
+  identity_continue: 'Devam',
+  identity_cancel: 'Vazgeç',
+  identity_restore_confirm:
+    'Bu tarayıcının kimliği {next} ile değiştirilsin mi? Mevcut kimlik ({current}) için ödenen Premium o anahtarda kalır — Premium’u varsa önce onun kurtarma anahtarını kaydet.',
+  identity_restore_cta: 'Kimliği değiştir',
+  identity_restored: 'Geri yüklendi. Bu kimliğin Premium’u bir dakika içinde burada görünür.',
+  identity_regen_confirm:
+    'Yeni bir anahtar oluşturulsun mu? Bu tarayıcı yeni bir kimlik ve ödeme kodu alır. Mevcut kimlik ({current}) için ödenen Premium o anahtarda kalır — Premium’u varsa önce onun kurtarma anahtarını kaydet.',
+  identity_regen_cta: 'Yeni anahtar oluştur',
+  identity_err_same: 'Bu zaten bu tarayıcının kimliği.',
+  identity_err_format: 'Bu bir CumulusVPN kurtarma anahtarına benzemiyor.',
+  identity_err_checksum: 'Bu anahtarda bir yazım hatası var. Karakter karakter kontrol et.',
+  identity_err_version:
+    'Bu anahtar daha yeni bir CumulusVPN sürümünden. Sayfayı yenile ve tekrar dene.',
 
   upgrade_loading: 'Ödeme bilgileri yükleniyor…',
   upgrade_eyebrow: 'Yükseltme · FLUX ile öde',
@@ -112,9 +132,16 @@ export const tr: Catalog = {
   upgrade_activating_hint: 'Bu sayfayı kapatabilirsin — etkinleştirme kendi kendine tamamlanır.',
   upgrade_activated_cta: 'Bağlan’a dön →',
 
+  recovery_nudge:
+    'Bu tarayıcının verilerini silersen Premium’u kaybetmemek için kurtarma anahtarını kaydet.',
+  recovery_nudge_other:
+    'Premium, kodunu ödediğin cihaza gider. Yeniden kurulumda kaybetmemek için o cihazın kurtarma anahtarını ayarlarından kaydet.',
+  recovery_nudge_dismiss: 'Şimdi değil',
+  recovery_nudge_done: 'Tamam',
+
   otherdev_eyebrow: 'Başka bir cihaz için mi ödüyorsun?',
   otherdev_lede:
-    'Premium tek bir cihazın anahtarına bağlıdır. Telefonun için buradan ödeme yapmak istersen uygulamayı aç → Ayarlar → Hakkında ve cihaz kodunu kopyala.',
+    'Premium, kodunu ödediğin anahtara gider. Telefonun için buradan ödeme yapmak istersen uygulamayı aç → Ayarlar → Hakkında ve cihaz kodunu kopyala.',
   otherdev_placeholder: 'Cihaz kodu',
   otherdev_apply: 'Bu kodu kullan',
   otherdev_paste: 'Yapıştır',
@@ -152,7 +179,7 @@ export const tr: Catalog = {
 
   redeem_eyebrow: 'Kodun mu var?',
   redeem_lede:
-    'Bir hediye kodu ya da promosyon kodu kullan. Ücretsiz süre kodları bu cihaz için Flux ağında etkinleştirilir; indirim kodları yukarıdaki kartla ödemeye uygulanır.',
+    'Bir hediye kodu ya da promosyon kodu kullan. Ücretsiz süre kodları bu anahtar için Flux ağında etkinleştirilir; indirim kodları yukarıdaki kartla ödemeye uygulanır.',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: 'Kodu kullan',
   redeem_cta_busy: 'Kontrol ediliyor…',
@@ -162,7 +189,7 @@ export const tr: Catalog = {
     'Bu kod geçerli değil. Yazım hatası olup olmadığını kontrol edip tekrar dene.',
   redeem_err_expired: 'Bu kodun süresi dolmuş.',
   redeem_err_exhausted: 'Bu kod zaten tamamen kullanılmış.',
-  redeem_err_already: 'Bu cihaz bu kodu zaten kullandı.',
+  redeem_err_already: 'Bu anahtar bu kodu zaten kullandı.',
   redeem_err_later:
     'Kod kullanımı kısa süreliğine kullanılamıyor — lütfen birkaç dakika sonra tekrar dene.',
 

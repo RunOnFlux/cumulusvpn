@@ -69,9 +69,28 @@ export const zh: Catalog = {
   connect_identity_title: '此设备的身份',
   connect_regenerate: '重新生成密钥',
   connect_identity_note:
-    '每台设备一个密钥对可在多个网关注册；高级权限通过区块链跟随该密钥在所有网关生效。下方的付款代码就是把 FLUX 付款与此密钥绑定的凭证。',
+    '你的高级权限属于你的密钥，而不是某一台设备。保存你的恢复密钥，即可在任意手机、平板或电脑上恢复它——最好一次只在一台设备上使用，或在连接到不同国家的设备上使用。下方的付款码就是将付款与此密钥关联起来的凭据。',
   connect_field_public_key: 'WireGuard 公钥',
   connect_field_payment_code: '付款代码（备注）',
+  identity_show_key: '显示恢复密钥',
+  identity_hide_key: '隐藏恢复密钥',
+  identity_key_label: '恢复密钥',
+  identity_key_warn:
+    '任何拥有此密钥的人都会获得此身份及其高级权限。请妥善保密——密码管理器是不错的存放之处。',
+  identity_restore_open: '通过恢复密钥恢复',
+  identity_continue: '继续',
+  identity_cancel: '取消',
+  identity_restore_confirm:
+    '要将此浏览器的身份替换为 {next} 吗？为当前身份（{current}）支付的高级权限会留在那个密钥上——如有，请先保存它的恢复密钥。',
+  identity_restore_cta: '替换身份',
+  identity_restored: '已恢复。此身份的高级权限会在一分钟内显示在这里。',
+  identity_regen_confirm:
+    '要生成新密钥吗？此浏览器将获得新的身份和付款码。为当前身份（{current}）支付的高级权限会留在那个密钥上——如有，请先保存它的恢复密钥。',
+  identity_regen_cta: '生成新密钥',
+  identity_err_same: '这已经是此浏览器的身份。',
+  identity_err_format: '这看起来不像 CumulusVPN 恢复密钥。',
+  identity_err_checksum: '该密钥有输入错误。请逐个字符检查。',
+  identity_err_version: '该密钥来自更新版本的 CumulusVPN。请重新加载页面后再试。',
 
   upgrade_loading: '正在加载付款信息…',
   upgrade_eyebrow: '升级 · 使用 FLUX 付款',
@@ -111,9 +130,15 @@ export const zh: Catalog = {
   upgrade_activating_hint: '你可以关闭此页面——激活会自行完成。',
   upgrade_activated_cta: '返回连接 →',
 
+  recovery_nudge: '保存你的恢复密钥，这样即使清除此浏览器的数据，也不会失去高级权限。',
+  recovery_nudge_other:
+    '高级权限归属于你正在为其付款的设备。请在那台设备的设置中保存它的恢复密钥，以免重装后丢失。',
+  recovery_nudge_dismiss: '以后再说',
+  recovery_nudge_done: '完成',
+
   otherdev_eyebrow: '为其他设备付款？',
   otherdev_lede:
-    '高级权限绑定到单台设备的密钥。若要在此为你的手机付款，请打开应用 → 设置 → 关于，复制其设备码。',
+    '高级权限归属于你所付款的码对应的密钥。若要在此为你的手机付款，请打开应用 → 设置 → 关于，复制其设备码。',
   otherdev_placeholder: '设备码',
   otherdev_apply: '使用此代码',
   otherdev_paste: '粘贴',
@@ -147,7 +172,7 @@ export const zh: Catalog = {
 
   redeem_eyebrow: '有兑换码？',
   redeem_lede:
-    '兑换代金券或优惠码。免费时长码会在 Flux 网络上为此设备激活；折扣码适用于上方的银行卡结账。',
+    '兑换代金券或优惠码。免费时长码会在 Flux 网络上为此密钥激活；折扣码适用于上方的银行卡结账。',
   redeem_placeholder: 'CVPN-XXXXX-XXXXX',
   redeem_cta: '兑换',
   redeem_cta_busy: '正在检查…',
@@ -155,7 +180,7 @@ export const zh: Catalog = {
   redeem_err_invalid: '该兑换码无效。请检查是否有输入错误后重试。',
   redeem_err_expired: '此兑换码已过期。',
   redeem_err_exhausted: '此兑换码已被用完。',
-  redeem_err_already: '此设备已兑换过此码。',
+  redeem_err_already: '此密钥已兑换过此码。',
   redeem_err_later: '兑换功能暂时不可用——请几分钟后重试。',
 
   split_summary_title: '高级：分流隧道',
