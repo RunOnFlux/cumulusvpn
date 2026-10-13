@@ -1,0 +1,77 @@
+# Daily: is every registered gateway app paid up and placed somewhere?
+# Opens (or refreshes) a `fleet-alert` issue while deploy/scripts/expiry-watch.mjs
+# exits 1, closes it once it exits 0, and leaves it alone on 3 (inconclusive) —
+# a Flux API outage must neither page anyone nor mark a live alert as resolved.
+# Same contract as price-watch.yml.
+name: expiry-watch
+
+on:
+  schedule:
+    - cron: '41 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: expiry-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    name: Gateway subscriptions paid up and running
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: deploy
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Node
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install
+        run: yarn install
+
+      - name: Check expiry and placement
+        id: watch
+        run: |
+          set +e
+          node scripts/expiry-watch.mjs --report "$RUNNER_TEMP/expiry-watch.md"
+          echo "code=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Inconclusive run
+        if: steps.watch.outputs.code != '0' && steps.watch.outputs.code != '1'
+        run: echo "::warning::expiry-watch could not check everything this run (code ${{ steps.watch.outputs.code }}); the alert issue is left as it was"
+
+      - name: Open or refresh the fleet alert
+        if: steps.watch.outputs.code == '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create fleet-alert --color B60205 --description "Gateway app not auto-renewed or not running" --force
+          open=$(gh issue list --label fleet-alert --state open --json number --jq '.[0].number // empty')
+          if [ -n "$open" ]; then
+            gh issue edit "$open" --body-file "$RUNNER_TEMP/expiry-watch.md"
+          else
+            gh issue create --title "Gateway fleet needs attention" --label fleet-alert --body-file "$RUNNER_TEMP/expiry-watch.md"
+          fi
+
+      - name: Close a resolved fleet alert
+        if: steps.watch.outputs.code == '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # No label yet (never alerted) is not an error worth a red run.
+          open=$(gh issue list --label fleet-alert --state open --json number --jq '.[].number' 2>/dev/null || true)
+          for n in $open; do
+            gh issue close "$n" --comment "Fleet healthy again: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          done
