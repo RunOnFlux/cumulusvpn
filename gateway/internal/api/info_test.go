@@ -7,9 +7,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/runonflux/cumulusvpn-gateway/internal/config"
+	"github.com/runonflux/cumulusvpn-gateway/internal/dnsproxy"
 	"github.com/runonflux/cumulusvpn-gateway/internal/limiter"
 	"github.com/runonflux/cumulusvpn-gateway/internal/wg"
 )
@@ -126,5 +128,43 @@ func TestInfoAdvertisesObfsTransport(t *testing.T) {
 	}
 	if awg.Params["jc"] == "" || awg.Params["h1"] == "" {
 		t.Fatalf("awg transport missing obfuscation params: %v", awg.Params)
+	}
+}
+
+// TestInfoReportsDNSMode pins the /v1/info `dns` object: "doh" with the proxy's
+// counters when gateway-side encrypted DNS is on, "plain" (no counters) when
+// CVPN_DNS_DOH=false left it unset — so the fleet's DNS posture is auditable
+// from outside.
+func TestInfoReportsDNSMode(t *testing.T) {
+	dev, err := wg.New(0, t.TempDir()+"/srv.key")
+	if err != nil {
+		t.Fatalf("wg.New: %v", err)
+	}
+	defer dev.Close()
+	cfg := &config.Config{MaxPeersTotal: 2000, CapacityMbps: 1000}
+
+	for _, tc := range []struct {
+		name  string
+		proxy *dnsproxy.Proxy
+		want  string
+	}{
+		{"doh", dnsproxy.New(dnsproxy.Options{}), `"dns":{"mode":"doh","encrypted":0,"fallbacks":0,"failed":0}`},
+		{"plain", nil, `"dns":{"mode":"plain"}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			srv := New(cfg, dev, nil, limiter.New(100, 50), Info{Country: "DE"}, "203.0.113.1")
+			srv.SetDNS(tc.proxy)
+			ts := httptest.NewServer(srv.Handler())
+			defer ts.Close()
+			resp, err := http.Get(ts.URL + "/v1/info")
+			if err != nil {
+				t.Fatalf("GET /v1/info: %v", err)
+			}
+			defer resp.Body.Close()
+			body, _ := io.ReadAll(resp.Body)
+			if !strings.Contains(string(body), tc.want) {
+				t.Fatalf("/v1/info = %s\nwant it to contain %s", body, tc.want)
+			}
+		})
 	}
 }

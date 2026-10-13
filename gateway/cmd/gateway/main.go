@@ -17,6 +17,7 @@ import (
 
 	"github.com/runonflux/cumulusvpn-gateway/internal/api"
 	"github.com/runonflux/cumulusvpn-gateway/internal/config"
+	"github.com/runonflux/cumulusvpn-gateway/internal/dnsproxy"
 	"github.com/runonflux/cumulusvpn-gateway/internal/entitle"
 	"github.com/runonflux/cumulusvpn-gateway/internal/fluxnode"
 	"github.com/runonflux/cumulusvpn-gateway/internal/geoip"
@@ -103,13 +104,21 @@ func run() error {
 	// --- rate limiter ---
 	lim := limiter.New(cfg.FreeRateKBps, cfg.PremiumRateMbps)
 
+	// --- encrypted DNS: one proxy shared by every forwarder (docs/03 "DNS") ---
+	var dns *dnsproxy.Proxy
+	if cfg.DNSDoH {
+		dns = dnsproxy.New(dnsproxy.Options{})
+	}
+
 	// --- exit forwarder (the crux) ---
 	fwd := wg.NewForwarder(dev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
 	fwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
+	fwd.SetDNS(dns)
 	if err := fwd.Start(); err != nil {
 		return err
 	}
-	log.Printf("gateway: forwarder started (allowlist=%v fleet_allow=%v)", cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
+	log.Printf("gateway: forwarder started (allowlist=%v fleet_allow=%v dns_doh=%v)",
+		cfg.EgressAllowPorts, cfg.GatewayFleetAllow, cfg.DNSDoH)
 
 	// --- obfuscated (AmneziaWG) listener: additive, env-gated (docs/15) ---
 	// Same server identity as vanilla (one enrollment serves both) on the UDP
@@ -124,6 +133,7 @@ func run() error {
 		defer obfsDev.Close()
 		obfsFwd := wg.NewForwarder(obfsDev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
 		obfsFwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
+		obfsFwd.SetDNS(dns)
 		if err := obfsFwd.Start(); err != nil {
 			return err
 		}
@@ -174,6 +184,7 @@ func run() error {
 			// limiter so per-peer rate limits stay global across transports.
 			tlsFwd := wg.NewForwarder(tlsDev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
 			tlsFwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
+			tlsFwd.SetDNS(dns)
 			if err := tlsFwd.Start(); err != nil {
 				return err
 			}
@@ -271,6 +282,7 @@ func run() error {
 
 	// --- control API ---
 	srv := api.New(cfg, dev, ent, lim, info, nodePublicIP, obfsTransports...)
+	srv.SetDNS(dns)
 	go srv.SampleLoad(ctx) // live throughput → real /v1/info load
 	go srv.GC(ctx)         // bound the enroll-rate-limit + PoW-replay maps
 

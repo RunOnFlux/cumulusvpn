@@ -95,7 +95,8 @@ Response `data`:
   "build_commit": "<full git sha, optional>",
   "peers_persisted": true,
   "server_pubkey": "<wg pub base64>", "sign_pubkey": "<ed25519 pub base64>",
-  "transports": [{ "type": "wg", "port": 51820 }]
+  "transports": [{ "type": "wg", "port": 51820 }],
+  "dns": { "mode": "doh", "encrypted": 1042, "fallbacks": 0, "failed": 0 }
 }
 ```
 
@@ -117,6 +118,13 @@ registers is lost at the next restart. Nothing else distinguishes such a node fr
 outside: it keeps enrolling clients and advertising capacity. It matters most for a
 statically-issued `.conf`, which cannot re-enroll. **Absent** on gateways older than the
 persistence release — treat missing as *unknown*, never as `false`.
+
+**`dns`** (gateway 0.4.2+) — how this gateway handles its peers' DNS (docs/03-gateway.md "DNS").
+`mode: "doh"`: lookups to known public resolvers are answered by the gateway and sent on as DNS
+over HTTPS; `encrypted` / `fallbacks` / `failed` are lifetime lookup counts (no content is kept),
+and `fallbacks` climbing against `encrypted` means DoH is failing from this node and lookups are
+going out as plain DNS. `mode: "plain"`: relayed as ordinary DNS (`CVPN_DNS_DOH=false`), no
+counters. **Absent** on older gateways, which relay DNS in plain text.
 
 **Reserved param — `params.tier`.** `"premium"` marks a transport as entitled-users-only
 (the scarce 443 stealth tier). `/v1/info` is unauthenticated, so the gateway advertises
