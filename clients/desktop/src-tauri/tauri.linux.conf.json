@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "build": {
+    "beforeBuildCommand": "yarn build && node scripts/build-helper.mjs"
+  },
+  "bundle": {
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/bin/cumulusvpn-helper": "helper/build/cumulusvpn-helper",
+          "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service"
+        },
+        "postInstallScript": "linux/deb-postinst.sh",
+        "preRemoveScript": "linux/deb-prerm.sh",
+        "postRemoveScript": "linux/deb-postrm.sh"
+      },
+      "rpm": {
+        "files": {
+          "/usr/bin/cumulusvpn-helper": "helper/build/cumulusvpn-helper",
+          "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service"
+        },
+        "postInstallScript": "linux/rpm-post.sh",
+        "preRemoveScript": "linux/rpm-preun.sh",
+        "postRemoveScript": "linux/rpm-postun.sh"
+      }
+    }
+  }
+}

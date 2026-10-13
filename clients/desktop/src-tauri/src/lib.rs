@@ -4,25 +4,26 @@
 //! the payment page), the managed [`TunnelBackend`] state, and the `connect` /
 //! `disconnect` / `status` commands.
 //!
-//! **Where the tunnel runs depends on the OS** (see [`backend`]):
+//! **Where the tunnel runs** (see [`backend`]): normally in the privileged
+//! `cumulusvpn-helper` daemon, and this process has no privileges at all — on
+//! macOS a LaunchDaemon the user approves once in System Settings, on Linux a
+//! systemd service and on Windows a LocalSystem service, both installed by the
+//! packages. Everything here goes over local IPC to it. Roam repair and the
+//! dead-tunnel watchdog run in the daemon's own loop, so the tunnel recovers
+//! even with the app quit or killed.
 //!
-//! * **macOS**: this process has no privileges. The tunnel, the routing table
-//!   and the kill switch belong to the `cumulusvpn-helper` daemon, and
-//!   everything here goes over a socket to it. That is what removes the `sudo`
-//!   requirement: the user approves the helper once, in System Settings. Roam
-//!   repair and the dead-tunnel watchdog run in the daemon's own loop, so the
-//!   tunnel recovers even with the app quit.
-//! * **Linux and Windows**: the tunnel runs in this process, which must be
-//!   elevated, as it always has. Roam repair and the watchdog run on a thread
-//!   here, so they keep working while the window is hidden in the tray, but
-//!   not once the app has quit (quitting disconnects).
+//! The exception is an elevated app with no daemon to talk to (macOS run as
+//! root; a Linux AppImage or a Windows build without its service, run as root /
+//! Administrator): the tunnel then runs in this process, as it did before the
+//! daemon existed, with the same repair loop on a thread here.
 
 mod backend;
 mod commands;
-#[cfg(target_os = "macos")]
 mod helper_client;
 #[cfg(target_os = "macos")]
 mod helper_install;
+#[cfg(not(target_os = "macos"))]
+mod platform;
 
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -44,19 +45,19 @@ fn show_main_window(handle: &AppHandle) {
 ///
 /// Quitting the app is not the same as wanting your traffic unprotected, but it
 /// is the same as wanting your machine usable: leaving the kill switch engaged
-/// with no UI to clear it strands the user offline. On macOS the helper
-/// outlives us and would happily keep the tunnel up, so say so explicitly. On
-/// Linux and Windows the tunnel is ours, and this is what lifts the kill switch
-/// and removes the routes before the process goes.
+/// with no UI to clear it strands the user offline. The helper daemon outlives
+/// us and would happily keep the tunnel up, so say so explicitly. In the
+/// in-process fallback the tunnel is ours, and this is what lifts the kill
+/// switch and removes the routes before the process goes.
 ///
 /// Only when something is up, though: a quit with no tunnel must not touch the
 /// firewall (see [`TunnelBackend::disconnect_if_active`]).
 ///
-/// This is best-effort — a SIGKILL runs nothing. On macOS that case is the
-/// helper's to handle, and as a daemon it genuinely can: it sees the socket
-/// close and can decide for itself (see the H14 gap in docs/16). On Linux and
-/// Windows a killed app leaves the kill switch engaged (fail-closed) until the
-/// next connect or disconnect.
+/// This is best-effort — a SIGKILL or `taskkill /F` runs nothing. With the
+/// helper that is fine by design: the daemon keeps the tunnel and its repair
+/// loop running, and the relaunched app reattaches to the live session (rows
+/// H14 / H14L in docs/16). Only the in-process fallback strands the kill switch
+/// (fail-closed) until the app is relaunched, whose startup recovery lifts it.
 fn shutdown(handle: &AppHandle) {
     handle.state::<TunnelBackend>().disconnect_if_active();
 }
@@ -149,9 +150,9 @@ pub fn run() {
             if let WindowEvent::CloseRequested { api, .. } = event {
                 // Close to tray. A VPN client that quits when you click the red
                 // dot is a VPN client that silently drops your tunnel: quitting
-                // disconnects (see `shutdown`), and on Linux/Windows the tunnel
-                // and its repair loop live in this process. Quit is an explicit
-                // tray action.
+                // disconnects (see `shutdown`), and in the in-process fallback
+                // the tunnel and its repair loop live in this process. Quit is
+                // an explicit tray action.
                 api.prevent_close();
                 let _ = window.hide();
             }

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CumulusVPN MSI fragment (bundle > windows > wix > fragmentPaths), referenced
+  by componentRefs in tauri.windows.conf.json.
+
+  Installs the privileged helper next to the app and registers it as the
+  CumulusVPNHelper service (LocalSystem, automatic start, restart on failure)
+  with the native ServiceInstall / ServiceControl tables, so it is started on
+  install, stopped on upgrade and uninstall, removed on uninstall, and rolled
+  back with the rest of a failed install. Stopping the service disconnects
+  first (DNS, devices, kill switch). On a real uninstall, the helper's cleanup
+  mode then undoes anything a crashed session left behind. The NSIS installer does the same in
+  windows/hooks.nsh.
+
+  The source path is relative to this file: scripts/build-helper.mjs stages
+  the binary at helper/build/ before bundling.
+-->
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"
+     xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
+  <Fragment>
+    <DirectoryRef Id="INSTALLDIR">
+      <Component Id="CumulusVpnHelperService" Guid="{6F034AE7-648E-4F5A-B738-539FC57EAF63}">
+        <File Id="CumulusVpnHelperExe"
+              Name="cumulusvpn-helper.exe"
+              Source="$(sys.SOURCEFILEDIR)..\helper\build\cumulusvpn-helper.exe"
+              KeyPath="yes" />
+        <ServiceInstall Id="CumulusVpnHelperInstall"
+                        Name="CumulusVPNHelper"
+                        DisplayName="CumulusVPN Helper"
+                        Description="Runs the CumulusVPN tunnel, routes, kill switch and DNS so the app does not need administrator rights."
+                        Type="ownProcess"
+                        Start="auto"
+                        ErrorControl="normal"
+                        Vital="yes">
+          <util:ServiceConfig FirstFailureActionType="restart"
+                              SecondFailureActionType="restart"
+                              ThirdFailureActionType="restart"
+                              RestartServiceDelayInSeconds="1"
+                              ResetPeriodInDays="1" />
+        </ServiceInstall>
+        <ServiceControl Id="CumulusVpnHelperControl"
+                        Name="CumulusVPNHelper"
+                        Start="install"
+                        Stop="both"
+                        Remove="uninstall"
+                        Wait="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <!-- After the service has stopped (and disconnected), before its files go:
+         clean up after a session whose service had crashed. Runs as SYSTEM,
+         never fails the uninstall, skipped when an upgrade removes the old
+         version (the new service recovers at its own start). -->
+    <CustomAction Id="CumulusVpnHelperCleanup"
+                  FileKey="CumulusVpnHelperExe"
+                  ExeCommand="--cleanup"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+    <InstallExecuteSequence>
+      <Custom Action="CumulusVpnHelperCleanup" After="StopServices">REMOVE="ALL" AND NOT UPGRADINGPRODUCTCODE</Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

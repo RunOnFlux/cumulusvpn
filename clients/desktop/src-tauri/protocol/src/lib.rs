@@ -1,11 +1,21 @@
 //! Wire protocol between the CumulusVPN app and its privileged helper.
 //!
-//! On macOS the app runs unprivileged; everything that needs root — `pfctl`,
-//! `route`, creating the `utun` device, spawning `wireguard-go` — happens in the
-//! helper daemon, and these types cross the socket between them. On Linux and
-//! Windows there is no daemon: the app runs `cumulusvpn-tunnel` in-process, and
-//! these same request and status types are its interface, so the Tauri commands
-//! have one shape on every OS.
+//! The app runs unprivileged on every desktop OS. Everything that needs root or
+//! Administrator (the firewall, the routing table, creating the tun device,
+//! spawning `wireguard-go`, the system resolver) happens in the
+//! `cumulusvpn-helper` daemon, and these types cross the local IPC channel
+//! between them:
+//!
+//! * **macOS**: a LaunchDaemon on the Unix socket [`SOCKET_PATH`].
+//! * **Linux**: a systemd service on the Unix socket [`SOCKET_PATH`].
+//! * **Windows**: a LocalSystem service on the named pipe [`PIPE_NAME`].
+//!
+//! An elevated app can run `cumulusvpn-tunnel` in-process instead: on macOS
+//! whenever it runs as root (an unsigned build launched with `sudo`), on Linux
+//! and Windows only when no daemon answers (an AppImage, or a build whose
+//! service is not installed). These same request and status types are that
+//! path's interface too, so the Tauri commands have one shape however the
+//! tunnel is hosted.
 //!
 //! This crate stays free of both Tauri and any privileged code: it is linked
 //! into a process running as root, and every dependency here is attack surface
@@ -24,11 +34,58 @@ use serde::{Deserialize, Serialize};
 
 /// Where the macOS helper listens. Under `/var/run`, the standard location for
 /// a LaunchDaemon socket, and a path only root can create.
+#[cfg(target_os = "macos")]
 pub const SOCKET_PATH: &str = "/var/run/cumulusvpn-helper.sock";
+
+/// Where the Linux helper listens. `/run/cumulusvpn` is the service's
+/// `RuntimeDirectory=` (root-owned, 0755, created and removed by systemd), so
+/// only root can create a socket here, and the socket itself is
+/// `root:`[`LINUX_GROUP`] mode 0660. Must match `linux/cumulusvpn-helper.service`
+/// (a helper test checks it).
+#[cfg(all(unix, not(target_os = "macos")))]
+pub const SOCKET_PATH: &str = "/run/cumulusvpn/helper.sock";
+
+/// The Windows helper's named pipe. The service creates the first instance
+/// with `FILE_FLAG_FIRST_PIPE_INSTANCE` and a security descriptor that lets
+/// interactive users read and write but not create instances, and the app
+/// refuses a pipe that is not owned by SYSTEM or Administrators, so neither side
+/// can be impersonated by an unprivileged process squatting on the name.
+pub const PIPE_NAME: &str = r"\\.\pipe\CumulusVPN.Helper";
+
+/// The access the app requests when it opens [`PIPE_NAME`]:
+/// `FILE_GENERIC_READ | FILE_WRITE_DATA`. It is exactly what the pipe's
+/// security descriptor grants interactive users. Deliberately not
+/// `GENERIC_WRITE`, which includes `FILE_APPEND_DATA` — for a pipe that is
+/// `FILE_CREATE_PIPE_INSTANCE` (0x4), the right to add *server* instances of
+/// the pipe and intercept clients, and the descriptor withholds it.
+pub const PIPE_CLIENT_ACCESS: u32 = 0x0012_008B;
 
 /// The helper's LaunchDaemon label. Must match the plist filename shipped in
 /// `Contents/Library/LaunchDaemons/`, which is what `SMAppService` registers.
 pub const HELPER_LABEL: &str = "com.cumulusvpn.helper";
+
+/// The Windows service name (`sc.exe query CumulusVPNHelper`). Registered by the
+/// installers: `windows/hooks.nsh` (NSIS) and `windows/helper-service.wxs` (MSI).
+pub const WINDOWS_SERVICE_NAME: &str = "CumulusVPNHelper";
+
+/// The systemd unit the Linux packages install and enable.
+pub const LINUX_UNIT: &str = "cumulusvpn-helper.service";
+
+/// The group whose members may use the Linux helper. The package's postinst
+/// creates it and adds the installing user; the socket is `root:cumulusvpn`
+/// mode 0660, so the kernel refuses everyone else before the daemon sees them.
+pub const LINUX_GROUP: &str = "cumulusvpn";
+
+/// The app's executable name, without `.exe` (the Cargo package name; there is
+/// no `mainBinaryName` override in `tauri.conf.json`). On Linux and Windows the
+/// helper only serves an unprivileged peer whose executable is the installed
+/// app, which sits in the same directory as the helper (`/usr/bin`, or the
+/// install directory under Program Files).
+pub const APP_BINARY_NAME: &str = "cumulusvpn-desktop";
+
+/// What the helper says to a peer it refuses, before closing the connection.
+/// The app matches on it to tell "refused" apart from "not running".
+pub const NOT_AUTHORISED: &str = "not authorised";
 
 /// Largest single message either side will read. Comfortably above a multi-hop
 /// request (two WireGuard configs plus route lists), far below anything that
@@ -58,6 +115,13 @@ pub struct TunnelStatus {
     pub tx_bytes: u64,
     pub last_handshake: Option<i64>,
     pub error: Option<String>,
+    /// Set while the tunnel is up but the system resolver could not be pointed
+    /// at the tunnel's — so lookups may be leaking (kill switch off) or failing
+    /// (kill switch on). The UI shows it as a warning instead of a clean
+    /// "protected". `default` so an app talking to a helper built before this
+    /// field existed still parses its status.
+    #[serde(default)]
+    pub dns_warning: Option<String>,
 }
 
 /// wg-tls transport parameters: bridge the WireGuard device over TLS instead of
@@ -229,7 +293,8 @@ mod tests {
     /// whole buffer at once; a socket can split a message across reads, which is
     /// exactly what a length prefix has to survive. Two messages are sent
     /// back-to-back so a reader that over-consumed would corrupt the second.
-    /// Unix only: that is the only transport the protocol travels over.
+    /// Unix sockets only here; the Windows named pipe is a byte stream with the
+    /// same short-read behaviour, and is exercised on Windows itself.
     #[cfg(unix)]
     #[test]
     fn frames_survive_a_real_socket_including_short_reads() {
@@ -264,6 +329,19 @@ mod tests {
         writer.join().expect("writer thread");
     }
 
+    /// The app and the helper are upgraded separately. A status from a helper
+    /// that predates `dnsWarning` must still parse (as "no warning"), or the
+    /// app would read every poll as an unreachable helper.
+    #[test]
+    fn a_status_without_dns_warning_still_parses() {
+        let s: TunnelStatus = serde_json::from_str(
+            r#"{"state":"up","endpoint":null,"assignedIp":null,"country":null,
+                "rxBytes":0,"txBytes":0,"lastHandshake":null,"error":null}"#,
+        )
+        .expect("old status shape");
+        assert!(s.dns_warning.is_none());
+    }
+
     #[test]
     fn status_camel_cases_for_the_frontend() {
         let json = serde_json::to_string(&TunnelStatus {
@@ -275,9 +353,11 @@ mod tests {
             tx_bytes: 2,
             last_handshake: None,
             error: None,
+            dns_warning: Some("dns".into()),
         })
         .expect("serialize");
         assert!(json.contains("\"assignedIp\""), "got {json}");
+        assert!(json.contains("\"dnsWarning\":\"dns\""), "got {json}");
         assert!(json.contains("\"rxBytes\""), "got {json}");
         assert!(json.contains("\"state\":\"up\""), "got {json}");
     }

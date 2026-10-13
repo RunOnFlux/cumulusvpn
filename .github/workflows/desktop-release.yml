@@ -6,13 +6,24 @@ name: desktop-release
 #
 # Platform notes:
 # - Intel Macs are deliberately dropped (obsolete).
-# - Where the tunnel runs differs per leg (see clients/desktop/README.md):
-#   macOS bundles the privileged `cumulusvpn-helper` LaunchDaemon (built and
-#   staged by scripts/build-helper.sh, wired in by tauri.macos.conf.json, which
-#   Tauri merges only on macOS). Linux and Windows run the same tunnel crate
-#   in-process, ship no helper, and their beforeBuildCommand is plain
-#   `yarn build`. While Apple signing is off, the macOS build cannot register
-#   its helper; it works only when launched as root (sudo), which uses the
+# - Every leg ships the privileged `cumulusvpn-helper` daemon, so the app runs
+#   unprivileged (see clients/desktop/README.md). Each platform's
+#   beforeBuildCommand runs scripts/build-helper.mjs, which builds the helper
+#   for the leg's --target and stages it in src-tauri/helper/build/; the
+#   platform config bundles it:
+#     macOS   tauri.macos.conf.json   → LaunchDaemon in the .app (SMAppService)
+#     Linux   tauri.linux.conf.json   → /usr/bin + a systemd unit in the
+#                                       .deb/.rpm, with maintainer scripts;
+#                                       the AppImage has no service and runs
+#                                       the tunnel in-process when started
+#                                       with sudo
+#     Windows tauri.windows.conf.json → next to the app, registered as the
+#                                       CumulusVPNHelper service by the NSIS
+#                                       hooks / the MSI fragment (per-machine)
+#   The verify steps after the build install the packages on the runner and
+#   check the service, its permissions, peer authentication and uninstall
+#   cleanup. While Apple signing is off, the macOS build cannot register its
+#   helper; it works only when launched as root (sudo), which uses the
 #   in-process tunnel.
 # - Windows: routing.rs drives netsh/PowerShell and wggo.rs speaks UAPI over
 #   the named pipe, so the installer produces a working tunnel. wireguard-go
@@ -134,3 +145,130 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }}
+
+      # The helper must actually be in the bundle: without it the app can only
+      # show its setup banner (or run as root).
+      - name: Verify the macOS helper is bundled
+        if: runner.os == 'macOS'
+        shell: bash
+        working-directory: clients/desktop/src-tauri/target/${{ matrix.target }}/release/bundle/macos
+        run: |
+          set -euxo pipefail
+          test -x CumulusVPN.app/Contents/MacOS/cumulusvpn-helper
+          test -f CumulusVPN.app/Contents/Library/LaunchDaemons/com.cumulusvpn.helper.plist
+
+      # The runner has systemd, so install the .deb for real (docs/16 Stage J):
+      # the service starts, its socket is root:cumulusvpn 0660, root is served,
+      # a non-member is refused by the kernel, a member running anything but
+      # the app is refused by the helper's peer check, and removing the
+      # package stops, disables and cleans up.
+      - name: Verify the Linux helper service (install, peer auth, removal)
+        if: runner.os == 'Linux'
+        shell: bash
+        working-directory: clients/desktop/src-tauri/target/${{ matrix.target }}/release/bundle
+        run: |
+          set -euxo pipefail
+          deb=$(ls deb/*.deb | head -n1)
+          dpkg-deb -c "$deb" | grep -E '^-rwxr-xr-x .* \./usr/bin/cumulusvpn-helper$'
+          dpkg-deb -c "$deb" | grep -E ' \./usr/lib/systemd/system/cumulusvpn-helper\.service$'
+          dpkg-deb -e "$deb" "$RUNNER_TEMP/deb-control"
+          test -x "$RUNNER_TEMP/deb-control/postinst"
+          test -x "$RUNNER_TEMP/deb-control/prerm"
+          test -x "$RUNNER_TEMP/deb-control/postrm"
+          if command -v rpm >/dev/null; then
+            rpm -qlp rpm/*.rpm | grep -x /usr/bin/cumulusvpn-helper
+            rpm -qp --scripts rpm/*.rpm | grep 'cumulusvpn-helper.service' >/dev/null
+          fi
+
+          # The daemon cleans up before it binds; give it a moment.
+          wait_for_socket() {
+            for _ in $(seq 1 50); do sudo test -S /run/cumulusvpn/helper.sock && return 0; sleep 0.2; done
+            sudo journalctl -u cumulusvpn-helper --no-pager | tail -n 30; return 1
+          }
+
+          sudo apt-get install -y "./$deb"
+          systemctl is-active cumulusvpn-helper
+          systemctl is-enabled cumulusvpn-helper
+          wait_for_socket
+          # The postinst created the group and added the installing user.
+          getent group cumulusvpn | grep -w "$USER" >/dev/null
+          test "$(sudo stat -c '%U:%G %a' /run/cumulusvpn/helper.sock)" = "root:cumulusvpn 660"
+          test "$(stat -c '%U:%G %a' /run/cumulusvpn)" = "root:root 755"
+
+          # Root is served.
+          sudo /usr/bin/cumulusvpn-helper --ping
+          # Without the group in its credentials (this shell predates the
+          # membership — the "log out and back in" case): the kernel refuses.
+          if /usr/bin/cumulusvpn-helper --ping; then echo "a process without the group was served"; exit 1; fi
+          # With the group, but not the app: refused by the peer check.
+          out=$(sg cumulusvpn -c '/usr/bin/cumulusvpn-helper --ping' || true)
+          echo "$out"
+          echo "$out" | grep -q 'refused: not authorised'
+          # --cleanup refuses to run under a live daemon.
+          if sudo /usr/bin/cumulusvpn-helper --cleanup; then echo "--cleanup ran under a live daemon"; exit 1; fi
+          # A stop is clean (SIGTERM is handled), and a restart comes back.
+          sudo systemctl restart cumulusvpn-helper
+          systemctl is-active cumulusvpn-helper
+          wait_for_socket
+          sudo /usr/bin/cumulusvpn-helper --ping
+
+          sudo apt-get remove -y "$(dpkg-deb -f "$deb" Package)"
+          if systemctl is-active --quiet cumulusvpn-helper; then echo "still running"; exit 1; fi
+          if systemctl is-enabled --quiet cumulusvpn-helper 2>/dev/null; then echo "still enabled"; exit 1; fi
+          test ! -e /run/cumulusvpn/helper.sock
+          if sudo nft list table inet cumulusvpn 2>/dev/null; then echo "kill switch left behind"; exit 1; fi
+
+      # Install both Windows installers for real (docs/16 Stage K): the
+      # service is registered (automatic, LocalSystem, quoted path) and
+      # running, an elevated --ping is served, and uninstalling removes the
+      # service and the helper and leaves no kill-switch rules.
+      - name: Verify the Windows helper service (NSIS + MSI install, uninstall)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: clients/desktop/src-tauri/target/${{ matrix.target }}/release/bundle
+        run: |
+          $ErrorActionPreference = 'Stop'
+          # Exit codes are checked by hand below (sc.exe's 1060 is expected).
+          $PSNativeCommandUseErrorActionPreference = $false
+          $dir = Join-Path $env:ProgramFiles 'CumulusVPN'
+          $helper = Join-Path $dir 'cumulusvpn-helper.exe'
+          function Assert-Service {
+            # Dispose the controller: an open handle would keep the service
+            # "marked for deletion" after uninstall.
+            $svc = Get-Service CumulusVPNHelper
+            try { $svc.WaitForStatus('Running', '00:01:00') } finally { $svc.Dispose() }
+            $cfg = Get-CimInstance Win32_Service -Filter "Name='CumulusVPNHelper'"
+            if ($cfg.StartMode -ne 'Auto') { throw "start mode: $($cfg.StartMode)" }
+            if ($cfg.StartName -ne 'LocalSystem') { throw "account: $($cfg.StartName)" }
+            if (-not $cfg.PathName.StartsWith('"')) { throw "unquoted service path: $($cfg.PathName)" }
+            & $helper --ping
+            if ($LASTEXITCODE -ne 0) { throw 'an elevated --ping was not served' }
+          }
+          function Assert-Gone {
+            # 1060: the service does not exist.
+            for ($i = 0; $i -lt 50; $i++) {
+              sc.exe query CumulusVPNHelper | Out-Null
+              if ($LASTEXITCODE -eq 1060) { break }
+              Start-Sleep -Milliseconds 200
+            }
+            if ($LASTEXITCODE -ne 1060) { sc.exe query CumulusVPNHelper; throw 'the service survived uninstall' }
+            if (Test-Path $helper) { throw 'the helper survived uninstall' }
+            if (Get-NetFirewallRule -Group 'CumulusVPN' -ErrorAction SilentlyContinue) { throw 'kill-switch rules left behind' }
+          }
+
+          $nsis = Get-ChildItem nsis/*-setup.exe | Select-Object -First 1
+          Start-Process -FilePath $nsis.FullName -ArgumentList '/S' -Wait
+          Assert-Service
+          Start-Process -FilePath (Join-Path $dir 'uninstall.exe') -ArgumentList '/S', "_?=$dir" -Wait
+          Assert-Gone
+
+          $msi = Get-ChildItem msi/*.msi | Select-Object -First 1
+          $log = Join-Path $env:RUNNER_TEMP 'msi.log'
+          $p = Start-Process msiexec.exe -ArgumentList '/i', "`"$($msi.FullName)`"", '/qn', '/norestart', '/l*v', "`"$log`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { Get-Content $log -Tail 80; throw "msi install failed: $($p.ExitCode)" }
+          Assert-Service
+          $p = Start-Process msiexec.exe -ArgumentList '/x', "`"$($msi.FullName)`"", '/qn', '/norestart' -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "msi uninstall failed: $($p.ExitCode)" }
+          Assert-Gone
+          # The runner exits with the last native exit code (sc.exe's 1060).
+          exit 0

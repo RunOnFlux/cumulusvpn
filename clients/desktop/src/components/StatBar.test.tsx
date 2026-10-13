@@ -12,6 +12,7 @@ function status(overrides: Partial<TunnelStatus>): TunnelStatus {
     rxBytes: 0,
     txBytes: 0,
     lastHandshake: null,
+    dnsWarning: null,
     error: null,
     ...overrides,
   };

@@ -30,9 +30,9 @@
 //!
 //! **Privilege:** every route/ifconfig edit needs root/Admin. Run unelevated
 //! they fail and the connect attempt reports an error (Windows checks up front
-//! — see `super::ensure_elevated`). On macOS these commands run inside the root
-//! `cumulusvpn-helper` daemon. On Linux and Windows they run in the app, which
-//! must be elevated (a polkit policy or Windows service is the remaining seam).
+//! — see `super::ensure_elevated`). They run inside the privileged
+//! `cumulusvpn-helper` daemon on every desktop OS, or in an app that is itself
+//! elevated (the in-process fallback).
 
 use std::process::Command;
 
@@ -813,20 +813,6 @@ pub fn add_tunnel_routes(cidrs: &[String], via_interface: &str) -> Result<(), Tu
             "split-tunneling routes not implemented on this platform",
         ))
     }
-}
-
-/// Install the tunnel DNS resolver.
-///
-/// // POC / marked seam: DNS is system-wide and its mechanism is intrusive —
-/// macOS drives `networksetup -setdnsservers` (or `scutil`) across every
-/// network service with save/restore, Linux uses `resolvconf` /
-/// `systemd-resolved`, Windows sets it per-adapter. All of this runs through the
-/// privileged helper in a shipped build, so it stays a seam here. Without it the
-/// tunnel still carries traffic; only name resolution keeps using the old
-/// resolver (a DNS-leak the kill switch's UI must flag until this is wired).
-pub fn set_dns(interface: &str, dns: &str) -> Result<(), TunnelError> {
-    let _ = (interface, dns);
-    Ok(())
 }
 
 /// Remove the multi-hop exit host route installed by [`add_host_route`]. The

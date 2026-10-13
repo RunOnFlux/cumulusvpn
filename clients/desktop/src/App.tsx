@@ -9,6 +9,7 @@ import { StatBar } from './components/StatBar.js';
 import { SessionTimer } from './components/SessionTimer.js';
 import { Settings } from './components/Settings.js';
 import { helperReady, openHelperSettings } from './lib/tauri.js';
+import { desktopOs, setupBanner } from './lib/setup.js';
 import { upgradeUrl } from './lib/directory.js';
 import { loadOrCreateKeypair } from './lib/storage.js';
 import { paymentCode } from '@cumulusvpn/core';
@@ -58,6 +59,7 @@ export function App(): JSX.Element {
   const busy = conn.phase === 'connecting';
   const locked = connected || busy;
   const ready = helperReady(conn.helperState);
+  const banner = setupBanner(conn.helperState, desktopOs(navigator.userAgent));
   const { selected } = conn;
 
   return (
@@ -72,20 +74,16 @@ export function App(): JSX.Element {
         </button>
       </div>
 
-      {/* macOS only: the app holds no privileges there, so without the helper
-          approved Connect cannot work. Say that up front with the fix
-          attached, rather than letting the user press Connect and meet a
-          transport error. Linux/Windows report `notNeeded` and never show it. */}
-      {!ready && (
-        <div className="setup">
-          <div className="setup-text">
-            {conn.helperState === 'requiresApproval'
-              ? 'Allow the CumulusVPN network helper in System Settings to finish setup.'
-              : conn.helperState === 'notFound'
-                ? 'macOS could not verify CumulusVPN’s network helper — try reinstalling.'
-                : 'CumulusVPN needs to install its network helper before it can connect.'}
-          </div>
-          {conn.helperState !== 'notFound' && (
+      {/* The app holds no privileges: the tunnel belongs to the helper daemon
+          (LaunchDaemon / systemd service / Windows service). Until it is there
+          and serves this app Connect cannot work, so say that up front with
+          the fix attached, rather than letting the user press Connect and meet
+          a transport error. An elevated app running the tunnel itself gets a
+          non-blocking note instead (lib/setup.ts). */}
+      {banner && (
+        <div className={banner.blocking ? 'setup' : 'setup info'} role="status">
+          <div className="setup-text">{banner.text}</div>
+          {banner.openSettings && (
             <button className="setup-btn" onClick={() => void openHelperSettings()}>
               Open Settings
             </button>
@@ -103,6 +101,13 @@ export function App(): JSX.Element {
         {/* docs/17 §8: with split rules active, the user must never be unsure
             whether they are fully protected — say so persistently. */}
         {connected && conn.splitActive && <div className="split-on">Split tunneling on</div>}
+        {/* The tunnel is up but the system resolver is not the tunnel's: never
+            let that read as fully protected. */}
+        {conn.dnsWarning && (
+          <div className="dns-warn" role="alert">
+            {conn.dnsWarning}
+          </div>
+        )}
 
         <button
           className="loc-btn"

@@ -6,9 +6,10 @@ rust-version = "1.77"
 license = "MIT"
 description = "CumulusVPN tunnel engine: wireguard-go sidecar, routes, kill switch and wg-tls bridge."
 
-# The one copy of the tunnel. It runs in two places: inside the root
-# `cumulusvpn-helper` daemon on macOS, and inside the app process itself on
-# Linux and Windows. No Tauri and no IPC here. Wherever this crate runs, it
+# The one copy of the tunnel. It runs in two places: inside the privileged
+# `cumulusvpn-helper` daemon (macOS, Linux, Windows), and inside the app
+# process itself when the app runs elevated without a daemon. No Tauri and no
+# IPC here. Wherever this crate runs, it
 # runs with privilege, so the dependency list is kept to what the tunnel
 # actually needs.
 [dependencies]

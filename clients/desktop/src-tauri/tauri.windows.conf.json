@@ -1,8 +1,21 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "build": {
+    "beforeBuildCommand": "yarn build && node scripts/build-helper.mjs"
+  },
   "bundle": {
     "resources": {
       "wintun/wintun.dll": "./wintun.dll"
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "perMachine",
+        "installerHooks": "windows/hooks.nsh"
+      },
+      "wix": {
+        "fragmentPaths": ["windows/helper-service.wxs"],
+        "componentRefs": ["CumulusVpnHelperService"]
+      }
     }
   }
 }
