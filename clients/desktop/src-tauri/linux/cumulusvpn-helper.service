@@ -1,0 +1,41 @@
+# CumulusVPN privileged helper — owns the tunnel, routes, kill switch and DNS so
+# the desktop app can run as a normal user. Installed by the .deb / .rpm
+# (tauri.linux.conf.json) to /usr/lib/systemd/system and enabled by the
+# postinst. The app talks to it on /run/cumulusvpn/helper.sock (root:cumulusvpn,
+# mode 0660); see helper/src/linux.rs.
+
+[Unit]
+Description=CumulusVPN privileged helper (tunnel, routes, kill switch, DNS)
+Documentation=https://cumulusvpn.com
+# No ordering against the network on purpose: nothing it cleans up at start
+# (nft table, resolvconf record, sidecars) survives a reboot on Linux, and
+# ordering it before network-pre.target would hold networkd back until
+# basic.target. multi-user.target brings it up before anyone logs in.
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/cumulusvpn-helper
+# The daemon owns tunnel recovery, so it must always be there, as the macOS
+# LaunchDaemon is (KeepAlive). A stop via systemctl is still a stop.
+Restart=always
+RestartSec=1
+# /run/cumulusvpn: root-owned, 0755, removed on stop. Only root can create the
+# socket in it, which is what makes the path trustworthy to the app.
+RuntimeDirectory=cumulusvpn
+RuntimeDirectoryMode=0755
+# SIGTERM goes to the daemon alone: it disconnects (DNS, devices, kill switch,
+# in that order) and exits; only then does systemd SIGKILL what is left of the
+# cgroup, i.e. any wireguard-go it did not get to.
+KillMode=mixed
+TimeoutStopSec=30
+# Hardening that cannot get in the way of nft, ip, resolvectl or resolvconf.
+# Do not add CapabilityBoundingSet= without CAP_NET_ADMIN (tun, routes, nft),
+# CAP_KILL (orphaned sidecars) and CAP_SYS_PTRACE: the peer check reads the
+# connecting process's /proc/<pid>/exe, which root cannot do for another user's
+# process without it, and every unprivileged app would then be refused.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

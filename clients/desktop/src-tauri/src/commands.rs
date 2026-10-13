@@ -6,9 +6,9 @@
 //! hook surfaces in the error banner.
 //!
 //! Every one of these goes through [`TunnelBackend`]: to the privileged helper
-//! on macOS, to the in-process tunnel on Linux and Windows. The argument shapes
-//! are the same on every OS (and unchanged from before the helper existed), so
-//! the frontend does not know which one it is driving.
+//! daemon, or to the in-process tunnel when the app runs elevated without one.
+//! The argument shapes are the same on every OS (and unchanged from before the
+//! helper existed), so the frontend does not know which one it is driving.
 
 use tauri::State;
 
@@ -114,8 +114,8 @@ pub async fn status(backend: State<'_, TunnelBackend>) -> Result<proto::TunnelSt
     backend.status()
 }
 
-/// Whether the tunnel engine is answering: the privileged helper on macOS,
-/// always `true` where the tunnel runs in-process.
+/// Whether the tunnel engine is answering: the privileged helper, or always
+/// `true` where the tunnel runs in-process.
 ///
 /// Surfaced so the UI can say "finish setup" instead of letting the user press
 /// Connect and meet a transport error.
@@ -124,9 +124,11 @@ pub async fn helper_status(backend: State<'_, TunnelBackend>) -> Result<bool, St
     Ok(backend.is_available())
 }
 
-/// Setup state, as a string the UI can switch on: `notNeeded` (Linux, Windows,
-/// macOS run as root: no helper exists, Connect is usable), `enabled`,
-/// `requiresApproval`, `notRegistered`, `notFound`.
+/// Setup state, as a string the UI can switch on. Ready: `enabled` (the helper
+/// serves us), `notNeeded` (macOS run as root), `elevated` (Linux / Windows run
+/// elevated without a helper: in-process). Setup steps: `requiresApproval`,
+/// `notRegistered`, `notFound` (macOS); `serviceNotInstalled`,
+/// `serviceNotRunning`, `serviceDenied` (Linux / Windows).
 ///
 /// Distinct from [`helper_status`], which asks only whether the daemon
 /// *answers*. A helper can be registered but awaiting approval, which is the
@@ -134,8 +136,9 @@ pub async fn helper_status(backend: State<'_, TunnelBackend>) -> Result<bool, St
 /// failure.
 #[tauri::command]
 pub async fn helper_registration(backend: State<'_, TunnelBackend>) -> Result<SetupState, String> {
-    // Reads only. Registration is attempted once at startup (see `lib.rs`); the
-    // UI polls this while the user approves the helper in System Settings.
+    // Reads only. On macOS registration is attempted once at startup (see
+    // `lib.rs`); the UI polls this while the user approves the helper in System
+    // Settings, or while the Linux / Windows service is installed or started.
     backend.setup_state()
 }
 

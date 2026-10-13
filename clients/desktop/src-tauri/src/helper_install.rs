@@ -18,8 +18,10 @@
 //! fail to register — that is the system working, not a bug. Such a build can
 //! still be run as root, which skips the helper entirely (see `backend.rs`).
 //!
-//! macOS only: the module is not compiled elsewhere. Linux and Windows run the
-//! tunnel in-process and have nothing to register.
+//! macOS only: the module is not compiled elsewhere. On Linux and Windows the
+//! helper is a system service the packages install and start, so the app has
+//! nothing to register; it only asks whether the service is there
+//! (`platform.rs`).
 
 /// Where the helper's LaunchDaemon plist sits inside the bundle, relative to
 /// `Contents/`. `SMAppService.daemon(plistName:)` takes just the filename and

@@ -51,21 +51,34 @@ quiet power-user escape hatch.
 - Tunnel: bundled `wireguard-go` (userspace TUN on desktop — desktops DO allow TUN with the
   standard elevation flows: wintun driver on Windows, utun on macOS, /dev/net/tun on Linux) driven
   over its UAPI socket; privileged helper installed once (Windows service / macOS
-  SMAppService helper / Linux polkit or setcap).
+  SMAppService helper / Linux systemd service).
 - Alternative considered: Electron (rejected: weight), pure native ×3 (rejected: team size),
   Mullvad-style Rust daemon (right long-term shape — the Tauri app already gives us the Rust core
   to grow into it).
-- **Status:** the tunnel engine is one shared crate (`cumulusvpn-tunnel`) with two hosts.
-  - **macOS:** the daemon split is built. The app is unprivileged and drives a
-    `cumulusvpn-helper` LaunchDaemon over a Unix socket, authenticated by code signature. The
-    helper also owns roam repair and the dead-tunnel watchdog, so recovery does not depend on
-    the app being open.
-  - **Linux and Windows:** no daemon yet. The app runs the same tunnel crate in-process and
-    must be elevated (root / Administrator). The same repair/watchdog loop runs on a thread in
-    the app, so recovery works with the window hidden in the tray, but not after the app quits.
-    The unprivileged path is still to do: a Windows service, or polkit/setcap on Linux.
+- **Status:** the daemon split is built on all three desktop OSes. The tunnel engine is one
+  shared crate (`cumulusvpn-tunnel`) hosted by one privileged binary, `cumulusvpn-helper`; the
+  app is unprivileged and drives it over local IPC with one protocol. The helper owns roam
+  repair and the dead-tunnel watchdog, so recovery does not depend on the app being open, and
+  it outlives the app: a clean quit disconnects, a killed app leaves the tunnel up and the
+  relaunched app reattaches.
+  - **macOS:** a LaunchDaemon registered with `SMAppService` (approved once in System
+    Settings), on a Unix socket; peers authenticated by code signature (Team ID).
+  - **Linux:** a systemd service installed by the .deb / .rpm, on
+    `/run/cumulusvpn/helper.sock` (`root:cumulusvpn` 0660); the postinst creates the
+    `cumulusvpn` group and adds the installing user. Peers: root, or group members running the
+    installed app (`SO_PEERCRED` + `/proc/<pid>/exe`).
+  - **Windows:** a LocalSystem service registered by the NSIS / MSI installers (per-machine),
+    on the named pipe `\\.\pipe\CumulusVPN.Helper` (interactive users may connect, not create
+    instances). Peers: an elevated administrator, or the installed app image next to the
+    service. Authenticode pinning is a prepared seam, off until Windows builds are signed.
+  - **Fallback:** an elevated app with no daemon (macOS run as root; a Linux AppImage or a
+    Windows build without its service, run as root / Administrator) runs the tunnel
+    in-process, as before the daemon. Otherwise the app shows a setup banner saying what is
+    missing.
+  - On Linux and Windows a daemon that died mid-session is restarted by systemd / the SCM and
+    cleans up after itself (kill switch, DNS, orphaned `wireguard-go`) before serving anyone.
 
-  See `clients/desktop/README.md` and Stages H and I of `docs/16-validation.md`.
+  See `clients/desktop/README.md` and Stages H, I, J and K of `docs/16-validation.md`.
 - Features v1: country picker, connect/disconnect, auto-reconnect + gateway failover (re-resolve
   discovery when endpoint dies), kill switch (platform firewall rules), launch at login, upgrade
   screen → opens web payment page.

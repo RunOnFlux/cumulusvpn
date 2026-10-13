@@ -11,25 +11,30 @@ vi.mock('@tauri-apps/api/core', () => ({
 }));
 
 describe('helper setup state', () => {
-  // Connect is gated on this. Linux/Windows answer `notNeeded` (the tunnel runs
-  // in-process), so treating only `enabled` as ready would disable Connect on
-  // every non-macOS desktop.
-  it('treats notNeeded and enabled as ready, every macOS setup step as not', () => {
+  // Connect is gated on this. The three ready states are the helper serving us
+  // and the two in-process fallbacks (macOS as root, Linux/Windows elevated);
+  // treating only `enabled` as ready would disable Connect for an elevated app
+  // that runs the tunnel itself.
+  it('treats enabled and the in-process states as ready, every setup step as not', () => {
     const cases: [HelperRegistration, boolean][] = [
-      ['notNeeded', true],
       ['enabled', true],
+      ['notNeeded', true],
+      ['elevated', true],
       ['requiresApproval', false],
       ['notRegistered', false],
       ['notFound', false],
+      ['serviceNotInstalled', false],
+      ['serviceNotRunning', false],
+      ['serviceDenied', false],
     ];
     for (const [state, ready] of cases) {
       expect(helperReady(state)).toBe(ready);
     }
   });
 
-  it('passes the native answer through (Linux/Windows report notNeeded)', async () => {
-    vi.mocked(invoke).mockResolvedValueOnce('notNeeded');
-    await expect(helperRegistration()).resolves.toBe('notNeeded');
+  it('passes the native answer through', async () => {
+    vi.mocked(invoke).mockResolvedValueOnce('serviceDenied');
+    await expect(helperRegistration()).resolves.toBe('serviceDenied');
     expect(invoke).toHaveBeenCalledWith('helper_registration');
   });
 

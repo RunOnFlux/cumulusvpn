@@ -181,7 +181,7 @@ jobs:
   # `--workspace` / `--all` matter: src-tauri is a workspace (app + tunnel +
   # helper + protocol), and a bare `cargo check`/`cargo test`/`cargo fmt` only
   # covers the root (app) package. The tunnel engine's tests and the helper's
-  # socket-server tests live in the other members.
+  # socket-server and Linux peer-policy tests live in the other members.
   desktop-rust:
     name: desktop (rust)
     runs-on: ubuntu-latest
@@ -237,3 +237,40 @@ jobs:
 
       - name: cargo test
         run: cargo test --workspace
+
+  # The privileged helper's Windows half — the named-pipe server, its security
+  # descriptor and the service glue — compiles only for Windows, and the Linux
+  # job above cannot run it. This runs its tests on a real Windows host (the
+  # pipe tests bind the production descriptor and talk to it the way the app
+  # does) and lints the crates that link into the LocalSystem service. Only
+  # those crates: the Tauri app itself is covered by desktop-release.
+  desktop-rust-windows:
+    name: desktop (rust, windows helper)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: clients/desktop/src-tauri
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@e2a55d2ffb04f378e9626c28d38b36d230d1e12f # v1
+        with:
+          toolchain: stable
+          components: clippy
+
+      - name: Cache cargo
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            clients/desktop/src-tauri/target
+          key: ${{ runner.os }}-cargo-helper-${{ hashFiles('clients/desktop/src-tauri/Cargo.lock') }}
+
+      - name: cargo clippy (helper, tunnel, protocol)
+        run: cargo clippy -p cumulusvpn-helper -p cumulusvpn-tunnel -p cumulusvpn-protocol --all-targets -- -D warnings
+
+      - name: cargo test (helper, protocol)
+        run: cargo test -p cumulusvpn-helper -p cumulusvpn-protocol

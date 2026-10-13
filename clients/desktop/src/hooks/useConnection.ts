@@ -38,17 +38,23 @@ export interface Entitlement {
 export interface ConnectionModel {
   readonly phase: Phase;
   /**
-   * Setup state of the tunnel engine. `notNeeded` (Linux/Windows: the tunnel
-   * runs in-process) and `enabled` (macOS: the privileged helper is approved
-   * and running) are ready; anything else is a macOS helper setup step, and no
-   * tunnel is possible until the user finishes it — on macOS the app itself
-   * holds no privileges. See `helperReady`.
+   * Setup state of the tunnel engine. `enabled` (the privileged helper daemon
+   * serves this app), `notNeeded` (macOS run as root) and `elevated` (Linux /
+   * Windows run elevated without a daemon) are ready; anything else is a setup
+   * step, and no tunnel is possible until it is done — the app itself holds no
+   * privileges. See `helperReady` and `lib/setup.ts`.
    */
   readonly helperState: HelperRegistration;
   readonly countries: readonly CountryOption[];
   /** Single-hop location, or the ENTRY hop when multi-hop is on. */
   readonly selected: CountryOption | null;
   readonly tunnel: TunnelStatus;
+  /**
+   * Why DNS is not (fully) going through the tunnel, while connected; `null`
+   * when it is. Comes from the native status (`dnsWarning`), refreshed by the
+   * status poll, so a DNS setting the OS reclaims after a roam shows up too.
+   */
+  readonly dnsWarning: string | null;
   readonly entitlement: Entitlement | null;
   /** True when the live session has split-tunneling rules applied (docs/17 §8). */
   readonly splitActive: boolean;
@@ -101,6 +107,7 @@ const DOWN: TunnelStatus = {
   txBytes: 0,
   lastHandshake: null,
   error: null,
+  dnsWarning: null,
 };
 
 function messageOf(err: unknown): string {
@@ -121,6 +128,40 @@ function messageOf(err: unknown): string {
  * covers a slow DHCP lease or a phone bringing up a hotspot.
  */
 const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 40000, 60000, 60000] as const;
+
+/**
+ * What a status read at launch says about a session that outlived the previous
+ * app instance. The helper daemon keeps the tunnel (and its kill switch and
+ * repair loop) when the app is killed, so a relaunched app must reattach to it
+ * rather than show a fresh "disconnected" over a tunnel that is up:
+ *
+ * - `connected` — up (or still coming up): show it as connected; the status
+ *   poll takes it from there.
+ * - `error` — it dropped while no app was watching (the watchdog fired, the
+ *   kill switch is still holding): surface the error and let auto-reconnect
+ *   bring it back, as it would have had the app been running.
+ * - `null` — nothing to reattach to.
+ */
+export function reattachPhase(status: TunnelStatus): 'connected' | 'error' | null {
+  switch (status.state) {
+    case 'up':
+    case 'connecting':
+      return 'connected';
+    case 'error':
+      return 'error';
+    default:
+      return null;
+  }
+}
+
+/**
+ * The DNS warning to show: only while connected (a stale one from the last
+ * session must not outlive it), and `null` rather than `undefined` when a
+ * helper too old to send the field answers.
+ */
+export function dnsWarningOf(phase: Phase, tunnel: TunnelStatus): string | null {
+  return phase === 'connected' ? (tunnel.dnsWarning ?? null) : null;
+}
 
 export function useConnection(): ConnectionModel {
   const keypairRef = useRef<Keypair | null>(null);
@@ -175,19 +216,46 @@ export function useConnection(): ConnectionModel {
   // Consecutive failed auto-reconnects, for the backoff below. Reset on every
   // successful connect.
   const reconnectAttemptsRef = useRef(0);
-  // Setup state of the tunnel engine (the macOS helper, or `notNeeded` where
-  // the tunnel runs in-process). Optimistic default: assume it is fine until
-  // told otherwise, so the setup banner never flashes on a normal launch before
-  // the first check comes back.
+  // Setup state of the tunnel engine (the helper daemon, or a ready state
+  // where the tunnel runs in-process). Optimistic default: assume it is fine
+  // until told otherwise, so the setup banner never flashes on a normal launch
+  // before the first check comes back.
   const [helperState, setHelperState] = useState<HelperRegistration>('notNeeded');
   const [favorites, setFavorites] = useState<readonly string[]>(() =>
     (localStorage.getItem('cvpn.favorites') ?? '').split(',').filter(Boolean),
   );
 
-  // Bootstrap: discover the fleet and restore the last-selected country.
+  // Bootstrap: reattach to a session that outlived the previous app instance,
+  // discover the fleet, and restore the last-selected country.
   useEffect(() => {
     let alive = true;
     void (async () => {
+      // First, and independently of discovery: a live tunnel is the truth to
+      // show whether or not the fleet can be listed right now. An unreachable
+      // helper simply means nothing to reattach to; the setup banner covers it.
+      let live: TunnelStatus | null = null;
+      try {
+        const s = await nativeStatus();
+        live = reattachPhase(s) ? s : null;
+      } catch {
+        live = null;
+      }
+      const reattach = (s: TunnelStatus): void => {
+        const to = reattachPhase(s);
+        if (!to) {
+          return;
+        }
+        // A live session is what auto-connect would have produced; never start
+        // a second one on top of it.
+        autoConnectedRef.current = true;
+        // So a drop (now, or later) is auto-reconnected like any other.
+        wasConnectedRef.current = true;
+        setTunnel(s);
+        if (to === 'error') {
+          setError(s.error ?? 'connection lost');
+        }
+        setPhase(to);
+      };
       try {
         const { countries: list, fleet } = await discoverFleetAndCountries();
         if (!alive) {
@@ -196,14 +264,26 @@ export function useConnection(): ConnectionModel {
         fleetRef.current = fleet;
         setCountries(list);
         const remembered = loadSelectedCountry();
-        const pick = list.find((c) => c.code === remembered) ?? list[0] ?? null;
+        const pick =
+          list.find((c) => c.code === live?.country) ??
+          list.find((c) => c.code === remembered) ??
+          list[0] ??
+          null;
         setSelected(pick);
         // Default the exit to the first country different from the entry, so
         // multi-hop has a sane cross-jurisdiction pair the moment it's toggled.
         setExit(list.find((c) => c.code !== pick?.code) ?? null);
-        setPhase('idle');
+        if (live) {
+          reattach(live);
+        } else {
+          setPhase('idle');
+        }
       } catch (err) {
         if (!alive) {
+          return;
+        }
+        if (live) {
+          reattach(live);
           return;
         }
         setError(messageOf(err));
@@ -448,14 +528,14 @@ export function useConnection(): ConnectionModel {
     return () => clearTimeout(id);
   }, [phase, connect]);
 
-  // Watch the helper's registration state.
+  // Watch the helper's setup state.
   //
   // Re-checked on an interval only while it is NOT ready: the user is over in
-  // System Settings flipping the approval switch, and the app should notice when
-  // they come back rather than making them relaunch. Once ready, the polling
-  // stops — nothing revokes it behind our back except the user, who is then
-  // looking at Settings anyway. On Linux/Windows the first check answers
-  // `notNeeded` and nothing is ever polled.
+  // System Settings flipping the approval switch (macOS), or installing,
+  // starting or joining the group for the service (Linux / Windows), and the
+  // app should notice when they are done rather than making them relaunch.
+  // Once ready, the polling stops — nothing revokes it behind our back except
+  // the user, who is then looking at the setup anyway.
   useEffect(() => {
     let alive = true;
     const check = (): void => {
@@ -492,7 +572,7 @@ export function useConnection(): ConnectionModel {
   // This used to be the only thing calling `status()`, which made roam repair
   // and the dead-tunnel watchdog depend on a live foreground webview. Both now
   // run on a native thread (`spawn_repair_loop` in the tunnel crate): inside the
-  // helper daemon on macOS, inside the app process on Linux/Windows (see
+  // helper daemon, or inside the app process in the elevated fallback (see
   // `src-tauri/src/backend.rs`). So this poll is purely cosmetic — it may be
   // throttled or stop entirely with the window hidden without affecting
   // whether the tunnel recovers.
@@ -525,6 +605,7 @@ export function useConnection(): ConnectionModel {
     countries,
     selected,
     tunnel,
+    dnsWarning: dnsWarningOf(phase, tunnel),
     entitlement,
     splitActive,
     error,

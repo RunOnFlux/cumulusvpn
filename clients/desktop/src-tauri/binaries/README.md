@@ -12,8 +12,11 @@ wireguard-go-x86_64-unknown-linux-gnu
 
 `tauri.conf.json` references it as `binaries/wireguard-go`; the CLI picks the
 matching triple at build time (`externalBin`). At runtime the Rust tunnel layer
-resolves it (`CVPN_WIREGUARD_GO` override → next to the app exe → this dir) and
-spawns it — see `src/tunnel/wggo.rs::resolve_wireguard_go`.
+resolves it (`CVPN_WIREGUARD_GO` override → next to the running executable →
+this dir) and spawns it — see `tunnel/src/wggo.rs::resolve_wireguard_go`. The
+running executable is normally the `cumulusvpn-helper` daemon, which every
+bundle places beside the sidecar (`Contents/MacOS`, `/usr/bin`, the Windows
+install directory); in the elevated in-process fallback it is the app.
 
 ## Building / vendoring
 

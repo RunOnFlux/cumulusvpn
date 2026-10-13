@@ -2,8 +2,9 @@
  * Typed bridge to the Rust/Tauri backend commands defined in
  * `src-tauri/src/commands.rs`: `connect`, `connect_multihop`, `disconnect`,
  * `status`, plus the helper setup commands. The same commands work on every
- * desktop OS: on macOS they reach the privileged helper daemon, on Linux and
- * Windows the tunnel runs inside the app (`src-tauri/src/backend.rs`).
+ * desktop OS: they reach the privileged helper daemon (a LaunchDaemon on macOS,
+ * a systemd service on Linux, a Windows service), or the tunnel inside the app
+ * when it runs elevated without one (`src-tauri/src/backend.rs`).
  *
  * When the frontend runs outside a Tauri window (plain `vite dev`, CI build,
  * Storybook), `isTauri()` is false and we fall back to an in-memory mock tunnel
@@ -32,6 +33,13 @@ export interface TunnelStatus {
   readonly lastHandshake: number | null;
   /** Populated when `state === 'error'`. */
   readonly error: string | null;
+  /**
+   * Set while the tunnel is up but the system resolver could not be pointed at
+   * the tunnel's: lookups may be leaking (kill switch off) or failing (kill
+   * switch on). Shown as a warning so the UI never reads "protected" over a DNS
+   * leak. Native sends `null` when DNS is fine.
+   */
+  readonly dnsWarning: string | null;
 }
 
 /** Everything the native side needs to bring the tunnel up. */
@@ -112,6 +120,7 @@ const DOWN: TunnelStatus = {
   txBytes: 0,
   lastHandshake: null,
   error: null,
+  dnsWarning: null,
 };
 
 // ---- browser mock ---------------------------------------------------------
@@ -232,22 +241,38 @@ export function nativeAvailable(): boolean {
 /**
  * Setup state of the tunnel engine.
  *
- * - `notNeeded` — Linux and Windows (and macOS launched as root): the tunnel
- *   runs inside the app, so there is no helper to install. Ready.
- * - `enabled` — macOS: the privileged helper is approved and running. Ready.
- * - `requiresApproval` / `notRegistered` / `notFound` — macOS only (helper
- *   registration via `SMAppService`). On macOS the app has no privileges of its
- *   own (the helper daemon owns the tunnel, the routes and the kill switch), so
- *   until the helper is approved nothing can connect. That is a setup step with
- *   an obvious fix, not an error, and the UI says so rather than letting Connect
- *   fail with a transport message.
+ * Ready:
+ * - `enabled` — the privileged helper daemon answers and serves this app.
+ * - `notNeeded` — macOS launched as root: the tunnel runs inside the app.
+ * - `elevated` — Linux / Windows run as root / Administrator with no helper
+ *   answering (an AppImage, a build without its service): the tunnel runs
+ *   inside the app, and stops when the app quits.
+ *
+ * Setup steps (Connect is disabled and a banner explains the fix — the app
+ * itself holds no privileges, so nothing can connect until it is done):
+ * - `requiresApproval` / `notRegistered` / `notFound` — macOS helper
+ *   registration via `SMAppService`.
+ * - `serviceNotInstalled` — Linux / Windows: the helper service is not
+ *   installed (the .deb / .rpm / Windows installers install it).
+ * - `serviceNotRunning` — installed but not answering.
+ * - `serviceDenied` — it answered and refused this app: on Linux the account is
+ *   not in the `cumulusvpn` group yet (or has not logged in again since), on
+ *   Windows this is not the installed app.
  */
 export type HelperRegistration =
-  'notNeeded' | 'enabled' | 'requiresApproval' | 'notRegistered' | 'notFound';
+  | 'notNeeded'
+  | 'enabled'
+  | 'elevated'
+  | 'requiresApproval'
+  | 'notRegistered'
+  | 'notFound'
+  | 'serviceNotInstalled'
+  | 'serviceNotRunning'
+  | 'serviceDenied';
 
 /** Whether Connect can work in this setup state (no setup step outstanding). */
 export function helperReady(state: HelperRegistration): boolean {
-  return state === 'enabled' || state === 'notNeeded';
+  return state === 'enabled' || state === 'notNeeded' || state === 'elevated';
 }
 
 /** Outside Tauri there is no daemon and none is needed — the mock tunnel is it. */
@@ -260,13 +285,13 @@ export async function helperRegistration(): Promise<HelperRegistration> {
   } catch {
     // Registration itself failing (an incomplete bundle, an OS too old) is
     // indistinguishable to the user from "not set up", and has the same answer.
-    // Only the macOS helper path can fail here; the in-process backend always
-    // answers `notNeeded`.
+    // Only the macOS helper path can fail here; Linux and Windows always answer
+    // with a state.
     return 'notRegistered';
   }
 }
 
-/** Whether the helper is answering on its socket right now (always true off macOS). */
+/** Whether the helper is answering right now (always true when the tunnel is in-process). */
 export async function helperReachable(): Promise<boolean> {
   if (!isTauri()) {
     return true;

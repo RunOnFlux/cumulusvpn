@@ -1,13 +1,14 @@
 # The privileged core lives in its own crates so the root daemon never links the
 # webview:
-#   - `tunnel`: the tunnel engine (sidecar, routes, kill switch). There is one
-#     copy of it, and it runs in one of two places. On macOS that is the root
-#     helper. On Linux and Windows it is the app process itself.
-#   - `helper`: the macOS root daemon. A socket server and peer authentication
-#     wrapped around `tunnel`.
-#   - `protocol`: the request and status types. They go over the helper socket,
-#     and they are also what the in-process path takes, so both paths have the
-#     same interface.
+#   - `tunnel`: the tunnel engine (sidecar, routes, kill switch, DNS). There is
+#     one copy of it, and it normally runs in the helper daemon. An elevated app
+#     with no daemon to talk to runs it in-process instead.
+#   - `helper`: the privileged daemon on all three desktop OSes (macOS
+#     LaunchDaemon, Linux systemd service, Windows service). A local IPC server
+#     and peer authentication wrapped around `tunnel`.
+#   - `protocol`: the request and status types. They go over the helper's
+#     socket / pipe, and they are also what the in-process path takes, so both
+#     paths have the same interface.
 [workspace]
 members = ["protocol", "tunnel", "helper"]
 
@@ -36,10 +37,9 @@ serde = { version = "1.0.229", features = ["derive"] }
 # Required in scope by `tauri::generate_context!`, not used directly.
 serde_json = "1.0.154"
 cumulusvpn-protocol = { path = "protocol" }
-# The in-process tunnel. On Linux and Windows it is the only path. On macOS it
-# is used only when the app itself runs as root (an unsigned build launched
-# with sudo, the pre-helper behaviour); otherwise the app talks to the helper
-# daemon. See src/backend.rs.
+# The in-process tunnel: the elevated fallback when the app runs as root /
+# Administrator and no helper daemon answers (macOS: whenever it runs as root).
+# Normally the app talks to the helper daemon instead. See src/backend.rs.
 cumulusvpn-tunnel = { path = "tunnel" }
 
 # SMAppService (helper registration) and the euid check that picks the root
@@ -48,6 +48,23 @@ cumulusvpn-tunnel = { path = "tunnel" }
 objc2 = "0.6.5"
 objc2-foundation = "0.3.2"
 libc = "0.2.190"
+
+# The euid check, and SO_PEERCRED to check the helper's socket is root's.
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2.190"
+
+# The elevation check, the Service Control Manager query (is the helper
+# installed?) and the helper pipe's owner check. Raw bindings already in
+# Cargo.lock via Tauri.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Services",
+  "Win32_System_Threading",
+] }
 
 [features]
 # Enables Tauri's custom-protocol asset loading in release builds.

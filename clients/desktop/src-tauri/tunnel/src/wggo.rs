@@ -15,13 +15,14 @@
 //! device + UAPI endpoint, the UAPI client (UnixStream on Unix, named pipe on
 //! Windows — set/get), address + MTU + route programming (via
 //! [`super::routing`]), and process reaping. **Elevation:** creating a TUN
-//! device and editing the routing table require root/Admin. On macOS this
-//! crate runs inside the root `cumulusvpn-helper` daemon (registered with
-//! `SMAppService`). On Linux and Windows it runs in the app, which must itself
-//! be elevated; a polkit policy or Windows service is the remaining seam there.
-//! Run unelevated, `spawn` fails cleanly ("needs elevated privileges"); Windows
-//! additionally refuses up front with an actionable message
-//! (`super::ensure_elevated`).
+//! device and editing the routing table require root/Admin, so this crate runs
+//! inside the privileged `cumulusvpn-helper` daemon (a LaunchDaemon on macOS, a
+//! systemd service on Linux, a LocalSystem service on Windows), or in an app
+//! that is itself elevated. Run unelevated, `spawn` fails cleanly ("needs
+//! elevated privileges"); Windows additionally refuses up front with an
+//! actionable message (`super::ensure_elevated`). The sidecar is found next to
+//! the running executable, which for the daemon is the helper: the installers
+//! put it beside `wireguard-go` (`/usr/bin`, the Windows install directory).
 //!
 //! **Windows specifics:** wireguard-go's Windows `main` takes exactly one
 //! argument (the interface name), is always foreground (no `-f`), never writes
@@ -53,9 +54,10 @@ pub struct WgConfig {
     /// Interface MTU from the `.conf` (`1420` single-hop, `1340` multi-hop
     /// inner). Applied to the TUN device when we bring it up. `None` → 1420.
     pub mtu: Option<u16>,
-    /// Resolver to install (applied by the privileged helper, not UAPI). `None`
-    /// for a multi-hop *outer* interface, which carries no DNS — only the inner
-    /// (exit) interface sets DNS. Single-hop always has it.
+    /// Resolver(s) to make the system's (applied by `TunnelManager` through
+    /// `super::dns` once routes are up, not over UAPI). `None` for a multi-hop
+    /// *outer* interface, which carries no DNS — only the inner (exit)
+    /// interface sets DNS. Single-hop always has it.
     pub dns: Option<String>,
     pub peer_public_key_b64: String,
     pub endpoint: String,
@@ -119,7 +121,7 @@ impl WgConfig {
             }
         }
 
-        Ok(WgConfig {
+        let config = WgConfig {
             private_key_b64: private_key_b64.ok_or(TunnelError::BadConfig("missing PrivateKey"))?,
             address: address.ok_or(TunnelError::BadConfig("missing Address"))?,
             mtu,
@@ -135,7 +137,37 @@ impl WgConfig {
             },
             persistent_keepalive,
             obfs,
-        })
+        };
+        config.check_shape()?;
+        Ok(config)
+    }
+
+    /// Every field that reaches a command line, a rule or the UAPI must be
+    /// exactly what it claims to be — the config can come from a less trusted
+    /// peer than the app itself (see `super::validate`). Checked at parse time
+    /// so a bad config is refused before the kill switch or a sidecar is
+    /// touched, not halfway through a connect.
+    fn check_shape(&self) -> Result<(), TunnelError> {
+        // `ip address add <address>/32` / `netsh … static <address>`.
+        self.address
+            .parse::<std::net::IpAddr>()
+            .map_err(|_| TunnelError::BadConfig("Address is not an IP address"))?;
+        super::validate::endpoint(&self.endpoint)?;
+        for cidr in &self.allowed_ips {
+            super::validate::cidr(cidr)?;
+        }
+        b64_to_hex(&self.private_key_b64)?;
+        b64_to_hex(&self.peer_public_key_b64)?;
+        // AmneziaWG parameters are integers (H1–H4 may be `min-max` ranges).
+        for (_, value) in &self.obfs {
+            if value.is_empty()
+                || value.len() > 32
+                || !value.bytes().all(|b| b.is_ascii_digit() || b == b'-')
+            {
+                return Err(TunnelError::BadConfig("invalid obfuscation parameter"));
+            }
+        }
+        Ok(())
     }
 
     /// Render the UAPI `set=1` request that configures the interface + peer.
@@ -300,6 +332,132 @@ fn uapi_socket_path(iface: &str) -> PathBuf {
             r"\\.\pipe\ProtectedPrefix\Administrators\WireGuard\{iface}"
         ))
     }
+}
+
+/// Kill `wireguard-go` processes left behind by a host that died without
+/// reaping them, so the next connect can create its device again.
+///
+/// An orphan is not harmless: it keeps `cvpn0` (and its UAPI endpoint) alive,
+/// so the next spawn of the same interface fails, and the tunnel looks half-up
+/// to anything that inspects the interface list. Windows never kills a dead
+/// parent's children, and on Linux the elevated in-process app can be killed
+/// without its sidecar (the systemd service is covered by its cgroup, but runs
+/// this anyway at startup). Called once at startup, before any session exists
+/// (`TunnelManager::recover_stale`).
+///
+/// Only ours: the process must be the binary [`resolve_wireguard_go`] would
+/// spawn, and on Linux also have been started for one of
+/// `logical_interfaces` (`wireguard-go -f cvpn0`). A no-op on macOS, where
+/// launchd reaps the helper's process group and the names are kernel-assigned
+/// `utunN`.
+pub fn reap_orphans(logical_interfaces: &[&str]) {
+    #[cfg(target_os = "linux")]
+    reap_orphans_linux(logical_interfaces);
+    #[cfg(windows)]
+    {
+        let _ = logical_interfaces;
+        reap_orphans_windows();
+    }
+    #[cfg(not(any(target_os = "linux", windows)))]
+    let _ = logical_interfaces;
+}
+
+/// Whether a process command line (`argv`, already split) is a wireguard-go
+/// sidecar we spawned for one of `names`: exactly `<…/wireguard-go> -f <name>`,
+/// as [`Sidecar::spawn`] launches it on Linux. Pure, so tested on any host.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn is_our_sidecar_argv(argv: &[&str], names: &[&str]) -> bool {
+    match argv {
+        [bin, "-f", name] => {
+            let base = bin.rsplit('/').next().unwrap_or(bin);
+            base == "wireguard-go" && names.contains(name)
+        }
+        _ => false,
+    }
+}
+
+/// `/proc/<pid>/exe` names a binary replaced since the process started (a
+/// package upgrade) as `<path> (deleted)`. Still the same path for our purpose:
+/// only root can have put a file there.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn strip_deleted_suffix(path: &str) -> &str {
+    path.strip_suffix(" (deleted)").unwrap_or(path)
+}
+
+#[cfg(target_os = "linux")]
+fn reap_orphans_linux(names: &[&str]) {
+    let Some(ours) = resolve_wireguard_go()
+        .ok()
+        .and_then(|p| fs::canonicalize(p).ok())
+    else {
+        // Nothing we could have spawned, so nothing of ours to reap.
+        return;
+    };
+    let Ok(entries) = fs::read_dir("/proc") else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some(pid) = name
+            .to_str()
+            .filter(|s| s.bytes().all(|b| b.is_ascii_digit()))
+        else {
+            continue;
+        };
+        let Ok(cmdline) = fs::read(entry.path().join("cmdline")) else {
+            continue;
+        };
+        let text = String::from_utf8_lossy(&cmdline);
+        let argv: Vec<&str> = text.split('\0').filter(|a| !a.is_empty()).collect();
+        if !is_our_sidecar_argv(&argv, names) {
+            continue;
+        }
+        let Ok(exe) = fs::read_link(entry.path().join("exe")) else {
+            continue;
+        };
+        if std::path::Path::new(strip_deleted_suffix(&exe.to_string_lossy())) != ours {
+            continue;
+        }
+        eprintln!(
+            "cumulusvpn: reaping orphaned wireguard-go (pid {pid}, {})",
+            argv[2]
+        );
+        let _ = Command::new("kill").args(["-KILL", pid]).output();
+    }
+    // A SIGKILLed wireguard-go cannot remove its UAPI socket. The next spawn
+    // would see the stale file and race it, so drop the ones for our names.
+    for name in names {
+        let _ = fs::remove_file(uapi_socket_path(name));
+    }
+}
+
+/// Stop every `wireguard-go.exe` started from our own install. Get-Process
+/// rather than a command-line match: wintun names the adapter exactly as
+/// requested, and nothing but this app runs the copy in our install directory.
+#[cfg(windows)]
+fn reap_orphans_windows() {
+    use std::os::windows::process::CommandExt;
+    let Ok(bin) = resolve_wireguard_go() else {
+        return;
+    };
+    let script = windows_reap_script(&bin.to_string_lossy());
+    let _ = Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        .creation_flags(super::CREATE_NO_WINDOW)
+        .output();
+}
+
+/// The PowerShell for [`reap_orphans_windows`]. The path is ours (resolved next
+/// to our own executable), but it is quoted as a PowerShell literal anyway.
+/// `-eq` on strings is case-insensitive, as Windows paths are.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn windows_reap_script(bin_path: &str) -> String {
+    let quoted = bin_path.replace('\'', "''");
+    format!(
+        "Get-Process -Name 'wireguard-go' -ErrorAction SilentlyContinue | \
+         Where-Object {{ $_.Path -eq '{quoted}' }} | \
+         Stop-Process -Force -ErrorAction SilentlyContinue"
+    )
 }
 
 /// The interface name we ask wireguard-go to create.
@@ -568,11 +726,9 @@ impl Sidecar {
         // host routes are installed by the caller (`TunnelManager`) so single-
         // and multi-hop can share this step.
         routing::configure_interface(&self.interface, &config.address, config.mtu.unwrap_or(1420))?;
-        // Install the resolver for the exit/single interface. The multi-hop
-        // *outer* `.conf` carries no DNS (`config.dns == None`) and is skipped.
-        if let Some(dns) = &config.dns {
-            routing::set_dns(&self.interface, dns)?;
-        }
+        // DNS is NOT set here: it is system-wide, and has to wait until the
+        // routes point at the tunnel. `TunnelManager` applies it last, for the
+        // single-hop device or the multi-hop exit (see `super::dns`).
         Ok(())
     }
 
@@ -630,6 +786,68 @@ impl Drop for Sidecar {
 }
 
 #[cfg(test)]
+mod orphan_tests {
+    use super::{is_our_sidecar_argv, strip_deleted_suffix, windows_reap_script};
+
+    const NAMES: &[&str] = &["cvpn0", "cvpn-entry", "cvpn-exit"];
+
+    #[test]
+    fn only_our_sidecar_command_lines_are_reaped() {
+        assert!(is_our_sidecar_argv(
+            &["/usr/bin/wireguard-go", "-f", "cvpn0"],
+            NAMES
+        ));
+        assert!(is_our_sidecar_argv(
+            &["wireguard-go", "-f", "cvpn-exit"],
+            NAMES
+        ));
+        // Someone else's WireGuard, another interface, or another program.
+        assert!(!is_our_sidecar_argv(
+            &["/usr/bin/wireguard-go", "-f", "wg0"],
+            NAMES
+        ));
+        assert!(!is_our_sidecar_argv(
+            &["/usr/bin/wireguard-go", "cvpn0"],
+            NAMES
+        ));
+        assert!(!is_our_sidecar_argv(
+            &["/usr/bin/sleep", "-f", "cvpn0"],
+            NAMES
+        ));
+        assert!(!is_our_sidecar_argv(
+            &["/usr/bin/wireguard-go", "-f", "cvpn0", "extra"],
+            NAMES
+        ));
+        assert!(!is_our_sidecar_argv(&[], NAMES));
+    }
+
+    #[test]
+    fn an_upgraded_binary_still_matches_its_path() {
+        assert_eq!(
+            strip_deleted_suffix("/usr/bin/wireguard-go (deleted)"),
+            "/usr/bin/wireguard-go"
+        );
+        assert_eq!(
+            strip_deleted_suffix("/usr/bin/wireguard-go"),
+            "/usr/bin/wireguard-go"
+        );
+    }
+
+    #[test]
+    fn the_windows_reaper_matches_our_binary_by_path_only() {
+        let s = windows_reap_script(r"C:\Program Files\CumulusVPN\wireguard-go.exe");
+        assert!(
+            s.contains(r"$_.Path -eq 'C:\Program Files\CumulusVPN\wireguard-go.exe'"),
+            "{s}"
+        );
+        assert!(s.contains("Stop-Process -Force"), "{s}");
+        // A quote in the path cannot end the literal early.
+        let s = windows_reap_script(r"C:\it's\wireguard-go.exe");
+        assert!(s.contains(r"'C:\it''s\wireguard-go.exe'"), "{s}");
+    }
+}
+
+#[cfg(test)]
 mod obfs_tests {
     use super::{parse_uapi_get, WgConfig};
 
@@ -673,6 +891,47 @@ mod obfs_tests {
         assert_eq!(stats.listen_port, Some(51820));
         assert_eq!(stats.rx_bytes, 10);
         assert_eq!(stats.tx_bytes, 20);
+    }
+
+    /// Address, Endpoint and AllowedIPs reach `ip`/`netsh` argv and the UAPI;
+    /// keys must be real keys. Each is refused at parse time, before a connect
+    /// touches the kill switch.
+    #[test]
+    fn config_fields_must_be_what_they_claim_to_be() {
+        let good = |field: &str, value: &str| {
+            let mut conf = format!(
+                "[Interface]\nPrivateKey = {KEY}\nAddress = 10.8.0.2/32\n\n[Peer]\n\
+                 PublicKey = {KEY}\nEndpoint = 1.2.3.4:51820\nAllowedIPs = 0.0.0.0/0\n"
+            );
+            let line = conf
+                .lines()
+                .find(|l| l.starts_with(field))
+                .expect("field")
+                .to_string();
+            conf = conf.replace(&line, &format!("{field} = {value}"));
+            WgConfig::parse(&conf)
+        };
+        assert!(good("Address", "10.8.0.2/32").is_ok());
+        assert!(good("Address", "10.8.0.2 dev lo").is_err());
+        assert!(good("Address", "10.8.0.0/24").is_err());
+        assert!(good("Endpoint", "gateway.example.com:51820").is_err());
+        assert!(good("Endpoint", "1.2.3.4").is_err());
+        assert!(good("AllowedIPs", "0.0.0.0/0, 10.0.0.0/40").is_err());
+        assert!(good("PublicKey", "not-a-key").is_err());
+        assert!(good("PrivateKey", "AAAA").is_err());
+    }
+
+    #[test]
+    fn obfuscation_values_are_numbers_or_ranges() {
+        let conf = |jc: &str| {
+            format!(
+                "[Interface]\nPrivateKey = {KEY}\nAddress = 10.8.0.2/32\nJc = {jc}\nH1 = 100-200\n\n\
+                 [Peer]\nPublicKey = {KEY}\nEndpoint = 1.2.3.4:51821\nAllowedIPs = 0.0.0.0/0\n"
+            )
+        };
+        assert!(WgConfig::parse(&conf("4")).is_ok());
+        assert!(WgConfig::parse(&conf("4 extra")).is_err());
+        assert!(WgConfig::parse(&conf("")).is_err());
     }
 
     #[test]

@@ -35,10 +35,13 @@ use std::os::unix::net::UnixStream;
 /// with "not authorised" and Connect fails. Change this and the signing identity
 /// together.
 ///
-/// `URVD95GYQ7` is the company's Apple team (the same team that signs the iOS
-/// app, `clients/mobile/ios/CumulusVPN.xcodeproj`). It needs a *Developer ID
-/// Application* certificate before it can sign this app.
-pub const APPLE_TEAM_ID: &str = "URVD95GYQ7";
+/// `276MY32G8B` is the US company's Apple team, which holds the *Developer ID
+/// Application* certificate that signs the desktop app. It is deliberately not
+/// the iOS app's team (`DEVELOPMENT_TEAM` in
+/// `clients/mobile/ios/CumulusVPN.xcodeproj`, still the UK team until that app
+/// is transferred): the two platforms are signed independently, and only this
+/// constant decides which team the helper trusts.
+pub const APPLE_TEAM_ID: &str = "276MY32G8B";
 
 /// The app's bundle identifier (`identifier` in `tauri.conf.json`).
 pub const APP_BUNDLE_ID: &str = "com.cumulusvpn.desktop";

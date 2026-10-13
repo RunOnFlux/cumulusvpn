@@ -4,26 +4,43 @@ version = "0.1.0"
 edition = "2021"
 rust-version = "1.77"
 license = "MIT"
-description = "CumulusVPN privileged helper — the macOS root daemon that owns the tunnel, routes and kill switch."
+description = "CumulusVPN privileged helper — the daemon that owns the tunnel, routes and kill switch (macOS LaunchDaemon, Linux systemd service, Windows service)."
 
-# Runs as root. Every dependency is attack surface at that privilege level, so
-# this list is deliberately the tunnel's real needs and nothing else — no Tauri,
-# no webview, no HTTP client.
+# Runs as root / LocalSystem. Every dependency is attack surface at that
+# privilege level, so this list is deliberately the tunnel's real needs and raw
+# OS bindings — no Tauri, no webview, no HTTP client, no service framework.
 #
-# macOS only. On Linux and Windows the app runs `cumulusvpn-tunnel` in-process,
-# and this binary only prints that and exits. It still builds there so that
-# `cargo check --workspace` stays green on every desktop OS, and on Linux the
-# socket server's tests run in CI.
+# One binary on all three desktop OSes, with a platform transport each: a Unix
+# socket on macOS and Linux, a named pipe on Windows (see src/main.rs). On
+# Linux CI the socket server's tests run for real.
 [dependencies]
 cumulusvpn-protocol = { path = "../protocol" }
 cumulusvpn-tunnel = { path = "../tunnel" }
 
-# Peer authentication (see src/peer.rs) and the root check. `core-foundation-sys`
-# is a raw binding crate — type declarations, no logic — which is what we want
-# linked into root.
-[target.'cfg(target_os = "macos")'.dependencies]
+# Root checks, socket permissions, SO_PEERCRED / audit tokens and signal
+# handling. Already in the tree via Tauri.
+[target.'cfg(unix)'.dependencies]
 libc = "0.2.190"
+
+# Peer authentication by code signature (see src/peer.rs). A raw binding crate —
+# type declarations, no logic — which is what we want linked into root.
+[target.'cfg(target_os = "macos")'.dependencies]
 core-foundation-sys = "0.8.7"
+
+# The service control dispatcher, the named pipe and its security descriptor,
+# and client process identification. Raw bindings already in Cargo.lock via
+# Tauri (no new crate), with only the API families the helper calls.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_Storage_FileSystem",
+  "Win32_System_IO",
+  "Win32_System_Pipes",
+  "Win32_System_Services",
+  "Win32_System_Threading",
+] }
 
 [[bin]]
 name = "cumulusvpn-helper"
