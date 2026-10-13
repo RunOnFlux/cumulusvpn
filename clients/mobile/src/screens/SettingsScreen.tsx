@@ -2,7 +2,7 @@
  * Settings — connection preferences + about. Kept intentionally small: the
  * product is "one screen, one job", so this is prefs, not a control panel.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Clipboard from '@react-native-clipboard/clipboard';
 import {
   Linking,
@@ -13,6 +13,8 @@ import {
   StyleSheet,
   Text,
   View,
+  type LayoutChangeEvent,
+  type ScrollViewInstance,
 } from 'react-native';
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
@@ -48,6 +50,11 @@ interface Props {
   readonly onOpenPrivacy: () => void;
   /** Whether this build may show purchase/upsell surfaces (`flags.inAppUpgrade`). */
   readonly canUpgrade: boolean;
+  /**
+   * Open scrolled to "Your identity" with the recovery key shown (from the
+   * one-time "save your recovery key" prompt).
+   */
+  readonly focusIdentity?: boolean;
 }
 
 export function SettingsScreen({
@@ -56,8 +63,17 @@ export function SettingsScreen({
   onOpenUpgrade,
   onOpenPrivacy,
   canUpgrade,
+  focusIdentity = false,
 }: Props): React.JSX.Element {
   const premium = vpn.tier === 'premium';
+  const scrollRef = useRef<ScrollViewInstance>(null);
+  const focused = useRef(false);
+  const onIdentityLayout = (e: LayoutChangeEvent): void => {
+    if (focusIdentity && !focused.current) {
+      focused.current = true;
+      scrollRef.current?.scrollTo({ y: e.nativeEvent.layout.y, animated: false });
+    }
+  };
   const expiry = formatExpiry(vpn.paidUntil);
   // Transport and routing choices are read when a tunnel is BUILT, so they
   // cannot apply to one already up. Lock them while a session exists rather than
@@ -73,7 +89,16 @@ export function SettingsScreen({
         </Pressable>
       </View>
 
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      {/* Text fields below (split-tunnel rules, recovery key): iOS insets the
+          scroll view and scrolls the field above the keyboard; Android gets the
+          same from the KeyboardAvoidingView in App.tsx shrinking this view. */}
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={styles.body}
+        showsVerticalScrollIndicator={false}
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
+      >
         <Text style={styles.section}>Plan</Text>
         {onOpenUpgrade ? (
           <Pressable
@@ -183,8 +208,10 @@ export function SettingsScreen({
 
         {/* The device identity — premium is paid to it — and how it survives
             deleting the app or moving phones (state/identity.ts). */}
-        <Text style={styles.section}>Your identity</Text>
-        <IdentitySection vpn={vpn} />
+        <View onLayout={onIdentityLayout}>
+          <Text style={styles.section}>Your identity</Text>
+          <IdentitySection vpn={vpn} revealKey={focusIdentity} />
+        </View>
 
         <Text style={styles.section}>Privacy &amp; support</Text>
         <Pressable

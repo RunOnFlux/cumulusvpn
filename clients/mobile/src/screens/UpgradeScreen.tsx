@@ -109,10 +109,15 @@ export function UpgradeScreen({
   const expiry = formatExpiry(paidUntil);
   const showCrypto = cryptoEnabled && payment !== null;
   return (
+    // The redeem field sits near the bottom: iOS insets the scroll view and
+    // scrolls it above the keyboard; Android gets the same from the
+    // KeyboardAvoidingView in App.tsx shrinking this view.
     <ScrollView
       style={styles.root}
       contentContainerStyle={styles.body}
       showsVerticalScrollIndicator={false}
+      automaticallyAdjustKeyboardInsets
+      keyboardShouldPersistTaps="handled"
     >
       <View style={styles.header}>
         <Text style={styles.title}>{premium ? 'Your plan' : 'Upgrade to Premium'}</Text>

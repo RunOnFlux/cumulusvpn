@@ -43,11 +43,12 @@ import {
   type TunnelState,
   type TunnelStatus,
 } from '../native/CumulusTunnel';
-import { CumulusIdentity } from '../native/CumulusIdentity';
+import { IDENTITY_BACKUPS } from '../native/CumulusIdentity';
 import {
   BACKUP_OFF,
-  overwriteBackup,
   readBackedUp,
+  removeBackup,
+  replaceBackup,
   resolveIdentity,
   syncBackup,
   type BackupStatus,
@@ -606,7 +607,7 @@ export function useVpn(): VpnModel & VpnActions {
           ? null
           : await resolveIdentity(
               { load: loadKeypair, save: saveKeypair },
-              CumulusIdentity,
+              IDENTITY_BACKUPS,
               backupEnabled,
             );
         if (!alive) {
@@ -616,7 +617,7 @@ export function useVpn(): VpnModel & VpnActions {
           setKeypair(local);
           setIdentityBackupModel({ enabled: backupEnabled, ...BACKUP_OFF });
           if (backupEnabled) {
-            void syncBackup(local, CumulusIdentity).then((status) => {
+            void syncBackup(local, IDENTITY_BACKUPS).then((status) => {
               if (alive) {
                 setIdentityBackupModel({ enabled: true, ...status });
               }
@@ -1447,16 +1448,12 @@ export function useVpn(): VpnModel & VpnActions {
     async (enabled: boolean): Promise<void> => {
       await saveIdentityBackup(enabled);
       if (!enabled) {
-        try {
-          await CumulusIdentity.remove();
-        } catch {
-          // Still off: the switch is the user's word, and a leftover copy is
-          // removed on the next remove() or overwritten when turned back on.
-        }
+        // Every copy (both Keychain access groups on iOS).
+        await removeBackup(IDENTITY_BACKUPS);
         setIdentityBackupModel({ enabled: false, ...BACKUP_OFF });
         return;
       }
-      const status = keypair ? await syncBackup(keypair, CumulusIdentity) : BACKUP_OFF;
+      const status = keypair ? await syncBackup(keypair, IDENTITY_BACKUPS) : BACKUP_OFF;
       setIdentityBackupModel({ enabled: true, ...status });
     },
     [keypair],
@@ -1465,30 +1462,42 @@ export function useVpn(): VpnModel & VpnActions {
   const restoreIdentity = useCallback(
     async (recoveryKey: string): Promise<void> => {
       const kp = decodeRecoveryKey(recoveryKey);
+      // The identity being replaced: the restore dialog named it, so its
+      // copies may be replaced. Any other backed-up identity stays (`other`).
+      const previous = keypair ? [paymentCode(keypair.publicKey)] : [];
       await replaceIdentity(kp);
       if (identityBackup.enabled) {
         // Deliberate: the user chose this identity, so it becomes the backup.
-        setIdentityBackupModel({ enabled: true, ...(await overwriteBackup(kp, CumulusIdentity)) });
+        setIdentityBackupModel({
+          enabled: true,
+          ...(await replaceBackup(kp, IDENTITY_BACKUPS, previous)),
+        });
       }
     },
-    [replaceIdentity, identityBackup.enabled],
+    [replaceIdentity, identityBackup.enabled, keypair],
   );
 
+  // Both act on the identity Settings is showing as `other` (by its code), so
+  // with two copies that disagree each one is decided on separately.
   const switchToBackedUpIdentity = useCallback(async (): Promise<void> => {
-    const kp = await readBackedUp(CumulusIdentity);
+    const kp = await readBackedUp(IDENTITY_BACKUPS, identityBackup.other?.code);
     if (!kp) {
       throw new Error('The backed-up identity could not be read. Try again.');
     }
     await replaceIdentity(kp);
-    setIdentityBackupModel({ enabled: true, ...(await syncBackup(kp, CumulusIdentity)) });
-  }, [replaceIdentity]);
+    setIdentityBackupModel({ enabled: true, ...(await syncBackup(kp, IDENTITY_BACKUPS)) });
+  }, [replaceIdentity, identityBackup.other]);
 
   const replaceBackupWithCurrent = useCallback(async (): Promise<void> => {
     if (!keypair) {
       return;
     }
-    setIdentityBackupModel({ enabled: true, ...(await overwriteBackup(keypair, CumulusIdentity)) });
-  }, [keypair]);
+    const replacing = identityBackup.other ? [identityBackup.other.code] : [];
+    setIdentityBackupModel({
+      enabled: true,
+      ...(await replaceBackup(keypair, IDENTITY_BACKUPS, replacing)),
+    });
+  }, [keypair, identityBackup.other]);
 
   return {
     keypair,

@@ -9,10 +9,13 @@
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, BackHandler, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
+import { KeyboardAvoidingScreen } from './src/components/KeyboardAvoidingScreen';
 import { PoweredByFlux } from './src/components/PoweredByFlux';
+import { TransferNoticeSheet } from './src/components/TransferNoticeSheet';
 import { useVpn } from './src/state/useVpn';
 import { useFlags } from './src/state/useFlags';
 import { useIap } from './src/state/useIap';
+import { useTransferNotice } from './src/state/useTransferNotice';
 import { ConnectScreen } from './src/screens/ConnectScreen';
 import { CountryPickerScreen } from './src/screens/CountryPickerScreen';
 import { UpgradeScreen } from './src/screens/UpgradeScreen';
@@ -32,6 +35,10 @@ function App(): React.JSX.Element {
     flags.inAppUpgrade || flags.iapPurchase || flags.voucherRedeem || flags.webPayLink;
   const iap = useIap(flags.iapPurchase, vpn.payment?.code ?? null, vpn.tier === 'premium');
   const [route, setRoute] = useState<Route>('connect');
+  // One-time "save your recovery key" prompt (flag `transferNotice`), and
+  // whether Settings should open at the identity with the key shown.
+  const notice = useTransferNotice(flags.transferNotice, vpn.tier, vpn.paidUntil);
+  const [focusIdentity, setFocusIdentity] = useState(false);
   // App Store 5.4: the data disclosure must be seen BEFORE the service is used,
   // so it gates the whole UI on first launch. `null` = still reading the ack
   // from storage; we hold on the boot view rather than flash the gate at a user
@@ -64,6 +71,14 @@ function App(): React.JSX.Element {
     }
   }, [route, canUpgrade]);
 
+  // The prompt's "Show recovery key" opens Settings once at the key; leaving
+  // Settings any way (Done, back, privacy page) drops that.
+  useEffect(() => {
+    if (route !== 'settings') {
+      setFocusIdentity(false);
+    }
+  }, [route]);
+
   // Android hardware back: from any sub-screen, return to Connect instead of
   // closing the app; on Connect, fall through to the default (exit).
   useEffect(() => {
@@ -79,11 +94,13 @@ function App(): React.JSX.Element {
 
   return (
     <SafeAreaProvider>
-      {/* Transparent status bar; the SafeAreaView below insets content past it
-          (Android 15+ / SDK 36 is edge-to-edge, so a bar background is ignored). */}
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      {/* Light icons on a transparent status bar; the SafeAreaView below insets
+          content past it. Android draws edge-to-edge (edgeToEdgeEnabled in
+          android/gradle.properties), so the bar has no background of its own —
+          RN 0.87 removed the `translucent` / `backgroundColor` props. */}
+      <StatusBar barStyle="light-content" />
       <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
-        <View style={styles.screen}>
+        <KeyboardAvoidingScreen style={styles.screen}>
           {disclosed === null ? (
             <View style={styles.boot}>
               <View style={styles.bootCenter}>
@@ -164,6 +181,7 @@ function App(): React.JSX.Element {
               onOpenUpgrade={canUpgrade ? () => setRoute('upgrade') : undefined}
               onOpenPrivacy={() => setRoute('privacy')}
               canUpgrade={canUpgrade}
+              focusIdentity={focusIdentity}
             />
           ) : (
             <ConnectScreen
@@ -175,8 +193,17 @@ function App(): React.JSX.Element {
               onOpenSettings={() => setRoute('settings')}
             />
           )}
-        </View>
+        </KeyboardAvoidingScreen>
       </SafeAreaView>
+      <TransferNoticeSheet
+        visible={notice.visible && disclosed === true && route === 'connect'}
+        onShowKey={() => {
+          notice.dismiss();
+          setFocusIdentity(true);
+          setRoute('settings');
+        }}
+        onDismiss={notice.dismiss}
+      />
     </SafeAreaProvider>
   );
 }

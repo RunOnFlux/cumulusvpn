@@ -330,7 +330,15 @@ const FLAGS_KEY = 'flags';
 //   iapPurchase   — store-billing subscription UI (must be ON before store review)
 //   voucherRedeem — our own code-redeem box (Play build shares the APK binary)
 //   webPayLink    — "Pay on the website" button (web checkout, device code prefilled)
-const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase', 'voucherRedeem', 'webPayLink'];
+//   transferNotice — one-time "save your recovery key" prompt for Premium devices
+//                   (not a payment option; on shortly before an App Store transfer)
+const FLAG_NAMES = [
+  'inAppUpgrade',
+  'iapPurchase',
+  'voucherRedeem',
+  'webPayLink',
+  'transferNotice',
+];
 // Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
 const DEFAULT_FLAGS = Object.fromEntries(
   FLAG_NAMES.map((name) => [name, { android: false, ios: false }]),

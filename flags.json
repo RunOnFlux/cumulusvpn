@@ -4,6 +4,7 @@
   "_comment_iapPurchase": "STORE-BILLING purchase UI (Apple IAP / Google Play Billing subscriptions via the payments bridge, docs/18-payments-bridge.md). Store-compliant by construction — this flag is a rollout/kill switch, NOT a compliance shield. It MUST be ON in KV for a platform BEFORE a build containing the subscribe UI is submitted for review (reviewers must find the declared subscriptions; fail-closed flags would hide them and cause a rejection), and may be flipped OFF afterwards only as an emergency kill switch (bridge outage).",
   "_comment_voucherRedeem": "In-app redeem box for OUR voucher/promo codes (docs/18). Per-platform and remote-controlled on both: the build-level iOS exclusion in flags.ts is gone, so 'ios': true takes effect. Android direct-APK and Play ship the SAME binary, so this flag is the only thing separating them — keep OFF in KV while a Play build is live. Users can always redeem our codes on the web (Settings shows a Device code); the link to the store's own offer/promo-code sheet (Apple/Play) also follows this flag (and needs iapPurchase).",
   "_comment_webPayLink": "'Pay on the website' button in the app: opens vpn.cumulusvpn.com/#/upgrade?code=<device code> so the web checkout (FLUX or Stripe card) is already set to this device. An external-checkout link is store steering outside the US (Apple 3.1.1/3.1.3, Google Play Payments) — the same operator call as inAppUpgrade, per platform. The code rides in the URL fragment, which browsers never send to a server.",
+  "_comment_transferNotice": "One-time 'save your recovery key' prompt, shown only to devices that currently have Premium (clients/mobile/src/lib/transferNotice.ts). Not a purchase surface. Turn it on for a platform a few weeks BEFORE moving the app to another store account (an App Store transfer changes the Apple team, and with it which Keychain copies of the identity a reinstall can read); off again afterwards. Each device sees it once.",
   "inAppUpgrade": {
     "android": false,
     "ios": false
@@ -17,6 +18,10 @@
     "ios": false
   },
   "webPayLink": {
+    "android": false,
+    "ios": false
+  },
+  "transferNotice": {
     "android": false,
     "ios": false
   }

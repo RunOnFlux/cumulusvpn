@@ -18,4 +18,15 @@ RCT_EXTERN_METHOD(load:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(remove:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+// The App Group copy (group.com.cumulusvpn.app): survives an App Store transfer.
+RCT_EXTERN_METHOD(saveShared:(NSString *)secret
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(loadShared:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(removeShared:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 @end

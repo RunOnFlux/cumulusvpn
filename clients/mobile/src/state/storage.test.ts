@@ -22,6 +22,8 @@ import {
   saveFleet,
   loadStoreSub,
   saveStoreSub,
+  loadTransferNoticeSeen,
+  saveTransferNoticeSeen,
 } from './storage';
 
 const KP: Keypair = { publicKey: 'pub-abc', privateKey: 'priv-xyz' };
@@ -119,5 +121,14 @@ describe('store subscription state', () => {
   it('treats an unknown stored value as not known', async () => {
     await AsyncStorage.setItem('cvpn:storeSub', 'paused?');
     await expect(loadStoreSub()).resolves.toBeNull();
+  });
+});
+
+describe('recovery-key prompt (transferNotice)', () => {
+  it('is unseen until marked, then stays seen', async () => {
+    await AsyncStorage.removeItem('cvpn:transferNoticeSeen');
+    await expect(loadTransferNoticeSeen()).resolves.toBe(false);
+    await saveTransferNoticeSeen();
+    await expect(loadTransferNoticeSeen()).resolves.toBe(true);
   });
 });

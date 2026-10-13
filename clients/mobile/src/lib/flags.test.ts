@@ -40,6 +40,7 @@ describe('resolveFlags', () => {
     expect(DEFAULT_FLAGS.iapPurchase).toBe(false);
     expect(DEFAULT_FLAGS.voucherRedeem).toBe(false);
     expect(DEFAULT_FLAGS.webPayLink).toBe(false);
+    expect(DEFAULT_FLAGS.transferNotice).toBe(false);
   });
 });
 
@@ -69,12 +70,14 @@ describe('resolveFlags: iapPurchase', () => {
       iapPurchase: false,
       voucherRedeem: false,
       webPayLink: false,
+      transferNotice: false,
     });
     expect(resolveFlags(both, 'ios')).toEqual({
       inAppUpgrade: false,
       iapPurchase: true,
       voucherRedeem: false,
       webPayLink: false,
+      transferNotice: false,
     });
   });
 
@@ -116,5 +119,31 @@ describe('resolveFlags: webPayLink', () => {
     expect(resolveFlags({ webPayLink: { ios: 1 } }, 'ios').webPayLink).toBe(false);
     expect(resolveFlags({}, 'ios').webPayLink).toBe(false);
     expect(resolveFlags(null, 'android').webPayLink).toBe(false);
+  });
+});
+
+describe('resolveFlags: transferNotice', () => {
+  it('is remote-controlled per platform', () => {
+    const doc = { transferNotice: { android: false, ios: true } };
+    expect(resolveFlags(doc, 'ios').transferNotice).toBe(true);
+    expect(resolveFlags(doc, 'android').transferNotice).toBe(false);
+  });
+
+  it('is strict-true and fail-closed like every flag', () => {
+    expect(resolveFlags({ transferNotice: { ios: 'yes' } }, 'ios').transferNotice).toBe(false);
+    expect(resolveFlags({ transferNotice: true }, 'ios').transferNotice).toBe(false);
+    expect(resolveFlags({}, 'ios').transferNotice).toBe(false);
+    expect(resolveFlags(null, 'ios').transferNotice).toBe(false);
+  });
+
+  it('is independent of the purchase flags', () => {
+    const doc = { transferNotice: { ios: true }, iapPurchase: { ios: false } };
+    expect(resolveFlags(doc, 'ios')).toEqual({
+      inAppUpgrade: false,
+      iapPurchase: false,
+      voucherRedeem: false,
+      webPayLink: false,
+      transferNotice: true,
+    });
   });
 });
