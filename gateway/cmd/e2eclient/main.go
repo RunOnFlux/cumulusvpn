@@ -27,6 +27,10 @@
 //	              through the gateway's TLS relay at ENDPOINT (default port 51820;
 //	              use :443 for a stealth-group node). Gateway needs CVPN_TLS_ENABLE=1.
 //	CVPN_TLS_SNI  SNI to present for CVPN_TLS   (default www.bing.com, the fleet default)
+//	DNS_CHECK     non-empty → after the HTTP check, resolve through the tunnel via
+//	              each DNS choice (1.1.1.1, 9.9.9.9, 94.140.14.14, 1.1.1.3; UDP and
+//	              TCP) with names each provider answers distinctively, and check
+//	              the gateway's /v1/info dns counters show DoH (gateway 0.4.2+).
 //
 // Note CVPN_OBFS/CVPN_TLS are non-empty checks, so `CVPN_OBFS=0` still enables
 // obfuscation — unset the variable to disable it.
@@ -253,4 +257,12 @@ func main() {
 	// The exit IP is the actual proof the gateway egressed the traffic: it must be
 	// the NODE's address, not the tester's.
 	fmt.Println("PASS if the address above is the gateway node's public IP (not yours).")
+
+	if env("DNS_CHECK", "") != "" {
+		if !runDNSCheck(tnet, control) {
+			fmt.Println("DNS CHECK FAILED")
+			os.Exit(1)
+		}
+		fmt.Println("DNS CHECK OK — every DNS choice answered through the tunnel, over DoH from the gateway")
+	}
 }
