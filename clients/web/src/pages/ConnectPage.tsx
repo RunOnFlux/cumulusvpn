@@ -42,13 +42,26 @@ type ConnectError =
   | { kind: 'rejected'; slug: string; message: string }
   | { kind: 'failed'; message: string | null };
 
+/** "13 Nov 2026" in the reader's locale; the raw value if it does not parse. */
+function formatDay(iso: string, locale: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) {
+    return iso;
+  }
+  return new Intl.DateTimeFormat(locale, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  }).format(d);
+}
+
 export function ConnectPage({
   keypair,
   discovery,
   onRegenerate,
   onNavigateUpgrade,
 }: ConnectPageProps) {
-  const { t, rich } = useI18n();
+  const { t, rich, locale } = useI18n();
   const [picked, setPicked] = useState<CountryOption | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ConnectError | null>(null);
@@ -69,6 +82,36 @@ export function ConnectPage({
   // The effective selection: the user's explicit pick, else the best (first)
   // discovered country. Derived rather than synced via an effect.
   const selected = picked ?? discovery.options[0] ?? null;
+
+  // This key's real tier. Entitlement is read from the chain, so any live
+  // gateway answers the same; the pill stays hidden until one does — a
+  // hard-coded FREE pill told paying users their payment had not landed.
+  const tierGateway = discovery.options[0]?.bestGateway ?? null;
+  const [tier, setTier] = useState<{
+    readonly premium: boolean;
+    readonly paidUntil: string;
+  } | null>(null);
+  useEffect(() => {
+    if (!tierGateway) {
+      return;
+    }
+    let cancelled = false;
+    void status(tierGateway.ip, keypair.publicKey, {
+      signPubKey: tierGateway.sign_pubkey,
+      fetchImpl: proxiedFetch,
+    })
+      .then((s) => {
+        if (!cancelled) {
+          setTier({ premium: s.tier === 'premium', paidUntil: s.paid_until });
+        }
+      })
+      .catch(() => {
+        // Unknown stays hidden rather than guessing "free".
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [tierGateway, keypair.publicKey]);
 
   const memo = useMemo(() => {
     try {
@@ -243,7 +286,13 @@ export function ConnectPage({
           <section className="card">
             <div className="card-head">
               <h2>{t('connect_choose_location')}</h2>
-              <span className="tier-pill free">{t('connect_tier_free')}</span>
+              {tier?.premium ? (
+                <span className="tier-pill premium">
+                  {t('connect_tier_premium', { date: formatDay(tier.paidUntil, locale) })}
+                </span>
+              ) : tier ? (
+                <span className="tier-pill free">{t('connect_tier_free')}</span>
+              ) : null}
             </div>
             {discovery.loading ? (
               <div className="loading">{t('connect_loading_directory')}</div>

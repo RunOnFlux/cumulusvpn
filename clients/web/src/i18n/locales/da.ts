@@ -42,6 +42,7 @@ export const da: Catalog = {
     'Ingen gateway kunne nås lige nu. De signerede katalogs lande vises — genindlæs siden om et minut for at prøve igen.',
   connect_choose_location: 'Vælg en placering',
   connect_tier_free: 'GRATIS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · til {date}',
   connect_loading_directory: 'Løser det signerede katalog og finder gateways…',
   connect_your_config: 'Din konfiguration',
   connect_source_directory: '{source}-katalog',

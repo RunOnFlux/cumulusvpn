@@ -42,6 +42,7 @@ export const fr: Catalog = {
     'Aucune passerelle n’a pu être jointe pour le moment. Les pays de l’annuaire signé sont affichés — rechargez la page dans une minute pour réessayer.',
   connect_choose_location: 'Choisissez un emplacement',
   connect_tier_free: 'GRATUIT · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · jusqu’au {date}',
   connect_loading_directory: "Résolution de l'annuaire signé et découverte des passerelles…",
   connect_your_config: 'Votre configuration',
   connect_source_directory: 'Annuaire {source}',

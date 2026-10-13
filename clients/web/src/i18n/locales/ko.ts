@@ -41,6 +41,7 @@ export const ko: Catalog = {
     '지금은 어떤 게이트웨이에도 접속할 수 없습니다. 서명된 디렉터리의 국가 목록을 표시하고 있습니다 — 1분 후 페이지를 새로고침해 다시 시도하세요.',
   connect_choose_location: '위치 선택',
   connect_tier_free: '무료 · 100 KB/s',
+  connect_tier_premium: '프리미엄 · {date}까지',
   connect_loading_directory: '서명된 디렉터리를 확인하고 게이트웨이를 찾는 중…',
   connect_your_config: '내 설정',
   connect_source_directory: '{source} 디렉터리',

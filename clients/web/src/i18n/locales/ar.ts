@@ -48,6 +48,7 @@ export const ar: Catalog = {
     'تعذّر الوصول إلى أي بوابة الآن. تُعرض دول الدليل الموقَّع — أعد تحميل الصفحة بعد دقيقة للمحاولة مجددًا.',
   connect_choose_location: 'اختر موقعًا',
   connect_tier_free: 'مجاني · 100 KB/s',
+  connect_tier_premium: 'بريميوم · حتى {date}',
   connect_loading_directory: 'جارٍ تحليل الدليل الموقَّع واكتشاف البوابات…',
   connect_your_config: 'إعدادك',
   connect_source_directory: 'دليل {source}',

@@ -42,6 +42,7 @@ export const pl: Catalog = {
     'W tej chwili nie udało się połączyć z żadną bramką. Pokazujemy kraje z podpisanego katalogu — odśwież stronę za minutę, aby spróbować ponownie.',
   connect_choose_location: 'Wybierz lokalizację',
   connect_tier_free: 'DARMOWY · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · do {date}',
   connect_loading_directory: 'Wczytywanie podpisanego katalogu i wykrywanie bramek…',
   connect_your_config: 'Twoja konfiguracja',
   connect_source_directory: 'Katalog {source}',

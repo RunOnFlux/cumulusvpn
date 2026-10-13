@@ -7,14 +7,16 @@ import type { CountryOption } from '../lib/gateways';
 import { LocaleProvider } from '../hooks/useLocale';
 import { ConnectPage } from './ConnectPage';
 
-// enroll() is the only network call on this page; stub it so the config-output
-// state is reachable without a live gateway.
+// The page's network calls — enroll(), status() for the tier pill and the
+// issued-config check — are stubbed so every state is reachable offline.
 const enrollMock = vi.hoisted(() => vi.fn());
 const checkMock = vi.hoisted(() => vi.fn());
+const statusMock = vi.hoisted(() => vi.fn());
 vi.mock('@cumulusvpn/core', async (importOriginal) => ({
   ...(await importOriginal<typeof CoreModule>()),
   enroll: enrollMock,
   checkIssuedConfig: checkMock,
+  status: statusMock,
 }));
 
 const keypair: Keypair = {
@@ -93,6 +95,8 @@ describe('<ConnectPage />', () => {
     checkMock.mockReset();
     checkMock.mockResolvedValue('unknown');
     enrollMock.mockReset();
+    statusMock.mockReset();
+    statusMock.mockRejectedValue(new Error('offline'));
   });
 
   // A migration re-places the gateway on a node with its own key, so the issued
@@ -130,13 +134,39 @@ describe('<ConnectPage />', () => {
   it('renders the exact English copy', () => {
     renderPage();
     expect(screen.getByText('Choose a location')).toBeInTheDocument();
-    expect(screen.getByText('FREE · 100 KB/s')).toBeInTheDocument();
     expect(screen.getByText('Select a country to continue')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Generate .conf' })).toBeInTheDocument();
     expect(screen.getByText('This device’s identity')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('One key, every gateway.');
     expect(screen.getByText(/Couldn’t reach any gateway just now\./)).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'upgrade with FLUX' })).toBeInTheDocument();
+  });
+
+  // The pill used to be a hard-coded FREE, which told paying users their payment
+  // had not landed. It now shows the key's real tier, and nothing until known.
+  it('shows the real tier: nothing while unknown, then premium with its end date', async () => {
+    statusMock.mockResolvedValue({
+      tier: 'premium',
+      paid_until: '2026-11-09T16:11:00Z',
+      bytes_used: 0,
+    });
+    renderPage('en', liveDiscovery);
+    expect(screen.queryByText('FREE · 100 KB/s')).not.toBeInTheDocument();
+    expect(await screen.findByText(/^PREMIUM · until .*Nov.*2026$/)).toBeInTheDocument();
+    expect(statusMock).toHaveBeenCalledWith('203.0.113.7', keypair.publicKey, expect.anything());
+  });
+
+  it('shows FREE only once a gateway says the key is free', async () => {
+    statusMock.mockResolvedValue({ tier: 'free', paid_until: '', bytes_used: 0 });
+    renderPage('en', liveDiscovery);
+    expect(await screen.findByText('FREE · 100 KB/s')).toBeInTheDocument();
+  });
+
+  it('shows no tier pill when no gateway answers', async () => {
+    renderPage('en', liveDiscovery);
+    await waitFor(() => expect(statusMock).toHaveBeenCalled());
+    expect(screen.queryByText('FREE · 100 KB/s')).not.toBeInTheDocument();
+    expect(screen.queryByText(/^PREMIUM · until /)).not.toBeInTheDocument();
   });
 
   // Discovery starts out unverified, so keying the warning on `verified` alone

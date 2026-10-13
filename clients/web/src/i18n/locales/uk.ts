@@ -42,6 +42,7 @@ export const uk: Catalog = {
     'Зараз не вдалося зв’язатися з жодним шлюзом. Показано країни з підписаного каталогу — онови сторінку за хвилину, щоб спробувати ще раз.',
   connect_choose_location: 'Обери локацію',
   connect_tier_free: 'БЕЗКОШТОВНО · 100 KB/s',
+  connect_tier_premium: 'ПРЕМІУМ · до {date}',
   connect_loading_directory: 'Завантаження підписаного каталогу та пошук шлюзів…',
   connect_your_config: 'Твоя конфігурація',
   connect_source_directory: 'Каталог {source}',

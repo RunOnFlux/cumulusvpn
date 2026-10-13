@@ -42,6 +42,7 @@ export const nb: Catalog = {
     'Ingen gateway kunne nås akkurat nå. Landene fra den signerte katalogen vises — last inn siden på nytt om et minutt for å prøve igjen.',
   connect_choose_location: 'Velg et sted',
   connect_tier_free: 'GRATIS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · til {date}',
   connect_loading_directory: 'Løser opp den signerte katalogen og oppdager gatewayer…',
   connect_your_config: 'Konfigurasjonen din',
   connect_source_directory: '{source}-katalog',

@@ -41,6 +41,7 @@ export const zh: Catalog = {
     '暂时无法连接到任何网关。目前显示的是已签名目录中的国家——请一分钟后刷新页面重试。',
   connect_choose_location: '选择一个位置',
   connect_tier_free: '免费 · 100 KB/s',
+  connect_tier_premium: '高级版 · 至 {date}',
   connect_loading_directory: '正在解析已签名目录并发现网关…',
   connect_your_config: '你的配置',
   connect_source_directory: '{source} 目录',

@@ -42,6 +42,7 @@ export const it: Catalog = {
     'Nessun gateway raggiungibile in questo momento. Vengono mostrati i paesi della directory firmata — ricarica la pagina tra un minuto per riprovare.',
   connect_choose_location: 'Scegli una località',
   connect_tier_free: 'GRATIS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · fino al {date}',
   connect_loading_directory: 'Risoluzione della directory firmata e scoperta dei gateway…',
   connect_your_config: 'La tua configurazione',
   connect_source_directory: 'Directory {source}',

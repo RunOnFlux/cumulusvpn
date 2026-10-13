@@ -42,6 +42,7 @@ export const sw: Catalog = {
     'Hakuna lango lililoweza kufikiwa kwa sasa. Nchi za saraka iliyotiwa sahihi zinaonyeshwa — pakia upya ukurasa baada ya dakika moja ili ujaribu tena.',
   connect_choose_location: 'Chagua eneo',
   connect_tier_free: 'BURE · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · hadi {date}',
   connect_loading_directory: 'Inatatua saraka iliyotiwa sahihi na kugundua malango…',
   connect_your_config: 'Usanidi wako',
   connect_source_directory: 'Saraka ya {source}',

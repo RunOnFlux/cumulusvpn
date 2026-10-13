@@ -42,6 +42,7 @@ export const hi: Catalog = {
     'अभी किसी भी गेटवे तक पहुँचा नहीं जा सका। हस्ताक्षरित डायरेक्टरी के देश दिखाए जा रहे हैं — फिर से कोशिश करने के लिए एक मिनट बाद पेज रीलोड करें।',
   connect_choose_location: 'एक स्थान चुनें',
   connect_tier_free: 'मुफ़्त · 100 KB/s',
+  connect_tier_premium: 'प्रीमियम · {date} तक',
   connect_loading_directory: 'हस्ताक्षरित डायरेक्टरी रिज़ॉल्व और गेटवे खोजे जा रहे हैं…',
   connect_your_config: 'आपका कॉन्फ़िग',
   connect_source_directory: '{source} डायरेक्टरी',

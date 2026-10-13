@@ -48,6 +48,7 @@ export const en = {
     'Couldn’t reach any gateway just now. Showing the signed directory’s countries — reload the page in a minute to try again.',
   connect_choose_location: 'Choose a location',
   connect_tier_free: 'FREE · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · until {date}',
   connect_loading_directory: 'Resolving the signed directory & discovering gateways…',
   connect_your_config: 'Your config',
   connect_source_directory: '{source} directory',

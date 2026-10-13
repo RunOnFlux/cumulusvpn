@@ -42,6 +42,7 @@ export const id: Catalog = {
     'Saat ini tidak ada gateway yang bisa dijangkau. Menampilkan negara dari direktori bertanda tangan — muat ulang halaman dalam satu menit untuk mencoba lagi.',
   connect_choose_location: 'Pilih lokasi',
   connect_tier_free: 'GRATIS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · hingga {date}',
   connect_loading_directory: 'Me-resolve direktori bertanda tangan & menemukan gateway…',
   connect_your_config: 'Config Anda',
   connect_source_directory: 'Direktori {source}',

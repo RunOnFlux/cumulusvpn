@@ -42,6 +42,7 @@ export const fa: Catalog = {
     'در حال حاضر به هیچ دروازه‌ای دسترسی نیست. کشورهای فهرست راهنمای امضاشده نمایش داده می‌شوند — یک دقیقه دیگر صفحه را دوباره بارگذاری کنید تا دوباره امتحان شود.',
   connect_choose_location: 'موقعیتی را انتخاب کنید',
   connect_tier_free: 'رایگان · 100 KB/s',
+  connect_tier_premium: 'پریمیوم · تا {date}',
   connect_loading_directory: 'در حال یافتن فهرست راهنمای امضاشده و کشف دروازه‌ها…',
   connect_your_config: 'پیکربندی شما',
   connect_source_directory: 'فهرست راهنمای {source}',

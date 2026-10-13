@@ -42,6 +42,7 @@ export const el: Catalog = {
     'Δεν ήταν δυνατή η πρόσβαση σε καμία πύλη αυτή τη στιγμή. Εμφανίζονται οι χώρες του υπογεγραμμένου καταλόγου — φόρτωσε ξανά τη σελίδα σε ένα λεπτό για να δοκιμάσεις ξανά.',
   connect_choose_location: 'Επίλεξε τοποθεσία',
   connect_tier_free: 'ΔΩΡΕΑΝ · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · έως {date}',
   connect_loading_directory: 'Ανάλυση του υπογεγραμμένου καταλόγου και ανίχνευση πυλών…',
   connect_your_config: 'Η ρύθμισή σου',
   connect_source_directory: 'Κατάλογος {source}',

@@ -42,6 +42,7 @@ export const ru: Catalog = {
     'Сейчас не удалось связаться ни с одним шлюзом. Показаны страны из подписанного каталога — обнови страницу через минуту, чтобы попробовать снова.',
   connect_choose_location: 'Выбери локацию',
   connect_tier_free: 'БЕСПЛАТНО · 100 KB/s',
+  connect_tier_premium: 'ПРЕМИУМ · до {date}',
   connect_loading_directory: 'Загрузка подписанного каталога и поиск шлюзов…',
   connect_your_config: 'Твоя конфигурация',
   connect_source_directory: 'Каталог {source}',

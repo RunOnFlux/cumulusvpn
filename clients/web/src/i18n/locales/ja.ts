@@ -42,6 +42,7 @@ export const ja: Catalog = {
     '現在、どのゲートウェイにも接続できません。署名済みディレクトリの国を表示しています — 1分ほどしてからページを再読み込みしてください。',
   connect_choose_location: '場所を選択',
   connect_tier_free: '無料 · 100 KB/s',
+  connect_tier_premium: 'プレミアム · {date} まで',
   connect_loading_directory: '署名済みディレクトリを解決し、ゲートウェイを探索しています…',
   connect_your_config: 'あなたの設定',
   connect_source_directory: '{source} ディレクトリ',

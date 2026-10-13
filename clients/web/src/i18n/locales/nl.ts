@@ -42,6 +42,7 @@ export const nl: Catalog = {
     'Er is op dit moment geen gateway bereikbaar. De landen uit de ondertekende directory worden getoond — laad de pagina over een minuut opnieuw om het nog eens te proberen.',
   connect_choose_location: 'Kies een locatie',
   connect_tier_free: 'GRATIS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · tot {date}',
   connect_loading_directory: 'Ondertekende directory wordt opgehaald en gateways worden gezocht…',
   connect_your_config: 'Jouw configuratie',
   connect_source_directory: '{source}-directory',

@@ -42,6 +42,7 @@ export const fi: Catalog = {
     'Yhtään yhdyskäytävää ei tavoitettu juuri nyt. Näytetään allekirjoitetun hakemiston maat — lataa sivu uudelleen minuutin kuluttua yrittääksesi uudelleen.',
   connect_choose_location: 'Valitse sijainti',
   connect_tier_free: 'ILMAINEN · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · {date} asti',
   connect_loading_directory: 'Ratkaistaan allekirjoitettua hakemistoa ja etsitään yhdyskäytäviä…',
   connect_your_config: 'Asetuksesi',
   connect_source_directory: '{source}-hakemisto',

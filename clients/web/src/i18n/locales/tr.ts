@@ -42,6 +42,7 @@ export const tr: Catalog = {
     'Şu anda hiçbir gateway’e ulaşılamadı. İmzalı dizindeki ülkeler gösteriliyor — tekrar denemek için sayfayı bir dakika sonra yenile.',
   connect_choose_location: 'Bir konum seç',
   connect_tier_free: 'ÜCRETSİZ · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · {date} tarihine kadar',
   connect_loading_directory: 'İmzalı dizin çözümleniyor ve gateway’ler keşfediliyor…',
   connect_your_config: 'Yapılandırman',
   connect_source_directory: '{source} dizini',

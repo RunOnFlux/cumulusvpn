@@ -42,6 +42,7 @@ export const vi: Catalog = {
     'Hiện không thể kết nối tới gateway nào. Đang hiển thị các quốc gia trong danh mục đã ký — hãy tải lại trang sau một phút để thử lại.',
   connect_choose_location: 'Chọn một vị trí',
   connect_tier_free: 'MIỄN PHÍ · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · đến {date}',
   connect_loading_directory: 'Đang phân giải danh mục đã ký & tìm gateway…',
   connect_your_config: 'Cấu hình của bạn',
   connect_source_directory: 'Danh mục {source}',

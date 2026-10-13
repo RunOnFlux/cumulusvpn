@@ -42,6 +42,7 @@ export const th: Catalog = {
     'ขณะนี้ไม่สามารถเชื่อมต่อเกตเวย์ใดได้ กำลังแสดงประเทศจากไดเรกทอรีที่มีลายเซ็น — โหลดหน้านี้ใหม่ในอีกหนึ่งนาทีเพื่อลองอีกครั้ง',
   connect_choose_location: 'เลือกตำแหน่งที่ตั้ง',
   connect_tier_free: 'ฟรี · 100 KB/s',
+  connect_tier_premium: 'พรีเมียม · ถึง {date}',
   connect_loading_directory: 'กำลังตรวจสอบไดเรกทอรีที่มีลายเซ็นและค้นหาเกตเวย์…',
   connect_your_config: 'config ของคุณ',
   connect_source_directory: 'ไดเรกทอรี {source}',

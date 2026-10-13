@@ -42,6 +42,7 @@ export const sv: Catalog = {
     'Ingen gateway gick att nå just nu. Den signerade katalogens länder visas — ladda om sidan om en minut för att försöka igen.',
   connect_choose_location: 'Välj en plats',
   connect_tier_free: 'GRATIS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · till {date}',
   connect_loading_directory: 'Löser upp den signerade katalogen och upptäcker gateways…',
   connect_your_config: 'Din konfiguration',
   connect_source_directory: '{source}-katalog',

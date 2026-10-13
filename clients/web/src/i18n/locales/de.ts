@@ -42,6 +42,7 @@ export const de: Catalog = {
     'Gerade ist kein Gateway erreichbar. Es werden die Länder des signierten Verzeichnisses angezeigt — lade die Seite in einer Minute neu, um es erneut zu versuchen.',
   connect_choose_location: 'Standort wählen',
   connect_tier_free: 'KOSTENLOS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · bis {date}',
   connect_loading_directory: 'Signiertes Verzeichnis wird aufgelöst und Gateways werden ermittelt…',
   connect_your_config: 'Deine Konfiguration',
   connect_source_directory: '{source}-Verzeichnis',

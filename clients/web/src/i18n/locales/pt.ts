@@ -42,6 +42,7 @@ export const pt: Catalog = {
     'Nenhum gateway pôde ser alcançado agora. Exibindo os países do diretório assinado — recarregue a página em um minuto para tentar novamente.',
   connect_choose_location: 'Escolha uma localização',
   connect_tier_free: 'GRÁTIS · 100 KB/s',
+  connect_tier_premium: 'PREMIUM · até {date}',
   connect_loading_directory: 'Resolvendo o diretório assinado e descobrindo gateways…',
   connect_your_config: 'Sua configuração',
   connect_source_directory: 'Diretório de {source}',
