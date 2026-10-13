@@ -6,9 +6,12 @@
 
 import type { Locale } from '../i18n';
 
-// Spec names are `cumulusvpn<cc>` where `<cc>` is a lowercase ISO-3166-1 alpha-2.
+// Spec names are `cumulusvpn<cc>` where `<cc>` is a lowercase ISO-3166-1 alpha-2,
+// plus the 443-stealth variant `cumulusvpntls<cc>` (`cumulusvpntlsde` -> `DE`).
+// The `tls` infix must be stripped too, or the variant shows as a bogus
+// "TLSDE" country (matches core's specToCountryCode).
 export function specToCountryCode(spec: string): string {
-  return spec.replace(/^cumulusvpn/, '').toUpperCase();
+  return spec.replace(/^cumulusvpn(?:tls)?/, '').toUpperCase();
 }
 
 /** Regional-indicator flag emoji for a 2-letter country code, e.g. `DE` → 🇩🇪. */

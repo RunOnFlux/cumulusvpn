@@ -5,6 +5,7 @@ describe('specToCountryCode', () => {
   it('strips the cumulus prefix and upper-cases the ISO code', () => {
     expect(specToCountryCode('cumulusvpnde')).toBe('DE');
     expect(specToCountryCode('cumulusvpnus')).toBe('US');
+    expect(specToCountryCode('cumulusvpntlsde')).toBe('DE');
   });
 
   it('upper-cases even when the prefix is absent', () => {

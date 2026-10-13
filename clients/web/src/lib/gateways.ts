@@ -41,9 +41,15 @@ export function healthOf(option: CountryOption): Health {
 }
 
 /**
- * Build the country list shown in the picker: one row per directory spec,
- * overlaid with live discovery results grouped by ISO country code. Countries
- * with reachable gateways sort first, then alphabetically by name.
+ * Build the country list shown in the picker: one row per directory country,
+ * overlaid with live discovery results grouped by ISO country code, sorted
+ * alphabetically by name.
+ *
+ * Only countries with a live gateway are listed: one without (servers down,
+ * or not launched yet) can't be connected to, so listing it just invites
+ * "what is this?" — the mobile and desktop apps don't list them either. If
+ * discovery found nothing at all, every directory country is kept as a
+ * `seed` row so the page still shows the network rather than an empty list.
  *
  * POC: real per-node round-trip latency is not measured in-browser (mixed
  * content blocks probing http gateways from an https page), so `load` from the
@@ -63,8 +69,15 @@ export function buildCountryOptions(
   }
 
   const options: CountryOption[] = [];
+  const seen = new Set<string>();
   for (const spec of specs) {
     const cc = specToCountryCode(spec);
+    // A country can have several specs (the 443-stealth `cumulusvpntls<cc>`
+    // group); their gateways all report that country, so one pass covers them.
+    if (seen.has(cc)) {
+      continue;
+    }
+    seen.add(cc);
     const live = (byCountry.get(cc) ?? []).slice().sort((a, b) => a.load - b.load);
 
     if (live.length === 0) {
@@ -117,15 +130,14 @@ export function buildCountryOptions(
     }
   }
 
-  options.sort((a, b) => {
-    if (a.status !== b.status) {
-      return a.status === 'live' ? -1 : 1;
-    }
+  const anyLive = options.some((o) => o.status === 'live');
+  const shown = anyLive ? options.filter((o) => o.status === 'live') : options;
+  shown.sort((a, b) => {
     if (a.name !== b.name) {
       return a.name.localeCompare(b.name, locale);
     }
     return a.city.localeCompare(b.city, locale);
   });
 
-  return options;
+  return shown;
 }

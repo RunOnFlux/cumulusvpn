@@ -81,12 +81,34 @@ describe('buildCountryOptions', () => {
     expect(frankfurt.cc).toBe('DE');
   });
 
-  it('sorts live countries before seed-only ones, then alphabetically', () => {
+  it('lists only countries with a live gateway once any is live', () => {
     const options = buildCountryOptions(
-      ['cumulusvpnde', 'cumulusvpnau', 'cumulusvpnnl'],
-      [gateway('NL', 0.3)],
+      ['cumulusvpnde', 'cumulusvpnau', 'cumulusvpnnl', 'cumulusvpnfr'],
+      [gateway('NL', 0.3), gateway('FR', 0.1)],
       'en',
     );
-    expect(options.map((o) => o.cc)).toEqual(['NL', 'AU', 'DE']);
+    // AU and DE have no live gateway: not connectable, so not listed.
+    expect(options.map((o) => o.cc)).toEqual(['FR', 'NL']);
+    expect(options.every((o) => o.status === 'live')).toBe(true);
+  });
+
+  it('keeps every country as a seed row when nothing is live', () => {
+    const options = buildCountryOptions(['cumulusvpnnl', 'cumulusvpnau'], [], 'en');
+    expect(options.map((o) => [o.cc, o.status])).toEqual([
+      ['AU', 'seed'],
+      ['NL', 'seed'],
+    ]);
+  });
+
+  it('folds the 443-stealth group into its country, never a "TLSDE" row', () => {
+    const options = buildCountryOptions(
+      ['cumulusvpnde', 'cumulusvpntlsde'],
+      [gateway('DE', 0.4, 'Frankfurt'), gateway('DE', 0.2, 'Frankfurt')],
+      'en',
+    );
+    expect(options).toHaveLength(1);
+    expect(options[0]!.cc).toBe('DE');
+    expect(options[0]!.nodeCount).toBe(2);
+    expect(buildCountryOptions(['cumulusvpntlsde'], [], 'en')[0]!.cc).toBe('DE');
   });
 });
