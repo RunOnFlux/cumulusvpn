@@ -234,8 +234,9 @@ export function IdentitySection({ vpn, revealKey = false }: Props): React.JSX.El
             {key}
           </Text>
           <Text style={styles.warn}>
-            Anyone with this key gets this device’s identity and its premium. Keep it private — a
-            password manager is a good place. It works on a new phone, or after reinstalling.
+            Anyone with this key gets this identity and its Premium. Keep it private — a password
+            manager is a good place. Restore it on any phone, tablet or computer; it works best on
+            one device at a time, or on devices connected to different countries.
           </Text>
           <Pressable
             style={styles.btn}

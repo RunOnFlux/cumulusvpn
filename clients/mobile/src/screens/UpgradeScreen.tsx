@@ -376,9 +376,9 @@ function SubscribeSection({
 
           <Text style={styles.note}>
             Auto-renews until cancelled; cancel any time in your store account. Payment is handled
-            by the store — we never see your card. Because there is no account to attach it to,
-            premium unlocks full speed on every server for THIS device; another device needs its own
-            subscription.
+            by the store — we never see your card. Your Premium belongs to this device’s key, not to
+            one device: save your recovery key (Settings) to restore it on any phone, tablet or
+            computer — it works best on one device at a time.
           </Text>
           <View style={styles.legalRow}>
             <Pressable onPress={() => iap.restore()} accessibilityRole="button" hitSlop={8}>

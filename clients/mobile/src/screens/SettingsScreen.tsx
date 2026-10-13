@@ -272,8 +272,8 @@ export function SettingsScreen({
         </Pressable>
 
         <Text style={styles.footer}>
-          Decentralized WireGuard VPN on Flux Cloud. No logs; your key stays on this device and in
-          its encrypted backup while that is on.
+          Decentralized WireGuard VPN on Flux Cloud. No logs; your key stays on this device, in its
+          encrypted backup while that is on, and in any recovery key you save.
         </Text>
 
         <View style={styles.poweredBy}>
