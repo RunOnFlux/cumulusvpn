@@ -9,7 +9,7 @@ import { useEscape } from '../hooks/useEscape.js';
 import { IdentitySection } from './IdentitySection.js';
 
 /** App version — matches the release tag. */
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.3.0';
 
 interface Props {
   readonly autoConnect: boolean;
