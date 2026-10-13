@@ -193,6 +193,17 @@ export const fi: Catalog = {
   redeem_err_later:
     'Lunastus on hetkellisesti poissa käytöstä — yritä uudelleen muutaman minuutin kuluttua.',
 
+  dns_summary_title: 'DNS-palveluntarjoaja',
+  dns_default: 'Oletus',
+  dns_blurb_cloudflare: 'Nopea, ei suodatusta',
+  dns_blurb_quad9: 'Estää tunnetut haitalliset sivustot',
+  dns_blurb_adguard: 'Estää mainokset ja seurannan',
+  dns_blurb_family: 'Estää haittaohjelmat ja aikuisille suunnatun sisällön',
+  dns_note:
+    'DNS-kyselysi kulkevat VPN:n kautta valitsemallesi palveluntarjoajalle. Se näkee VPN-palvelimen osoitteen, ei koskaan sinun osoitettasi.',
+  dns_apply_note:
+    'Koskee heti tämän sivun konfiguraatioita — jos olet jo tuonut yhden, lataa tai skannaa se uudelleen.',
+
   split_summary_title: 'Lisäasetukset: jaettu tunnelointi',
   split_tier_pill: 'PREMIUM · VALINNAINEN',
   split_lede:

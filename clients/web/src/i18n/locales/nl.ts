@@ -193,6 +193,17 @@ export const nl: Catalog = {
   redeem_err_later:
     'Inwisselen is even niet beschikbaar — probeer het over een paar minuten opnieuw.',
 
+  dns_summary_title: 'DNS-provider',
+  dns_default: 'Standaard',
+  dns_blurb_cloudflare: 'Snel, geen filtering',
+  dns_blurb_quad9: 'Blokkeert bekende kwaadaardige sites',
+  dns_blurb_adguard: 'Blokkeert advertenties en trackers',
+  dns_blurb_family: 'Blokkeert malware en content voor volwassenen',
+  dns_note:
+    'Je DNS-verzoeken gaan via de VPN naar de provider die je kiest. Die ziet het adres van de VPN-server, nooit het jouwe.',
+  dns_apply_note:
+    'Geldt direct voor de configuraties op deze pagina — heb je er al een geïmporteerd, download of scan hem dan opnieuw.',
+
   split_summary_title: 'Geavanceerd: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

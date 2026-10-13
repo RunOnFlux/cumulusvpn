@@ -195,6 +195,17 @@ export const pt: Catalog = {
   redeem_err_later:
     'O resgate está temporariamente indisponível — tente de novo em alguns minutos.',
 
+  dns_summary_title: 'Provedor de DNS',
+  dns_default: 'Padrão',
+  dns_blurb_cloudflare: 'Rápido, sem filtragem',
+  dns_blurb_quad9: 'Bloqueia sites maliciosos conhecidos',
+  dns_blurb_adguard: 'Bloqueia anúncios e rastreadores',
+  dns_blurb_family: 'Bloqueia malware e conteúdo adulto',
+  dns_note:
+    'Suas consultas DNS passam pela VPN até o provedor que você escolher. Ele vê o endereço do servidor VPN, nunca o seu.',
+  dns_apply_note:
+    'Vale na hora para as configurações desta página — se você já importou uma, baixe ou escaneie de novo.',
+
   split_summary_title: 'Avançado: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

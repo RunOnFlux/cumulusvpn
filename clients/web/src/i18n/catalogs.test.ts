@@ -107,6 +107,7 @@ describe('no untranslated stubs', () => {
       expect(catalog.connect_lede).not.toBe(en.connect_lede);
       expect(catalog.upgrade_lede).not.toBe(en.upgrade_lede);
       expect(catalog.multihop_note).not.toBe(en.multihop_note);
+      expect(catalog.dns_note).not.toBe(en.dns_note);
     });
   }
 });

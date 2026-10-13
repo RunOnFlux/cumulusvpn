@@ -196,6 +196,17 @@ export const de: Catalog = {
   redeem_err_later:
     'Das Einlösen ist kurzzeitig nicht verfügbar — bitte versuche es in ein paar Minuten erneut.',
 
+  dns_summary_title: 'DNS-Anbieter',
+  dns_default: 'Standard',
+  dns_blurb_cloudflare: 'Schnell, ohne Filter',
+  dns_blurb_quad9: 'Blockiert bekannte schädliche Websites',
+  dns_blurb_adguard: 'Blockiert Werbung und Tracker',
+  dns_blurb_family: 'Blockiert Malware und Inhalte für Erwachsene',
+  dns_note:
+    'Deine DNS-Anfragen laufen durch das VPN zum Anbieter deiner Wahl. Er sieht die Adresse des VPN-Servers, nie deine.',
+  dns_apply_note:
+    'Gilt sofort für die Konfigurationen auf dieser Seite — hast du schon eine importiert, lade sie erneut herunter oder scanne sie neu.',
+
   split_summary_title: 'Erweitert: Split-Tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

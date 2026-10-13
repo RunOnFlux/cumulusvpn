@@ -191,6 +191,17 @@ export const nb: Catalog = {
   redeem_err_already: 'Denne nøkkelen har allerede løst inn denne koden.',
   redeem_err_later: 'Innløsning er midlertidig utilgjengelig — prøv igjen om noen minutter.',
 
+  dns_summary_title: 'DNS-leverandør',
+  dns_default: 'Standard',
+  dns_blurb_cloudflare: 'Rask, ingen filtrering',
+  dns_blurb_quad9: 'Blokkerer kjente skadelige nettsteder',
+  dns_blurb_adguard: 'Blokkerer annonser og sporere',
+  dns_blurb_family: 'Blokkerer skadevare og voksent innhold',
+  dns_note:
+    'DNS-oppslagene dine går gjennom VPN-en til leverandøren du velger. Den ser adressen til VPN-serveren, aldri din.',
+  dns_apply_note:
+    'Gjelder med en gang for konfigurasjonene på denne siden — har du allerede importert en, last den ned eller skann den på nytt.',
+
   split_summary_title: 'Avansert: split tunneling',
   split_tier_pill: 'PREMIUM · VALGFRITT',
   split_lede:

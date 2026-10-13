@@ -1,5 +1,6 @@
 /**
- * Local persistence for the identity keypair and last-selected country.
+ * Local persistence for the identity keypair, last-selected country, and the
+ * tunnel settings that are read at connect time (split tunneling, DNS).
  *
  * The WireGuard keypair is the identity: it enrolls at many gateways, and
  * entitlement follows the key on the chain (see `docs/05-clients.md`), not the
@@ -8,12 +9,18 @@
  * keychain (macOS Keychain / Windows Credential Manager / libsecret) via a
  * Tauri command is the hardening path.
  */
-import { EMPTY_POLICY, generateKeypair, sanitizeSplitPolicy } from '@cumulusvpn/core';
-import type { Keypair, SplitPolicy } from '@cumulusvpn/core';
+import {
+  EMPTY_POLICY,
+  generateKeypair,
+  parseDnsChoice,
+  sanitizeSplitPolicy,
+} from '@cumulusvpn/core';
+import type { DnsChoice, Keypair, SplitPolicy } from '@cumulusvpn/core';
 
 const KEYPAIR_KEY = 'cvpn.keypair.v1';
 const COUNTRY_KEY = 'cvpn.country.v1';
 const SPLIT_KEY = 'cvpn.split.v1';
+const DNS_KEY = 'cvpn.dns.v1';
 
 function safeGet(key: string): string | null {
   try {
@@ -90,4 +97,18 @@ export function loadSplitPolicy(): SplitPolicy {
 /** Persist the split-tunneling policy (device-local only, by design). */
 export function saveSplitPolicy(policy: SplitPolicy): void {
   safeSet(SPLIT_KEY, JSON.stringify(policy));
+}
+
+/**
+ * Load the DNS choice (Settings → DNS). Absent, corrupt, or an option a newer
+ * build added all read as the default, so a bad value can never block a
+ * connect. Device-local, like every tunnel setting.
+ */
+export function loadDnsChoice(): DnsChoice {
+  return parseDnsChoice(safeGet(DNS_KEY));
+}
+
+/** Persist the DNS choice; it takes effect on the next connect. */
+export function saveDnsChoice(choice: DnsChoice): void {
+  safeSet(DNS_KEY, choice);
 }

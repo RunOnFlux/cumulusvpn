@@ -4,18 +4,27 @@ import {
   buildWgConfig,
   checkIssuedConfig,
   compileSplitPolicy,
+  dnsServersFor,
   enroll,
   status,
 } from '@cumulusvpn/core';
-import type { CompiledSplit, ConfHealth, EnrollResponse, Keypair } from '@cumulusvpn/core';
+import type {
+  CompiledSplit,
+  ConfHealth,
+  DnsChoice,
+  EnrollResponse,
+  Keypair,
+} from '@cumulusvpn/core';
 import type { CountryOption } from '../lib/gateways';
 import type { DiscoveryState } from '../hooks/useDiscovery';
 import { useI18n } from '../hooks/useLocale';
+import { loadDnsChoice, saveDnsChoice } from '../lib/dnsChoice';
 import { downloadText } from '../lib/download';
 import { proxiedFetch } from '../lib/gatewayFetch';
 import { loadIssuedConfig, saveIssuedConfig } from '../lib/issuedConfig';
 import { loadSplitPolicy } from '../lib/splitPolicy';
 import { CountryPicker } from '../components/CountryPicker';
+import { DnsSection } from '../components/DnsSection';
 import { IdentityPanel } from '../components/IdentityPanel';
 import { MultihopSection } from '../components/MultihopSection';
 import { Qr } from '../components/Qr';
@@ -33,8 +42,9 @@ interface ConnectPageProps {
 
 interface ConfigResult {
   readonly enroll: EnrollResponse;
-  readonly config: string;
   readonly cc: string;
+  /** The compiled split policy baked into this config, when it applied. */
+  readonly compiledSplit: CompiledSplit | null;
   /** Whether the stored split policy made it into this config, and if not, why. */
   readonly split: 'none' | 'applied' | 'premium-required';
 }
@@ -70,6 +80,8 @@ export function ConnectPage({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ConnectError | null>(null);
   const [result, setResult] = useState<ConfigResult | null>(null);
+  // Shared by the single-hop and multi-hop generators; device-local.
+  const [dns, setDns] = useState<DnsChoice>(() => loadDnsChoice());
   // Health of the config issued on a PREVIOUS visit. A .conf is consumed by the
   // stock WireGuard app, which has no control channel — so when its gateway is
   // replaced (a Flux migration re-places the app on a node that mints its own
@@ -136,6 +148,29 @@ export function ConnectPage({
     };
   }, [prior]);
 
+  // The config is rebuilt from the enroll answer rather than kept as text, so a
+  // DNS change re-renders the .conf and QR on screen at once: only the `DNS =`
+  // line differs, and the gateway needs no new enrollment for it.
+  const config = useMemo(
+    () =>
+      result
+        ? buildWgConfig({
+            privateKey: keypair.privateKey,
+            assignedIp: result.enroll.assigned_ip,
+            dns: dnsServersFor(dns, result.enroll.dns),
+            serverPubKey: result.enroll.server_pubkey,
+            endpoint: result.enroll.endpoint,
+            ...(result.compiledSplit ? { split: result.compiledSplit } : {}),
+          })
+        : null,
+    [result, dns, keypair.privateKey],
+  );
+
+  const onDnsChange = (choice: DnsChoice): void => {
+    setDns(choice);
+    saveDnsChoice(choice);
+  };
+
   const onSelect = (option: CountryOption): void => {
     setPicked(option);
     setResult(null);
@@ -188,15 +223,12 @@ export function ConnectPage({
           splitState = 'premium-required';
         }
       }
-      const config = buildWgConfig({
-        privateKey: keypair.privateKey,
-        assignedIp: data.assigned_ip,
-        dns: data.dns,
-        serverPubKey: data.server_pubkey,
-        endpoint: data.endpoint,
-        ...(split ? { split } : {}),
+      setResult({
+        enroll: data,
+        cc: selected.cc,
+        compiledSplit: split ?? null,
+        split: splitState,
       });
-      setResult({ enroll: data, config, cc: selected.cc, split: splitState });
       // Remember which gateway issued this, so a later visit can check it.
       saveIssuedConfig({
         ip: gw.ip,
@@ -218,8 +250,8 @@ export function ConnectPage({
   };
 
   const onDownload = (): void => {
-    if (result) {
-      downloadText(`cumulusvpn-${result.cc.toLowerCase()}.conf`, result.config, 'text/plain');
+    if (result && config) {
+      downloadText(`cumulusvpn-${result.cc.toLowerCase()}.conf`, config, 'text/plain');
     }
   };
 
@@ -346,7 +378,7 @@ export function ConnectPage({
               </div>
             ) : null}
 
-            {result ? (
+            {result && config ? (
               <div className="config-out">
                 {result.split === 'premium-required' ? (
                   <div className="banner warn">{t('split_premium_required')}</div>
@@ -364,10 +396,10 @@ export function ConnectPage({
                       </span>
                       <span className="fname">cumulusvpn-{result.cc.toLowerCase()}.conf</span>
                     </div>
-                    <pre className="conf mono">{result.config}</pre>
+                    <pre className="conf mono">{config}</pre>
                   </div>
                   <div className="conf-qr">
-                    <Qr value={result.config} size={224} />
+                    <Qr value={config} size={224} />
                     <span className="qr-cap mono">{t('connect_qr_caption')}</span>
                   </div>
                 </div>
@@ -382,7 +414,7 @@ export function ConnectPage({
                   </div>
                   <div className="stat">
                     <div className="k">{t('connect_stat_dns')}</div>
-                    <div className="v mono">{result.enroll.dns}</div>
+                    <div className="v mono">{dnsServersFor(dns, result.enroll.dns)}</div>
                   </div>
                 </div>
                 {/* A .conf is a SNAPSHOT of one gateway: endpoint IP, that node's
@@ -416,9 +448,11 @@ export function ConnectPage({
           </section>
         </div>
 
+        <DnsSection value={dns} onChange={onDnsChange} />
+
         <SplitSection />
 
-        <MultihopSection keypair={keypair} discovery={discovery} />
+        <MultihopSection keypair={keypair} discovery={discovery} dns={dns} />
 
         <IdentityPanel
           keypair={keypair}

@@ -91,6 +91,24 @@ function rememberIssued() {
   );
 }
 
+// What the gateway answers at enroll; `dns` is what every gateway advertises.
+const enrolled = {
+  assigned_ip: '10.8.0.2',
+  dns: '1.1.1.1',
+  server_pubkey: 'srv+pub/key=',
+  endpoint: '203.0.113.7:51820',
+  payment_address: 't3xyz',
+  payment_memo: 'CVPN1:abc',
+  price_flux: 20,
+};
+
+const DNS_KEY = 'cvpn.dns.v1';
+
+/** The single-hop `.conf` on screen, newlines intact. */
+function shownConf(): string {
+  return document.querySelector('pre.conf')?.textContent ?? '';
+}
+
 describe('<ConnectPage />', () => {
   beforeEach(() => {
     localStorage.clear();
@@ -227,6 +245,61 @@ describe('<ConnectPage />', () => {
     for (const call of enrollMock.mock.calls) {
       expect(call[1]).toBe(keypair.publicKey);
     }
+  });
+
+  // The default must not change a byte of what users had before this setting:
+  // the gateway's own advertised DNS goes in as-is.
+  it('keeps the gateway’s DNS in a default config', async () => {
+    enrollMock.mockResolvedValue(enrolled);
+    renderPage('en', liveDiscovery);
+    expect(screen.getByRole('radio', { name: /Fast, no filtering/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate .conf' }));
+
+    await waitFor(() => expect(shownConf()).toContain('\nDNS = 1.1.1.1\n'));
+  });
+
+  it('remembers the DNS pick and writes it into the generated config', async () => {
+    enrollMock.mockResolvedValue(enrolled);
+    renderPage('en', liveDiscovery);
+    fireEvent.click(screen.getByRole('radio', { name: /Quad9/ }));
+    expect(localStorage.getItem(DNS_KEY)).toBe('quad9');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Generate .conf' }));
+    await waitFor(() => expect(shownConf()).toContain('\nDNS = 9.9.9.9, 149.112.112.112\n'));
+  });
+
+  // Only the DNS line changes, so the config (and its QR) on screen is rebuilt
+  // in place — no second enrollment, and no stale file left on screen.
+  it('rewrites the config on screen when the DNS pick changes after generating', async () => {
+    enrollMock.mockResolvedValue(enrolled);
+    renderPage('en', liveDiscovery);
+    fireEvent.click(screen.getByRole('button', { name: 'Generate .conf' }));
+    await waitFor(() => expect(shownConf()).toContain('\nDNS = 1.1.1.1\n'));
+
+    fireEvent.click(screen.getByRole('radio', { name: /AdGuard DNS/ }));
+    expect(shownConf()).toContain('\nDNS = 94.140.14.14, 94.140.15.15\n');
+    expect(screen.getByText('94.140.14.14, 94.140.15.15')).toBeInTheDocument();
+    expect(enrollMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('restores a stored DNS pick on the next visit', async () => {
+    localStorage.setItem(DNS_KEY, 'family');
+    enrollMock.mockResolvedValue(enrolled);
+    renderPage('en', liveDiscovery);
+    expect(screen.getByRole('radio', { name: /Cloudflare for Families/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate .conf' }));
+
+    await waitFor(() => expect(shownConf()).toContain('\nDNS = 1.1.1.3, 1.0.0.3\n'));
+  });
+
+  it('treats a corrupt stored DNS pick as the default', async () => {
+    localStorage.setItem(DNS_KEY, 'not-a-provider');
+    enrollMock.mockResolvedValue(enrolled);
+    renderPage('en', liveDiscovery);
+    expect(screen.getByRole('radio', { name: /Fast, no filtering/ })).toBeChecked();
+    fireEvent.click(screen.getByRole('button', { name: 'Generate .conf' }));
+
+    await waitFor(() => expect(shownConf()).toContain('\nDNS = 1.1.1.1\n'));
   });
 
   it('renders Spanish after the es catalog loads', async () => {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
-import { ApiError, buildMultihopConfig, enroll, selectHops } from '@cumulusvpn/core';
-import type { Keypair, MultihopConfig, RouteStyle } from '@cumulusvpn/core';
+import { ApiError, buildMultihopConfig, dnsServersFor, enroll, selectHops } from '@cumulusvpn/core';
+import type { DnsChoice, EnrollResponse, Keypair, RouteStyle } from '@cumulusvpn/core';
 import type { DiscoveryState } from '../hooks/useDiscovery';
 import { useI18n } from '../hooks/useLocale';
 import { downloadText } from '../lib/download';
@@ -9,13 +9,15 @@ import { proxiedFetch } from '../lib/gatewayFetch';
 interface MultihopSectionProps {
   readonly keypair: Keypair;
   readonly discovery: DiscoveryState;
+  /** The page's DNS choice, for the inner (exit) config — the one with `DNS =`. */
+  readonly dns: DnsChoice;
 }
 
 interface MultihopResult {
-  readonly config: MultihopConfig;
+  readonly entryEnroll: EnrollResponse;
+  readonly exitEnroll: EnrollResponse;
   readonly entryLabel: string;
   readonly exitLabel: string;
-  readonly exitIp: string;
 }
 
 type MultihopError =
@@ -48,10 +50,11 @@ function hopChoices(discovery: DiscoveryState): { cc: string; name: string; flag
  * configs (`docs/11-multihop.md`): enroll the *same* key K at an entry and an
  * exit gateway, then {@link buildMultihopConfig} produces `wg-entry.conf`
  * (outer, `AllowedIPs = <exitIp>/32`, MTU 1420) and `wg-exit.conf` (inner,
- * `0.0.0.0/0`, MTU 1340, exit DNS). Multi-hop is premium — one payment on key K
- * covers both hops — and OFF by default. Amber accents (premium token).
+ * `0.0.0.0/0`, MTU 1340, the page's DNS choice). Multi-hop is premium — one
+ * payment on key K covers both hops — and OFF by default. Amber accents
+ * (premium token).
  */
-export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
+export function MultihopSection({ keypair, discovery, dns }: MultihopSectionProps) {
   const { t, rich } = useI18n();
   const choices = useMemo(() => hopChoices(discovery), [discovery]);
   const [entryCc, setEntryCc] = useState<string>('');
@@ -69,6 +72,22 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
   // Same country → keep it in one jurisdiction; different → cross-jurisdiction.
   const style: RouteStyle =
     entry && exit && entry === exit ? 'multihop-same-country' : 'multihop-cross-jurisdiction';
+
+  // Rebuilt from the two enroll answers, like the single-hop .conf, so a DNS
+  // change updates wg-exit.conf on screen without enrolling either hop again.
+  const config = useMemo(
+    () =>
+      result
+        ? buildMultihopConfig({
+            privateKey: keypair.privateKey,
+            entry: result.entryEnroll,
+            exit: result.exitEnroll,
+            dns: dnsServersFor(dns, result.exitEnroll.dns),
+          })
+        : null,
+    [result, dns, keypair.privateKey],
+  );
+  const exitIp = config ? config.exitEndpoint.slice(0, config.exitEndpoint.lastIndexOf(':')) : '';
 
   const reset = (): void => {
     setResult(null);
@@ -108,18 +127,11 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
         }),
       ]);
 
-      const config = buildMultihopConfig({
-        privateKey: keypair.privateKey,
-        entry: entryEnroll,
-        exit: exitEnroll,
-      });
-
-      const exitIp = config.exitEndpoint.slice(0, config.exitEndpoint.lastIndexOf(':'));
       setResult({
-        config,
+        entryEnroll,
+        exitEnroll,
         entryLabel: `${hops.entry.country.toUpperCase()} · ${hops.entry.ip}`,
         exitLabel: `${exitGw.country.toUpperCase()} · ${exitGw.ip}`,
-        exitIp,
       });
     } catch (err) {
       if (err instanceof ApiError) {
@@ -230,7 +242,7 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
             </div>
           ) : null}
 
-          {result ? (
+          {result && config ? (
             <div className="config-out">
               <div className="mh-route mono">
                 <span>{result.entryLabel}</span>
@@ -246,11 +258,11 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                     <span className="mh-conf-name mono">wg-entry.conf</span>
                     <span className="mh-conf-tag mono">{t('multihop_conf_outer_tag')}</span>
                   </div>
-                  <pre className="conf mono">{result.config.outer}</pre>
+                  <pre className="conf mono">{config.outer}</pre>
                   <button
                     type="button"
                     className="btn ghost sm"
-                    onClick={() => downloadText('wg-entry.conf', result.config.outer, 'text/plain')}
+                    onClick={() => downloadText('wg-entry.conf', config.outer, 'text/plain')}
                   >
                     {t('multihop_download_entry')}
                   </button>
@@ -260,14 +272,14 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                   <div className="mh-conf-head">
                     <span className="mh-conf-name mono">wg-exit.conf</span>
                     <span className="mh-conf-tag mono">
-                      {t('multihop_conf_inner_tag', { mtu: result.config.innerMtu })}
+                      {t('multihop_conf_inner_tag', { mtu: config.innerMtu })}
                     </span>
                   </div>
-                  <pre className="conf mono">{result.config.inner}</pre>
+                  <pre className="conf mono">{config.inner}</pre>
                   <button
                     type="button"
                     className="btn ghost sm"
-                    onClick={() => downloadText('wg-exit.conf', result.config.inner, 'text/plain')}
+                    onClick={() => downloadText('wg-exit.conf', config.inner, 'text/plain')}
                   >
                     {t('multihop_download_exit')}
                   </button>
@@ -290,9 +302,9 @@ export function MultihopSection({ keypair, discovery }: MultihopSectionProps) {
                     br: () => <br />,
                   },
                   {
-                    exitIp: result.exitIp,
-                    mtu: result.config.innerMtu,
-                    endpoint: result.config.exitEndpoint,
+                    exitIp,
+                    mtu: config.innerMtu,
+                    endpoint: config.exitEndpoint,
                   },
                 )}
               </div>

@@ -195,6 +195,17 @@ export const fr: Catalog = {
   redeem_err_later:
     "L'utilisation des codes est momentanément indisponible — veuillez réessayer dans quelques minutes.",
 
+  dns_summary_title: 'Fournisseur DNS',
+  dns_default: 'Par défaut',
+  dns_blurb_cloudflare: 'Rapide, sans filtrage',
+  dns_blurb_quad9: 'Bloque les sites malveillants connus',
+  dns_blurb_adguard: 'Bloque les publicités et les traqueurs',
+  dns_blurb_family: 'Bloque les logiciels malveillants et les contenus pour adultes',
+  dns_note:
+    'Vos requêtes DNS passent par le VPN jusqu’au fournisseur de votre choix. Il voit l’adresse du serveur VPN, jamais la vôtre.',
+  dns_apply_note:
+    'S’applique tout de suite aux configurations de cette page — si vous en avez déjà importé une, téléchargez-la ou scannez-la à nouveau.',
+
   split_summary_title: 'Avancé : split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

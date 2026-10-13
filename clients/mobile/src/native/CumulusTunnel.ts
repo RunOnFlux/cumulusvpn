@@ -41,7 +41,8 @@
  *   - Only the OUTER device owns the real UDP socket to the internet.
  *   - Set the tun MTU to 1340 (inner) so the doubly-encapsulated packet still
  *     fits ENTRY's 1420 path — wrong MTU = mysterious stalls (docs/11 §MTU).
- *   - DNS inside the tunnel = the EXIT's DNS (set on the inner interface).
+ *   - DNS inside the tunnel = the chosen resolver (Settings → DNS; default the
+ *     EXIT's DNS), set on the inner interface — every listed server applied.
  *
  * The entry gateway never sees plaintext: it only forwards a premium peer's
  * ciphertext to another gateway's :51820. No gateway protocol change (docs/11).
@@ -93,8 +94,9 @@ export interface CumulusTunnelModule {
    *   - `outerConfig` — wg-entry: `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS.
    *     Carries only the inner tunnel's UDP packets to the exit's public IP.
    *   - `innerConfig` — wg-exit: `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340,
-   *     DNS = exit's DNS. Carries all real traffic; its packets to the exit IP
-   *     are routed *through* the outer interface.
+   *     DNS = the chosen resolver(s), default the exit's DNS. Carries all real
+   *     traffic; its packets to the exit IP are routed *through* the outer
+   *     interface.
    *
    * Both `.conf` strings come from core `buildMultihopConfig`. Resolves once the
    * OS reports the composite tunnel started (outer up; not yet fully handshaked).

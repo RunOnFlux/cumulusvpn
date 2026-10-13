@@ -78,6 +78,10 @@ export const RECOVERY_NUDGE_DISMISSED_SESSION_KEY = 'cvpn.recoverynudge.dismisse
 // since the stock WireGuard client has no control channel.
 export const ISSUED_CONFIG_STORAGE_KEY = 'cvpn.issued.v1';
 
+// localStorage key for the DNS choice (a `DnsChoice` id); absent = the default.
+// Device-local by design: it only changes the `DNS =` line of configs made here.
+export const DNS_STORAGE_KEY = 'cvpn.dns.v1';
+
 // localStorage key for the theme override ('light' | 'dark'); absent = system.
 export const THEME_STORAGE_KEY = 'cvpn.theme';
 

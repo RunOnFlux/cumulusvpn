@@ -195,6 +195,17 @@ export const en = {
   redeem_err_already: 'This key has already redeemed this code.',
   redeem_err_later: 'Redemption is briefly unavailable — please try again in a few minutes.',
 
+  dns_summary_title: 'DNS provider',
+  dns_default: 'Default',
+  dns_blurb_cloudflare: 'Fast, no filtering',
+  dns_blurb_quad9: 'Blocks known malicious sites',
+  dns_blurb_adguard: 'Blocks ads and trackers',
+  dns_blurb_family: 'Blocks malware and adult content',
+  dns_note:
+    'Your DNS lookups go through the VPN to the provider you choose. It sees the VPN server’s address, never yours.',
+  dns_apply_note:
+    'Applies to the configs on this page right away — if you already imported one, download or scan it again.',
+
   split_summary_title: 'Advanced: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

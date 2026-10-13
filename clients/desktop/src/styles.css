@@ -1057,6 +1057,48 @@ button {
   cursor: pointer;
   padding: 1px 5px;
 }
+
+/* ── DNS (Settings) ─────────────────────────────────────────────────── */
+.dns-wrap {
+  gap: 10px;
+}
+.dns-opts {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.dns-opt {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  cursor: pointer;
+}
+.dns-opt.on {
+  border-color: color-mix(in srgb, var(--cyan) 55%, var(--line));
+}
+.dns-opt:has(input:focus-visible) {
+  outline: 2px solid color-mix(in srgb, var(--cyan) 60%, transparent);
+  outline-offset: 1px;
+}
+.dns-opt input {
+  flex: none;
+  margin: 0;
+  accent-color: var(--cyan);
+}
+.dns-default {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--ink-3);
+  vertical-align: 1px;
+}
 .split-on {
   text-align: center;
   font-family: var(--mono);

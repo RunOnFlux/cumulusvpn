@@ -190,6 +190,17 @@ export const sv: Catalog = {
   redeem_err_already: 'Den här nyckeln har redan löst in den här koden.',
   redeem_err_later: 'Inlösen är tillfälligt otillgänglig — försök igen om några minuter.',
 
+  dns_summary_title: 'DNS-leverantör',
+  dns_default: 'Standard',
+  dns_blurb_cloudflare: 'Snabb, ingen filtrering',
+  dns_blurb_quad9: 'Blockerar kända skadliga webbplatser',
+  dns_blurb_adguard: 'Blockerar annonser och spårare',
+  dns_blurb_family: 'Blockerar skadlig kod och vuxeninnehåll',
+  dns_note:
+    'Dina DNS-uppslag går genom VPN:et till den leverantör du väljer. Den ser VPN-serverns adress, aldrig din.',
+  dns_apply_note:
+    'Gäller direkt för konfigurationerna på den här sidan — har du redan importerat en, ladda ner eller skanna den igen.',
+
   split_summary_title: 'Avancerat: split tunneling',
   split_tier_pill: 'PREMIUM · TILLVAL',
   split_lede:

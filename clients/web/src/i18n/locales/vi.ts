@@ -191,6 +191,17 @@ export const vi: Catalog = {
   redeem_err_already: 'Khóa này đã đổi mã này rồi.',
   redeem_err_later: 'Tính năng đổi mã tạm thời không khả dụng — vui lòng thử lại sau vài phút.',
 
+  dns_summary_title: 'Nhà cung cấp DNS',
+  dns_default: 'Mặc định',
+  dns_blurb_cloudflare: 'Nhanh, không lọc',
+  dns_blurb_quad9: 'Chặn các trang độc hại đã biết',
+  dns_blurb_adguard: 'Chặn quảng cáo và trình theo dõi',
+  dns_blurb_family: 'Chặn phần mềm độc hại và nội dung người lớn',
+  dns_note:
+    'Truy vấn DNS của bạn đi qua VPN đến nhà cung cấp bạn chọn. Nhà cung cấp chỉ thấy địa chỉ máy chủ VPN, không bao giờ thấy địa chỉ của bạn.',
+  dns_apply_note:
+    'Áp dụng ngay cho các cấu hình trên trang này — nếu bạn đã nhập một cấu hình, hãy tải xuống hoặc quét lại.',
+
   split_summary_title: 'Nâng cao: split tunneling',
   split_tier_pill: 'PREMIUM · TÙY CHỌN',
   split_lede:

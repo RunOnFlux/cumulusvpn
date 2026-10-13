@@ -36,6 +36,11 @@ const MAX_ROUTES: usize = 4096;
 /// Longest label (country) accepted. They are ISO codes; this is generous.
 const MAX_LABEL_LEN: usize = 64;
 
+/// Most resolvers accepted on one `DNS =` line. The apps send one (the
+/// gateway's) or two (a Settings → DNS provider); this only bounds how many
+/// firewall exceptions one config can ask for.
+const MAX_DNS_SERVERS: usize = 8;
+
 /// Interface MTU bounds for the multi-hop inner device (IPv4 minimum to jumbo).
 const MTU_RANGE: std::ops::RangeInclusive<u16> = 576..=9200;
 
@@ -123,6 +128,28 @@ pub(crate) fn cidr(s: &str) -> Result<(), TunnelError> {
         .map_err(|_| TunnelError::BadConfig("route is not an address prefix"))?;
     if let Some(prefix) = prefix {
         prefix_len(ip, prefix)?;
+    }
+    Ok(())
+}
+
+/// A `.conf` `DNS =` value: IP literals, comma-separated, as in
+/// `DNS = 9.9.9.9, 149.112.112.112`. Spaces and empty entries are tolerated;
+/// a hostname, a search domain or anything else is refused, as is a list too
+/// long to be real. The addresses reach the pf anchor, the nftables table and
+/// PowerShell (typed, via `dns::parse_servers`); refusing here means a bad line
+/// fails the connect up front instead of quietly leaving the tunnel with fewer
+/// resolvers than it was given. An empty value is accepted: the DNS session
+/// reports "no DNS server" and the kill switch blocks all DNS.
+pub(crate) fn dns_servers(s: &str) -> Result<(), TunnelError> {
+    let mut count = 0;
+    for entry in s.split(',').map(str::trim).filter(|e| !e.is_empty()) {
+        entry
+            .parse::<IpAddr>()
+            .map_err(|_| TunnelError::BadConfig("DNS must list IP addresses"))?;
+        count += 1;
+    }
+    if count > MAX_DNS_SERVERS {
+        return Err(TunnelError::BadConfig("too many DNS servers"));
     }
     Ok(())
 }
@@ -288,6 +315,45 @@ mod tests {
         let mut r = request();
         r.wg_config = "x".repeat(MAX_CONFIG_LEN + 1);
         assert!(connect_request(&r).is_err());
+    }
+
+    /// Settings → DNS lists: every provider's pair, however it is spaced.
+    #[test]
+    fn dns_provider_lists_are_accepted() {
+        for good in [
+            "1.1.1.1",
+            "1.1.1.1, 1.0.0.1",
+            "9.9.9.9, 149.112.112.112",
+            "94.140.14.14,94.140.15.15",
+            " 1.1.1.3 ,  1.0.0.3 ,",
+            "2606:4700:4700::1111, 1.1.1.1",
+            "",
+        ] {
+            assert!(dns_servers(good).is_ok(), "refused DNS {good:?}");
+        }
+    }
+
+    /// Anything but addresses is refused — a server can never be dropped
+    /// silently, or smuggled into a rule.
+    #[test]
+    fn dns_lists_that_are_not_addresses_are_refused() {
+        for bad in [
+            "1.1.1.1; reboot",
+            "9.9.9.9 149.112.112.112",
+            "9.9.9.9, 1.2.3.4 } accept",
+            "1.1.1.1, $(reboot)",
+            "dns.quad9.net",
+            "1.1.1.1, corp.example",
+            "1.1.1.1:53",
+            "999.1.1.1",
+            "1.1.1.1\nblock",
+        ] {
+            assert!(dns_servers(bad).is_err(), "accepted DNS {bad:?}");
+        }
+        let many = ["9.9.9.9"; MAX_DNS_SERVERS + 1].join(", ");
+        assert!(dns_servers(&many).is_err(), "unbounded DNS list accepted");
+        let most = ["9.9.9.9"; MAX_DNS_SERVERS].join(", ");
+        assert!(dns_servers(&most).is_ok());
     }
 
     #[test]

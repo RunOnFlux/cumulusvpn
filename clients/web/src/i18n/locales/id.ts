@@ -193,6 +193,17 @@ export const id: Catalog = {
   redeem_err_already: 'Kunci ini sudah menukarkan kode ini.',
   redeem_err_later: 'Penukaran sementara tidak tersedia — silakan coba lagi dalam beberapa menit.',
 
+  dns_summary_title: 'Penyedia DNS',
+  dns_default: 'Bawaan',
+  dns_blurb_cloudflare: 'Cepat, tanpa penyaringan',
+  dns_blurb_quad9: 'Memblokir situs berbahaya yang dikenal',
+  dns_blurb_adguard: 'Memblokir iklan dan pelacak',
+  dns_blurb_family: 'Memblokir malware dan konten dewasa',
+  dns_note:
+    'Permintaan DNS Anda melewati VPN menuju penyedia yang Anda pilih. Penyedia itu melihat alamat server VPN, tidak pernah alamat Anda.',
+  dns_apply_note:
+    'Langsung berlaku untuk konfigurasi di halaman ini — jika Anda sudah mengimpornya, unduh atau pindai lagi.',
+
   split_summary_title: 'Lanjutan: split tunneling',
   split_tier_pill: 'PREMIUM · OPSIONAL',
   split_lede:
