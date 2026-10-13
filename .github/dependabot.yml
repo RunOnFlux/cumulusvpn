@@ -37,6 +37,23 @@ updates:
       # clients/mobile/android/build.gradle). Lift this with that change.
       - dependency-name: 'react-native-iap'
         versions: ['>16.0.2']
+      # react-native-iap 16 peer-requires nitro-modules ^0.36 (0.37 is outside
+      # the 0.x caret range); move it together with the iap upgrade above.
+      - dependency-name: 'react-native-nitro-modules'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      # React Native minors change native template files (Gradle, Podfile,
+      # AppDelegate), so they go through the upgrade-helper diff by hand, as in
+      # PR #98 — never as a package bump alone. React follows RN: each RN minor
+      # bundles a renderer built from one React minor (0.87 → 19.2), so React
+      # 19.3 waits for the RN release that ships it. Patches still flow.
+      - dependency-name: 'react-native'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: '@react-native/*'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: 'react'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: 'react-test-renderer'
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
       # The RN toolchain (metro, @react-native/babel-preset) is built for Babel 7;
       # Babel 8 in the app while the preset stays on 7 breaks the test/bundle
       # pipeline (PR #30). Lift when React Native declares Babel 8 support.
@@ -67,6 +84,14 @@ updates:
     groups:
       bridge-npm:
         patterns: ['*']
+    ignore:
+      # Same TypeScript 7 hold as the root workspace (typescript-eslint caps TS).
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major']
+      # Node types track the runtime: the bridge image runs Node 24 LTS (its
+      # Node majors are held below), so @types/node stays on 24.x with it.
+      - dependency-name: '@types/node'
+        update-types: ['version-update:semver-major']
 
   - package-ecosystem: cargo
     directory: '/clients/desktop/src-tauri' # desktop Rust / Tauri
