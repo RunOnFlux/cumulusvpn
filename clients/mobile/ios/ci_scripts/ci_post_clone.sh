@@ -38,9 +38,10 @@ cd clients/mobile
 yarn install --no-immutable
 
 # --- CocoaPods ---
-# RN 0.86's hermes-engine.podspec resolves `which!('cmake')` when the podspec is
-# *loaded* (even though Hermes ships prebuilt and isn't built from source here),
-# so `pod install` aborts if cmake is missing. Xcode Cloud runners don't ship it.
+# RN 0.86's hermes-engine.podspec resolved `which!('cmake')` when the podspec was
+# *loaded* (even with prebuilt Hermes), so `pod install` aborted without cmake.
+# RN 0.87 only resolves it when Hermes builds from source; kept as a cheap safety
+# net since Xcode Cloud runners don't ship cmake.
 brew install cmake || true
 cd ios
 pod install --repo-update

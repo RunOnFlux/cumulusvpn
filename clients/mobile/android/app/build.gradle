@@ -122,7 +122,7 @@ android {
             // falls back to debug signing for local builds without the keystore.
             signingConfig System.getenv("SIGNING_STORE_PASSWORD") != null ? signingConfigs.release : signingConfigs.debug
             minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
+            proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
     }
 }

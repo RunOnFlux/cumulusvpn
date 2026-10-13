@@ -42,6 +42,7 @@ const K = {
   splitPolicy: 'cvpn:splitPolicy',
   identityBackup: 'cvpn:identityBackup',
   storeSub: 'cvpn:storeSub',
+  transferNotice: 'cvpn:transferNoticeSeen',
 } as const;
 
 /**
@@ -251,6 +252,19 @@ export async function loadIdentityBackup(): Promise<boolean> {
 /** Persist the identity-backup preference. */
 export async function saveIdentityBackup(enabled: boolean): Promise<void> {
   await AsyncStorage.setItem(K.identityBackup, enabled ? '1' : '0');
+}
+
+/**
+ * True once the one-time "save your recovery key" prompt (lib/transferNotice.ts)
+ * has been shown and dismissed or acted on. It never shows again after that.
+ */
+export async function loadTransferNoticeSeen(): Promise<boolean> {
+  return (await AsyncStorage.getItem(K.transferNotice)) === '1';
+}
+
+/** Record that the recovery-key prompt was dismissed or acted on. */
+export async function saveTransferNoticeSeen(): Promise<void> {
+  await AsyncStorage.setItem(K.transferNotice, '1');
 }
 
 /** True once the user has acknowledged the CURRENT disclosure version. */

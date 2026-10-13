@@ -22,6 +22,8 @@ import { color, font, radius, space } from '../theme/tokens';
 
 interface Props {
   readonly vpn: VpnModel & VpnActions;
+  /** Open with the recovery key already shown (from the "save your recovery key" prompt). */
+  readonly revealKey?: boolean;
 }
 
 /** `2J8Y…AwLD` — enough to tell two identities apart at a glance. */
@@ -62,8 +64,8 @@ function keyError(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
-export function IdentitySection({ vpn }: Props): React.JSX.Element {
-  const [showKey, setShowKey] = useState(false);
+export function IdentitySection({ vpn, revealKey = false }: Props): React.JSX.Element {
+  const [showKey, setShowKey] = useState(revealKey);
   const [restoring, setRestoring] = useState(false);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);

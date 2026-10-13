@@ -184,7 +184,7 @@ export function CountryPickerScreen({
                   </Text>
                 </View>
               </Pressable>
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => {
             const q = gatewayQuality(item.latencyMs, item.best.load);
@@ -253,10 +253,14 @@ export function CountryPickerScreen({
         autoCapitalize="none"
       />
 
+      {/* The search field is above the list, so the keyboard covers the list's
+          last rows: iOS insets the list by the keyboard; Android gets the same
+          from the KeyboardAvoidingView in App.tsx shrinking this screen. */}
       <FlatList
         data={filtered}
         keyExtractor={(c) => c.id}
         keyboardShouldPersistTaps="handled"
+        automaticallyAdjustKeyboardInsets
         ListHeaderComponent={
           onSelectAuto && query.trim() === '' ? (
             <Pressable
@@ -274,7 +278,7 @@ export function CountryPickerScreen({
               </View>
               {selectedCode === null ? <Text style={styles.autoCheck}>✓</Text> : null}
             </Pressable>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           <Text style={styles.empty}>No gateways reachable — pull to refresh.</Text>

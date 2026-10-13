@@ -1,20 +1,22 @@
 buildscript {
     ext {
-        buildToolsVersion = "36.0.0"
+        buildToolsVersion = "37.0.0"
         minSdkVersion = 24
-        compileSdkVersion = 36
+        compileSdkVersion = 37
         targetSdkVersion = 36
         ndkVersion = "27.1.12297006"
-        // Load-bearing pin: RN 0.86's gradle plugin caps the usable KGP API
-        // at this version (its includeBuild loads KGP 2.1.20 classes into
-        // the parent classloader — any kotlinVersion >= 2.2 dies at
-        // configuration with a KotlinJvmCompilerOptions.getJvmDefault
-        // NoSuchMethod clash). This in turn caps readable library metadata
-        // at Kotlin 2.2, which is why react-native-iap is pinned to 16.0.2:
-        // 16.1.0+ (Aug 2026) ships openiap-google 3.1+ AARs with Kotlin 2.4
-        // metadata. Bump the iap pin when RN's toolchain reaches Kotlin 2.3+
-        // or upstream rebuilds with compatible metadata.
-        kotlinVersion = "2.1.20"
+        // RN 0.87's template value. Keep it in lockstep with the KGP that
+        // @react-native/gradle-plugin is built against (its includeBuild loads
+        // those classes into the parent classloader; on RN 0.86 a kotlinVersion
+        // above the plugin's 2.1.20 died at configuration with a
+        // KotlinJvmCompilerOptions.getJvmDefault NoSuchMethod clash). See
+        // node_modules/@react-native/gradle-plugin/gradle/libs.versions.toml.
+        // Kotlin 2.2 reads library metadata up to 2.3. react-native-iap is still
+        // held at 16.0.2 on purpose (live purchase flow): 17.0.1 (openiap 4.0.1,
+        // Kotlin 2.2 metadata) was trial-built on this toolchain and compiles,
+        // so the old Kotlin 2.4-metadata blocker no longer applies — move to it
+        // in its own change, with a Play internal-track purchase test.
+        kotlinVersion = "2.2.0"
     }
     repositories {
         google()

@@ -46,6 +46,13 @@ export interface Flags {
    * default — the app links to no external checkout.
    */
   readonly webPayLink: boolean;
+  /**
+   * One-time "save your recovery key" prompt for devices that have Premium.
+   * Not a purchase surface: the operator turns it on shortly before the app
+   * moves to another store account (an App Store transfer changes the team,
+   * and with it which Keychain copies a reinstall can read). OFF by default.
+   */
+  readonly transferNotice: boolean;
 }
 
 /** Safe default when the remote flags can't be fetched: everything OFF. */
@@ -54,6 +61,7 @@ export const DEFAULT_FLAGS: Flags = {
   iapPurchase: false,
   voucherRedeem: false,
   webPayLink: false,
+  transferNotice: false,
 };
 
 /** Read a `{ android, ios }` boolean flag from a parsed doc for the given OS. */
@@ -75,6 +83,7 @@ export function resolveFlags(json: unknown, os: string): Flags {
     iapPurchase: platformFlag(json, 'iapPurchase', os),
     voucherRedeem: platformFlag(json, 'voucherRedeem', os),
     webPayLink: platformFlag(json, 'webPayLink', os),
+    transferNotice: platformFlag(json, 'transferNotice', os),
   };
 }
 

@@ -202,6 +202,16 @@
             Store subscriptions are always within store rules. The other three can conflict with
             App&nbsp;Store / Google&nbsp;Play rules outside the US — your call per platform.
           </p>
+          <table class="matrix">
+            <thead><tr><th>Notice</th><th>Android</th><th>iOS</th></tr></thead>
+            <tbody>
+              <tr>
+                <td><b>“Save your recovery key” prompt</b><small>shown once to devices with Premium; turn on a few weeks before moving the app to another store account</small></td>
+                <td><label class="sw"><input type="checkbox" id="tn-android" aria-label="Recovery key prompt on Android" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="tn-ios" aria-label="Recovery key prompt on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+              </tr>
+            </tbody>
+          </table>
           <div class="foot">
             <span class="updated" id="updated">—</span>
             <span class="actions">
@@ -336,6 +346,9 @@
       var wp = (f && f.webPayLink) || {};
       $('wp-android').checked = wp.android === true;
       $('wp-ios').checked = wp.ios === true;
+      var tn = (f && f.transferNotice) || {};
+      $('tn-android').checked = tn.android === true;
+      $('tn-ios').checked = tn.ios === true;
       $('updated').textContent = f && f.updatedAt
         ? 'Last updated ' + new Date(f.updatedAt).toLocaleString()
         : 'Never updated (serving defaults)';
@@ -518,6 +531,7 @@
       iapPurchase: { android: $('iap-android').checked, ios: $('iap-ios').checked },
       voucherRedeem: { android: $('vr-android').checked, ios: $('vr-ios').checked },
       webPayLink: { android: $('wp-android').checked, ios: $('wp-ios').checked },
+      transferNotice: { android: $('tn-android').checked, ios: $('tn-ios').checked },
     };
     fetch('/api/flags', {
       method: 'POST',
@@ -670,7 +684,8 @@
   $('signin').addEventListener('click', doLogin);
   $('pw').addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
   $('save').addEventListener('click', save);
-  // Checks every payment option on both platforms; nothing changes until Save.
+  // Checks every payment option on both platforms (not the notice); nothing
+  // changes until Save.
   $('all-on').addEventListener('click', function () {
     ['iap-android', 'iap-ios', 't-android', 't-ios', 'wp-android', 'wp-ios', 'vr-android', 'vr-ios']
       .forEach(function (id) { $(id).checked = true; });

@@ -30,12 +30,11 @@ updates:
       mobile-npm:
         patterns: ['*']
     ignore:
-      # react-native-iap 16.1.0+ (Aug 2026) ships openiap-google 3.1+ AARs
-      # with Kotlin 2.4 metadata, unreadable by RN 0.86's Kotlin 2.1.20 —
-      # and the RN gradle plugin caps kotlinVersion at 2.1.x (getJvmDefault
-      # classloader clash on >= 2.2). Held at 16.0.2 (openiap-google 3.0.1,
-      # Kotlin 2.2 metadata — the newest that builds). Lift when RN's
-      # toolchain reaches Kotlin 2.3+ or upstream rebuilds compatibly.
+      # Held at 16.0.2 on purpose: it runs the live purchase flow, so moving to
+      # 17.x is its own change, tested with a Play internal-track purchase. The
+      # old Kotlin blocker is gone: RN 0.87 runs Kotlin 2.2.0, and 17.0.1
+      # (openiap 4.0.1, Kotlin 2.2 metadata) builds on it (see kotlinVersion in
+      # clients/mobile/android/build.gradle). Lift this with that change.
       - dependency-name: 'react-native-iap'
         versions: ['>16.0.2']
       # The RN toolchain (metro, @react-native/babel-preset) is built for Babel 7;
@@ -85,11 +84,12 @@ updates:
       android-gradle:
         patterns: ['*']
     ignore:
-      # Hold the Gradle wrapper at RN 0.86's version (9.3.x). 9.6.1 ships Kotlin
-      # 2.3+, which @react-native/gradle-plugin (compiled against Kotlin <=2.2)
-      # cannot compile — it breaks the APK build. ci-ts never runs a gradle build,
-      # so this only fails in android-release. Revisit when RN ships a plugin built
-      # for newer Kotlin. (The com.wireguard.android:tunnel bumps stay allowed.)
+      # Hold the Gradle wrapper at RN 0.87's version (9.4.1, as in
+      # @react-native/gradle-plugin's own wrapper) and move it with RN upgrades. A newer Gradle embeds a newer Kotlin
+      # than @react-native/gradle-plugin is built against (Kotlin 2.2.0 on 0.87);
+      # on RN 0.86, 9.6.1 broke the APK build that way. ci-ts never runs a gradle
+      # build, so a bad bump only fails in android-release. (The
+      # com.wireguard.android:tunnel bumps stay allowed.)
       - dependency-name: 'gradle-wrapper'
 
   - package-ecosystem: bundler

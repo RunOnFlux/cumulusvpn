@@ -182,7 +182,10 @@ const native: CumulusTunnelModule =
     },
   });
 
-const emitter = new NativeEventEmitter(
+/** Events the native module emits, keyed by name, with their argument lists. */
+type TunnelEvents = { CumulusTunnelStatus: [TunnelStatus] };
+
+const emitter = new NativeEventEmitter<TunnelEvents>(
   NativeModules.CumulusTunnel as ConstructorParameters<typeof NativeEventEmitter>[0],
 );
 
