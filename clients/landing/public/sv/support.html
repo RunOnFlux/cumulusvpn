@@ -78,8 +78,7 @@
   <div class="support-intro">
     <span class="eyebrow">Support</span>
     <h1>Hur kan vi hjälpa till?</h1>
-    <p>Inget konto krävs — de flesta svar finns här. Det finns ingen inloggning och inget lösenord, så det finns
-      inget att återställa. Fortfarande fast? <a href="mailto:info@cumulusvpn.com" style="color:var(--cyan);text-decoration:none">Mejla oss</a>.</p>
+    <p>Inget konto krävs — de flesta svar finns här. Det finns ingen inloggning och inget lösenord att glömma — bara en återställningsnyckel att förvara säkert. Fortfarande fast? <a href="mailto:info@cumulusvpn.com" style="color:var(--cyan);text-decoration:none">Mejla oss</a>.</p>
   </div>
 
   <!-- ============ GETTING STARTED ============ -->
@@ -127,8 +126,8 @@
         <summary>Vad är min ”nyckel”?</summary>
         <div class="answer"><p>Ett WireGuard-nyckelpar som genereras på din enhet. Den privata nyckeln skickas aldrig
           till oss eller till en gateway; endast den publika nyckeln delas, för att dirigera din tunnel. Det är en pseudonym, inte knuten till
-          din identitet. Appen sparar en krypterad säkerhetskopia av nyckeln så att den finns kvar efter en ominstallation — du
-          kan stänga av det i Inställningar.</p></div>
+          din identitet. Mobilappen sparar en krypterad säkerhetskopia av nyckeln så att den finns kvar efter en ominstallation — du
+          kan stänga av det i Inställningar. Du kan också spara den som en återställningsnyckel och återställa den på valfri telefon, surfplatta eller dator.</p></div>
       </details>
       <details>
         <summary>Vad kan en gatewayoperatör se?</summary>
@@ -165,7 +164,7 @@
       </details>
       <details>
         <summary>Hur låses min enhet upp?</summary>
-        <div class="answer"><p>Din rättighet beräknas från den publika blockkedjan och är kopplad till din publika nyckel, så varje gateway växlar den nyckeln till full hastighet på ungefär en minut — på alla servrar samtidigt, i 30&nbsp;dagar. Det låser upp den enda enhet som har nyckeln, inte ditt konto.</p></div>
+        <div class="answer"><p>Din rättighet beräknas från den publika blockkedjan och är kopplad till din publika nyckel, så varje gateway växlar den nyckeln till full hastighet på ungefär en minut — på alla servrar samtidigt, i 30&nbsp;dagar. Det låser upp den enhet som har nyckeln — det finns inget konto. Spara din återställningsnyckel för att återställa den på valfri telefon, surfplatta eller dator; det fungerar bäst på en enhet i taget, eller på enheter som är anslutna till olika länder.</p></div>
       </details>
       <details>
         <summary>Kan jag förbetala flera månader?</summary>
@@ -178,7 +177,11 @@
       </details>
       <details>
         <summary>Jag har betalat — varför är min andra enhet fortfarande långsam?</summary>
-        <div class="answer"><p>Premium är knutet till en enda enhets nyckel, inte till en person, eftersom det inte finns något konto att knyta det till. Varje enhet skapar sin egen nyckel och behöver sin egen betalning. Vill du betala för en telefon från datorn, öppna appen → Inställningar → Om, kopiera enhetskoden och klistra in den i fältet på uppgraderingssidan.</p></div>
+        <div class="answer"><p>Ditt Premium hör till din nyckel, inte till en enhet — och varje app skapar en egen nyckel när den installeras, så din andra enhet har en annan. Spara återställningsnyckeln från enheten du betalade för (i dess inställningar, eller på sidan Anslut på webben) och återställ den på den andra enheten. Det fungerar bäst på en enhet i taget, eller på enheter som är anslutna till olika länder: två enheter på samma server skulle hela tiden koppla bort varandra. Vill du ge den andra enheten ett eget Premium, kopiera dess enhetskod under Inställningar → Om och klistra in den i fältet på uppgraderingssidan.</p></div>
+      </details>
+      <details>
+        <summary>Kan jag använda Premium på flera enheter?</summary>
+        <div class="answer"><p>Ja. Spara din återställningsnyckel och återställ den på varje enhet — Premium hör till nyckeln, så det följer med. Det fungerar bäst på en enhet i taget, eller på enheter som är anslutna till olika länder: två enheter på samma server kopplar bort varandra. Eller ge varje enhet ett eget Premium genom att betala för dess enhetskod (Inställningar → Om).</p></div>
       </details>
       <details>
         <summary>Jag skickade FLUX med fel meddelande, eller för lite. Vad gör jag nu?</summary>

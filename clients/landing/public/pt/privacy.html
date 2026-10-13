@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacidade pela arquitetura</span>
     <h1>Política de privacidade</h1>
-    <p class="doc-meta">Última atualização: 12 de outubro de 2026 · Em vigor desde: 14 de agosto de 2026</p>
+    <p class="doc-meta">Última atualização: 13 de outubro de 2026 · Em vigor desde: 14 de agosto de 2026</p>
 
   <p class="doc-meta">Esta tradução é fornecida por conveniência; a versão em inglês em cumulusvpn.com/privacy é a
       autoritativa.</p>
@@ -190,8 +190,7 @@
     <p>A CumulusVPN tem um nível grátis que não exige <strong>pagamento nem informação de identificação</strong>.</p>
     <p>Se você escolher fazer upgrade para premium (velocidade maior), pode pagar em <strong>criptomoeda FLUX</strong>
       da sua própria carteira, no cartão pela Stripe ou por uma assinatura dentro do app, quando um app oferecer uma,
-      e pode resgatar um voucher por dias grátis. O premium pertence ao código de pagamento anônimo do seu dispositivo, não
-      a uma pessoa ou a uma conta. Pontos importantes:</p>
+      e pode resgatar um voucher por dias grátis. O premium pertence ao código de pagamento anônimo da sua chave, não a um dispositivo específico, a uma pessoa ou a uma conta. Pontos importantes:</p>
     <ul>
       <li><strong>Onde você paga.</strong> Na web, em vpn.cumulusvpn.com, você pode pagar em FLUX ou no cartão. Um app
         também pode permitir que você pague dentro dele; quando um app oferece uma assinatura dentro do app, quem cuida dela é a Apple ou o Google. Um
@@ -205,7 +204,7 @@
         identidade real, e o memo é derivado de forma unidirecional a partir da sua chave pública — ele não revela sua
         chave nem seu tráfego. Entenda que publicar uma transação em uma blockchain pública é
         inerentemente público; trate a privacidade da sua carteira de acordo.</li>
-      <li>O direito ao serviço (se uma chave é premium e até quando) é calculado de forma determinística a partir do blockchain público e vinculado apenas à chave pública. Para pagamentos no cartão e dentro do app também armazenamos o código de pagamento e o id de transação do processador, para que as renovações sejam creditadas à chave certa; quando você resgata um voucher, guardamos qual código de pagamento o resgatou, para que cada dispositivo possa usar um código só uma vez. Não guardamos nenhum registro de cobrança com o seu nome, porque não temos o seu nome.</li>
+      <li>O direito ao serviço (se uma chave é premium e até quando) é calculado de forma determinística a partir do blockchain público e vinculado apenas à chave pública. Para pagamentos no cartão e dentro do app também armazenamos o código de pagamento e o id de transação do processador, para que as renovações sejam creditadas à chave certa; quando você resgata um voucher, guardamos qual código de pagamento o resgatou, para que cada código de pagamento possa resgatar um mesmo voucher só uma vez. Não guardamos nenhum registro de cobrança com o seu nome, porque não temos o seu nome.</li>
     </ul>
     <p>Se você assinar pela App Store da Apple ou pelo Google Play, essa transação é processada pela Apple ou pelo Google sob as respectivas políticas de privacidade; recebemos apenas a confirmação necessária para conceder o premium, não os dados do seu cartão.</p>
 
@@ -266,8 +265,7 @@
 
     <h2>12. Segurança</h2>
     <p>O tráfego é criptografado de ponta a ponta entre seu dispositivo e o gateway usando o protocolo WireGuard®
-      (criptografia moderna e auditada). Sua chave privada nunca é enviada para nós nem para nenhum gateway; a única cópia dela fora do app é o
-      backup criptografado descrito na seção 4.1, que você pode desativar. O estado dos peers no lado do servidor fica
+      (criptografia moderna e auditada). Sua chave privada nunca é enviada para nós nem para nenhum gateway; fora do app, ela só existe no backup criptografado descrito na seção 4.1, que você pode desativar, e em qualquer chave de recuperação que você decida salvar, que fica sob o seu controle. O estado dos peers no lado do servidor fica
       apenas em memória. O app chega à API de controle de cada gateway por uma conexão direta cujas
       respostas são assinadas com ed25519 e verificadas pelo app, então a autenticidade do diretório de servidores e das
       respostas dos gateways é protegida por assinaturas digitais em vez de um certificado de transporte.</p>

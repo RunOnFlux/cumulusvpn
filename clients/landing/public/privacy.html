@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy by architecture</span>
     <h1>Privacy Policy</h1>
-    <p class="doc-meta">Last updated: 12 October 2026 · Effective: 14 August 2026</p>
+    <p class="doc-meta">Last updated: 13 October 2026 · Effective: 14 August 2026</p>
 
   </div>
 
@@ -188,8 +188,7 @@
     <p>CumulusVPN has a free tier that requires <strong>no payment and no identifying information</strong>.</p>
     <p>If you choose to upgrade to premium (higher speed), you can pay in <strong>FLUX cryptocurrency</strong>
       from your own wallet, by card through Stripe, or through an in-app subscription where an app offers one,
-      and you can redeem a voucher for free days. Premium belongs to your device's anonymous payment code, not
-      to a person or an account. Important points:</p>
+      and you can redeem a voucher for free days. Premium belongs to the anonymous payment code of your key, not to a particular device, a person or an account. Important points:</p>
     <ul>
       <li><strong>Where you pay.</strong> On the web at vpn.cumulusvpn.com you can pay in FLUX or by card. An app
         may also let you pay inside it; where an app offers an in-app subscription, Apple or Google handles it. A
@@ -203,7 +202,7 @@
         real-world identity, and the memo is derived one-way from your public key — it does not reveal your
         key or your traffic. Please understand that publishing a transaction to a public blockchain is
         inherently public; treat your wallet's privacy accordingly.</li>
-      <li>Entitlement (whether a key is premium and until when) is computed deterministically from the public blockchain and keyed only to the public key. For card and in-app payments we also store the payment code and the processor’s transaction id, so renewals can be credited to the right key; when you redeem a voucher we store which payment code redeemed it, so each device can use a code only once. We store no separate customer billing record with your name in it, because we do not have your name.</li>
+      <li>Entitlement (whether a key is premium and until when) is computed deterministically from the public blockchain and keyed only to the public key. For card and in-app payments we also store the payment code and the processor’s transaction id, so renewals can be credited to the right key; when you redeem a voucher we store which payment code redeemed it, so each payment code can redeem a given voucher only once. We store no separate customer billing record with your name in it, because we do not have your name.</li>
     </ul>
     <p>If you subscribe through Apple’s App Store or Google Play, that transaction is processed by Apple or Google under their own privacy policies; we receive only the confirmation needed to grant premium, not your payment card data.</p>
 
@@ -265,8 +264,7 @@
 
     <h2>12. Security</h2>
     <p>Traffic is encrypted end-to-end between your device and the gateway using the WireGuard® protocol
-      (modern, audited cryptography). Your private key is never sent to us or to any gateway; its only copy outside the app is the
-      encrypted backup described in section 4.1, which you can turn off. Server-side peer state is
+      (modern, audited cryptography). Your private key is never sent to us or to any gateway; outside the app, it exists only in the encrypted backup described in section 4.1, which you can turn off, and in any recovery key you choose to save, which stays under your control. Server-side peer state is
       kept in memory only. The app reaches each gateway's control API over a direct connection whose
       responses are ed25519-signed and verified by the app, so the authenticity of the server directory and
       gateway responses is protected by digital signatures rather than by a transport certificate.</p>

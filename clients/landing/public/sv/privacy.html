@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Integritet genom arkitektur</span>
     <h1>Integritetspolicy</h1>
-    <p class="doc-meta">Senast uppdaterad: 12 oktober 2026 · Gäller från: 14 augusti 2026</p>
+    <p class="doc-meta">Senast uppdaterad: 13 oktober 2026 · Gäller från: 14 augusti 2026</p>
 
   <p class="doc-meta">Denna översättning tillhandahålls för bekvämlighets skull; den engelska versionen på cumulusvpn.com/privacy är auktoritativ.</p>
   </div>
@@ -188,8 +188,7 @@
     <p>CumulusVPN har en gratis nivå som varken kräver <strong>betalning eller identifierande information</strong>.</p>
     <p>Om du väljer att uppgradera till premium (högre hastighet) kan du betala i <strong>kryptovalutan FLUX</strong>
       från din egen plånbok, med kort via Stripe eller med en prenumeration i appen där en app erbjuder en,
-      och du kan lösa in en värdekod för gratisdagar. Premium tillhör din enhets anonyma betalningskod, inte
-      en person eller ett konto. Viktiga punkter:</p>
+      och du kan lösa in en värdekod för gratisdagar. Premium tillhör din nyckels anonyma betalningskod, inte en viss enhet, en person eller ett konto. Viktiga punkter:</p>
     <ul>
       <li><strong>Var du betalar.</strong> På webben på vpn.cumulusvpn.com kan du betala i FLUX eller med kort. En app
         kan också låta dig betala i appen; där en app erbjuder en prenumeration i appen hanteras den av Apple eller Google. En
@@ -203,7 +202,7 @@
         verkliga identitet, och meddelandet är enkelriktat härlett från din publika nyckel — det avslöjar varken din
         nyckel eller din trafik. Var medveten om att det är i sig offentligt att publicera en transaktion på en offentlig blockkedja;
         behandla din plånboks integritet därefter.</li>
-      <li>Rättigheten (om en nyckel är premium och hur länge) beräknas deterministiskt från den publika blockkedjan och är kopplad enbart till den publika nyckeln. För kort- och appbetalningar lagrar vi dessutom betalningskoden och betalleverantörens transaktions-id, så att förnyelser krediteras rätt nyckel; när du löser in en värdekod lagrar vi vilken betalningskod som löste in den, så att varje enhet bara kan använda en kod en gång. Vi för inget separat faktureringsregister med ditt namn i, eftersom vi inte har ditt namn.</li>
+      <li>Rättigheten (om en nyckel är premium och hur länge) beräknas deterministiskt från den publika blockkedjan och är kopplad enbart till den publika nyckeln. För kort- och appbetalningar lagrar vi dessutom betalningskoden och betalleverantörens transaktions-id, så att förnyelser krediteras rätt nyckel; när du löser in en värdekod lagrar vi vilken betalningskod som löste in den, så att varje betalningskod bara kan lösa in en viss värdekod en gång. Vi för inget separat faktureringsregister med ditt namn i, eftersom vi inte har ditt namn.</li>
     </ul>
     <p>Om du prenumererar via Apples App Store eller Google Play hanteras transaktionen av Apple eller Google enligt deras egna integritetspolicyer; vi får bara den bekräftelse som behövs för att bevilja premium, inte dina kortuppgifter.</p>
 
@@ -261,8 +260,7 @@
 
     <h2>12. Säkerhet</h2>
     <p>Trafik krypteras ände-till-ände mellan din enhet och gatewayen med WireGuard®-protokollet
-      (modern, granskad kryptografi). Din privata nyckel skickas aldrig till oss eller till någon gateway; dess enda kopia utanför appen är den
-      krypterade säkerhetskopia som beskrivs i avsnitt 4.1, och den kan du stänga av. Serversidans peer-status
+      (modern, granskad kryptografi). Din privata nyckel skickas aldrig till oss eller till någon gateway; utanför appen finns den bara i den krypterade säkerhetskopia som beskrivs i avsnitt 4.1, som du kan stänga av, och i en återställningsnyckel som du själv väljer att spara och som stannar under din kontroll. Serversidans peer-status
       hålls bara i minnet. Appen når varje gateways kontroll-API över en direkt anslutning vars
       svar är ed25519-signerade och verifieras av appen, så att äktheten hos serverkatalogen och
       gatewaysvaren skyddas av digitala signaturer snarare än av ett transportcertifikat.</p>

@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy door architectuur</span>
     <h1>Privacybeleid</h1>
-    <p class="doc-meta">Laatst bijgewerkt: 12 oktober 2026 · Van kracht: 14 augustus 2026</p>
+    <p class="doc-meta">Laatst bijgewerkt: 13 oktober 2026 · Van kracht: 14 augustus 2026</p>
 
   <p class="doc-meta">Deze vertaling wordt aangeboden voor het gemak; de Engelse versie op cumulusvpn.com/privacy is leidend.</p>
   </div>
@@ -189,8 +189,7 @@
     <p>CumulusVPN heeft een gratis laag waarvoor <strong>geen betaling en geen identificerende informatie</strong> nodig is.</p>
     <p>Als je ervoor kiest te upgraden naar premium (hogere snelheid), kun je betalen in de
       <strong>cryptovaluta FLUX</strong> vanuit je eigen wallet, met kaart via Stripe, of via een in-app-abonnement als een app dat
-      aanbiedt, en je kunt een voucher inwisselen voor gratis dagen. Premium hoort bij de anonieme betaalcode van je apparaat,
-      niet bij een persoon of een account. Belangrijke punten:</p>
+      aanbiedt, en je kunt een voucher inwisselen voor gratis dagen. Premium hoort bij de anonieme betaalcode van je sleutel, niet bij een bepaald apparaat, een persoon of een account. Belangrijke punten:</p>
     <ul>
       <li><strong>Waar je betaalt.</strong> Op het web via vpn.cumulusvpn.com kun je betalen in FLUX of met kaart. Een app
         kan je ook in de app zelf laten betalen; als een app een in-app-abonnement aanbiedt, handelt Apple of Google dat af. Een
@@ -204,7 +203,7 @@
         identiteit in de echte wereld, en het memo is eenrichtings afgeleid van je publieke sleutel — het onthult je
         sleutel of je verkeer niet. Besef dat het publiceren van een transactie op een publieke blockchain
         inherent openbaar is; behandel de privacy van je wallet dienovereenkomstig.</li>
-      <li>De aanspraak (of een sleutel premium is en tot wanneer) wordt deterministisch berekend uit de openbare blockchain en is uitsluitend gekoppeld aan de publieke sleutel. Voor kaart- en in-app-betalingen bewaren we daarnaast de betaalcode en het transactie-id van de verwerker, zodat verlengingen aan de juiste sleutel worden toegekend; als je een voucher inwisselt, bewaren we welke betaalcode hem heeft ingewisseld, zodat elk apparaat een code maar één keer kan gebruiken. We bewaren geen apart factureringsdossier met je naam erin, omdat we je naam niet hebben.</li>
+      <li>De aanspraak (of een sleutel premium is en tot wanneer) wordt deterministisch berekend uit de openbare blockchain en is uitsluitend gekoppeld aan de publieke sleutel. Voor kaart- en in-app-betalingen bewaren we daarnaast de betaalcode en het transactie-id van de verwerker, zodat verlengingen aan de juiste sleutel worden toegekend; als je een voucher inwisselt, bewaren we welke betaalcode hem heeft ingewisseld, zodat elke betaalcode een voucher maar één keer kan inwisselen. We bewaren geen apart factureringsdossier met je naam erin, omdat we je naam niet hebben.</li>
     </ul>
     <p>Als je je abonneert via Apple’s App Store of Google Play, wordt die transactie verwerkt door Apple of Google onder hun eigen privacybeleid; wij ontvangen alleen de bevestiging die nodig is om premium toe te kennen, niet je kaartgegevens.</p>
 
@@ -263,8 +262,7 @@
 
     <h2>12. Beveiliging</h2>
     <p>Verkeer wordt end-to-end versleuteld tussen je apparaat en de gateway met het WireGuard®-protocol
-      (moderne, geauditeerde cryptografie). Je privésleutel wordt nooit naar ons of naar een gateway gestuurd; de enige kopie buiten de app is de
-      versleutelde back-up die in paragraaf 4.1 wordt beschreven, en die kun je uitzetten. Serverside peer-status wordt
+      (moderne, geauditeerde cryptografie). Je privésleutel wordt nooit naar ons of naar een gateway gestuurd; buiten de app bestaat hij alleen in de versleutelde back-up die in paragraaf 4.1 wordt beschreven, die je kunt uitzetten, en in een herstelsleutel die je zelf besluit te bewaren en die onder jouw beheer blijft. Serverside peer-status wordt
       alleen in het geheugen bewaard. De app bereikt de control-API van elke gateway via een directe verbinding waarvan de
       antwoorden ed25519-ondertekend zijn en door de app worden geverifieerd, zodat de authenticiteit van de serverdirectory en
       gatewayantwoorden wordt beschermd door digitale handtekeningen in plaats van door een transportcertificaat.</p>

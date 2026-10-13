@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Datenschutz durch Architektur</span>
     <h1>Datenschutzerklärung</h1>
-    <p class="doc-meta">Zuletzt aktualisiert: 12. Oktober 2026 · Gültig ab: 14. August 2026</p>
+    <p class="doc-meta">Zuletzt aktualisiert: 13. Oktober 2026 · Gültig ab: 14. August 2026</p>
 
   <p class="doc-meta">Diese Übersetzung dient der Vereinfachung; maßgeblich ist die englische Fassung unter cumulusvpn.com/privacy.</p>
   </div>
@@ -188,8 +188,7 @@
     <p>CumulusVPN hat eine kostenlose Stufe, die <strong>keine Zahlung und keine identifizierenden Angaben</strong> erfordert.</p>
     <p>Wenn du dich für ein Upgrade auf Premium (höhere Geschwindigkeit) entscheidest, kannst du in der
       <strong>Kryptowährung FLUX</strong> aus deiner eigenen Wallet zahlen, per Karte über Stripe oder über ein In-App-Abo, sofern eine App eines anbietet,
-      und du kannst einen Gutschein für Gratistage einlösen. Premium gehört zum anonymen Zahlungscode deines Geräts, nicht
-      zu einer Person oder einem Konto. Wichtige Punkte:</p>
+      und du kannst einen Gutschein für Gratistage einlösen. Premium gehört zum anonymen Zahlungscode deines Schlüssels, nicht zu einem bestimmten Gerät, einer Person oder einem Konto. Wichtige Punkte:</p>
     <ul>
       <li><strong>Wo du bezahlst.</strong> Im Web unter vpn.cumulusvpn.com kannst du in FLUX oder per Karte zahlen. Eine App
         kann dich auch direkt in der App zahlen lassen; bietet eine App ein In-App-Abo an, wickelt Apple oder Google es ab. Ein
@@ -203,7 +202,7 @@
         realen Identität, und das Memo wird einweg-abgeleitet aus deinem öffentlichen Schlüssel — es enthüllt weder deinen
         Schlüssel noch deinen Datenverkehr. Bitte beachte, dass das Veröffentlichen einer Transaktion auf einer öffentlichen Blockchain
         von Natur aus öffentlich ist; behandle die Privatsphäre deiner Wallet entsprechend.</li>
-      <li>Die Berechtigung (ob ein Schlüssel Premium ist und bis wann) wird deterministisch aus der öffentlichen Blockchain berechnet und ist ausschließlich an den öffentlichen Schlüssel gebunden. Für Karten- und In-App-Zahlungen speichern wir zusätzlich den Zahlungscode und die Transaktions-ID des Zahlungsdienstleisters, damit Verlängerungen dem richtigen Schlüssel gutgeschrieben werden; wenn du einen Gutschein einlöst, speichern wir, welcher Zahlungscode ihn eingelöst hat, damit jedes Gerät einen Code nur einmal nutzen kann. Wir führen keinen gesonderten Abrechnungsdatensatz mit deinem Namen, weil wir deinen Namen nicht haben.</li>
+      <li>Die Berechtigung (ob ein Schlüssel Premium ist und bis wann) wird deterministisch aus der öffentlichen Blockchain berechnet und ist ausschließlich an den öffentlichen Schlüssel gebunden. Für Karten- und In-App-Zahlungen speichern wir zusätzlich den Zahlungscode und die Transaktions-ID des Zahlungsdienstleisters, damit Verlängerungen dem richtigen Schlüssel gutgeschrieben werden; wenn du einen Gutschein einlöst, speichern wir, welcher Zahlungscode ihn eingelöst hat, damit jeder Zahlungscode einen Gutschein nur einmal einlösen kann. Wir führen keinen gesonderten Abrechnungsdatensatz mit deinem Namen, weil wir deinen Namen nicht haben.</li>
     </ul>
     <p>Wenn du über Apples App Store oder Google Play abonnierst, wird diese Transaktion von Apple oder Google nach deren eigenen Datenschutzerklärungen verarbeitet; wir erhalten nur die Bestätigung, die zur Freischaltung von Premium nötig ist, nicht deine Kartendaten.</p>
 
@@ -262,8 +261,7 @@
 
     <h2>12. Sicherheit</h2>
     <p>Der Datenverkehr wird zwischen deinem Gerät und dem Gateway Ende-zu-Ende mit dem WireGuard®-Protokoll verschlüsselt
-      (moderne, geprüfte Kryptografie). Dein privater Schlüssel wird nie an uns oder an ein Gateway gesendet; seine einzige Kopie außerhalb der App ist das
-      in Abschnitt 4.1 beschriebene verschlüsselte Backup, das du abschalten kannst. Der serverseitige Peer-Status wird
+      (moderne, geprüfte Kryptografie). Dein privater Schlüssel wird nie an uns oder an ein Gateway gesendet; außerhalb der App gibt es ihn nur in dem in Abschnitt 4.1 beschriebenen verschlüsselten Backup, das du abschalten kannst, und in jedem Wiederherstellungsschlüssel, den du selbst speicherst und der unter deiner Kontrolle bleibt. Der serverseitige Peer-Status wird
       nur im Arbeitsspeicher gehalten. Die App erreicht die Steuer-API jedes Gateways über eine direkte Verbindung, deren
       Antworten ed25519-signiert und von der App verifiziert werden, sodass die Echtheit des Serververzeichnisses und der
       Gateway-Antworten durch digitale Signaturen geschützt ist statt durch ein Transportzertifikat.</p>

@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privatliv gennem arkitektur</span>
     <h1>Privatlivspolitik</h1>
-    <p class="doc-meta">Sidst opdateret: 12. oktober 2026 · Gældende fra: 14. august 2026</p>
+    <p class="doc-meta">Sidst opdateret: 13. oktober 2026 · Gældende fra: 14. august 2026</p>
 
   <p class="doc-meta">Denne oversættelse leveres af bekvemmelighedshensyn; den engelske version på cumulusvpn.com/privacy er den autoritative.</p>
   </div>
@@ -188,8 +188,7 @@
     <p>CumulusVPN har et gratis niveau, der hverken kræver <strong>betaling eller identificerende oplysninger</strong>.</p>
     <p>Hvis du vælger at opgradere til premium (højere hastighed), kan du betale i <strong>kryptovalutaen FLUX</strong>
       fra din egen wallet, med kort via Stripe eller med et abonnement i appen, hvor en app tilbyder et,
-      og du kan indløse en voucher til gratis dage. Premium tilhører din enheds anonyme betalingskode, ikke
-      en person eller en konto. Vigtige punkter:</p>
+      og du kan indløse en voucher til gratis dage. Premium tilhører din nøgles anonyme betalingskode, ikke en bestemt enhed, en person eller en konto. Vigtige punkter:</p>
     <ul>
       <li><strong>Hvor du betaler.</strong> På nettet på vpn.cumulusvpn.com kan du betale i FLUX eller med kort. En app
         kan også lade dig betale i appen; hvor en app tilbyder et abonnement i appen, håndteres det af Apple eller Google. En
@@ -203,7 +202,7 @@
         virkelige identitet, og beskeden er envejs afledt af din offentlige nøgle — den afslører hverken din
         nøgle eller din trafik. Vær opmærksom på, at det at offentliggøre en transaktion på en offentlig blockchain
         i sagens natur er offentligt; behandl din tegnebogs privatliv derefter.</li>
-      <li>Rettigheden (om en nøgle er premium og hvor længe) beregnes deterministisk ud fra den offentlige blockchain og er kun knyttet til den offentlige nøgle. Ved kort- og in-app-betalinger gemmer vi desuden betalingskoden og udbyderens transaktions-id, så fornyelser krediteres den rigtige nøgle; når du indløser en voucher, gemmer vi, hvilken betalingskode der indløste den, så hver enhed kun kan bruge en kode én gang. Vi fører ingen separat faktureringsjournal med dit navn, fordi vi ikke har dit navn.</li>
+      <li>Rettigheden (om en nøgle er premium og hvor længe) beregnes deterministisk ud fra den offentlige blockchain og er kun knyttet til den offentlige nøgle. Ved kort- og in-app-betalinger gemmer vi desuden betalingskoden og udbyderens transaktions-id, så fornyelser krediteres den rigtige nøgle; når du indløser en voucher, gemmer vi, hvilken betalingskode der indløste den, så hver betalingskode kun kan indløse en given voucher én gang. Vi fører ingen separat faktureringsjournal med dit navn, fordi vi ikke har dit navn.</li>
     </ul>
     <p>Hvis du abonnerer via Apples App Store eller Google Play, behandles transaktionen af Apple eller Google under deres egne privatlivspolitikker; vi modtager kun den bekræftelse, der skal til for at give premium, ikke dine kortoplysninger.</p>
 
@@ -261,8 +260,7 @@
 
     <h2>12. Sikkerhed</h2>
     <p>Trafik krypteres ende-til-ende mellem din enhed og gatewayen ved hjælp af WireGuard®-protokollen
-      (moderne, revideret kryptografi). Din private nøgle sendes aldrig til os eller til nogen gateway; dens eneste kopi uden for appen er den
-      krypterede sikkerhedskopi, der er beskrevet i afsnit 4.1, og den kan du slå fra. Peer-status på serversiden
+      (moderne, revideret kryptografi). Din private nøgle sendes aldrig til os eller til nogen gateway; uden for appen findes den kun i den krypterede sikkerhedskopi, der er beskrevet i afsnit 4.1, som du kan slå fra, og i en gendannelsesnøgle, du selv vælger at gemme, og som forbliver under din kontrol. Peer-status på serversiden
       holdes kun i hukommelsen. Appen når hver gateways kontrol-API over en direkte forbindelse, hvis
       svar er ed25519-signerede og verificeret af appen, så ægtheden af serverkataloget og
       gateway-svarene beskyttes af digitale signaturer frem for af et transportcertifikat.</p>

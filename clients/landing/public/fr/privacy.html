@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Confidentialité par architecture</span>
     <h1>Politique de confidentialité</h1>
-    <p class="doc-meta">Dernière mise à jour : 12 octobre 2026 · En vigueur depuis : 14 août 2026</p>
+    <p class="doc-meta">Dernière mise à jour : 13 octobre 2026 · En vigueur depuis : 14 août 2026</p>
 
   <p class="doc-meta">Cette traduction est fournie à titre pratique ; la version anglaise sur cumulusvpn.com/privacy fait
       foi.</p>
@@ -190,8 +190,7 @@
     <p>CumulusVPN propose un niveau gratuit qui ne requiert <strong>ni paiement ni information identifiante</strong>.</p>
     <p>Si vous choisissez de passer en premium (vitesse supérieure), vous pouvez payer en <strong>cryptomonnaie FLUX</strong>
       depuis votre propre portefeuille, par carte via Stripe, ou par un abonnement intégré lorsqu'une application en propose un,
-      et vous pouvez utiliser un bon pour obtenir des jours gratuits. Le premium appartient au code de paiement anonyme de votre appareil, et non
-      à une personne ou à un compte. Points importants :</p>
+      et vous pouvez utiliser un bon pour obtenir des jours gratuits. Le premium appartient au code de paiement anonyme de votre clé, et non à un appareil en particulier, à une personne ou à un compte. Points importants :</p>
     <ul>
       <li><strong>Où vous payez.</strong> Sur le web, à vpn.cumulusvpn.com, vous pouvez payer en FLUX ou par carte. Une application
         peut aussi vous permettre de payer directement dans l'app ; si une application propose un abonnement intégré, c'est Apple ou Google qui le gère. Un
@@ -205,7 +204,7 @@
         identité réelle, et le mémo est dérivé de manière unidirectionnelle à partir de votre clé publique — il ne révèle ni votre
         clé ni votre trafic. Sachez que publier une transaction sur une blockchain publique est
         intrinsèquement public ; traitez la confidentialité de votre wallet en conséquence.</li>
-      <li>Le droit au service (si une clé est premium et jusqu’à quand) est calculé de façon déterministe à partir de la blockchain publique et rattaché uniquement à la clé publique. Pour les paiements par carte et dans l’application, nous stockons également le code de paiement et l’identifiant de transaction du prestataire, afin que les renouvellements soient crédités à la bonne clé ; lorsque vous utilisez un bon, nous enregistrons quel code de paiement l’a utilisé, afin que chaque appareil ne puisse utiliser un code qu’une seule fois. Nous ne conservons aucun dossier de facturation portant votre nom, puisque nous n’avons pas votre nom.</li>
+      <li>Le droit au service (si une clé est premium et jusqu’à quand) est calculé de façon déterministe à partir de la blockchain publique et rattaché uniquement à la clé publique. Pour les paiements par carte et dans l’application, nous stockons également le code de paiement et l’identifiant de transaction du prestataire, afin que les renouvellements soient crédités à la bonne clé ; lorsque vous utilisez un bon, nous enregistrons quel code de paiement l’a utilisé, afin que chaque code de paiement ne puisse utiliser un même bon qu’une seule fois. Nous ne conservons aucun dossier de facturation portant votre nom, puisque nous n’avons pas votre nom.</li>
     </ul>
     <p>Si vous vous abonnez via l’App Store d’Apple ou Google Play, cette transaction est traitée par Apple ou Google selon leurs propres politiques de confidentialité ; nous ne recevons que la confirmation nécessaire pour accorder le premium, pas les données de votre carte.</p>
 
@@ -266,8 +265,7 @@
 
     <h2>12. Sécurité</h2>
     <p>Le trafic est chiffré de bout en bout entre votre appareil et la passerelle grâce au protocole WireGuard®
-      (cryptographie moderne et auditée). Votre clé privée n'est jamais envoyée ni à nous ni à aucune passerelle ; sa seule copie hors de l'app est la
-      sauvegarde chiffrée décrite à la section 4.1, que vous pouvez désactiver. L'état des pairs côté serveur est
+      (cryptographie moderne et auditée). Votre clé privée n'est jamais envoyée ni à nous ni à aucune passerelle ; hors de l'app, elle n'existe que dans la sauvegarde chiffrée décrite à la section 4.1, que vous pouvez désactiver, et dans toute clé de récupération que vous choisissez d'enregistrer, qui reste sous votre contrôle. L'état des pairs côté serveur est
       conservé uniquement en mémoire. L'app atteint l'API de contrôle de chaque passerelle via une connexion directe dont les
       réponses sont signées en ed25519 et vérifiées par l'app, de sorte que l'authenticité de l'annuaire des serveurs et des
       réponses des passerelles est protégée par des signatures numériques plutôt que par un certificat de transport.</p>

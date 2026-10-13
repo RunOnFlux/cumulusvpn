@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Personvern gjennom arkitektur</span>
     <h1>Personvernerklæring</h1>
-    <p class="doc-meta">Sist oppdatert: 12. oktober 2026 · Gjeldende fra: 14. august 2026</p>
+    <p class="doc-meta">Sist oppdatert: 13. oktober 2026 · Gjeldende fra: 14. august 2026</p>
 
   <p class="doc-meta">Denne oversettelsen er kun til bekvemmelighet; den engelske versjonen på cumulusvpn.com/privacy er gjeldende.</p>
   </div>
@@ -187,8 +187,7 @@
     <p>CumulusVPN har et gratisnivå som verken krever <strong>betaling eller identifiserende informasjon</strong>.</p>
     <p>Hvis du velger å oppgradere til premium (høyere hastighet), kan du betale i kryptovalutaen
       <strong>FLUX</strong> fra din egen lommebok, med kort via Stripe eller med et abonnement i appen der en app
-      tilbyr det, og du kan løse inn en verdikupong for gratisdager. Premium tilhører enhetens anonyme
-      betalingskode, ikke en person eller en konto. Viktige punkter:</p>
+      tilbyr det, og du kan løse inn en verdikupong for gratisdager. Premium tilhører den anonyme betalingskoden til nøkkelen din, ikke en bestemt enhet, en person eller en konto. Viktige punkter:</p>
     <ul>
       <li><strong>Hvor du betaler.</strong> På nettet på vpn.cumulusvpn.com kan du betale i FLUX eller med kort. En app
         kan også la deg betale i appen; der en app tilbyr et abonnement i appen, håndteres det av Apple eller Google. En
@@ -202,7 +201,7 @@
         virkelige identitet, og notatet er avledet enveis fra den offentlige nøkkelen din — det avslører verken
         nøkkelen eller trafikken din. Vær oppmerksom på at det å publisere en transaksjon til en offentlig blokkjede
         i sin natur er offentlig; behandle personvernet til lommeboken din deretter.</li>
-      <li>Rettigheten (om en nøkkel er premium og hvor lenge) beregnes deterministisk fra den offentlige blokkjeden og er knyttet bare til den offentlige nøkkelen. For kort- og app-betalinger lagrer vi i tillegg betalingskoden og leverandørens transaksjons-id, slik at fornyelser krediteres riktig nøkkel; når du løser inn en verdikupong, lagrer vi hvilken betalingskode som løste den inn, slik at hver enhet bare kan bruke en kode én gang. Vi fører ingen egen faktureringsjournal med navnet ditt, fordi vi ikke har navnet ditt.</li>
+      <li>Rettigheten (om en nøkkel er premium og hvor lenge) beregnes deterministisk fra den offentlige blokkjeden og er knyttet bare til den offentlige nøkkelen. For kort- og app-betalinger lagrer vi i tillegg betalingskoden og leverandørens transaksjons-id, slik at fornyelser krediteres riktig nøkkel; når du løser inn en verdikupong, lagrer vi hvilken betalingskode som løste den inn, slik at hver betalingskode bare kan løse inn en gitt verdikupong én gang. Vi fører ingen egen faktureringsjournal med navnet ditt, fordi vi ikke har navnet ditt.</li>
     </ul>
     <p>Hvis du abonnerer via Apples App Store eller Google Play, behandles transaksjonen av Apple eller Google under deres egne personvernerklæringer; vi mottar bare bekreftelsen som trengs for å gi premium, ikke kortopplysningene dine.</p>
 
@@ -263,8 +262,7 @@
 
     <h2>12. Sikkerhet</h2>
     <p>Trafikken er ende-til-ende-kryptert mellom enheten din og gatewayen ved hjelp av WireGuard®-protokollen
-      (moderne, revidert kryptografi). Den private nøkkelen din sendes aldri til oss eller til noen gateway; den eneste kopien utenfor appen er den
-      krypterte sikkerhetskopien som er beskrevet i avsnitt 4.1, og den kan du slå av. Peer-tilstanden på serversiden
+      (moderne, revidert kryptografi). Den private nøkkelen din sendes aldri til oss eller til noen gateway; utenfor appen finnes den bare i den krypterte sikkerhetskopien som er beskrevet i avsnitt 4.1, som du kan slå av, og i en gjenopprettingsnøkkel du selv velger å lagre, og som forblir under din kontroll. Peer-tilstanden på serversiden
       holdes kun i minnet. Appen når hver gateways styrings-API over en direkte forbindelse hvis
       svar er ed25519-signert og verifisert av appen, slik at ektheten til serverkatalogen og
       gatewaysvarene beskyttes av digitale signaturer i stedet for av et transportsertifikat.</p>

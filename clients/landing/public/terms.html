@@ -53,7 +53,7 @@
   <div class="doc-head">
     <span class="eyebrow">Plain-language terms</span>
     <h1>Terms of Service</h1>
-    <p class="doc-meta">Last updated: 12 October 2026</p>
+    <p class="doc-meta">Last updated: 13 October 2026</p>
   </div>
 
   <div class="doc-body">
@@ -65,7 +65,7 @@
     <h2>1. Summary (the short version)</h2>
     <ul>
       <li><strong>The free tier is free.</strong> No account, no email, no payment details. Just a speed limit.</li>
-      <li><strong>Premium is paid time for one device.</strong> It belongs to that device's anonymous payment code, not to a person or an account, and every payment becomes a transaction on the Flux blockchain that cannot be reversed.</li>
+      <li><strong>Premium is paid time for one key.</strong> It belongs to that key's anonymous payment code, not to a person, an account or a particular device, and every payment becomes a transaction on the Flux blockchain that cannot be reversed.</li>
       <li><strong>Your key is your identity, so look after it.</strong> There is no account to recover. If you lose your key and every backup of it, premium time paid to it cannot be restored.</li>
       <li><strong>Use it lawfully.</strong> No illegal activity, no abuse, no spam, no attacks, and never anything involving the sexual abuse or exploitation of children.</li>
       <li><strong>No uptime guarantee.</strong> The network is decentralized: gateways and countries come and go, and speeds vary.</li>
@@ -90,14 +90,14 @@
     <h3>4.1 Free tier</h3>
     <p>The free tier costs nothing and needs no account, no email and no payment details. Its speed is limited (currently to 100 KB/s) so that it can stay free and is hard to abuse. Every country and every gateway is available on the free tier.</p>
     <h3>4.2 Premium</h3>
-    <p>Premium raises the speed limit for one device, on every gateway at once, for the time you have paid for. Actual speeds depend on the gateway you use, the network in between and your own connection, and are not guaranteed.</p>
+    <p>Premium raises the speed limit for one key, on every gateway at once, for the time you have paid for. If you restore the key on another device with its recovery key, the premium goes with it; it is meant for one device at a time, and devices using the same key on the same gateway disconnect each other. Actual speeds depend on the gateway you use, the network in between and your own connection, and are not guaranteed.</p>
     <h3>4.3 Changes to the Service</h3>
     <p>CumulusVPN is under active development. We may add, change or remove features, gateways, countries, connection methods and limits, including the free tier's speed limit, for example as the network grows or to deal with abuse.</p>
     <h3>4.4 What a VPN can and cannot do</h3>
     <p>CumulusVPN encrypts your traffic between your device and the gateway and lets you choose the country it leaves from. That protects you from snooping on your local network, from logging by your internet provider, and from some geo-restrictions. It is <strong>not</strong> anonymity software like Tor: websites can still recognize you through logins, cookies and browser fingerprinting, a gateway operator can see encrypted flow metadata in real time (see section 4.6 of our <a href="/privacy">Privacy Policy</a>), and no VPN can protect a device that is already compromised. Some websites and services block VPN traffic, and we do not guarantee access to any particular one. Traffic leaves the gateway for the wider internet just as it would leave your own connection, so use end-to-end encryption such as HTTPS for anything sensitive.</p>
 
     <h2>5. Your key and Device code (there is no account)</h2>
-    <p>CumulusVPN has no accounts. The first time you open an app or the web app, it generates a WireGuard key pair on your device. The public key, and the payment code derived from it (shown as the Device code under Settings → About in the app), are how the Service recognizes your device. Premium time belongs to that code.</p>
+    <p>CumulusVPN has no accounts. The first time you open an app or the web app, it generates a WireGuard key pair on your device. The public key, and the payment code derived from it (shown as the Device code under Settings → About in the app), are how the Service recognizes your key. Premium time belongs to that code, whichever device holds the key, including a device you restore it on with its recovery key.</p>
     <p>That makes you responsible for:</p>
     <ul>
       <li><strong>Keeping your key safe.</strong> The apps keep an encrypted backup of your key by default (see section 4.1 of our <a href="/privacy">Privacy Policy</a>). You are responsible for that backup, for any recovery key you keep, and for any device that holds your key. Anyone who has your key can use the premium time attached to it.</li>
@@ -114,7 +114,7 @@
     <h3>6.3 Subscribing through the App Store or Google Play</h3>
     <p>Where the iOS or Android app offers a subscription, it is sold, billed and renewed by Apple or Google at the price shown in the store, under their terms. You manage and cancel it in your App Store or Google Play account settings, and refunds are decided by Apple or Google under their own policies. If you downloaded the app from Apple's App Store, Apple's standard <a href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/">Licensed Application End User License Agreement</a> also applies to your use of the app.</p>
     <h3>6.4 Vouchers and promo codes</h3>
-    <p>We sometimes issue voucher codes. A free-time code adds the stated number of days of premium to the device that redeems it; a discount code lowers the price of a card checkout. Each device can redeem a given code once, and codes can expire or run out. Codes have no cash value, cannot be exchanged for money and may not be sold. Days granted by a voucher are settled on-chain like any other payment and stay with the device that redeemed them.</p>
+    <p>We sometimes issue voucher codes. A free-time code adds the stated number of days of premium to the key (payment code) that redeems it; a discount code lowers the price of a card checkout. Each key (payment code) can redeem a given code once, and codes can expire or run out. Codes have no cash value, cannot be exchanged for money and may not be sold. Days granted by a voucher are settled on-chain like any other payment and stay with the key that redeemed them.</p>
     <h3>6.5 How premium is delivered, and why it cannot be undone</h3>
     <p>However you pay, premium is delivered the same way: as a FLUX transaction on the Flux blockchain that grants premium time to your device's anonymous payment code. When you pay in FLUX you send that transaction yourself; when you pay by card, through an app store or with a voucher, we send it for you. Every gateway reads the blockchain, so premium usually switches on within about a minute of the transaction confirming, on all gateways at once, although confirmation times are outside our control. Blockchain transactions are public and permanent: once premium time has been granted, it cannot be reversed or taken back on-chain, by you or by us.</p>
     <h3>6.6 Refunds</h3>
