@@ -116,7 +116,7 @@ class CumulusObfsVpnService : VpnService() {
         val serverAssigned = intent.req(EXTRA_SERVER_ASSIGNED)
         val port = intent.getIntExtra(EXTRA_PORT, 0)
         val obfs = intent.getStringExtra(EXTRA_OBFS) ?: ""
-        val dns = intent.getStringExtra(EXTRA_DNS) ?: "1.1.1.1"
+        val dnsServers = CumulusMultihopVpnService.parseDnsServers(intent.getStringExtra(EXTRA_DNS))
         // wg-tls: when a TLS relay + SNI are present, the WG device dials a local
         // bridge instead of the gateway directly.
         val tlsRelay = intent.getStringExtra(EXTRA_TLS_RELAY)
@@ -130,25 +130,32 @@ class CumulusObfsVpnService : VpnService() {
         val builder = Builder()
             .setSession("CumulusVPN")
             .addAddress(serverAssigned, 32)
-            .addDnsServer(dns)
             .setMtu(1420)
             .setBlocking(true)
+        // Every resolver of the config's `DNS =` list (the user's DNS choice),
+        // primary first — Android falls back to the next one on its own.
+        for (server in dnsServers) {
+            builder.addDnsServer(server)
+        }
         // Per-app rules (docs/17 §4.1) — kernel-enforced by the tun scoping.
         CumulusMultihopVpnService.applyAppRules(
             builder,
             intent.getStringExtra(EXTRA_APPS_INCLUDED),
             intent.getStringExtra(EXTRA_APPS_EXCLUDED),
         )
-        // Route the tunnel-route set (everything, or the split policy's routes)
-        // EXCEPT the gateway IP into the tun, so the device's one real socket to
-        // the gateway bypasses the VPN (no loop). Reuses the multi-hop service's
-        // route arithmetic.
+        // Route the tunnel-route set (everything, or the split policy's routes
+        // plus the resolvers, which must stay tunnelled) EXCEPT the gateway IP
+        // into the tun, so the device's one real socket to the gateway bypasses
+        // the VPN (no loop). Reuses the multi-hop service's route arithmetic.
         val tunRoutes =
             if (routes4.isNullOrBlank()) {
                 CumulusMultihopVpnService.routesExcluding(serverIp)
             } else {
                 CumulusMultihopVpnService.subtractHost(
-                    CumulusMultihopVpnService.parseRoutesCsv(routes4),
+                    CumulusMultihopVpnService.withDnsRoutes(
+                        CumulusMultihopVpnService.parseRoutesCsv(routes4),
+                        dnsServers,
+                    ),
                     serverIp,
                 )
             }
@@ -386,6 +393,7 @@ class CumulusObfsVpnService : VpnService() {
         const val EXTRA_SERVER_ASSIGNED = "serverAssigned"
         const val EXTRA_PORT = "port"
         const val EXTRA_OBFS = "obfs"
+        /** The config's `DNS =` list, comma-separated (see [CumulusMultihopVpnService.parseDnsServers]). */
         const val EXTRA_DNS = "dns"
         const val EXTRA_NOTIF_TEXT = "notifText"
 

@@ -12,8 +12,11 @@
  * Keychain / Keystore (`react-native-keychain`) and keep only a reference here.
  */
 import {
+  DEFAULT_DNS,
   EMPTY_POLICY,
+  parseDnsChoice,
   sanitizeSplitPolicy,
+  type DnsChoice,
   type GatewayInfo,
   type Keypair,
   type RouteStyle,
@@ -40,6 +43,7 @@ const K = {
   activeRoute: 'cvpn:activeRoute',
   disclosure: 'cvpn:disclosureAck',
   splitPolicy: 'cvpn:splitPolicy',
+  dnsChoice: 'cvpn:dnsChoice',
   identityBackup: 'cvpn:identityBackup',
   storeSub: 'cvpn:storeSub',
   transferNotice: 'cvpn:transferNoticeSeen',
@@ -66,6 +70,25 @@ export async function loadSplitPolicy(): Promise<SplitPolicy> {
 /** Persist the split-tunneling policy (device-local only, by design). */
 export async function saveSplitPolicy(policy: SplitPolicy): Promise<void> {
   await AsyncStorage.setItem(K.splitPolicy, JSON.stringify(policy));
+}
+
+/**
+ * Load the DNS choice (core `DnsChoice`), defaulting to Cloudflare. Read at
+ * every connect, so it must never stand in the way of one: an absent, corrupt
+ * or newer-build value — or storage itself failing — falls back to the
+ * default. Device-local only, like every setting here.
+ */
+export async function loadDnsChoice(): Promise<DnsChoice> {
+  try {
+    return parseDnsChoice(await AsyncStorage.getItem(K.dnsChoice));
+  } catch {
+    return DEFAULT_DNS;
+  }
+}
+
+/** Persist the DNS choice. Applies the next time a tunnel is built. */
+export async function saveDnsChoice(choice: DnsChoice): Promise<void> {
+  await AsyncStorage.setItem(K.dnsChoice, choice);
 }
 
 /** The route of the live tunnel, persisted so a force-quit + relaunch can still

@@ -183,6 +183,16 @@ export const zh: Catalog = {
   redeem_err_already: '此密钥已兑换过此码。',
   redeem_err_later: '兑换功能暂时不可用——请几分钟后重试。',
 
+  dns_summary_title: 'DNS 服务商',
+  dns_default: '默认',
+  dns_blurb_cloudflare: '快速，不过滤',
+  dns_blurb_quad9: '拦截已知恶意网站',
+  dns_blurb_adguard: '拦截广告和跟踪器',
+  dns_blurb_family: '拦截恶意软件和成人内容',
+  dns_note:
+    '你的 DNS 查询经由 VPN 发送到你选择的服务商。它看到的是 VPN 服务器的地址，永远不是你的。',
+  dns_apply_note: '立即应用于此页面上的配置——如果你已导入过，请重新下载或扫描。',
+
   split_summary_title: '高级：分流隧道',
   split_tier_pill: '高级版 · 可选',
   split_lede:

@@ -195,7 +195,9 @@ object CumulusTunnelController {
         var pub = ""
         var endpoint = ""
         var address = ""
-        var dns = "1.1.1.1"
+        // The whole `DNS =` list ("9.9.9.9, 149.112.112.112" for a non-default
+        // choice) — the service applies every server, not just the first.
+        var dns = CumulusMultihopVpnService.DEFAULT_DNS
         var allowedIps = ""
         var appsIncluded = ""
         var appsExcluded = ""
@@ -210,7 +212,7 @@ object CumulusTunnelController {
                 "PublicKey" -> pub = value
                 "Endpoint" -> endpoint = value
                 "Address" -> address = value.substringBefore(',').substringBefore('/').trim()
-                "DNS" -> dns = value.substringBefore(',').trim()
+                "DNS" -> dns = value
                 "AllowedIPs" -> allowedIps = value
                 "IncludedApplications" -> appsIncluded = value
                 "ExcludedApplications" -> appsExcluded = value
@@ -302,7 +304,9 @@ object CumulusTunnelController {
             val entryIp = entry.endpointHost
             val entryPort = entry.endpointPort // 51821 for an obfuscated (awg) entry
             val exitIp = exitPeer.endpoint.get().host
-            val exitDns = inner.`interface`.dnsServers.firstOrNull()?.hostAddress ?: "1.1.1.1"
+            // Every resolver the inner config names (the user's DNS choice can
+            // list two), in order; the service falls back to the default if none.
+            val exitDns = inner.`interface`.dnsServers.mapNotNull { it.hostAddress }.joinToString(",")
 
             Log.i(TAG, "startMultihop: entry=$entryIp:$entryPort exit=$exitIp stealth=${entryObfs.isNotEmpty()}")
 

@@ -190,6 +190,17 @@ export const da: Catalog = {
   redeem_err_already: 'Denne nøgle har allerede indløst denne kode.',
   redeem_err_later: 'Indløsning er kortvarigt utilgængelig — prøv igen om et par minutter.',
 
+  dns_summary_title: 'DNS-udbyder',
+  dns_default: 'Standard',
+  dns_blurb_cloudflare: 'Hurtig, ingen filtrering',
+  dns_blurb_quad9: 'Blokerer kendte skadelige websteder',
+  dns_blurb_adguard: 'Blokerer reklamer og trackere',
+  dns_blurb_family: 'Blokerer malware og voksenindhold',
+  dns_note:
+    'Dine DNS-opslag går gennem VPN’en til den udbyder, du vælger. Den ser VPN-serverens adresse, aldrig din.',
+  dns_apply_note:
+    'Gælder med det samme for konfigurationerne på denne side — har du allerede importeret en, så download eller scan den igen.',
+
   split_summary_title: 'Avanceret: split tunneling',
   split_tier_pill: 'PREMIUM · TILVALG',
   split_lede:

@@ -1385,3 +1385,78 @@ footer .wrap {
 .st-remove:hover {
   color: var(--amber);
 }
+
+/* ── DNS provider (DnsSection) ──────────────────────────────────────── */
+/* Every tier, so it keeps the neutral border — amber marks premium options. */
+.card.mh.dns {
+  border-color: var(--line);
+}
+.card.mh.dns .mh-caret {
+  color: var(--cyan);
+}
+.dns-pill {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-2);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 3px 9px;
+}
+.dns-opts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.dns-opt {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  cursor: pointer;
+  min-width: 0;
+}
+.dns-opt.on {
+  border-color: color-mix(in srgb, var(--cyan) 60%, var(--line));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--cyan) 18%, transparent);
+}
+.dns-opt input {
+  accent-color: var(--cyan);
+  margin: 3px 0 0;
+  flex-shrink: 0;
+}
+.dns-txt {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.dns-name {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.dns-default {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--ink-3);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 1px 7px;
+}
+.dns-blurb {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+@media (max-width: 560px) {
+  .dns-opts {
+    grid-template-columns: 1fr;
+  }
+}

@@ -187,6 +187,17 @@ export const ko: Catalog = {
   redeem_err_already: '이 키로는 이미 이 코드를 사용했습니다.',
   redeem_err_later: '코드 사용이 잠시 불가능합니다 — 몇 분 후에 다시 시도해 주세요.',
 
+  dns_summary_title: 'DNS 제공업체',
+  dns_default: '기본값',
+  dns_blurb_cloudflare: '빠름, 필터링 없음',
+  dns_blurb_quad9: '알려진 악성 사이트 차단',
+  dns_blurb_adguard: '광고 및 추적기 차단',
+  dns_blurb_family: '악성코드 및 성인 콘텐츠 차단',
+  dns_note:
+    'DNS 조회는 VPN을 거쳐 선택한 제공업체로 전달됩니다. 제공업체는 VPN 서버의 주소만 볼 수 있으며, 당신의 주소는 절대 볼 수 없습니다.',
+  dns_apply_note:
+    '이 페이지의 구성에 바로 적용됩니다 — 이미 가져온 구성이 있다면 다시 다운로드하거나 스캔하세요.',
+
   split_summary_title: '고급: 스플릿 터널링',
   split_tier_pill: '프리미엄 · 선택',
   split_lede:

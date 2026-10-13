@@ -195,6 +195,17 @@ export const it: Catalog = {
   redeem_err_already: 'Questa chiave ha già riscattato questo codice.',
   redeem_err_later: 'Il riscatto è momentaneamente non disponibile — riprova tra qualche minuto.',
 
+  dns_summary_title: 'Provider DNS',
+  dns_default: 'Predefinito',
+  dns_blurb_cloudflare: 'Veloce, nessun filtro',
+  dns_blurb_quad9: 'Blocca i siti dannosi noti',
+  dns_blurb_adguard: 'Blocca pubblicità e tracker',
+  dns_blurb_family: 'Blocca malware e contenuti per adulti',
+  dns_note:
+    'Le tue richieste DNS passano nella VPN fino al provider che scegli. Vede l’indirizzo del server VPN, mai il tuo.',
+  dns_apply_note:
+    'Si applica subito alle configurazioni di questa pagina — se ne hai già importata una, scaricala o scansionala di nuovo.',
+
   split_summary_title: 'Avanzato: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

@@ -195,6 +195,17 @@ export const es: Catalog = {
   redeem_err_later:
     'El canje no está disponible por un momento — inténtalo de nuevo en unos minutos.',
 
+  dns_summary_title: 'Proveedor de DNS',
+  dns_default: 'Predeterminado',
+  dns_blurb_cloudflare: 'Rápido, sin filtrado',
+  dns_blurb_quad9: 'Bloquea sitios maliciosos conocidos',
+  dns_blurb_adguard: 'Bloquea anuncios y rastreadores',
+  dns_blurb_family: 'Bloquea malware y contenido para adultos',
+  dns_note:
+    'Tus consultas DNS viajan por la VPN hasta el proveedor que elijas. Este ve la dirección del servidor VPN, nunca la tuya.',
+  dns_apply_note:
+    'Se aplica al instante a las configuraciones de esta página — si ya importaste una, descárgala o escanéala de nuevo.',
+
   split_summary_title: 'Avanzado: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

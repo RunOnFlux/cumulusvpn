@@ -18,6 +18,7 @@ import {
 } from 'react-native';
 import type { VpnActions, VpnModel } from '../state/useVpn';
 import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory';
+import { DnsSection } from '../components/DnsSection';
 import { IdentitySection } from '../components/IdentitySection';
 import { PoweredByFlux } from '../components/PoweredByFlux';
 import { SplitTunnelingSection } from '../components/SplitTunnelingSection';
@@ -188,6 +189,12 @@ export function SettingsScreen({
             onValueChange={(v) => void vpn.setNotifDetails(v)}
           />
         )}
+
+        {/* DNS (docs/03 "DNS") — which resolver lookups go to, on every tier.
+            Read when a tunnel is built, so like split tunneling below it stays
+            editable while connected and applies on the next connect. */}
+        <Text style={styles.section}>DNS</Text>
+        <DnsSection locked={locked} />
 
         {/* Split tunneling (docs/17) — premium, applied when a tunnel is built,
             like the transport/routing toggles above. Hidden entirely for a

@@ -1284,3 +1284,50 @@ mod roam_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod dns_facts_tests {
+    use super::*;
+
+    const KEY: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
+
+    fn conf(dns: &str) -> WgConfig {
+        WgConfig::parse(&format!(
+            "[Interface]\nPrivateKey = {KEY}\nAddress = 10.8.0.2/32\nDNS = {dns}\n\n\
+             [Peer]\nPublicKey = {KEY}\nEndpoint = 203.0.113.7:51820\nAllowedIPs = 0.0.0.0/0\n"
+        ))
+        .expect("parse")
+    }
+
+    /// What a connect hands the kill switch and the DNS session: EVERY resolver
+    /// on the `.conf` line, in order, and the tunnel address — for the default
+    /// as for a Settings → DNS provider.
+    #[test]
+    fn every_resolver_on_the_dns_line_reaches_the_leak_protection() {
+        let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        assert_eq!(
+            dns_facts(&conf("1.1.1.1")),
+            (vec![ip("1.1.1.1")], Some(ip("10.8.0.2")))
+        );
+        assert_eq!(
+            dns_facts(&conf("9.9.9.9, 149.112.112.112")).0,
+            vec![ip("9.9.9.9"), ip("149.112.112.112")]
+        );
+        assert_eq!(
+            dns_facts(&conf("94.140.14.14,94.140.15.15")).0,
+            vec![ip("94.140.14.14"), ip("94.140.15.15")]
+        );
+    }
+
+    /// A multi-hop outer `.conf` carries no DNS line: no resolvers, so nothing
+    /// is allowed on its account.
+    #[test]
+    fn no_dns_line_means_no_resolvers() {
+        let outer = WgConfig::parse(&format!(
+            "[Interface]\nPrivateKey = {KEY}\nAddress = 10.8.0.2/32\nMTU = 1420\n\n\
+             [Peer]\nPublicKey = {KEY}\nEndpoint = 203.0.113.7:51820\nAllowedIPs = 198.51.100.9/32\n"
+        ))
+        .expect("parse");
+        assert!(dns_facts(&outer).0.is_empty());
+    }
+}

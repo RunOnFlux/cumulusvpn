@@ -6,6 +6,7 @@ import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory.js';
 import { codeOf, copyText } from '../lib/identity.js';
 import { loadOrCreateKeypair, loadSplitPolicy, saveSplitPolicy } from '../lib/storage.js';
 import { useEscape } from '../hooks/useEscape.js';
+import { DnsSection } from './DnsSection.js';
 import { IdentitySection } from './IdentitySection.js';
 
 /** App version — matches the release tag. */
@@ -64,6 +65,9 @@ export function Settings({
             value={stealth}
             onChange={onStealth}
           />
+
+          <div className="setsec">DNS</div>
+          <DnsSection />
 
           <div className="setsec">Identity · Recovery key</div>
           <IdentitySection revealKey={revealRecoveryKey} />

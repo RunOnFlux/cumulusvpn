@@ -6,8 +6,11 @@
 //! tunnel, but the OS keeps asking the resolver it already had (the router, the
 //! ISP), so every lookup names the site you are about to visit to the local
 //! network. The gateway hands out a resolver in its enroll reply (`dns`, e.g.
-//! `1.1.1.1`); the `.conf` carries it as `DNS =`; this module makes the system
-//! use it, and only it.
+//! `1.1.1.1`), or the user picks a provider in Settings → DNS (two addresses,
+//! e.g. `9.9.9.9, 149.112.112.112`, which the gateway answers and forwards to
+//! that provider); the `.conf` carries them as `DNS =`; this module makes the
+//! system use them — every one of them — and only them. Nothing here assumes
+//! a particular provider: every OS mechanism below takes the whole list.
 //!
 //! **One interface for every host.** [`DnsSession::start`] applies,
 //! [`DnsSession::reassert`] keeps it applied (called from the repair loop),
@@ -54,9 +57,9 @@
 //! The backups live in the dynamic store, not on disk, so they survive the
 //! helper dying (launchd restarts it and [`recover_stale`] puts everything
 //! back) but never a reboot (the store is rebuilt from scratch, nothing
-//! stale). And a stale override is not a broken machine: the gateway's
-//! resolver is a public anycast address, reachable directly once the tunnel is
-//! gone.
+//! stale). And a stale override is not a broken machine: every resolver the
+//! apps offer is a public anycast address, reachable directly once the tunnel
+//! is gone.
 //!
 //! **Linux — systemd-resolved, else resolvconf.** When resolved is the system
 //! resolver (`/etc/resolv.conf` is its stub): `resolvectl dns <if> <ip>`,
@@ -71,7 +74,7 @@
 //! empty connection suffix. Windows' smart multi-homed name resolution still
 //! sends the same query out *every* adapter in parallel, so the
 //! `CumulusVPN-DNS` firewall group blocks 53/853 (UDP+TCP) to every address but
-//! the tunnel resolver, and from every local address but the tunnel's. Block
+//! the tunnel resolvers, and from every local address but the tunnel's. Block
 //! rules beat allow rules in Windows Firewall, so no LAN-allow can reopen it,
 //! and nothing touches the default outbound policy — quitting an app that
 //! never connected still leaves the firewall alone. The adapter's own settings
@@ -80,11 +83,12 @@
 //! **Split tunneling.** Tunnel DNS for everything, bypassed prefixes included:
 //! the desktop has no per-domain or per-app exclusions yet (docs/17 phases 3
 //! and 4), so `excludedDns: 'system'` has nothing to act on and the private
-//! default holds. When split routing is active the resolver gets a host route
-//! through the tunnel, so neither an exclusion that happens to cover it nor
-//! include mode (whose default route stays physical) can send it out in the
-//! clear. Domain rules, when they ship, will sit in front of this as a local
-//! resolver (docs/17 §6) and must keep this session's server as their upstream.
+//! default holds. When split routing is active every resolver gets a host
+//! route through the tunnel (`pinned_servers`), so neither an exclusion that
+//! happens to cover one nor include mode (whose default route stays physical)
+//! can send it out in the clear. Domain rules, when they ship, will sit in
+//! front of this as a local resolver (docs/17 §6) and must keep this session's
+//! servers as their upstream.
 //!
 //! **IPv6.** The tunnel is IPv4-only (the gateway assigns no v6 address), so a
 //! v6 resolver on the physical link must not be usable: macOS replaces the v6
@@ -107,9 +111,13 @@ const RETRY_EVERY: Duration = Duration::from_secs(15);
 /// repair loop and the UI poll, and each macOS check is an `scutil` spawn.
 const RECHECK_EVERY: Duration = Duration::from_secs(1);
 
-/// The resolver(s) named by a `.conf` `DNS =` line. Non-address entries (wg-quick
-/// allows search domains there) are skipped; addresses are deduplicated. The
-/// result is typed, so nothing reaches rule text or a script unvalidated.
+/// The resolver(s) named by a `.conf` `DNS =` line, in order: comma-separated,
+/// spaces around entries and empty entries ignored, duplicates dropped. A line
+/// that is not all addresses is refused before this runs
+/// (`validate::dns_servers`, from `WgConfig::parse`); anything else that slips
+/// through (wg-quick allows search domains there) is still skipped rather than
+/// passed on. The result is typed, so nothing reaches rule text or a script
+/// unvalidated.
 pub fn parse_servers(dns: &str) -> Vec<IpAddr> {
     let mut out = Vec::new();
     for token in dns.split(',') {
@@ -246,17 +254,10 @@ impl DnsSession {
         }
     }
 
-    /// Host routes `<resolver>/32 → tunnel`, when split routing is active. These
-    /// are interface-scoped and die with the device, so restore has nothing to
-    /// undo. IPv4 only: the tunnel carries no IPv6.
+    /// Host routes `<resolver>/32 → tunnel` for [`pinned_servers`]. These are
+    /// interface-scoped and die with the device, so restore has nothing to undo.
     fn pin_routes(&mut self) {
-        if !self.target.pin_route {
-            return;
-        }
-        for server in &self.target.servers {
-            if !server.is_ipv4() || self.target.endpoint_ips.contains(server) {
-                continue;
-            }
+        for server in pinned_servers(&self.target) {
             if let Err(e) = routing::add_host_route(&server.to_string(), &self.target.interface) {
                 eprintln!("cumulusvpn: could not pin DNS server {server} to the tunnel: {e}");
                 self.route_warning = Some(format!(
@@ -265,6 +266,23 @@ impl DnsSession {
             }
         }
     }
+}
+
+/// The resolvers that get a host route through the tunnel: every configured
+/// one, when split routing is active (docs/16 N10 — an excluded prefix that
+/// happens to contain a resolver must not take its lookups out of the tunnel).
+/// IPv4 only, since the tunnel carries no IPv6; never a WireGuard endpoint,
+/// which would loop the tunnel's own packets into itself.
+fn pinned_servers(target: &DnsTarget) -> Vec<IpAddr> {
+    if !target.pin_route {
+        return Vec::new();
+    }
+    target
+        .servers
+        .iter()
+        .copied()
+        .filter(|s| s.is_ipv4() && !target.endpoint_ips.contains(s))
+        .collect()
 }
 
 /// Undo DNS left behind by a host that died without restoring it. Run once when
@@ -1244,6 +1262,64 @@ mod tests {
         assert!(parse_servers("1.1.1.1; reboot").is_empty());
     }
 
+    /// Settings → DNS sends two addresses per provider, `, `-joined. Every one
+    /// must come through, in order, whatever the spacing; empty entries (a
+    /// trailing comma) are ignored; junk next to a real address never drops it.
+    #[test]
+    fn every_server_of_a_provider_list_is_kept() {
+        assert_eq!(
+            parse_servers("9.9.9.9, 149.112.112.112"),
+            vec![ip("9.9.9.9"), ip("149.112.112.112")]
+        );
+        assert_eq!(
+            parse_servers("94.140.14.14,94.140.15.15,"),
+            vec![ip("94.140.14.14"), ip("94.140.15.15")]
+        );
+        assert_eq!(
+            parse_servers("  1.1.1.3 ,, 1.0.0.3  "),
+            vec![ip("1.1.1.3"), ip("1.0.0.3")]
+        );
+        assert_eq!(
+            parse_servers("9.9.9.9, 1.2.3.4 } accept, 149.112.112.112"),
+            vec![ip("9.9.9.9"), ip("149.112.112.112")]
+        );
+        assert!(parse_servers(" , ,").is_empty());
+    }
+
+    fn target(servers: &[&str], endpoints: &[&str], pin_route: bool) -> DnsTarget {
+        DnsTarget {
+            interface: "cvpn0".into(),
+            servers: servers.iter().map(|s| ip(s)).collect(),
+            tunnel_address: Some(ip("10.8.0.2")),
+            endpoint_ips: endpoints.iter().map(|s| ip(s)).collect(),
+            pin_route,
+            kill_switch: true,
+        }
+    }
+
+    /// Split routing (docs/16 N10): an excluded prefix that contains a resolver
+    /// must not take that resolver's lookups out of the tunnel — so EVERY
+    /// configured resolver is pinned, not just the first.
+    #[test]
+    fn split_routing_pins_every_resolver_through_the_tunnel() {
+        let t = target(&["9.9.9.9", "149.112.112.112"], &["203.0.113.7"], true);
+        assert_eq!(
+            pinned_servers(&t),
+            vec![ip("9.9.9.9"), ip("149.112.112.112")]
+        );
+        // Never a WireGuard endpoint (that would loop the tunnel into itself),
+        // never IPv6 (the tunnel carries none).
+        let t = target(
+            &["1.1.1.3", "203.0.113.7", "2606:4700:4700::1113", "1.0.0.3"],
+            &["203.0.113.7"],
+            true,
+        );
+        assert_eq!(pinned_servers(&t), vec![ip("1.1.1.3"), ip("1.0.0.3")]);
+        // Full tunnel: the split-default route already covers every resolver.
+        let t = target(&["9.9.9.9", "149.112.112.112"], &[], false);
+        assert!(pinned_servers(&t).is_empty());
+    }
+
     /// The interface name reaches PowerShell and resolvectl; anything that
     /// could break out of a quoted argument must be refused.
     #[test]
@@ -1421,6 +1497,35 @@ mod tests {
                  quit\n"
             );
             assert_eq!(plan, expected);
+        }
+
+        /// A two-address provider (Settings → DNS): both go into the one
+        /// `ServerAddresses` array of every key, and the marker names both, so
+        /// a later re-assert recognises the override as current.
+        #[test]
+        fn a_two_server_provider_overrides_with_both_addresses() {
+            let quad9 = [ip("9.9.9.9"), ip("149.112.112.112")];
+            let plan = plan_apply(&parse_snapshot(&fresh()), &quad9);
+            assert_eq!(
+                plan.matches("d.add ServerAddresses * 9.9.9.9 149.112.112.112\n")
+                    .count(),
+                2,
+                "{plan}"
+            );
+            assert_eq!(
+                plan.matches("d.add CumulusVPNOverride 9.9.9.9,149.112.112.112\n")
+                    .count(),
+                2,
+                "{plan}"
+            );
+            // What the store looks like once that plan ran: nothing left to do.
+            let after = applied().replace("1.1.1.1\n", "9.9.9.9,149.112.112.112\n");
+            let snap = parse_snapshot(&after);
+            assert!(verify(&snap, &quad9).is_ok());
+            assert!(
+                verify(&snap, &servers()).is_err(),
+                "another list is not ours"
+            );
         }
 
         /// Store state after `first_apply…` ran.
@@ -1713,6 +1818,21 @@ mod tests {
             );
         }
 
+        /// A two-address provider: both servers on the link, both in the
+        /// exclusive resolvconf record.
+        #[test]
+        fn both_servers_of_a_provider_reach_resolved_and_resolvconf() {
+            let quad9 = [ip("9.9.9.9"), ip("149.112.112.112")];
+            assert_eq!(
+                resolvectl_apply_argv("cvpn-exit", &quad9)[0],
+                vec!["dns", "cvpn-exit", "9.9.9.9", "149.112.112.112"]
+            );
+            assert_eq!(
+                resolvconf_input(&quad9),
+                "nameserver 9.9.9.9\nnameserver 149.112.112.112\n"
+            );
+        }
+
         #[test]
         fn resolved_counts_only_when_it_is_the_system_resolver() {
             let stub = "# managed by resolved\nnameserver 127.0.0.53\noptions edns0\n";
@@ -1934,6 +2054,29 @@ mod tests {
                 "Set-NetIPInterface -InterfaceAlias 'cvpn0' -AddressFamily IPv4 -InterfaceMetric 1"
             ));
             assert_eq!(*steps.last().unwrap(), "Clear-DnsClientCache");
+        }
+
+        /// A two-address provider: the adapter gets both, in order, and both
+        /// are carved out of the "DNS to other servers" block — any other
+        /// resolver (1.1.1.1 included) stays blocked.
+        #[test]
+        fn a_two_server_provider_is_set_and_allowed_in_full() {
+            let quad9 = [ip("9.9.9.9"), ip("149.112.112.112")];
+            let s = apply_script("cvpn0", &quad9, Some(ip("10.8.0.2")), &[ip("203.0.113.7")]);
+            assert!(
+                s.contains(
+                    "Set-DnsClientServerAddress -InterfaceAlias 'cvpn0' \
+                     -ServerAddresses '9.9.9.9','149.112.112.112'"
+                ),
+                "{s}"
+            );
+            assert!(
+                s.contains(
+                    "-RemoteAddress '0.0.0.0-9.9.9.8','9.9.9.10-149.112.112.111',\
+                     '149.112.112.113-203.0.113.6','203.0.113.8-255.255.255.255',"
+                ),
+                "{s}"
+            );
         }
 
         /// Restore and crash recovery remove only our own group. They never touch

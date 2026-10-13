@@ -12,6 +12,7 @@ import {
   buildWgConfig,
   compileSplitPolicy,
   discoverGateways,
+  dnsServersFor,
   enroll,
   hasPremiumTransport,
   obfsForTransport,
@@ -33,7 +34,7 @@ import type {
 } from '@cumulusvpn/core';
 import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
-import { loadSplitPolicy } from './storage.js';
+import { loadDnsChoice, loadSplitPolicy } from './storage.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
 
@@ -459,6 +460,11 @@ export async function establish(
   // Split tunneling: one compile for the whole chain — every attempt dials the
   // same gateway IP (only the port differs per transport).
   const split = splitForSession(gwTier, killSwitch, [country.gatewayIp]);
+  // DNS (Settings → DNS): read once per (re)connect, like the split policy, so
+  // a change applies on the next connect. The default keeps the gateway's own
+  // `dns` byte for byte; another choice names that provider's resolvers, which
+  // the gateway answers and forwards encrypted to the same provider.
+  const dns = dnsServersFor(loadDnsChoice(), reply.dns);
 
   let lastError: Error | null = null;
   for (let i = 0; i < chain.length; i += 1) {
@@ -487,7 +493,7 @@ export async function establish(
     const wgConfig = buildWgConfig({
       privateKey: keypair.privateKey,
       assignedIp: reply.assigned_ip,
-      dns: reply.dns,
+      dns,
       serverPubKey: reply.server_pubkey,
       endpoint,
       ...(obfs ? { obfs } : {}),
@@ -561,7 +567,7 @@ export async function establish(
  * follows the key on every gateway, so no gateway protocol change is needed.
  * `buildMultihopConfig` renders the two nested WireGuard interfaces (outer to
  * ENTRY, `AllowedIPs = <exitIp>/32`, MTU 1420; inner to EXIT, default route,
- * MTU 1340, exit DNS), which the native `connectMultihop` command runs as two
+ * MTU 1340, the chosen DNS), which the native `connectMultihop` command runs as two
  * stacked wireguard-go devices.
  *
  * @param fleet - The full discovered fleet (from {@link discoverFleetAndCountries});
@@ -643,6 +649,9 @@ export async function establishMultihop(
     entry: entryReply,
     exit: exitReply,
     ...(entryTransport ? { entryTransport } : {}),
+    // DNS rides the inner (exit) hop, so the choice resolves against the exit's
+    // advertised `dns` (see establish()).
+    dns: dnsServersFor(loadDnsChoice(), exitReply.dns),
   });
 
   // Split tunneling: rules apply to the exit device (§7.2). Both hop IPs go

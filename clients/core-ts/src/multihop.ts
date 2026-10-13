@@ -277,6 +277,8 @@ export function selectHops(
  * @param args.exit - Enrollment of key `K` at the EXIT gateway.
  * @param args.entryTransport - ENTRY hop transport (an `awg` profile obfuscates it).
  * @param args.split - Compiled split policy for the exit hop's `AllowedIPs`.
+ * @param args.dns - The inner hop's `DNS =` value (see `dnsServersFor`); defaults
+ *   to the exit's advertised `dns`, which keeps the output byte-identical.
  * @returns The `outer`/`inner` `.conf` strings, `entryEndpoint`, `exitEndpoint`, `innerMtu`.
  */
 export function buildMultihopConfig(args: {
@@ -285,8 +287,10 @@ export function buildMultihopConfig(args: {
   exit: EnrollResponse;
   entryTransport?: Transport;
   split?: CompiledSplit;
+  dns?: string;
 }): MultihopConfig {
   const { privateKey, entry, exit, entryTransport, split } = args;
+  const dns = args.dns ?? exit.dns;
   const exitIp = stripEndpointPort(exit.endpoint);
   const exitEndpoint = `${exitIp}:${WG_PORT}`;
 
@@ -330,7 +334,7 @@ export function buildMultihopConfig(args: {
     '[Interface]',
     `PrivateKey = ${privateKey}`,
     `Address = ${exit.assigned_ip}/32`,
-    `DNS = ${exit.dns}`,
+    `DNS = ${dns}`,
     `MTU = ${INNER_MTU}`,
     ...appLines,
   ];

@@ -199,6 +199,17 @@ export const pl: Catalog = {
   redeem_err_already: 'Ten klucz już wykorzystał ten kod.',
   redeem_err_later: 'Realizacja kodów jest chwilowo niedostępna — spróbuj ponownie za kilka minut.',
 
+  dns_summary_title: 'Dostawca DNS',
+  dns_default: 'Domyślny',
+  dns_blurb_cloudflare: 'Szybki, bez filtrowania',
+  dns_blurb_quad9: 'Blokuje znane złośliwe strony',
+  dns_blurb_adguard: 'Blokuje reklamy i elementy śledzące',
+  dns_blurb_family: 'Blokuje złośliwe oprogramowanie i treści dla dorosłych',
+  dns_note:
+    'Twoje zapytania DNS idą przez VPN do wybranego przez ciebie dostawcy. Widzi on adres serwera VPN, nigdy twój.',
+  dns_apply_note:
+    'Działa od razu dla konfiguracji na tej stronie — jeśli masz już jakąś zaimportowaną, pobierz ją lub zeskanuj ponownie.',
+
   split_summary_title: 'Zaawansowane: split tunneling',
   split_tier_pill: 'PREMIUM · OPT-IN',
   split_lede:

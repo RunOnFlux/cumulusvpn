@@ -196,6 +196,17 @@ export const sw: Catalog = {
   redeem_err_later:
     'Utumiaji wa misimbo haupatikani kwa sasa — jaribu tena baada ya dakika chache.',
 
+  dns_summary_title: 'Mtoa huduma wa DNS',
+  dns_default: 'Chaguo-msingi',
+  dns_blurb_cloudflare: 'Haraka, bila kuchuja',
+  dns_blurb_quad9: 'Huzuia tovuti hasidi zinazojulikana',
+  dns_blurb_adguard: 'Huzuia matangazo na vifuatiliaji',
+  dns_blurb_family: 'Huzuia programu hasidi na maudhui ya watu wazima',
+  dns_note:
+    'Maombi yako ya DNS hupita ndani ya VPN hadi kwa mtoa huduma unayemchagua. Yeye huona anwani ya seva ya VPN, kamwe si yako.',
+  dns_apply_note:
+    'Inatumika mara moja kwa usanidi kwenye ukurasa huu — kama tayari umeuingiza, upakue au uchanganue tena.',
+
   split_summary_title: 'Kina: split tunneling',
   split_tier_pill: 'PREMIUM · HIARI',
   split_lede:

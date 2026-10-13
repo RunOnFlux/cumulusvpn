@@ -1,10 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { invoke } from '@tauri-apps/api/core';
-import { discoverGateways, enroll, status } from '@cumulusvpn/core';
+import {
+  buildMultihopConfig,
+  buildWgConfig,
+  discoverGateways,
+  enroll,
+  status,
+} from '@cumulusvpn/core';
 import type { EnrollResponse, GatewayInfo, Keypair } from '@cumulusvpn/core';
 import type * as CumulusCore from '@cumulusvpn/core';
 import { discoverCountries, establish, establishMultihop, teardown } from './session';
 import type { CountryOption } from './session';
+import { saveDnsChoice } from './storage';
 
 // Keep everything real except the two network primitives session orchestrates.
 vi.mock('@cumulusvpn/core', async (importOriginal) => {
@@ -493,5 +500,106 @@ describe('establishMultihop', () => {
       establishMultihop(fleet, deEntry, deEntry, 'multihop-same-country', keypair, true, 'stealth'),
     ).rejects.toThrow(/Stealth/);
     expect(mockedEnroll).not.toHaveBeenCalled(); // the refusal precedes enrollment
+  });
+});
+
+describe('DNS choice (Settings → DNS)', () => {
+  // The fleet's real enroll reply: every gateway advertises 1.1.1.1.
+  const reply = (endpoint: string): EnrollResponse => ({
+    server_pubkey: 'SRVPUB',
+    endpoint,
+    assigned_ip: '10.8.0.2',
+    dns: '1.1.1.1',
+    payment_address: 't1addr',
+    payment_memo: 'CVPN1:code',
+    price_flux: 20,
+  });
+  const de: CountryOption = {
+    code: 'DE',
+    name: 'Germany',
+    flag: '🇩🇪',
+    gatewayIp: '198.51.100.2',
+    city: 'Frankfurt',
+    load: 0.2,
+    signPubKey: 'sign-de',
+  };
+  const fleet = [
+    gateway({ country: 'DE', ip: '198.51.100.1', load: 0.5 }),
+    gateway({ country: 'DE', ip: '198.51.100.2', load: 0.2 }),
+  ];
+
+  beforeEach(() => {
+    localStorage.clear();
+    vi.mocked(invoke).mockClear();
+  });
+
+  async function singleHopConfig(): Promise<string> {
+    mockedEnroll.mockResolvedValue(reply('198.51.100.2:51820'));
+    await establish(de, keypair, true);
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect');
+    return (call?.[1] as { wgConfig: string }).wgConfig;
+  }
+
+  async function multihopConfigs(): Promise<{ outer: string; inner: string }> {
+    mockedEnroll.mockImplementation(async (ip: string) => reply(`${ip}:51820`));
+    await establishMultihop(fleet, de, de, 'multihop-same-country', keypair, true);
+    const call = vi.mocked(invoke).mock.calls.find((c) => c[0] === 'connect_multihop');
+    return call?.[1] as { outer: string; inner: string };
+  }
+
+  /** Entry then exit, in the order establishMultihop enrolled them. */
+  function enrolledHops(): [EnrollResponse, EnrollResponse] {
+    const [entryIp, exitIp] = mockedEnroll.mock.calls.map((c) => c[0]);
+    return [reply(`${entryIp}:51820`), reply(`${exitIp}:51820`)];
+  }
+
+  it('single-hop default is byte-identical to the config before the setting existed', async () => {
+    const conf = await singleHopConfig();
+    expect(conf).toBe(
+      buildWgConfig({
+        privateKey: 'PRIV',
+        assignedIp: '10.8.0.2',
+        dns: '1.1.1.1',
+        serverPubKey: 'SRVPUB',
+        endpoint: '198.51.100.2:51820',
+      }),
+    );
+    expect(conf).toContain('\nDNS = 1.1.1.1\n');
+  });
+
+  it('single-hop: a non-default choice names that provider’s resolvers, and only that changes', async () => {
+    const before = await singleHopConfig();
+    vi.mocked(invoke).mockClear();
+    saveDnsChoice('quad9');
+
+    const conf = await singleHopConfig();
+
+    expect(conf).toContain('\nDNS = 9.9.9.9, 149.112.112.112\n');
+    expect(conf.replace('DNS = 9.9.9.9, 149.112.112.112', 'DNS = 1.1.1.1')).toBe(before);
+  });
+
+  it('a corrupt stored value connects with the default, never fails', async () => {
+    localStorage.setItem('cvpn.dns.v1', 'opendns');
+    expect(await singleHopConfig()).toContain('\nDNS = 1.1.1.1\n');
+  });
+
+  it('multi-hop default is byte-identical; DNS stays on the inner (exit) hop', async () => {
+    const { outer, inner } = await multihopConfigs();
+    const [entry, exit] = enrolledHops();
+    const expected = buildMultihopConfig({ privateKey: 'PRIV', entry, exit });
+    expect(inner).toBe(expected.inner);
+    expect(outer).toBe(expected.outer);
+    expect(inner).toContain('\nDNS = 1.1.1.1\n');
+    expect(outer).not.toContain('DNS =');
+  });
+
+  it('multi-hop: a non-default choice sets the inner hop’s resolvers', async () => {
+    saveDnsChoice('adguard');
+
+    const { outer, inner } = await multihopConfigs();
+
+    expect(inner).toContain('\nDNS = 94.140.14.14, 94.140.15.15\n');
+    expect(inner).not.toContain('1.1.1.1');
+    expect(outer).not.toContain('DNS =');
   });
 });

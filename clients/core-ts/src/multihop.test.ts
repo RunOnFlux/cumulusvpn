@@ -67,6 +67,18 @@ describe('buildMultihopConfig', () => {
     expect(inner).toContain('DNS = 9.9.9.9');
   });
 
+  it('uses the chosen DNS on the inner interface, never on the outer', () => {
+    const cfg = buildMultihopConfig({
+      privateKey: 'K',
+      entry,
+      exit,
+      dns: '94.140.14.14, 94.140.15.15',
+    });
+    expect(cfg.inner).toContain('DNS = 94.140.14.14, 94.140.15.15');
+    expect(cfg.inner).not.toContain('DNS = 9.9.9.9');
+    expect(cfg.outer).not.toContain('DNS =');
+  });
+
   it('sets outer MTU 1420 and inner MTU 1340', () => {
     const cfg = buildMultihopConfig({ privateKey: 'K', entry, exit });
     expect(cfg.outer).toContain('MTU = 1420');

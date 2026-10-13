@@ -82,11 +82,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         // disregards route carve-outs, so the app layer never combines the two.
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: serverIp)
         let ipv4 = NEIPv4Settings(addresses: [assigned], subnetMasks: ["255.255.255.255"])
-        ipv4.includedRoutes = Self.includedV4Routes(allowedIps: conf.allowedIps)
+        ipv4.includedRoutes = Self.includedV4Routes(allowedIps: conf.allowedIps, dnsServers: conf.dns)
         settings.ipv4Settings = ipv4
         settings.mtu = 1420
-        if let dns = conf.dns {
-            settings.dnsSettings = NEDNSSettings(servers: [dns])
+        if !conf.dns.isEmpty {
+            settings.dnsSettings = Self.dnsSettings(servers: conf.dns)
         }
 
         setTunnelNetworkSettings(settings) { [weak self] error in
@@ -194,7 +194,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         let clientPriv = outer.privateKey
         let entryPub = outer.peerPublicKey
         let exitPub = inner.peerPublicKey
-        let exitDns = inner.dns ?? "1.1.1.1"
+        let exitDns = inner.dns.isEmpty ? ["1.1.1.1"] : inner.dns
         log.log("multihop: entry=\(entryIp, privacy: .public) exit=\(exitIp, privacy: .public)")
 
         // Exit-assigned address, exit DNS, MTU 1340 (two stacked WG headers).
@@ -207,11 +207,11 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         // exclusion below can never be shadowed.
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: entryIp)
         let ipv4 = NEIPv4Settings(addresses: [exitAssigned], subnetMasks: ["255.255.255.255"])
-        ipv4.includedRoutes = Self.includedV4Routes(allowedIps: inner.allowedIps)
+        ipv4.includedRoutes = Self.includedV4Routes(allowedIps: inner.allowedIps, dnsServers: exitDns)
         ipv4.excludedRoutes = [NEIPv4Route(destinationAddress: entryIp, subnetMask: "255.255.255.255")]
         settings.ipv4Settings = ipv4
         settings.mtu = 1340
-        settings.dnsSettings = NEDNSSettings(servers: [exitDns])
+        settings.dnsSettings = Self.dnsSettings(servers: exitDns)
 
         setTunnelNetworkSettings(settings) { [weak self] error in
             guard let self else { return }
@@ -396,13 +396,54 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     /// default route when the list is the full tunnel (or empty/absent — fail
     /// toward MORE protection), otherwise one route per v4 prefix. v6 entries
     /// are ignored (the extension programs v4-only settings today).
-    static func includedV4Routes(allowedIps: [String]) -> [NEIPv4Route] {
+    ///
+    /// A split list also gains a host route for every resolver it doesn't
+    /// already span: lookups go to the tunnel's resolver (docs/17 §6.5), and an
+    /// "Only these" list — or an exclude rule covering the chosen provider —
+    /// would otherwise send them out on the physical network in the clear.
+    static func includedV4Routes(allowedIps: [String], dnsServers: [String] = []) -> [NEIPv4Route] {
         let v4 = allowedIps.filter { !$0.contains(":") }
         let isFullTunnel = v4.isEmpty || v4.contains("0.0.0.0/0")
         if isFullTunnel { return [NEIPv4Route.default()] }
         let routes = v4.compactMap(ipv4Route(_:))
         // A list that parses to nothing must not leave the tun carrying nothing.
-        return routes.isEmpty ? [NEIPv4Route.default()] : routes
+        if routes.isEmpty { return [NEIPv4Route.default()] }
+        let dnsRoutes = dnsServers
+            .filter { server in
+                guard let ip = ipv4Value(server) else { return false }
+                return !v4.contains { covers($0, ip) }
+            }
+            .compactMap(ipv4Route(_:)) // a bare address is a /32
+        return routes + dnsRoutes
+    }
+
+    /// The tun's resolvers: every server of the config's `DNS =` list (the
+    /// user's DNS choice), primary first. `matchDomains = [""]` makes them
+    /// answer ALL lookups — without it iOS only treats them as the default
+    /// resolver while the tunnel holds the default route, so a split policy
+    /// would quietly hand lookups to the network's resolver. (WireGuardKit's
+    /// PacketTunnelSettingsGenerator sets the same.)
+    private static func dnsSettings(servers: [String]) -> NEDNSSettings {
+        let dns = NEDNSSettings(servers: servers)
+        dns.matchDomains = [""]
+        return dns
+    }
+
+    /// A dotted-quad as a host-order integer, nil when it isn't one.
+    private static func ipv4Value(_ s: String) -> UInt32? {
+        var addr = in_addr()
+        guard inet_pton(AF_INET, s, &addr) == 1 else { return nil }
+        return UInt32(bigEndian: addr.s_addr)
+    }
+
+    /// True when the v4 CIDR `cidr` ("a.b.c.d/n", bare = /32) contains `ip`.
+    private static func covers(_ cidr: String, _ ip: UInt32) -> Bool {
+        let parts = cidr.split(separator: "/")
+        guard let net = parts.first.flatMap({ ipv4Value(String($0)) }) else { return false }
+        let prefix = parts.count > 1 ? Int(parts[1]) ?? -1 : 32
+        guard (0...32).contains(prefix) else { return false }
+        let mask: UInt32 = prefix == 0 ? 0 : ~UInt32(0) << (32 - prefix)
+        return net & mask == ip & mask
     }
 
     /// "a.b.c.d/n" (or a bare address = /32) → NEIPv4Route, nil when malformed.
@@ -431,7 +472,7 @@ private struct WgQuick {
     let privateKey: String // [Interface] PrivateKey, base64
     let peerPublicKey: String // [Peer] PublicKey, base64
     let address: String? // [Interface] Address, first IP, mask stripped
-    let dns: String? // [Interface] DNS, first entry
+    let dns: [String] // [Interface] DNS, every entry, trimmed, in order ([] if absent)
     let endpointHost: String? // [Peer] Endpoint, port stripped
     let endpointPort: Int // [Peer] Endpoint port (0 if absent → engine default 51820)
     let obfs: String // AmneziaWG [Interface] params as device-level UAPI ("" = vanilla)
@@ -441,11 +482,18 @@ private struct WgQuick {
     // AmneziaWG [Interface] keys (lowercased), emitted as UAPI in this order.
     private static let obfsKeys = ["jc", "jmin", "jmax", "s1", "s2", "h1", "h2", "h3", "h4"]
 
+    /// True for a bare IPv4 or IPv6 address literal.
+    private static func isIpLiteral(_ s: String) -> Bool {
+        var v4 = in_addr()
+        var v6 = in6_addr()
+        return inet_pton(AF_INET, s, &v4) == 1 || inet_pton(AF_INET6, s, &v6) == 1
+    }
+
     init?(_ text: String) {
         var priv: String?
         var pub: String?
         var addr: String?
-        var dns: String?
+        var dns: [String] = []
         var endpoint: String?
         var sni: String?
         var allowed: [String] = []
@@ -463,9 +511,12 @@ private struct WgQuick {
                 let first = val.split(separator: ",").first.map(String.init) ?? val
                 addr = first.split(separator: "/").first.map(String.init)
             case "dns":
-                dns = val.split(separator: ",").first.map {
-                    String($0).trimmingCharacters(in: .whitespaces)
-                }
+                // "9.9.9.9, 149.112.112.112" — a DNS choice can name two; keep
+                // all. Only IP literals: a wg-quick DNS line may also carry
+                // search domains, which are no use as NEDNSSettings servers.
+                dns = val.split(separator: ",")
+                    .map { String($0).trimmingCharacters(in: .whitespaces) }
+                    .filter(WgQuick.isIpLiteral(_:))
             case "endpoint": endpoint = val
             case "allowedips":
                 // Split tunneling: the compiled route list ("0.0.0.0/5, 8.0.0.0/7, …").

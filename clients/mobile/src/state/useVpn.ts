@@ -18,6 +18,7 @@ import {
   buildWgConfig,
   compileSplitPolicy,
   decodeRecoveryKey,
+  dnsServersFor,
   enroll,
   hasPremiumTransport,
   obfsForTransport,
@@ -30,11 +31,14 @@ import {
 } from '@cumulusvpn/core';
 import type {
   CompiledSplit,
+  DnsChoice,
   EnrollResponse,
   GatewayInfo,
   Keypair,
+  MultihopConfig,
   RouteStyle,
   Tier,
+  Transport,
   TransportMode,
 } from '@cumulusvpn/core';
 import {
@@ -70,6 +74,7 @@ import { SCREENSHOT_MODE, demoSession } from '../lib/screenshot';
 import {
   loadActiveRoute,
   loadAutoConnect,
+  loadDnsChoice,
   loadEntryCountry,
   loadExitCountry,
   loadFavorites,
@@ -133,6 +138,69 @@ async function splitForSession(
 /** True for any route style that stacks two hops (multi-hop is off by default). */
 export function isMultihop(style: RouteStyle): boolean {
   return style !== 'single';
+}
+
+/**
+ * The single-hop `.conf` for one transport attempt: the enrolled session on the
+ * transport's port, the user's resolver (Settings → DNS; the default keeps the
+ * gateway's own `dns` byte-for-byte), the session's split routes, and — for
+ * wg-tls — the SNI sentinel the native extensions read.
+ */
+export function singleHopConfig(args: {
+  readonly privateKey: string;
+  readonly enrollment: EnrollResponse;
+  readonly transport: Transport;
+  readonly dnsChoice: DnsChoice;
+  readonly split?: CompiledSplit | undefined;
+  /** The dialled gateway's IP — the SNI when a wg-tls transport names none. */
+  readonly gatewayIp: string;
+}): string {
+  const { privateKey, enrollment, transport, dnsChoice, split, gatewayIp } = args;
+  const obfs = obfsForTransport(transport);
+  let wgConfig = buildWgConfig({
+    privateKey,
+    assignedIp: enrollment.assigned_ip,
+    dns: dnsServersFor(dnsChoice, enrollment.dns),
+    serverPubKey: enrollment.server_pubkey,
+    endpoint: applyTransportToEndpoint(enrollment.endpoint, transport),
+    ...(obfs ? { obfs } : {}),
+    ...(split ? { split } : {}),
+  });
+  // wg-tls: the native extension bridges the WG device over TLS to the
+  // gateway relay (the config Endpoint, now gateway:tlsPort). We can't pass
+  // separate fields through the fixed startTunnel(config,name,killSwitch)
+  // bridge, so carry the SNI as a namespaced sentinel line the extension's
+  // WgQuick parser reads (it never reaches wgnest — the UAPI is built from
+  // the parsed fields). obfs stays absent (the TLS wrapper is the obfuscation).
+  if (transport.type === 'wg-tls') {
+    const sni = transport.params?.sni || gatewayIp;
+    wgConfig += `\nCVPN_TLS_SNI = ${sni}\n`;
+  }
+  return wgConfig;
+}
+
+/**
+ * The nested pair for a multi-hop route. The resolver sits on the INNER (exit)
+ * hop — lookups leave the route from the exit — so the default is the exit's
+ * advertised `dns`, and any other choice replaces it there.
+ */
+export function multihopConfigs(args: {
+  readonly privateKey: string;
+  readonly entry: EnrollResponse;
+  readonly exit: EnrollResponse;
+  readonly dnsChoice: DnsChoice;
+  readonly entryTransport?: Transport | undefined;
+  readonly split?: CompiledSplit | undefined;
+}): MultihopConfig {
+  const { privateKey, entry, exit, dnsChoice, entryTransport, split } = args;
+  return buildMultihopConfig({
+    privateKey,
+    entry,
+    exit,
+    dns: dnsServersFor(dnsChoice, exit.dns),
+    ...(entryTransport ? { entryTransport } : {}),
+    ...(split ? { split } : {}),
+  });
 }
 
 /**
@@ -1148,6 +1216,9 @@ export function useVpn(): VpnModel & VpnActions {
       // Split tunneling: one compile for the whole chain — every attempt dials
       // the same gateway IP (only the port differs per transport).
       const split = await splitForSession(gwTier, killSwitch, [gw.ip]);
+      // The resolver is read per connect, like the split policy, so a change in
+      // Settings lands on the next tunnel built — reconnects included.
+      const dnsChoice = await loadDnsChoice();
 
       for (let i = 0; i < chain.length; i += 1) {
         // The user hit Disconnect (or a newer connect started) — stop. Without
@@ -1157,29 +1228,14 @@ export function useVpn(): VpnModel & VpnActions {
         if (cancelled()) {
           return;
         }
-        const transport = chain[i]!;
-        const endpoint = applyTransportToEndpoint(resp.endpoint, transport);
-        const obfs = obfsForTransport(transport);
-
-        let wgConfig = buildWgConfig({
+        const wgConfig = singleHopConfig({
           privateKey: keypair.privateKey,
-          assignedIp: resp.assigned_ip,
-          dns: resp.dns,
-          serverPubKey: resp.server_pubkey,
-          endpoint,
-          ...(obfs ? { obfs } : {}),
-          ...(split ? { split } : {}),
+          enrollment: resp,
+          transport: chain[i]!,
+          dnsChoice,
+          split,
+          gatewayIp: gw.ip,
         });
-        // wg-tls: the native extension bridges the WG device over TLS to the
-        // gateway relay (the config Endpoint, now gateway:tlsPort). We can't pass
-        // separate fields through the fixed startTunnel(config,name,killSwitch)
-        // bridge, so carry the SNI as a namespaced sentinel line the extension's
-        // WgQuick parser reads (it never reaches wgnest — the UAPI is built from
-        // the parsed fields). obfs stays absent (the TLS wrapper is the obfuscation).
-        if (transport.type === 'wg-tls') {
-          const sni = transport.params?.sni || gw.ip;
-          wgConfig += `\nCVPN_TLS_SNI = ${sni}\n`;
-        }
 
         try {
           // Android surfaces this label in the ongoing notification (blank
@@ -1789,12 +1845,14 @@ async function connectMultihop(args: {
   // the endpoint guard so no rule can shadow either pin.
   const split = await splitForSession(tier, killSwitch, [hops.entry.ip, hops.exit.ip]);
 
-  const mh = buildMultihopConfig({
+  const mh = multihopConfigs({
     privateKey: keypair.privateKey,
     entry: entryEnroll,
     exit: exitEnroll,
-    ...(entryTransport ? { entryTransport } : {}),
-    ...(split ? { split } : {}),
+    // Read per connect, like the split policy (see the single-hop path).
+    dnsChoice: await loadDnsChoice(),
+    entryTransport,
+    split,
   });
 
   // Android surfaces this in the ongoing notification (blank = generic text,

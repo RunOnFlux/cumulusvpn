@@ -3,7 +3,8 @@
  * swapped for its in-memory jest mock in jest.setup.js). These exercise the
  * observable contract every screen relies on: keypair round-trips, route-style
  * validation/defaulting, the null-clears-auto-pick behaviour of the entry/exit
- * setters, and the discovery (fleet) cache round-trip + corruption guard.
+ * setters, the discovery (fleet) cache round-trip + corruption guard, and the
+ * DNS choice falling back to the default rather than blocking a connect.
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { GatewayInfo, Keypair } from '@cumulusvpn/core';
@@ -24,6 +25,8 @@ import {
   saveStoreSub,
   loadTransferNoticeSeen,
   saveTransferNoticeSeen,
+  loadDnsChoice,
+  saveDnsChoice,
 } from './storage';
 
 const KP: Keypair = { publicKey: 'pub-abc', privateKey: 'priv-xyz' };
@@ -130,5 +133,33 @@ describe('recovery-key prompt (transferNotice)', () => {
     await expect(loadTransferNoticeSeen()).resolves.toBe(false);
     await saveTransferNoticeSeen();
     await expect(loadTransferNoticeSeen()).resolves.toBe(true);
+  });
+});
+
+describe('DNS choice', () => {
+  it('defaults to Cloudflare when nothing is stored', async () => {
+    await AsyncStorage.removeItem('cvpn:dnsChoice');
+    await expect(loadDnsChoice()).resolves.toBe('cloudflare');
+  });
+
+  it('round-trips every option', async () => {
+    for (const choice of ['quad9', 'adguard', 'family', 'cloudflare'] as const) {
+      await saveDnsChoice(choice);
+      await expect(loadDnsChoice()).resolves.toBe(choice);
+    }
+  });
+
+  it('falls back to the default for a corrupt or unknown stored value', async () => {
+    // Garbage from a partial write, an option a newer build added, and a
+    // case-mangled id: none may ever block connecting.
+    for (const bad of ['{"trunc', 'opendns', 'Quad9', '']) {
+      await AsyncStorage.setItem('cvpn:dnsChoice', bad);
+      await expect(loadDnsChoice()).resolves.toBe('cloudflare');
+    }
+  });
+
+  it('falls back to the default when storage itself fails', async () => {
+    jest.mocked(AsyncStorage.getItem).mockRejectedValueOnce(new Error('storage unavailable'));
+    await expect(loadDnsChoice()).resolves.toBe('cloudflare');
   });
 });

@@ -156,6 +156,11 @@ impl WgConfig {
         for cidr in &self.allowed_ips {
             super::validate::cidr(cidr)?;
         }
+        // Every resolver reaches the kill switch and the DNS scripts; a line
+        // that is not all addresses is refused, never half-applied.
+        if let Some(dns) = &self.dns {
+            super::validate::dns_servers(dns)?;
+        }
         b64_to_hex(&self.private_key_b64)?;
         b64_to_hex(&self.peer_public_key_b64)?;
         // AmneziaWG parameters are integers (H1–H4 may be `min-max` ranges).
@@ -919,6 +924,24 @@ mod obfs_tests {
         assert!(good("AllowedIPs", "0.0.0.0/0, 10.0.0.0/40").is_err());
         assert!(good("PublicKey", "not-a-key").is_err());
         assert!(good("PrivateKey", "AAAA").is_err());
+    }
+
+    /// The `DNS =` line keeps every resolver of a Settings → DNS provider, and
+    /// a line that is not all addresses is refused at parse time.
+    #[test]
+    fn dns_lines_list_resolvers_and_nothing_else() {
+        let conf = |dns: &str| {
+            format!(
+                "[Interface]\nPrivateKey = {KEY}\nAddress = 10.8.0.2/32\nDNS = {dns}\n\n\
+                 [Peer]\nPublicKey = {KEY}\nEndpoint = 1.2.3.4:51820\nAllowedIPs = 0.0.0.0/0\n"
+            )
+        };
+        let cfg = WgConfig::parse(&conf("9.9.9.9, 149.112.112.112")).expect("parse");
+        assert_eq!(cfg.dns.as_deref(), Some("9.9.9.9, 149.112.112.112"));
+        assert!(WgConfig::parse(&conf("94.140.14.14,94.140.15.15")).is_ok());
+        assert!(WgConfig::parse(&conf("1.1.1.1; reboot")).is_err());
+        assert!(WgConfig::parse(&conf("9.9.9.9, 1.2.3.4 } accept")).is_err());
+        assert!(WgConfig::parse(&conf("dns.quad9.net")).is_err());
     }
 
     #[test]

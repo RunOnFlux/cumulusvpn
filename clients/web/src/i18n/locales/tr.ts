@@ -193,6 +193,17 @@ export const tr: Catalog = {
   redeem_err_later:
     'Kod kullanımı kısa süreliğine kullanılamıyor — lütfen birkaç dakika sonra tekrar dene.',
 
+  dns_summary_title: 'DNS sağlayıcısı',
+  dns_default: 'Varsayılan',
+  dns_blurb_cloudflare: 'Hızlı, filtreleme yok',
+  dns_blurb_quad9: 'Bilinen kötü amaçlı siteleri engeller',
+  dns_blurb_adguard: 'Reklamları ve izleyicileri engeller',
+  dns_blurb_family: 'Kötü amaçlı yazılımları ve yetişkin içeriği engeller',
+  dns_note:
+    'DNS sorguların VPN üzerinden seçtiğin sağlayıcıya gider. Sağlayıcı VPN sunucusunun adresini görür, seninkini asla.',
+  dns_apply_note:
+    'Bu sayfadaki yapılandırmalara hemen uygulanır — daha önce birini içe aktardıysan yeniden indir ya da tara.',
+
   split_summary_title: 'Gelişmiş: split tunneling',
   split_tier_pill: 'PREMIUM · İSTEĞE BAĞLI',
   split_lede:

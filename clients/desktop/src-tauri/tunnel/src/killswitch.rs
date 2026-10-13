@@ -29,14 +29,16 @@
 //! (`DefaultOutboundAction Block`) already did, and what makes the switch
 //! survive Wi-Fi changes, tethering and dock/undock without re-engaging.
 //!
-//! **DNS is blocked too, except to the tunnel resolver through the tunnel.**
-//! Every backend drops UDP+TCP 53/853 unless it goes to the session's resolver
-//! (`LeakPolicy::dns_servers`) out of a tunnel device, and that drop is placed
-//! *before* the split-bypass / LAN passes. Otherwise a LAN-allow (`192.168.0.0/16`)
-//! would quietly reopen DNS to the router, and with it every name the user looks
-//! up. It has no address family, so IPv6 resolvers on the physical link (RDNSS,
-//! link-local) are dropped as well — the tunnel carries no IPv6. The WireGuard
-//! endpoint pass stays ahead of it, so a transport on port 53 would still work.
+//! **DNS is blocked too, except to the tunnel resolvers through the tunnel.**
+//! Every backend drops UDP+TCP 53/853 unless it goes to one of the session's
+//! resolvers (`LeakPolicy::dns_servers` — every address on the `.conf`'s
+//! `DNS =` line, whichever provider the user picked) out of a tunnel device,
+//! and that drop is placed *before* the split-bypass / LAN passes. Otherwise a
+//! LAN-allow (`192.168.0.0/16`) would quietly reopen DNS to the router, and with
+//! it every name the user looks up. It has no address family, so IPv6 resolvers
+//! on the physical link (RDNSS, link-local) are dropped as well — the tunnel
+//! carries no IPv6. The WireGuard endpoint pass stays ahead of it, so a
+//! transport on port 53 would still work.
 //! On Windows the same block is expressed with address complements (no rule
 //! order there — block beats allow), shared with `super::dns`. 853 is DNS over
 //! TLS / QUIC; DNS over HTTPS is HTTPS on 443 and rides the tunnel like any
@@ -1011,6 +1013,35 @@ mod macos_ruleset_tests {
         );
     }
 
+    /// A Settings → DNS provider (two addresses, from the `.conf` line as
+    /// `TunnelManager` parses it): both are the allow list on every tunnel
+    /// device, nothing else is, and all other DNS is still dropped.
+    #[test]
+    fn a_provider_pair_is_the_whole_dns_allow_list() {
+        let quad9 = crate::dns::parse_servers("9.9.9.9, 149.112.112.112");
+        let r = macos_anchor_rules(
+            "203.0.113.7",
+            "51820",
+            Proto::Udp,
+            &["192.168.0.0/16".into()],
+            &["utun6".into(), "utun7".into()],
+            &quad9,
+        );
+        for tun in ["utun6", "utun7"] {
+            assert!(
+                r.contains(&format!(
+                    "pass out quick on {tun} proto {{ udp tcp }} to {{ 9.9.9.9 149.112.112.112 }} \
+                     port {{ 53 853 }} keep state\n"
+                )),
+                "got:\n{r}"
+            );
+        }
+        assert!(!r.contains("1.1.1.1"), "no default resolver baked in:\n{r}");
+        let dns_block = r.find("to any port { 53 853 }").expect("DNS block");
+        assert!(r.find("149.112.112.112").unwrap() < dns_block, "{r}");
+        assert!(dns_block < r.find("to 192.168.0.0/16").unwrap(), "{r}");
+    }
+
     #[test]
     fn rule_text_inputs_are_validated() {
         assert!(is_safe_iface("utun6"));
@@ -1115,6 +1146,28 @@ mod linux_ruleset_tests {
         assert!(!v6.contains(" ip daddr { "), "{v6}");
     }
 
+    /// A Settings → DNS provider: both addresses in one set, on both
+    /// transports, through the tunnel only — and the drop still follows.
+    #[test]
+    fn a_provider_pair_is_the_whole_dns_allow_list() {
+        let quad9 = crate::dns::parse_servers("9.9.9.9, 149.112.112.112");
+        let t = linux_nft_table("203.0.113.7", "51820", Proto::Udp, &[], &quad9);
+        for l4 in ["udp", "tcp"] {
+            assert!(
+                t.contains(&format!(
+                    "\t\toifname \"cvpn*\" ip daddr {{ 9.9.9.9, 149.112.112.112 }} \
+                     {l4} dport {{ 53, 853 }} accept\n"
+                )),
+                "{t}"
+            );
+        }
+        assert!(!t.contains("1.1.1.1"), "no default resolver baked in: {t}");
+        assert!(
+            t.find("149.112.112.112").unwrap() < t.find("udp dport { 53, 853 } drop").unwrap(),
+            "{t}"
+        );
+    }
+
     #[test]
     fn without_a_resolver_all_dns_is_dropped() {
         let t = linux_nft_table("203.0.113.7", "51820", Proto::Tcp, &[], &[]);
@@ -1182,6 +1235,25 @@ mod windows_ruleset_tests {
         );
         // Never the DNS module's group: that is `dns::recover_stale`'s job.
         assert!(!s.contains("CumulusVPN-DNS"), "{s}");
+    }
+
+    /// A Settings → DNS provider: both resolvers are carved out of the block,
+    /// every other address (1.1.1.1 included) stays in it.
+    #[test]
+    fn a_provider_pair_is_carved_out_in_full() {
+        let s = windows_dns_block_script(
+            "203.0.113.7",
+            &crate::dns::parse_servers("1.1.1.3, 1.0.0.3"),
+            Some("10.8.0.2".parse().unwrap()),
+        );
+        assert_eq!(s.matches("New-NetFirewallRule").count(), 4, "{s}");
+        assert!(
+            s.contains(
+                "-RemoteAddress '0.0.0.0-1.0.0.2','1.0.0.4-1.1.1.2','1.1.1.4-203.0.113.6',\
+                 '203.0.113.8-255.255.255.255',"
+            ),
+            "{s}"
+        );
     }
 
     #[test]

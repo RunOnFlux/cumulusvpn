@@ -52,6 +52,8 @@ export { verifySignedResponse } from './sign.js';
 export { discoverGateways, directoryVerify } from './discovery.js';
 export { enroll, status } from './enroll.js';
 export { buildWgConfig } from './wgconfig.js';
+export { DEFAULT_DNS, DNS_OPTIONS, dnsOption, dnsServersFor, parseDnsChoice } from './dns.js';
+export type { DnsChoice, DnsOption } from './dns.js';
 export { selectHops, buildMultihopConfig } from './multihop.js';
 export { gatewayQuality } from './quality.js';
 export type { GatewayQuality, QualityTone } from './quality.js';

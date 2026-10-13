@@ -123,7 +123,7 @@ class CumulusMultihopVpnService : VpnService() {
         val exitPub = intent.req(EXTRA_EXIT_PUB)
         val exitIp = intent.req(EXTRA_EXIT_IP)
         val exitAssigned = intent.req(EXTRA_EXIT_ASSIGNED)
-        val exitDns = intent.getStringExtra(EXTRA_EXIT_DNS) ?: "1.1.1.1"
+        val exitDns = parseDnsServers(intent.getStringExtra(EXTRA_EXIT_DNS))
         // Stealth obfuscates the ENTRY hop with AmneziaWG: its awg port (51821) +
         // the [Interface] obfs UAPI. 0 / "" => vanilla entry (Auto mode).
         val entryPort = intent.getIntExtra(EXTRA_ENTRY_PORT, 0)
@@ -133,27 +133,32 @@ class CumulusMultihopVpnService : VpnService() {
         // inner config's AllowedIPs, or null for the classic full tunnel.
         val routes4 = intent.getStringExtra(EXTRA_ROUTES4)
 
-        // Inner tun: the exit-assigned address, exit DNS, room for two WG headers.
+        // Inner tun: the exit-assigned address, room for two WG headers, and
+        // every resolver of the inner config's `DNS =` list (the user's DNS
+        // choice, default the exit's), primary first.
         val builder = Builder()
             .setSession("CumulusVPN")
             .addAddress(exitAssigned, 32)
-            .addDnsServer(exitDns)
             .setMtu(1340)
             .setBlocking(true)
+        for (server in exitDns) {
+            builder.addDnsServer(server)
+        }
         // Per-app rules (docs/17 §4.1) — kernel-enforced by the tun scoping.
         applyAppRules(
             builder,
             intent.getStringExtra(EXTRA_APPS_INCLUDED),
             intent.getStringExtra(EXTRA_APPS_EXCLUDED),
         )
-        // Route the tunnel-route set (everything, or the split policy's routes)
-        // EXCEPT the entry gateway IP into the tun, so the outer device's real
-        // socket to the entry bypasses the VPN (no loop).
+        // Route the tunnel-route set (everything, or the split policy's routes
+        // plus the resolvers, which must stay tunnelled) EXCEPT the entry
+        // gateway IP into the tun, so the outer device's real socket to the
+        // entry bypasses the VPN (no loop).
         val tunRoutes =
             if (routes4.isNullOrBlank()) {
                 routesExcluding(entryIp)
             } else {
-                subtractHost(parseRoutesCsv(routes4), entryIp)
+                subtractHost(withDnsRoutes(parseRoutesCsv(routes4), exitDns), entryIp)
             }
         for ((net, prefix) in tunRoutes) {
             builder.addRoute(net, prefix)
@@ -202,12 +207,6 @@ class CumulusMultihopVpnService : VpnService() {
     }
 
     /**
-     * Stop the nested Go pair / tun — the JNI half of teardown, which can
-     * block; only ever call it off the main thread. Synchronized so a threaded
-     * stop can't interleave with a replace-before-reconnect.
-     */
-    @Synchronized
-    /**
      * React to the device changing default network.
      *
      * A nested tunnel has exactly one real socket — the OUTER device's, to the
@@ -237,6 +236,12 @@ class CumulusMultihopVpnService : VpnService() {
         }
     }
 
+    /**
+     * Stop the nested Go pair / tun — the JNI half of teardown, which can
+     * block; only ever call it off the main thread. Synchronized so a threaded
+     * stop can't interleave with a replace-before-reconnect.
+     */
+    @Synchronized
     private fun stopDataPlane() {
         netWatcher.stop()
         val h = handle
@@ -359,6 +364,7 @@ class CumulusMultihopVpnService : VpnService() {
         const val EXTRA_EXIT_PUB = "exitPub"
         const val EXTRA_EXIT_IP = "exitIp"
         const val EXTRA_EXIT_ASSIGNED = "exitAssigned"
+        /** The inner config's `DNS =` list, comma-separated (see [parseDnsServers]). */
         const val EXTRA_EXIT_DNS = "exitDns"
         const val EXTRA_NOTIF_TEXT = "notifText"
 
@@ -410,6 +416,63 @@ class CumulusMultihopVpnService : VpnService() {
 
         private fun splitPkgs(csv: String?): List<String> =
             csv?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() } ?: emptyList()
+
+        /** The resolver when a config names none — what every gateway advertises. */
+        const val DEFAULT_DNS = "1.1.1.1"
+
+        /**
+         * The resolvers of a config's `DNS =` value ("9.9.9.9, 149.112.112.112"
+         * for a non-default DNS choice): every entry, trimmed, in order, without
+         * repeats. Only IP literals survive — `Builder.addDnsServer` throws on
+         * anything else, and a wg-quick `DNS =` line may also carry search
+         * domains. Never empty: nothing usable falls back to [DEFAULT_DNS], so a
+         * mangled list can't leave the tun without a resolver.
+         */
+        fun parseDnsServers(csv: String?): List<String> {
+            val servers = csv?.split(',')
+                ?.map { it.trim() }
+                ?.filter { isIpv4(it) || isIpv6Literal(it) }
+                ?.distinct()
+                ?: emptyList()
+            return servers.ifEmpty { listOf(DEFAULT_DNS) }
+        }
+
+        /**
+         * `routes` plus a host route for every IPv4 resolver they don't already
+         * cover. Lookups go to the tunnel's resolver (docs/17 §6.5), but a split
+         * route list need not contain it — "Only these" with a few prefixes, or
+         * an exclude rule that happens to span the chosen provider — and a
+         * resolver outside the tun routes would send lookups out on the physical
+         * network in the clear. Only for split lists: the full tunnel already
+         * covers every resolver. (The resolvers on offer are all IPv4.)
+         */
+        fun withDnsRoutes(
+            routes: List<Pair<String, Int>>,
+            dnsServers: List<String>,
+        ): List<Pair<String, Int>> {
+            val out = ArrayList(routes)
+            for (server in dnsServers) {
+                if (!isIpv4(server)) continue
+                val ip = ipToLong(server)
+                if (out.none { (net, prefix) -> covers(net, prefix, ip) }) {
+                    out.add(server to 32)
+                }
+            }
+            return out
+        }
+
+        /** True when the v4 route `net/prefix` contains [ip]. */
+        private fun covers(net: String, prefix: Int, ip: Long): Boolean {
+            val hostBits = 32 - prefix
+            val mask = if (hostBits >= 32) 0L else (0xFFFFFFFFL shl hostBits) and 0xFFFFFFFFL
+            return (ip and mask) == (ipToLong(net) and mask)
+        }
+
+        /** A bare IPv6 literal (hex groups, colons, an optional dotted v4 tail).
+         *  Like [isIpv4], keeps non-literals away from a resolving parser. */
+        private fun isIpv6Literal(s: String): Boolean =
+            s.count { it == ':' } >= 2 &&
+                s.all { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' || it == ':' || it == '.' }
 
         private fun Intent.req(key: String): String =
             getStringExtra(key) ?: throw IllegalArgumentException("missing extra: $key")

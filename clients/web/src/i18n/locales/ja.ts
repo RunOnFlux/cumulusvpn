@@ -194,6 +194,17 @@ export const ja: Catalog = {
   redeem_err_already: 'この鍵ではこのコードをすでに引き換え済みです。',
   redeem_err_later: '引き換えは一時的にご利用いただけません — 数分後にもう一度お試しください。',
 
+  dns_summary_title: 'DNS プロバイダー',
+  dns_default: 'デフォルト',
+  dns_blurb_cloudflare: '高速、フィルタリングなし',
+  dns_blurb_quad9: '既知の悪意あるサイトをブロック',
+  dns_blurb_adguard: '広告とトラッカーをブロック',
+  dns_blurb_family: 'マルウェアとアダルトコンテンツをブロック',
+  dns_note:
+    'DNS クエリは VPN を通って、選んだプロバイダーに届きます。プロバイダーに見えるのは VPN サーバーのアドレスで、あなたのアドレスは決して見えません。',
+  dns_apply_note:
+    'このページの設定にすぐ反映されます。すでにインポートした場合は、もう一度ダウンロードするか読み取ってください。',
+
   split_summary_title: '上級者向け: スプリットトンネリング',
   split_tier_pill: 'プレミアム · オプトイン',
   split_lede:
