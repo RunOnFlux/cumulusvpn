@@ -41,7 +41,7 @@ describe('specToCountryCode', () => {
 });
 
 describe('discoverGateways', () => {
-  it('probes /v1/info, tags country from the SPEC (not the gateway), and sorts by country then load', async () => {
+  it("probes /v1/info, falls back to the SPEC's country, and sorts by country then load", async () => {
     const routes: Record<string, Response> = {
       // AT spec: one gateway from Flux; the node index has none.
       'https://api.runonflux.io/apps/location/cumulusvpnat': jsonResponse({
@@ -93,6 +93,36 @@ describe('discoverGateways', () => {
     expect(calls).toContain('http://1.2.3.4:51821/v1/info');
     // node index was queried directly
     expect(calls).toContain('http://9.9.9.9:16127/apps/location/cumulusvpnde');
+  });
+
+  it("lists a gateway under the country it reports, not its spec's, when they disagree", async () => {
+    // Flux placed a cumulusvpngb instance in France (seen on the live fleet):
+    // its own signed /v1/info says FR, so it must not be offered as the UK.
+    const fetchImpl: FetchImpl = async (input) => {
+      const url = String(input);
+      if (url.endsWith('/apps/location/cumulusvpngb')) {
+        return jsonResponse({
+          status: 'success',
+          data: [{ ip: '1.1.1.1' }, { ip: '2.2.2.2' }, { ip: '3.3.3.3' }],
+        });
+      }
+      if (url === 'http://1.1.1.1:51821/v1/info') {
+        return signedResponse(info({ country: 'fr', load: 0.1 }), signer);
+      }
+      if (url === 'http://2.2.2.2:51821/v1/info') {
+        return signedResponse(info({ country: 'GB', load: 0.2 }), signer);
+      }
+      if (url === 'http://3.3.3.3:51821/v1/info') {
+        return signedResponse(info({ country: '??', load: 0.3 }), signer);
+      }
+      throw new Error(`unexpected fetch: ${url}`);
+    };
+    const gateways = await discoverGateways(['cumulusvpngb'], { fetchImpl });
+    expect(gateways.map((g) => `${g.country}:${g.ip}`)).toEqual([
+      'FR:1.1.1.1', // its own country, normalized
+      'GB:2.2.2.2',
+      'GB:3.3.3.3', // a malformed report falls back to the spec
+    ]);
   });
 
   it('drops unreachable candidates', async () => {

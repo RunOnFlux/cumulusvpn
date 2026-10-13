@@ -15,6 +15,12 @@ export function specToCountryCode(spec: string): string {
   return spec.replace(/^cumulusvpn(?:tls)?/, '').toUpperCase();
 }
 
+/** A gateway's self-reported ISO country code, normalized; '' when absent or malformed. */
+function reportedCountry(country: string | undefined): string {
+  const cc = (country ?? '').trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(cc) ? cc : '';
+}
+
 /** Public Flux app-location index. */
 const FLUX_API = 'https://api.runonflux.io';
 /** Port a Flux node exposes its own app-location index on. */
@@ -87,11 +93,12 @@ export async function discoverGateways(
   const nodes = options.nodes ?? [];
 
   // Map each candidate gateway IP to the country of the spec it was discovered
-  // under (cumulusvpn<cc> -> CC). This is the AUTHORITATIVE country: Flux places
-  // each spec only on nodes in its `geolocation` (acEU_DE, …), whereas the
-  // gateway's own /v1/info carries no geo (hostinfo is unavailable inside the
-  // Flux container), so it reports an empty country. Keeping the spec→country
-  // link here is what lets the clients group gateways under a country at all.
+  // under (cumulusvpn<cc> -> CC) — the FALLBACK country, for a gateway that
+  // reports none of its own. A gateway's signed /v1/info country (its own IP
+  // geolocation) wins: Flux does not reliably hold a spec to its `geolocation`
+  // (on 2026-10-13 five of cumulusvpngb's eight instances ran in France, the
+  // US and Australia), and listing those as "United Kingdom" would hand users
+  // an exit in the wrong country.
   const ipCountry = new Map<string, string>();
   await Promise.all(
     specNames.map(async (spec) => {
@@ -114,7 +121,7 @@ export async function discoverGateways(
   const probed = await Promise.all([...ipCountry.keys()].map((ip) => probe(ip, fetchImpl)));
   const gateways = probed
     .filter((g): g is GatewayInfo => g !== null)
-    .map((g) => ({ ...g, country: ipCountry.get(g.ip) || g.country }));
+    .map((g) => ({ ...g, country: reportedCountry(g.country) || ipCountry.get(g.ip) || '' }));
 
   // Group by country, then order least-loaded first (latency tiebreak is a
   // POC: probe timing is not yet captured; load is a good enough proxy).
