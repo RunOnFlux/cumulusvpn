@@ -83,7 +83,9 @@ defaults:
   # Note CI strips the leading "v", so tag v0.4.0 -> image :0.4.0, never :v0.4.0.
   # 0.4.1 (2026-10-13) is security-only (Go 1.27.2, x/crypto 0.58, x/net 0.61)
   # and still reports version "0.4.0" in /v1/info — tell it apart by build_commit.
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.4.1'
+  # 0.4.2 (2026-10-13) answers peers' DNS in the gateway and sends it on as DNS
+  # over HTTPS (docs/03 "DNS"); /v1/info reports version "0.4.2" and `dns`.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.4.2'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:
