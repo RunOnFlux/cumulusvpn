@@ -170,7 +170,7 @@
       navegación. Cuando tu sesión termina, no se conserva.</p>
     <h3>4.4 DNS</h3>
     <p>Las consultas DNS se resuelven en tu nombre a través del túnel cifrado, de modo que tu red local y tu ISP
-      no pueden verlas. No guardamos registros de consultas DNS.</p>
+      no pueden verlas. Después, el gateway las reenvía al resolutor público de Cloudflare (1.1.1.1), que solo ve la dirección IP del gateway, nunca la tuya. No guardamos registros de consultas DNS.</p>
     <h3>4.5 Cómo tu app llega a los gateways</h3>
     <p>Tu app descubre gateways y lee su estado llamando directamente a la API de control de cada gateway.
       Esas respuestas están <strong>firmadas con la clave ed25519 del gateway y verificadas por la app</strong>,

@@ -168,7 +168,7 @@
       nettlesingen din. Når økten din avsluttes, blir den ikke beholdt.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-oppslag løses på dine vegne gjennom den krypterte tunnelen, slik at det lokale nettverket ditt og internettleverandøren din
-      ikke kan se dem. Vi fører ingen logger over DNS-oppslag.</p>
+      ikke kan se dem. Gatewayen sender dem deretter videre til Cloudflares offentlige resolver (1.1.1.1), som bare ser gatewayens IP-adresse – aldri din. Vi fører ingen logger over DNS-oppslag.</p>
     <h3>4.5 Hvordan appen din når gatewayene</h3>
     <p>Appen din oppdager gatewayer og leser statusen deres ved å kalle hver gateways styrings-API direkte.
       Disse svarene er <strong>signert med gatewayens ed25519-nøkkel og verifisert av appen</strong>,

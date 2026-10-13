@@ -170,7 +170,7 @@
       surfgedrag. Als je sessie eindigt, wordt het niet bewaard.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-opzoekingen worden namens jou opgelost via de versleutelde tunnel, zodat je lokale netwerk en provider
-      ze niet kunnen zien. We houden geen logs van DNS-verzoeken bij.</p>
+      ze niet kunnen zien. De gateway stuurt ze vervolgens door naar de openbare resolver van Cloudflare (1.1.1.1), die alleen het IP-adres van de gateway ziet, nooit het jouwe. We houden geen logs van DNS-verzoeken bij.</p>
     <h3>4.5 Hoe je app de gateways bereikt</h3>
     <p>Je app ontdekt gateways en leest hun status door rechtstreeks de control-API van elke gateway aan te roepen.
       Die antwoorden zijn <strong>ondertekend met de ed25519-sleutel van de gateway en worden geverifieerd door de app</strong>,

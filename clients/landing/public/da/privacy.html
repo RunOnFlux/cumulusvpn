@@ -169,7 +169,7 @@
       browsing. Når din session afsluttes, gemmes den ikke.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-opslag opløses på dine vegne gennem den krypterede tunnel, så dit lokale netværk og din internetudbyder
-      ikke kan se dem. Vi gemmer ingen logs over DNS-forespørgsler.</p>
+      ikke kan se dem. Gatewayen sender dem derefter videre til Cloudflares offentlige resolver (1.1.1.1), som kun ser gatewayens IP-adresse – aldrig din. Vi gemmer ingen logs over DNS-forespørgsler.</p>
     <h3>4.5 Hvordan din app når gatewayene</h3>
     <p>Din app opdager gateways og læser deres status ved at kalde hver gateways kontrol-API direkte.
       De svar er <strong>signeret med gatewayens ed25519-nøgle og verificeret af appen</strong>,

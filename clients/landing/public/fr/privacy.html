@@ -170,7 +170,7 @@
       navigation. Une fois votre session terminée, elle n'est pas conservée.</p>
     <h3>4.4 DNS</h3>
     <p>Les résolutions DNS sont effectuées pour vous via le tunnel chiffré, de sorte que votre réseau local et votre FAI
-      ne peuvent pas les voir. Nous ne conservons aucun journal de requêtes DNS.</p>
+      ne peuvent pas les voir. La passerelle les transmet ensuite au résolveur public de Cloudflare (1.1.1.1), qui ne voit que l'adresse IP de la passerelle, jamais la vôtre. Nous ne conservons aucun journal de requêtes DNS.</p>
     <h3>4.5 Comment votre app atteint les passerelles</h3>
     <p>Votre app découvre les passerelles et lit leur statut en appelant directement l'API de contrôle de chaque passerelle.
       Ces réponses sont <strong>signées avec la clé ed25519 de la passerelle et vérifiées par l'app</strong>,

@@ -168,7 +168,7 @@
       browsing. When your session ends, it is not retained.</p>
     <h3>4.4 DNS</h3>
     <p>DNS look-ups are resolved on your behalf through the encrypted tunnel so your local network and ISP
-      cannot see them. We do not keep DNS query logs.</p>
+      cannot see them. The gateway then forwards them to Cloudflare's public resolver (1.1.1.1), which sees only the gateway's IP address, never yours. We do not keep DNS query logs.</p>
     <h3>4.5 How your app reaches the gateways</h3>
     <p>Your app discovers gateways and reads their status by calling each gateway's control API directly.
       Those responses are <strong>signed with the gateway's ed25519 key and verified by the app</strong>,

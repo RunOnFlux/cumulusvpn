@@ -169,7 +169,7 @@
       Surfverhalten. Wenn deine Sitzung endet, wird sie nicht aufbewahrt.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-Abfragen werden in deinem Namen über den verschlüsselten Tunnel aufgelöst, sodass dein lokales Netzwerk und dein Internetanbieter
-      sie nicht sehen können. Wir führen keine Logs von DNS-Anfragen.</p>
+      sie nicht sehen können. Das Gateway leitet sie dann an den öffentlichen Resolver von Cloudflare (1.1.1.1) weiter, der nur die IP-Adresse des Gateways sieht, nie deine. Wir führen keine Logs von DNS-Anfragen.</p>
     <h3>4.5 Wie deine App die Gateways erreicht</h3>
     <p>Deine App entdeckt Gateways und liest deren Status, indem sie die Steuer-API jedes Gateways direkt aufruft.
       Diese Antworten sind <strong>mit dem ed25519-Schlüssel des Gateways signiert und werden von der App verifiziert</strong>,

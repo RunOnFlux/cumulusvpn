@@ -130,7 +130,7 @@
     <h3>4.3 Twój prawdziwy adres IP, przejściowo</h3>
     <p>Aby przenosić twój ruch, bramka z konieczności widzi adres IP, z którego przychodzi twoje połączenie — w danej chwili, na poziomie warstwy sieciowej — tak działa każdy serwer internetowy. CumulusVPN <strong>nie</strong> zapisuje tego adresu w żadnym trwałym magazynie i nie kojarzy go z twoim przeglądaniem. Gdy twoja sesja się kończy, adres nie jest zachowywany.</p>
     <h3>4.4 DNS</h3>
-    <p>Zapytania DNS są rozwiązywane w twoim imieniu przez zaszyfrowany tunel, dzięki czemu twoja sieć lokalna i dostawca internetu ich nie widzą. Nie przechowujemy logów zapytań DNS.</p>
+    <p>Zapytania DNS są rozwiązywane w twoim imieniu przez zaszyfrowany tunel, dzięki czemu twoja sieć lokalna i dostawca internetu ich nie widzą. Następnie bramka przekazuje je do publicznego resolvera Cloudflare (1.1.1.1), który widzi tylko adres IP bramki, nigdy twój. Nie przechowujemy logów zapytań DNS.</p>
     <h3>4.5 Jak twoja aplikacja łączy się z bramkami</h3>
     <p>Twoja aplikacja wykrywa bramki i odczytuje ich status, wywołując bezpośrednio API kontrolne każdej bramki. Te odpowiedzi są <strong>podpisane kluczem ed25519 bramki i weryfikowane przez aplikację</strong>, więc manipulacja zostaje wykryta, mimo że sam kanał kontrolny to zwykłe połączenie — gwarancja integralności pochodzi z podpisu, nie z certyfikatu. Twój faktyczny ruch internetowy jest oddzielny i jest <strong>szyfrowany end-to-end przez WireGuard</strong> między twoim urządzeniem a bramką.</p>
     <h3>4.6 Co mogą, a czego nie mogą zobaczyć operatorzy bramek</h3>

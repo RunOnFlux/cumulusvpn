@@ -129,7 +129,7 @@
     <h3>4.3 Gerçek IP adresin, geçici olarak</h3>
     <p>Trafiğini taşımak için, gateway zorunlu olarak bağlantının geldiği IP adresini o an, ağ katmanında görür — internetteki her sunucu böyle çalışır. CumulusVPN bu adresi hiçbir kalıcı depoya <strong>kaydetmez</strong> ve onu gezinmenle ilişkilendirmez. Oturumun sona erdiğinde, saklanmaz.</p>
     <h3>4.4 DNS</h3>
-    <p>DNS sorguları, yerel ağın ve internet servis sağlayıcın onları göremesin diye şifreli tünel üzerinden senin adına çözülür. DNS sorgu kaydı tutmayız.</p>
+    <p>DNS sorguları, yerel ağın ve internet servis sağlayıcın onları göremesin diye şifreli tünel üzerinden senin adına çözülür. Gateway ardından bunları Cloudflare'in herkese açık çözümleyicisine (1.1.1.1) iletir; o da senin adresini değil, yalnızca gateway'in IP adresini görür. DNS sorgu kaydı tutmayız.</p>
     <h3>4.5 Uygulaman gateway'lere nasıl ulaşır</h3>
     <p>Uygulaman, her gateway'in kontrol API'sini doğrudan çağırarak gateway'leri keşfeder ve durumlarını okur. Bu yanıtlar <strong>gateway'in ed25519 anahtarıyla imzalanır ve uygulama tarafından doğrulanır</strong>, böylece kontrol kanalının kendisi düz bir bağlantı olsa bile kurcalama tespit edilir — bütünlük garantisi bir sertifikadan değil, imzadan gelir. Gerçek internet trafiğin ayrıdır ve cihazın ile gateway arasında <strong>WireGuard tarafından uçtan uca şifrelenir</strong>.</p>
     <h3>4.6 Gateway operatörlerinin görebildiği ve göremediği şeyler</h3>

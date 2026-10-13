@@ -166,7 +166,7 @@
       kho lưu trữ vĩnh viễn nào, và không liên kết nó với việc lướt web của bạn. Khi phiên của bạn kết thúc, nó không được giữ lại.</p>
     <h3>4.4 DNS</h3>
     <p>Việc tra cứu DNS được phân giải thay bạn qua tunnel đã mã hóa để mạng cục bộ và ISP của bạn
-      không thể thấy chúng. Chúng tôi không lưu log truy vấn DNS.</p>
+      không thể thấy chúng. Sau đó gateway chuyển tiếp chúng tới resolver công khai của Cloudflare (1.1.1.1), nơi chỉ thấy địa chỉ IP của gateway, không bao giờ thấy địa chỉ của bạn. Chúng tôi không lưu log truy vấn DNS.</p>
     <h3>4.5 Cách ứng dụng của bạn kết nối đến các gateway</h3>
     <p>Ứng dụng của bạn khám phá gateway và đọc trạng thái của chúng bằng cách gọi trực tiếp control API của từng gateway.
       Các phản hồi đó <strong>được ký bằng khóa ed25519 của gateway và được ứng dụng xác minh</strong>,
