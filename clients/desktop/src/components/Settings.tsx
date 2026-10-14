@@ -10,7 +10,7 @@ import { DnsSection } from './DnsSection.js';
 import { IdentitySection } from './IdentitySection.js';
 
 /** App version — matches the release tag. */
-const APP_VERSION = '1.3.0';
+const APP_VERSION = '1.4.0';
 
 interface Props {
   readonly autoConnect: boolean;
