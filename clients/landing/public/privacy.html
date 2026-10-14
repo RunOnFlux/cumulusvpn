@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy by architecture</span>
     <h1>Privacy Policy</h1>
-    <p class="doc-meta">Last updated: 13 October 2026 · Effective: 14 August 2026</p>
+    <p class="doc-meta">Last updated: 14 October 2026 · Effective: 14 August 2026</p>
 
   </div>
 
@@ -168,7 +168,7 @@
       browsing. When your session ends, it is not retained.</p>
     <h3>4.4 DNS</h3>
     <p>DNS look-ups are resolved on your behalf through the encrypted tunnel so your local network and ISP
-      cannot see them. The gateway then forwards them to Cloudflare's public resolver (1.1.1.1), which sees only the gateway's IP address, never yours. We do not keep DNS query logs.</p>
+      cannot see them. The gateway then sends each one on encrypted, as DNS over HTTPS, to Cloudflare's public resolver (1.1.1.1) or to the one you choose (Quad9, AdGuard DNS or Cloudflare for Families). The resolver sees only the gateway's IP address, never yours. If the encrypted connection to it fails, the gateway falls back to ordinary DNS to the same resolver. We do not keep DNS query logs.</p>
     <h3>4.5 How your app reaches the gateways</h3>
     <p>Your app discovers gateways and reads their status by calling each gateway's control API directly.
       Those responses are <strong>signed with the gateway's ed25519 key and verified by the app</strong>,

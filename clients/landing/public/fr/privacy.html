@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Confidentialité par architecture</span>
     <h1>Politique de confidentialité</h1>
-    <p class="doc-meta">Dernière mise à jour : 13 octobre 2026 · En vigueur depuis : 14 août 2026</p>
+    <p class="doc-meta">Dernière mise à jour : 14 octobre 2026 · En vigueur depuis : 14 août 2026</p>
 
   <p class="doc-meta">Cette traduction est fournie à titre pratique ; la version anglaise sur cumulusvpn.com/privacy fait
       foi.</p>
@@ -170,7 +170,7 @@
       navigation. Une fois votre session terminée, elle n'est pas conservée.</p>
     <h3>4.4 DNS</h3>
     <p>Les résolutions DNS sont effectuées pour vous via le tunnel chiffré, de sorte que votre réseau local et votre FAI
-      ne peuvent pas les voir. La passerelle les transmet ensuite au résolveur public de Cloudflare (1.1.1.1), qui ne voit que l'adresse IP de la passerelle, jamais la vôtre. Nous ne conservons aucun journal de requêtes DNS.</p>
+      ne peuvent pas les voir. La passerelle transmet ensuite chacune d'elles chiffrée, en DNS over HTTPS, au résolveur public de Cloudflare (1.1.1.1) ou à celui de votre choix (Quad9, AdGuard DNS ou Cloudflare for Families). Le résolveur ne voit que l'adresse IP de la passerelle, jamais la vôtre. Si la connexion chiffrée vers ce résolveur échoue, la passerelle se rabat sur un DNS ordinaire auprès du même résolveur. Nous ne conservons aucun journal de requêtes DNS.</p>
     <h3>4.5 Comment votre app atteint les passerelles</h3>
     <p>Votre app découvre les passerelles et lit leur statut en appelant directement l'API de contrôle de chaque passerelle.
       Ces réponses sont <strong>signées avec la clé ed25519 de la passerelle et vérifiées par l'app</strong>,

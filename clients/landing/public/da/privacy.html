@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privatliv gennem arkitektur</span>
     <h1>Privatlivspolitik</h1>
-    <p class="doc-meta">Sidst opdateret: 13. oktober 2026 · Gældende fra: 14. august 2026</p>
+    <p class="doc-meta">Sidst opdateret: 14. oktober 2026 · Gældende fra: 14. august 2026</p>
 
   <p class="doc-meta">Denne oversættelse leveres af bekvemmelighedshensyn; den engelske version på cumulusvpn.com/privacy er den autoritative.</p>
   </div>
@@ -169,7 +169,7 @@
       browsing. Når din session afsluttes, gemmes den ikke.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-opslag opløses på dine vegne gennem den krypterede tunnel, så dit lokale netværk og din internetudbyder
-      ikke kan se dem. Gatewayen sender dem derefter videre til Cloudflares offentlige resolver (1.1.1.1), som kun ser gatewayens IP-adresse – aldrig din. Vi gemmer ingen logs over DNS-forespørgsler.</p>
+      ikke kan se dem. Gatewayen sender derefter hvert enkelt videre krypteret, som DNS over HTTPS, til Cloudflares offentlige resolver (1.1.1.1) eller til den, du vælger (Quad9, AdGuard DNS eller Cloudflare for Families). Resolveren ser kun gatewayens IP-adresse – aldrig din. Hvis den krypterede forbindelse til den mislykkes, falder gatewayen tilbage til almindelig DNS til samme resolver. Vi gemmer ingen logs over DNS-forespørgsler.</p>
     <h3>4.5 Hvordan din app når gatewayene</h3>
     <p>Din app opdager gateways og læser deres status ved at kalde hver gateways kontrol-API direkte.
       De svar er <strong>signeret med gatewayens ed25519-nøgle og verificeret af appen</strong>,

@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacidade pela arquitetura</span>
     <h1>Política de privacidade</h1>
-    <p class="doc-meta">Última atualização: 13 de outubro de 2026 · Em vigor desde: 14 de agosto de 2026</p>
+    <p class="doc-meta">Última atualização: 14 de outubro de 2026 · Em vigor desde: 14 de agosto de 2026</p>
 
   <p class="doc-meta">Esta tradução é fornecida por conveniência; a versão em inglês em cumulusvpn.com/privacy é a
       autoritativa.</p>
@@ -170,7 +170,7 @@
       navegação. Quando sua sessão termina, ele não é retido.</p>
     <h3>4.4 DNS</h3>
     <p>As consultas DNS são resolvidas em seu nome através do túnel criptografado, para que sua rede local e seu provedor de internet
-      não consigam vê-las. Em seguida, o gateway as encaminha ao resolvedor público da Cloudflare (1.1.1.1), que vê apenas o endereço IP do gateway, nunca o seu. Não guardamos registros de consultas DNS.</p>
+      não consigam vê-las. Em seguida, o gateway encaminha cada uma delas criptografada, como DNS over HTTPS, ao resolvedor público da Cloudflare (1.1.1.1) ou ao que você escolher (Quad9, AdGuard DNS ou Cloudflare for Families). O resolvedor vê apenas o endereço IP do gateway, nunca o seu. Se a conexão criptografada com ele falhar, o gateway recorre ao DNS comum para esse mesmo resolvedor. Não guardamos registros de consultas DNS.</p>
     <h3>4.5 Como seu app chega aos gateways</h3>
     <p>Seu app descobre gateways e lê o status deles chamando diretamente a API de controle de cada gateway.
       Essas respostas são <strong>assinadas com a chave ed25519 do gateway e verificadas pelo app</strong>,

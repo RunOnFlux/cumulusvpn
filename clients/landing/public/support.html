@@ -184,6 +184,10 @@
         <div class="answer"><p>Yes. Save your recovery key and restore it on each device — Premium belongs to the key, so it comes along. It works best on one device at a time, or on devices connected to different countries: two devices on the same server knock each other off. Or give each device its own Premium by paying for its Device code (Settings → About).</p></div>
       </details>
       <details>
+        <summary>Which DNS does CumulusVPN use, and can I change it?</summary>
+        <div class="answer"><p>By default, Cloudflare (1.1.1.1). In the web app you can switch to Quad9, which blocks known malicious sites, AdGuard DNS, which blocks ads and trackers, or Cloudflare for Families, which blocks malware and adult content. The mobile apps will get the same choice in version 1.3.0. Your look-ups travel inside the tunnel to our server, which sends them on encrypted (DNS over HTTPS) to the provider you picked, so the provider sees the server's address, never yours, and we keep no DNS logs.</p></div>
+      </details>
+      <details>
         <summary>I sent FLUX with the wrong message, or too little. What now?</summary>
         <div class="answer"><p>Nothing is lost, but it will not unlock on its own. A payment only grants premium if it carries your exact <mono>CVPN1:</mono> code and covers at least one day. Email support with the transaction id and the Device code from Settings → About, and we will credit it by hand — you will be asked to prove you hold the key. Automated claiming is on the roadmap.</p></div>
       </details>

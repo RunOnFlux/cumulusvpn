@@ -621,7 +621,7 @@
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7l8-4 8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12l2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <h3>ログは一切なし</h3>
         <p>ゲートウェイは鍵ごとに階層を適用してトラフィックをルーティングします——あなたが誰か、何を見ているかについて
-          何も保存されません。DNS はトンネルを通り、ゲートウェイが Cloudflare の公開リゾルバー（1.1.1.1）へ転送します。Cloudflare に見えるのはゲートウェイのアドレスで、あなたのアドレスは見えません。</p>
+          何も保存されません。DNS はトンネルを通り、ゲートウェイが DNS over HTTPS で暗号化して Cloudflare またはあなたが選んだリゾルバーへ転送します。リゾルバーに見えるのはゲートウェイのアドレスで、あなたのアドレスは見えません。</p>
       </div>
       <div class="trust">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="9" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M5 19c1.2-3 4-4.5 7-4.5S17.8 16 19 19" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M18 4l2 2M20 4l-2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
