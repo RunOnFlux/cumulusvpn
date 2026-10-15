@@ -31,7 +31,7 @@ import (
 // Version is the gateway build version, surfaced in /v1/info. Keep it in step
 // with the released image tag by hand: it is a CONST, so the Dockerfile's
 // -ldflags -X cannot stamp it (the Go linker only patches string *variables*).
-const Version = "0.4.2"
+const Version = "0.4.3"
 
 // MinClientVersion is the oldest client the gateway will happily serve.
 //

@@ -17,7 +17,8 @@ import (
 // dnsProbe is one lookup through the tunnel. Each DNS choice is checked with a
 // name its provider answers distinctively, so a pass proves that provider —
 // not the default — answered: AdGuard returns 0.0.0.0 for an ad domain that
-// Cloudflare resolves, and Quad9 refuses its own blocking-test domain.
+// Cloudflare resolves, and Quad9 refuses its own blocking-test domain. Mullvad
+// answers nothing on port 53, so any answer from it proves DoH (gateway 0.4.3+).
 type dnsProbe struct {
 	label  string
 	server string // the address the client sends to (the DNS choice)
@@ -33,6 +34,9 @@ var dnsProbes = []dnsProbe{
 	{"quad9 blocks its test domain", "9.9.9.9", "isitblocked.org.", false, "nxdomain"},
 	{"quad9 resolves normally", "9.9.9.9", "example.com.", false, "ip"},
 	{"cloudflare for families", "1.1.1.3", "example.com.", false, "ip"},
+	{"google", "8.8.8.8", "example.com.", false, "ip"},
+	{"mullvad (DoH only)", "194.242.2.2", "example.com.", false, "ip"},
+	{"dns4eu protective", "86.54.11.1", "example.com.", false, "ip"},
 }
 
 // dnsCounters is /v1/info `dns` (gateway 0.4.2+).

@@ -18,7 +18,9 @@
 // DoH from the node), the lookup goes out as ordinary DNS to the same
 // address rather than failing: availability over strictness. Every such
 // lookup is counted (Stats.Fallbacks, served in /v1/info) so a node stuck in
-// fallback is visible from outside.
+// fallback is visible from outside. The exception is a resolver that serves
+// only encrypted DNS (Provider.DoHOnly, e.g. Mullvad): it has no plain
+// fallback, so its lookups are always tried over DoH and fail if that fails.
 //
 // Nothing is logged or cached: a lookup lives in memory for its round trip.
 package dnsproxy
@@ -168,12 +170,16 @@ func (p *Proxy) Exchange(ctx context.Context, dst netip.Addr, query []byte) ([]b
 	ctx, cancel := context.WithTimeout(ctx, lookupTimeout)
 	defer cancel()
 
-	if u.available() {
+	if u.dohOnly || u.available() {
 		resp, err := u.exchange(ctx, query)
 		u.record(err)
 		if err == nil {
 			p.encrypted.Add(1)
 			return resp, nil
+		}
+		if u.dohOnly {
+			p.failed.Add(1)
+			return nil, err
 		}
 	}
 	p.fallbacks.Add(1)
@@ -188,8 +194,9 @@ func (p *Proxy) Exchange(ctx context.Context, dst netip.Addr, query []byte) ([]b
 // upstream is one provider's DoH endpoint: an HTTP/2 client pinned to the
 // provider's own addresses, plus its failure breaker.
 type upstream struct {
-	url    string
-	client *http.Client
+	url     string
+	client  *http.Client
+	dohOnly bool
 
 	failures  atomic.Int32
 	downUntil atomic.Int64 // unix nanos; DoH skipped until then
@@ -223,8 +230,9 @@ func newUpstream(pr Provider, roots *x509.CertPool, dialAddr func(netip.Addr) st
 		ResponseHeaderTimeout: dohTimeout,
 	}
 	return &upstream{
-		url:    "https://" + pr.Host + "/dns-query",
-		client: &http.Client{Transport: tr, Timeout: dohTimeout},
+		url:     "https://" + pr.Host + "/dns-query",
+		client:  &http.Client{Transport: tr, Timeout: dohTimeout},
+		dohOnly: pr.DoHOnly,
 	}
 }
 

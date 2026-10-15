@@ -194,6 +194,8 @@ a known public resolver: `internal/dnsproxy` answers them in-process and sends e
 | `9.9.9.9`, `149.112.112.112` | Quad9 `dns.quad9.net` |
 | `94.140.14.14`, `94.140.15.15` | AdGuard DNS `dns.adguard-dns.com` (ads + trackers) |
 | `8.8.8.8`, `8.8.4.4` | Google `dns.google` |
+| `194.242.2.2` (0.4.3+) | Mullvad `dns.mullvad.net` (no logging; DoH only — see Fallback) |
+| `86.54.11.1`, `86.54.11.201` (0.4.3+) | DNS4EU Protective `protective.joindns4.eu` (malware + phishing) |
 
 - **Choice by address.** Because the provider follows the destination, a client picks its
   resolver just by its `DNS =` address — the basis for the apps' DNS choice — and apps that
@@ -204,6 +206,9 @@ a known public resolver: `internal/dnsproxy` answers them in-process and sends e
   address (availability over strictness); three failures in a row skip DoH for a minute so a
   network that blocks DoH costs one slow lookup per minute, not every lookup.
   `/v1/info` `dns` counts `encrypted` vs `fallbacks`, so a node stuck in fallback is visible.
+  Mullvad answers nothing on port 53, so it has no fallback (`DoHOnly`): its lookups are always
+  tried over DoH and count as `failed` if that fails. Before 0.4.3 a gateway relays them as plain
+  DNS, which Mullvad ignores, so the apps may offer Mullvad only once the fleet runs 0.4.3.
 - **UDP sizing.** DoH answers can exceed what the client accepts over UDP; they are fitted to the
   client's EDNS size (512 without EDNS, at most 1232) or truncated (TC), and the client's TCP
   retry is answered the same way.

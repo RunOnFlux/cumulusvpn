@@ -13,13 +13,17 @@ type Provider struct {
 	// to, and also what the gateway dials for DoH, so no bootstrap lookup of
 	// Host is ever needed (the node's own resolver is never consulted).
 	Addrs []netip.Addr
+	// DoHOnly marks a resolver that doesn't answer ordinary DNS at all. Its
+	// lookups never fall back: a failed DoH attempt fails the lookup, and the
+	// failure breaker never skips DoH (there is nothing to skip to).
+	DoHOnly bool
 }
 
 // Providers are the resolvers the gateway encrypts lookups to. A client picks
 // one simply by its address (the tunnel's DNS = setting): a lookup sent to
 // 9.9.9.9 is answered by Quad9 over DoH, one sent to 1.1.1.1 by Cloudflare.
 // Each entry was checked to serve DoH over HTTP/2 on every one of its Addrs
-// with Host as the TLS name (2026-10-13).
+// with Host as the TLS name (2026-10-13; Mullvad and DNS4EU 2026-10-16).
 var Providers = []Provider{
 	// The default: the fleet advertises 1.1.1.1 in every enroll response.
 	{Name: "cloudflare", Host: "cloudflare-dns.com", Addrs: addrs("1.1.1.1", "1.0.0.1")},
@@ -30,9 +34,13 @@ var Providers = []Provider{
 	{Name: "quad9", Host: "dns.quad9.net", Addrs: addrs("9.9.9.9", "149.112.112.112")},
 	// AdGuard DNS: blocks ads and trackers.
 	{Name: "adguard", Host: "dns.adguard-dns.com", Addrs: addrs("94.140.14.14", "94.140.15.15")},
-	// Not offered as a choice, but apps that hard-code Google's resolver get
-	// the same encryption.
+	// Google Public DNS: no filtering. Also what many apps hard-code.
 	{Name: "google", Host: "dns.google", Addrs: addrs("8.8.8.8", "8.8.4.4")},
+	// Mullvad DNS: no logging, no filtering. It serves only encrypted DNS
+	// (nothing on port 53), so it needs gateway 0.4.3+ to resolve at all.
+	{Name: "mullvad", Host: "dns.mullvad.net", Addrs: addrs("194.242.2.2"), DoHOnly: true},
+	// DNS4EU Protective: EU-run (GDPR), blocks malware and phishing.
+	{Name: "dns4eu", Host: "protective.joindns4.eu", Addrs: addrs("86.54.11.1", "86.54.11.201")},
 }
 
 func addrs(s ...string) []netip.Addr {

@@ -196,6 +196,30 @@ func TestBreakerSkipsDoHAfterRepeatedFailures(t *testing.T) {
 	}
 }
 
+func TestDoHOnlyProviderNeverFallsBack(t *testing.T) {
+	srv, hits := dohServer(t, func(w http.ResponseWriter, _ *http.Request) {
+		http.Error(w, "nope", http.StatusBadGateway)
+	})
+	p := newTestProxy(t, srv, nil) // the plain stub fails the test if used
+	for _, u := range p.upstreams {
+		u.dohOnly = true
+	}
+	// Past the breaker's trip count DoH is still tried every time: skipping it
+	// would only fail faster, and the first lookup after an outage should work.
+	n := breakerTrips + 3
+	for i := 0; i < n; i++ {
+		if _, err := p.Exchange(context.Background(), testResolver, buildQuery(t, uint16(i), "example.org.", 0)); err == nil {
+			t.Fatalf("Exchange %d succeeded, want the DoH failure", i)
+		}
+	}
+	if got := hits.Load(); got != int32(n) {
+		t.Fatalf("DoH attempts = %d, want %d (never skipped)", got, n)
+	}
+	if s := p.Stats(); s != (Stats{Failed: uint64(n)}) {
+		t.Fatalf("stats = %+v, want %d failed and no fallbacks", s, n)
+	}
+}
+
 func TestExchangeRejectsWhatIsNotAQuery(t *testing.T) {
 	srv, hits := dohServer(t, answeringDoH(t, 1))
 	p := newTestProxy(t, srv, nil)
@@ -309,6 +333,13 @@ func TestProvidersTable(t *testing.T) {
 				t.Fatalf("%v listed for both %s and %s", a, other, pr.Name)
 			}
 			seen[a] = pr.Name
+		}
+	}
+	// Only Mullvad is known to refuse ordinary DNS; marking a resolver that
+	// does answer it as DoHOnly would throw away its fallback for nothing.
+	for _, pr := range Providers {
+		if pr.DoHOnly != (pr.Name == "mullvad") {
+			t.Fatalf("%s: DoHOnly = %v", pr.Name, pr.DoHOnly)
 		}
 	}
 	// The fleet advertises 1.1.1.1; it must always be encrypted.
