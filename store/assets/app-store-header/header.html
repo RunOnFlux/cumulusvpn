@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>App Store header</title>
+<!--
+  App Store universal creative asset, 5244 x 2950 px (16:9), rendered at
+  2622 x 1475 CSS px with device scale factor 2. Everything that must
+  survive every crop (glyph + phrase) sits in the centred safe box; the
+  phones and clouds are decoration for the wide iPad/Mac header.
+-->
+<style>
+  :root {
+    --navy-1: #0B1424; --navy-2: #0C2230; --teal-deep: #0A2E30;
+    --cyan: #0FB9AE; --cyan-glow: #34E4DA; --ink: #F4FAFB; --mute: #8FA5B0;
+    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 2622px; height: 1475px; overflow: hidden; background: var(--navy-1); }
+  body { -webkit-font-smoothing: antialiased; font-family: var(--sans); }
+
+  .canvas {
+    position: relative; width: 2622px; height: 1475px; overflow: hidden;
+    background: linear-gradient(157deg, var(--navy-1) 0%, var(--navy-2) 52%, var(--teal-deep) 100%);
+  }
+  .glow { position: absolute; border-radius: 50%; pointer-events: none; }
+  .glow.main {
+    left: 711px; top: 160px; width: 1200px; height: 960px;
+    background: radial-gradient(closest-side, rgba(52,228,218,.22), rgba(15,185,174,.07) 55%, transparent);
+  }
+  .glow.l, .glow.r {
+    top: 260px; width: 900px; height: 900px;
+    background: radial-gradient(closest-side, rgba(52,228,218,.16), transparent);
+  }
+  .glow.l { left: 110px; }
+  .glow.r { left: 1612px; }
+
+  /* soft cumulus banks along the bottom edge */
+  .cloud { position: absolute; border-radius: 50%; background: #BFF7F2; filter: blur(46px); }
+
+  /* faint network of nodes: the decentralized fleet */
+  svg.net { position: absolute; inset: 0; width: 2622px; height: 1475px; }
+
+  /* focal block: centred horizontally, just above the vertical centre */
+  .focal {
+    position: absolute; left: 961px; top: 385px; width: 701px; height: 481px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; color: var(--ink);
+  }
+  .focal svg.mark { width: 160px; height: 124px; filter: drop-shadow(0 0 34px rgba(52,228,218,.45)); }
+  .focal h1 {
+    margin-top: 30px; font-weight: 800; font-size: 104px; line-height: 1.0; letter-spacing: -.035em;
+  }
+  .focal h1 .em { color: var(--cyan-glow); }
+  .focal .kick {
+    margin-top: 26px; font-family: var(--mono); font-weight: 500; font-size: 24px;
+    letter-spacing: .32em; text-transform: uppercase; color: var(--mute);
+  }
+
+  /* phones */
+  .phone {
+    position: absolute; top: 236px; width: 468px; height: 1004px; border-radius: 74px; padding: 16px;
+    background: linear-gradient(160deg, #2a3646, #0c1119 60%);
+    box-shadow: 0 60px 120px -30px rgba(2,6,14,.8), 0 0 0 2px rgba(255,255,255,.07) inset,
+                0 0 0 1px rgba(0,0,0,.6);
+  }
+  .phone img { display: block; width: 436px; height: 972px; border-radius: 58px; object-fit: cover; object-position: top; }
+  .phone.l { left: 330px; transform: rotate(-7deg); }
+  .phone.r { left: 1824px; transform: rotate(7deg); }
+</style>
+</head>
+<body>
+<div class="canvas">
+  <div class="glow main"></div>
+  <div class="glow l"></div>
+  <div class="glow r"></div>
+
+  <svg class="net" viewBox="0 0 2622 1475" aria-hidden="true">
+    <g stroke="rgba(52,228,218,.10)" stroke-width="1.5" fill="none">
+      <path d="M90 300 L420 170 L760 250 M760 250 L980 120 L1310 190 L1640 110 L1880 250 L2210 160 L2540 290"/>
+      <path d="M60 1230 L330 1330 L700 1270 M1920 1280 L2260 1340 L2570 1220"/>
+      <path d="M420 170 L330 60 M1640 110 L1700 20 M2210 160 L2300 40"/>
+    </g>
+    <g fill="rgba(52,228,218,.35)">
+      <circle cx="90" cy="300" r="5"/><circle cx="420" cy="170" r="6"/><circle cx="760" cy="250" r="5"/>
+      <circle cx="980" cy="120" r="6"/><circle cx="1310" cy="190" r="5"/><circle cx="1640" cy="110" r="6"/>
+      <circle cx="1880" cy="250" r="5"/><circle cx="2210" cy="160" r="6"/><circle cx="2540" cy="290" r="5"/>
+      <circle cx="60" cy="1230" r="5"/><circle cx="330" cy="1330" r="6"/><circle cx="700" cy="1270" r="5"/>
+      <circle cx="1920" cy="1280" r="5"/><circle cx="2260" cy="1340" r="6"/><circle cx="2570" cy="1220" r="5"/>
+      <circle cx="330" cy="60" r="4"/><circle cx="1700" cy="20" r="4"/><circle cx="2300" cy="40" r="4"/>
+    </g>
+  </svg>
+
+  <div class="cloud" style="left:-160px;top:1240px;width:900px;height:420px;opacity:.07"></div>
+  <div class="cloud" style="left:560px;top:1300px;width:760px;height:360px;opacity:.05"></div>
+  <div class="cloud" style="left:1280px;top:1290px;width:820px;height:380px;opacity:.05"></div>
+  <div class="cloud" style="left:1960px;top:1230px;width:880px;height:430px;opacity:.07"></div>
+
+  <div class="phone l"><img src="../screenshots/raw/ios/connect.png" alt=""></div>
+  <div class="phone r"><img src="../screenshots/raw/ios/multihop.png" alt=""></div>
+
+  <div class="focal">
+    <svg class="mark" viewBox="310 340 484 364" aria-hidden="true">
+      <defs>
+        <linearGradient id="cloudg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#7DF3EB"/><stop offset=".5" stop-color="#34E4DA"/><stop offset="1" stop-color="#0FB9AE"/>
+        </linearGradient>
+      </defs>
+      <g fill="url(#cloudg)">
+        <circle cx="392" cy="556" r="104"/><circle cx="512" cy="486" r="146"/>
+        <circle cx="642" cy="532" r="118"/><circle cx="712" cy="588" r="78"/>
+        <rect x="326" y="556" width="452" height="132" rx="66"/>
+      </g>
+      <path d="M566 372 L430 566 L512 566 L470 700 L620 512 L534 512 Z" fill="#FFFFFF"/>
+    </svg>
+    <h1>No account.<br><span class="em">No logs.</span></h1>
+    <div class="kick">Decentralized VPN</div>
+  </div>
+</div>
+</body>
+</html>
