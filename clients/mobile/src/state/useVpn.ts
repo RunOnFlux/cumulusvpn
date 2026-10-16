@@ -320,6 +320,11 @@ export interface PaymentIdentity {
 export interface VpnActions {
   connect(): Promise<void>;
   disconnect(): Promise<void>;
+  /**
+   * Rebuild a live (or connecting) tunnel so changed settings take effect now,
+   * e.g. a new DNS choice. No-op while disconnected.
+   */
+  reconnect(): Promise<void>;
   /** Pick the single-hop country (`null` = Automatic / nearest); persisted. */
   selectCountry(code: string | null): Promise<void>;
   refresh(): Promise<void>;
@@ -473,6 +478,8 @@ export function useVpn(): VpnModel & VpnActions {
   // distinguish an unexpected drop from a user disconnect, for auto-reconnect.
   const wantConnectedRef = useRef(false);
   const wasConnectedRef = useRef(false);
+  // Set by reconnect(): bring the tunnel back up once its teardown lands.
+  const reconnectRef = useRef(false);
   // Guards the staleness backstop: one stop per connected session, never a loop.
   const staleRef = useRef(false);
   /** POST_NOTIFICATIONS asked this session (Android 13+); never re-prompt. */
@@ -1042,6 +1049,8 @@ export function useVpn(): VpnModel & VpnActions {
     // Re-entrancy + cancellation: bumping the generation cancels any sweep still
     // in flight (a double-tap, or a reconnect racing a manual connect), so two
     // sweeps can never interleave start/teardown against the same tunnel.
+    // A connect supersedes any reconnect still waiting on its teardown.
+    reconnectRef.current = false;
     connectGenRef.current += 1;
     const myGen = connectGenRef.current;
     const cancelled = () => connectGenRef.current !== myGen;
@@ -1323,7 +1332,9 @@ export function useVpn(): VpnModel & VpnActions {
     availableGateways,
   ]);
 
-  const disconnect = useCallback(async (): Promise<void> => {
+  // Tears the session down. disconnect() and reconnect() differ only in what
+  // happens once it is down.
+  const stopSession = useCallback(async (): Promise<void> => {
     // Screenshot builds: there is no native tunnel to stop, so just drop the
     // demo session. Lets a capture session toggle between the connected and
     // disconnected heroes. Compiled out of normal builds.
@@ -1358,6 +1369,33 @@ export function useVpn(): VpnModel & VpnActions {
       setError(e instanceof Error ? e.message : String(e));
     }
   }, []);
+
+  const disconnect = useCallback(async (): Promise<void> => {
+    reconnectRef.current = false;
+    await stopSession();
+  }, [stopSession]);
+
+  // A clean stop then a fresh connect, rather than swapping settings inside a
+  // live tunnel: connect is the one path that reads every setting, and it
+  // already handles transports, multi-hop and failover.
+  const reconnect = useCallback(async (): Promise<void> => {
+    if (state !== 'connected' && state !== 'connecting') {
+      return;
+    }
+    // Set before the stop: the 'disconnected' it leads to may land before
+    // stopTunnel() resolves.
+    reconnectRef.current = true;
+    await stopSession();
+  }, [state, stopSession]);
+
+  useEffect(() => {
+    if (state === 'error') {
+      reconnectRef.current = false;
+    } else if (state === 'disconnected' && reconnectRef.current) {
+      reconnectRef.current = false;
+      void connect();
+    }
+  }, [state, connect]);
 
   // ---- auto-reconnect on an unexpected drop ------------------------------
   // If the tunnel drops while the user still wants it (they didn't tap
@@ -1586,6 +1624,7 @@ export function useVpn(): VpnModel & VpnActions {
     favorites,
     connect,
     disconnect,
+    reconnect,
     selectCountry,
     refresh,
     setRouteStyle,

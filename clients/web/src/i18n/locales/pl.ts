@@ -202,7 +202,10 @@ export const pl: Catalog = {
   dns_summary_title: 'Dostawca DNS',
   dns_default: 'Domyślny',
   dns_blurb_cloudflare: 'Szybki, bez filtrowania',
+  dns_blurb_mullvad: 'Nastawiony na prywatność, bez filtrowania',
+  dns_blurb_google: 'Bez filtrowania',
   dns_blurb_quad9: 'Blokuje znane złośliwe strony',
+  dns_blurb_dns4eu: 'Z siedzibą w UE, blokuje złośliwe oprogramowanie i phishing',
   dns_blurb_adguard: 'Blokuje reklamy i elementy śledzące',
   dns_blurb_family: 'Blokuje złośliwe oprogramowanie i treści dla dorosłych',
   dns_note:

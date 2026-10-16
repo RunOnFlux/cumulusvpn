@@ -1,7 +1,7 @@
 /**
- * Render test for the DNS choice section: the four options in core's order with
- * the default labelled, the exact privacy note, a tap persisting the choice,
- * and the next-connect note only while a session exists.
+ * Render test for the DNS choice section: the options in core's order with the
+ * default labelled, the exact privacy note, a tap persisting the choice and
+ * reporting the change, and the reconnect note only while a session exists.
  */
 import { create, act, type ReactTestRenderer } from 'react-test-renderer';
 import { Text } from 'react-native';
@@ -25,10 +25,13 @@ function radios(tree: ReactTestRenderer) {
   );
 }
 
-async function render(locked: boolean): Promise<ReactTestRenderer> {
+async function render(
+  locked: boolean,
+  onChange: () => void = () => undefined,
+): Promise<ReactTestRenderer> {
   let tree!: ReactTestRenderer;
   await act(async () => {
-    tree = create(<DnsSection locked={locked} />);
+    tree = create(<DnsSection locked={locked} onChange={onChange} />);
   });
   return tree;
 }
@@ -38,12 +41,15 @@ describe('<DnsSection />', () => {
     await AsyncStorage.removeItem('cvpn:dnsChoice');
   });
 
-  it('lists the four options, default first and labelled, with the privacy note', async () => {
+  it('lists the options, default first and labelled, with the privacy note', async () => {
     const tree = await render(false);
     const rows = radios(tree);
     expect(rows.map((r) => r.props.accessibilityLabel)).toEqual([
       'Cloudflare, default. Fast, no filtering',
+      'Mullvad DNS. Privacy-focused, no filtering',
+      'Google Public DNS. No filtering',
       'Quad9. Blocks known malicious sites',
+      'DNS4EU. EU-based, blocks malware and phishing',
       'AdGuard DNS. Blocks ads and trackers',
       'Cloudflare for Families. Blocks malware and adult content',
     ]);
@@ -52,29 +58,50 @@ describe('<DnsSection />', () => {
       false,
       false,
       false,
+      false,
+      false,
+      false,
     ]);
     expect(textOf(tree)).toContain(
       "Your DNS lookups go through the VPN to the provider you choose. It sees the VPN server's address, never yours.",
     );
-    expect(textOf(tree)).not.toContain('next time you connect');
+    expect(textOf(tree)).not.toContain('reconnects');
     act(() => tree.unmount());
   });
 
   it('shows the stored choice and persists a new one', async () => {
     await AsyncStorage.setItem('cvpn:dnsChoice', 'quad9');
     const tree = await render(false);
-    expect(radios(tree)[1]!.props.accessibilityState.selected).toBe(true);
+    expect(radios(tree)[3]!.props.accessibilityState.selected).toBe(true);
     await act(async () => {
-      radios(tree)[2]!.props.onPress();
+      radios(tree)[5]!.props.onPress();
     });
-    expect(radios(tree)[2]!.props.accessibilityState.selected).toBe(true);
+    expect(radios(tree)[5]!.props.accessibilityState.selected).toBe(true);
     await expect(loadDnsChoice()).resolves.toBe('adguard');
     act(() => tree.unmount());
   });
 
-  it('says a change applies on the next connect while a session exists', async () => {
+  it('reports a change once it is saved, but not a re-tap of the current choice', async () => {
+    const onChange = jest.fn(async () => {
+      // The reconnect this triggers must already see the new choice.
+      await expect(loadDnsChoice()).resolves.toBe('mullvad');
+    });
+    const tree = await render(true, onChange);
+    await act(async () => {
+      radios(tree)[0]!.props.onPress(); // Cloudflare, already selected
+    });
+    expect(onChange).not.toHaveBeenCalled();
+    await act(async () => {
+      radios(tree)[1]!.props.onPress();
+    });
+    expect(onChange).toHaveBeenCalledTimes(1);
+    await onChange.mock.results[0]!.value;
+    act(() => tree.unmount());
+  });
+
+  it('says a change reconnects while a session exists', async () => {
     const tree = await render(true);
-    expect(textOf(tree)).toContain('Changes apply the next time you connect.');
+    expect(textOf(tree)).toContain('Changing it reconnects the VPN.');
     act(() => tree.unmount());
   });
 });

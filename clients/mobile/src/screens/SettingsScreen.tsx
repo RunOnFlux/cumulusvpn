@@ -191,10 +191,10 @@ export function SettingsScreen({
         )}
 
         {/* DNS (docs/03 "DNS") — which resolver lookups go to, on every tier.
-            Read when a tunnel is built, so like split tunneling below it stays
-            editable while connected and applies on the next connect. */}
+            Read when a tunnel is built, so a change while connected reconnects
+            to apply it right away (a brief drop, as when switching location). */}
         <Text style={styles.section}>DNS</Text>
-        <DnsSection locked={locked} />
+        <DnsSection locked={locked} onChange={() => void vpn.reconnect()} />
 
         {/* Split tunneling (docs/17) — premium, applied when a tunnel is built,
             like the transport/routing toggles above. Hidden entirely for a

@@ -193,7 +193,10 @@ export const da: Catalog = {
   dns_summary_title: 'DNS-udbyder',
   dns_default: 'Standard',
   dns_blurb_cloudflare: 'Hurtig, ingen filtrering',
+  dns_blurb_mullvad: 'Fokus på privatliv, ingen filtrering',
+  dns_blurb_google: 'Ingen filtrering',
   dns_blurb_quad9: 'Blokerer kendte skadelige websteder',
+  dns_blurb_dns4eu: 'EU-baseret, blokerer malware og phishing',
   dns_blurb_adguard: 'Blokerer reklamer og trackere',
   dns_blurb_family: 'Blokerer malware og voksenindhold',
   dns_note:

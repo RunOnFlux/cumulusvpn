@@ -16,6 +16,9 @@ describe('DNS choice', () => {
     expect(dnsServersFor('quad9', '1.1.1.1')).toBe('9.9.9.9, 149.112.112.112');
     expect(dnsServersFor('adguard', '1.1.1.1')).toBe('94.140.14.14, 94.140.15.15');
     expect(dnsServersFor('family', '1.1.1.1')).toBe('1.1.1.3, 1.0.0.3');
+    expect(dnsServersFor('google', '1.1.1.1')).toBe('8.8.8.8, 8.8.4.4');
+    expect(dnsServersFor('mullvad', '1.1.1.1')).toBe('194.242.2.2');
+    expect(dnsServersFor('dns4eu', '1.1.1.1')).toBe('86.54.11.1, 86.54.11.201');
   });
 
   it('falls back to the default for anything it does not know', () => {

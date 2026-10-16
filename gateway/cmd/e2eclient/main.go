@@ -28,9 +28,10 @@
 //	              use :443 for a stealth-group node). Gateway needs CVPN_TLS_ENABLE=1.
 //	CVPN_TLS_SNI  SNI to present for CVPN_TLS   (default www.bing.com, the fleet default)
 //	DNS_CHECK     non-empty → after the HTTP check, resolve through the tunnel via
-//	              each DNS choice (1.1.1.1, 9.9.9.9, 94.140.14.14, 1.1.1.3; UDP and
-//	              TCP) with names each provider answers distinctively, and check
-//	              the gateway's /v1/info dns counters show DoH (gateway 0.4.2+).
+//	              each DNS choice (1.1.1.1, 9.9.9.9, 94.140.14.14, 1.1.1.3,
+//	              8.8.8.8, 194.242.2.2, 86.54.11.1; UDP and TCP) with names each
+//	              provider answers distinctively, and check the gateway's /v1/info
+//	              dns counters show DoH (gateway 0.4.2+; Mullvad and DNS4EU 0.4.3+).
 //
 // Note CVPN_OBFS/CVPN_TLS are non-empty checks, so `CVPN_OBFS=0` still enables
 // obfuscation — unset the variable to disable it.

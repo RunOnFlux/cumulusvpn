@@ -7,7 +7,10 @@ import { useI18n } from '../hooks/useLocale';
 /** What each option blocks, localized by id. Provider names are brands. */
 const BLURB_KEYS: Record<DnsChoice, MessageKey> = {
   cloudflare: 'dns_blurb_cloudflare',
+  mullvad: 'dns_blurb_mullvad',
+  google: 'dns_blurb_google',
   quad9: 'dns_blurb_quad9',
+  dns4eu: 'dns_blurb_dns4eu',
   adguard: 'dns_blurb_adguard',
   family: 'dns_blurb_family',
 };

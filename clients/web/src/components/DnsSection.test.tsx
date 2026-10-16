@@ -20,9 +20,12 @@ describe('<DnsSection />', () => {
   it('renders the exact English copy, default marked', () => {
     renderSection('cloudflare');
     expect(screen.getByRole('radiogroup', { name: 'DNS provider' })).toBeInTheDocument();
-    expect(screen.getAllByRole('radio')).toHaveLength(4);
+    expect(screen.getAllByRole('radio')).toHaveLength(7);
     expect(screen.getByText('Fast, no filtering')).toBeInTheDocument();
+    expect(screen.getByText('Privacy-focused, no filtering')).toBeInTheDocument();
+    expect(screen.getByText('No filtering')).toBeInTheDocument();
     expect(screen.getByText('Blocks known malicious sites')).toBeInTheDocument();
+    expect(screen.getByText('EU-based, blocks malware and phishing')).toBeInTheDocument();
     expect(screen.getByText('Blocks ads and trackers')).toBeInTheDocument();
     expect(screen.getByText('Blocks malware and adult content')).toBeInTheDocument();
     // Exactly one option carries the default tag: Cloudflare's.

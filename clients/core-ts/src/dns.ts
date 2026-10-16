@@ -4,8 +4,11 @@
  * The tunnel's `DNS =` address is the whole mechanism: lookups travel inside
  * the tunnel to that address, and gateway 0.4.2+ answers them itself and sends
  * them on encrypted (DNS over HTTPS) to the SAME provider. Older gateways
- * relay them as ordinary DNS from the gateway, so every choice works against
- * every gateway; only the encryption past the gateway depends on its version.
+ * relay them as ordinary DNS from the gateway, so nearly every choice works
+ * against every gateway and only the encryption past the gateway depends on
+ * its version. The exception is Mullvad, which answers no ordinary DNS: it
+ * resolves only through gateway 0.4.3+, so it may ship only once the fleet
+ * runs 0.4.3.
  *
  * Every address below must stay in the gateway's provider table
  * (gateway/internal/dnsproxy/providers.go) — an address missing there would
@@ -15,7 +18,8 @@
  */
 
 /** The DNS options the apps offer. */
-export type DnsChoice = 'cloudflare' | 'quad9' | 'adguard' | 'family';
+export type DnsChoice =
+  'cloudflare' | 'mullvad' | 'google' | 'quad9' | 'dns4eu' | 'adguard' | 'family';
 
 export interface DnsOption {
   readonly id: DnsChoice;
@@ -23,14 +27,17 @@ export interface DnsOption {
   readonly provider: string;
   /** What the option blocks, in English (apps localize by `id`). */
   readonly blurb: string;
-  /** IPv4 resolver addresses, primary first. */
+  /** IPv4 resolver addresses, primary first (Mullvad has only one). */
   readonly servers: readonly string[];
 }
 
 /** The default: Cloudflare, what every gateway advertises at enroll. */
 export const DEFAULT_DNS: DnsChoice = 'cloudflare';
 
-/** All options, default first, in the order the apps list them. */
+/**
+ * All options in the order the apps list them: the default first, then the
+ * other unfiltered resolvers, then the filtering ones.
+ */
 export const DNS_OPTIONS: readonly DnsOption[] = [
   {
     id: 'cloudflare',
@@ -39,10 +46,28 @@ export const DNS_OPTIONS: readonly DnsOption[] = [
     servers: ['1.1.1.1', '1.0.0.1'],
   },
   {
+    id: 'mullvad',
+    provider: 'Mullvad DNS',
+    blurb: 'Privacy-focused, no filtering',
+    servers: ['194.242.2.2'],
+  },
+  {
+    id: 'google',
+    provider: 'Google Public DNS',
+    blurb: 'No filtering',
+    servers: ['8.8.8.8', '8.8.4.4'],
+  },
+  {
     id: 'quad9',
     provider: 'Quad9',
     blurb: 'Blocks known malicious sites',
     servers: ['9.9.9.9', '149.112.112.112'],
+  },
+  {
+    id: 'dns4eu',
+    provider: 'DNS4EU',
+    blurb: 'EU-based, blocks malware and phishing',
+    servers: ['86.54.11.1', '86.54.11.201'],
   },
   {
     id: 'adguard',

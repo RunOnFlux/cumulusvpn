@@ -4,9 +4,9 @@
  * inside the tunnel to that address, and the gateway forwards them encrypted to
  * the same provider — so this is a pick from core `DNS_OPTIONS`, nothing more.
  *
- * Like split tunneling, the choice is read when a tunnel is BUILT
- * (`useVpn.connect`), so a change made while connected lands on the next
- * connect. Device-local: it never leaves the phone.
+ * The choice is read when a tunnel is BUILT (`useVpn.connect`), so a change
+ * made while connected calls `onChange`, which reconnects to apply it now.
+ * Device-local: it never leaves the phone.
  */
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -15,11 +15,13 @@ import { loadDnsChoice, saveDnsChoice } from '../state/storage';
 import { color, radius, space } from '../theme/tokens';
 
 interface Props {
-  /** True while a session exists — a change then applies on the next connect. */
+  /** True while a session exists — a change then reconnects. */
   readonly locked: boolean;
+  /** Called once a new choice is saved (the screen reconnects when locked). */
+  readonly onChange?: () => void;
 }
 
-export function DnsSection({ locked }: Props): React.JSX.Element {
+export function DnsSection({ locked, onChange }: Props): React.JSX.Element {
   const [choice, setChoice] = useState<DnsChoice>(DEFAULT_DNS);
   // A tap that lands before the stored value loads must win over it.
   const touched = useRef(false);
@@ -37,9 +39,16 @@ export function DnsSection({ locked }: Props): React.JSX.Element {
   }, []);
 
   const select = (next: DnsChoice): void => {
+    const changed = next !== choice;
     touched.current = true;
     setChoice(next);
-    void saveDnsChoice(next);
+    // Saved before onChange so the reconnect reads the new choice; re-tapping
+    // the current option doesn't reconnect.
+    void saveDnsChoice(next).then(() => {
+      if (changed) {
+        onChange?.();
+      }
+    });
   };
 
   return (
@@ -75,7 +84,7 @@ export function DnsSection({ locked }: Props): React.JSX.Element {
         Your DNS lookups go through the VPN to the provider you choose. It sees the VPN server's
         address, never yours.
       </Text>
-      {locked && <Text style={styles.note}>Changes apply the next time you connect.</Text>}
+      {locked && <Text style={styles.note}>Changing it reconnects the VPN.</Text>}
     </View>
   );
 }

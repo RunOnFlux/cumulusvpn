@@ -194,7 +194,10 @@ export const vi: Catalog = {
   dns_summary_title: 'Nhà cung cấp DNS',
   dns_default: 'Mặc định',
   dns_blurb_cloudflare: 'Nhanh, không lọc',
+  dns_blurb_mullvad: 'Chú trọng quyền riêng tư, không lọc',
+  dns_blurb_google: 'Không lọc',
   dns_blurb_quad9: 'Chặn các trang độc hại đã biết',
+  dns_blurb_dns4eu: 'Đặt tại EU, chặn phần mềm độc hại và lừa đảo',
   dns_blurb_adguard: 'Chặn quảng cáo và trình theo dõi',
   dns_blurb_family: 'Chặn phần mềm độc hại và nội dung người lớn',
   dns_note:

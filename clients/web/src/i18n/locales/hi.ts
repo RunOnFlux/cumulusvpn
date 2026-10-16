@@ -195,7 +195,10 @@ export const hi: Catalog = {
   dns_summary_title: 'DNS प्रदाता',
   dns_default: 'डिफ़ॉल्ट',
   dns_blurb_cloudflare: 'तेज़, कोई फ़िल्टरिंग नहीं',
+  dns_blurb_mullvad: 'निजता पर केंद्रित, कोई फ़िल्टरिंग नहीं',
+  dns_blurb_google: 'कोई फ़िल्टरिंग नहीं',
   dns_blurb_quad9: 'ज्ञात हानिकारक साइटें ब्लॉक करता है',
+  dns_blurb_dns4eu: 'ईयू-आधारित, मैलवेयर और फ़िशिंग ब्लॉक करता है',
   dns_blurb_adguard: 'विज्ञापन और ट्रैकर ब्लॉक करता है',
   dns_blurb_family: 'मैलवेयर और वयस्क सामग्री ब्लॉक करता है',
   dns_note:

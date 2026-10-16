@@ -200,7 +200,10 @@ export const ru: Catalog = {
   dns_summary_title: 'DNS-провайдер',
   dns_default: 'По умолчанию',
   dns_blurb_cloudflare: 'Быстрый, без фильтрации',
+  dns_blurb_mullvad: 'Ориентирован на приватность, без фильтрации',
+  dns_blurb_google: 'Без фильтрации',
   dns_blurb_quad9: 'Блокирует известные вредоносные сайты',
+  dns_blurb_dns4eu: 'Работает в ЕС, блокирует вредоносное ПО и фишинг',
   dns_blurb_adguard: 'Блокирует рекламу и трекеры',
   dns_blurb_family: 'Блокирует вредоносное ПО и контент для взрослых',
   dns_note:
