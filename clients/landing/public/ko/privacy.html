@@ -164,7 +164,7 @@
       저장소에도 기록하지 <strong>않으며</strong>, 이를 당신의 브라우징과 연결짓지도 않습니다. 세션이 종료되면 그것은 보관되지 않습니다.</p>
     <h3>4.4 DNS</h3>
     <p>DNS 조회는 로컬 네트워크와 ISP가 볼 수 없도록 암호화된 터널을 통해 대신
-      해석됩니다. 그다음 게이트웨이가 각 조회를 DNS over HTTPS로 암호화해 Cloudflare 공개 리졸버(1.1.1.1) 또는 당신이 선택한 리졸버(Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS 또는 Cloudflare for Families)로 전달합니다. 리졸버에는 게이트웨이의 IP 주소만 보이고 당신의 주소는 절대 보이지 않습니다. 리졸버와의 암호화된 연결이 실패하면 게이트웨이는 같은 리졸버에 일반 DNS로 조회합니다. 단, 암호화된 조회만 받는 Mullvad DNS는 예외입니다. 저희는 DNS 조회 로그를 보관하지 않습니다.</p>
+      해석됩니다. 그다음 게이트웨이가 각 조회를 DNS over HTTPS로 암호화해 Cloudflare 공개 리졸버(1.1.1.1) 또는 당신이 선택한 리졸버(Google Public DNS, Quad9, DNS4EU, AdGuard DNS 또는 Cloudflare for Families)로 전달합니다. Mullvad가 2026년 11월 2일까지 종료하는 Mullvad DNS(194.242.2.2)로 향하는 조회는 대신 Quad9로 전달됩니다. 리졸버에는 게이트웨이의 IP 주소만 보이고 당신의 주소는 절대 보이지 않습니다. 리졸버와의 암호화된 연결이 실패하면 게이트웨이는 같은 리졸버에 일반 DNS로 조회합니다. 저희는 DNS 조회 로그를 보관하지 않습니다.</p>
     <h3>4.5 앱이 게이트웨이에 접속하는 방법</h3>
     <p>당신의 앱은 각 게이트웨이의 제어 API를 직접 호출하여 게이트웨이를 발견하고 상태를 읽습니다.
       이 응답들은 <strong>게이트웨이의 ed25519 키로 서명되고 앱이 이를 검증</strong>하므로,

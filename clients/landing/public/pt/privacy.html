@@ -170,7 +170,7 @@
       navegação. Quando sua sessão termina, ele não é retido.</p>
     <h3>4.4 DNS</h3>
     <p>As consultas DNS são resolvidas em seu nome através do túnel criptografado, para que sua rede local e seu provedor de internet
-      não consigam vê-las. Em seguida, o gateway encaminha cada uma delas criptografada, como DNS over HTTPS, ao resolvedor público da Cloudflare (1.1.1.1) ou ao que você escolher (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS ou Cloudflare for Families). O resolvedor vê apenas o endereço IP do gateway, nunca o seu. Se a conexão criptografada com ele falhar, o gateway recorre ao DNS comum para esse mesmo resolvedor, exceto no caso do Mullvad DNS, que só aceita consultas criptografadas. Não guardamos registros de consultas DNS.</p>
+      não consigam vê-las. Em seguida, o gateway encaminha cada uma delas criptografada, como DNS over HTTPS, ao resolvedor público da Cloudflare (1.1.1.1) ou ao que você escolher (Google Public DNS, Quad9, DNS4EU, AdGuard DNS ou Cloudflare for Families). As consultas destinadas ao Mullvad DNS (194.242.2.2), que a Mullvad vai encerrar até 2 de novembro de 2026, são enviadas ao Quad9 em vez disso. O resolvedor vê apenas o endereço IP do gateway, nunca o seu. Se a conexão criptografada com ele falhar, o gateway recorre ao DNS comum para esse mesmo resolvedor. Não guardamos registros de consultas DNS.</p>
     <h3>4.5 Como seu app chega aos gateways</h3>
     <p>Seu app descobre gateways e lê o status deles chamando diretamente a API de controle de cada gateway.
       Essas respostas são <strong>assinadas com a chave ed25519 do gateway e verificadas pelo app</strong>,

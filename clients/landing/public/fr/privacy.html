@@ -170,7 +170,7 @@
       navigation. Une fois votre session terminée, elle n'est pas conservée.</p>
     <h3>4.4 DNS</h3>
     <p>Les résolutions DNS sont effectuées pour vous via le tunnel chiffré, de sorte que votre réseau local et votre FAI
-      ne peuvent pas les voir. La passerelle transmet ensuite chacune d'elles chiffrée, en DNS over HTTPS, au résolveur public de Cloudflare (1.1.1.1) ou à celui de votre choix (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS ou Cloudflare for Families). Le résolveur ne voit que l'adresse IP de la passerelle, jamais la vôtre. Si la connexion chiffrée vers ce résolveur échoue, la passerelle se rabat sur un DNS ordinaire auprès du même résolveur, sauf pour Mullvad DNS, qui n'accepte que les requêtes chiffrées. Nous ne conservons aucun journal de requêtes DNS.</p>
+      ne peuvent pas les voir. La passerelle transmet ensuite chacune d'elles chiffrée, en DNS over HTTPS, au résolveur public de Cloudflare (1.1.1.1) ou à celui de votre choix (Google Public DNS, Quad9, DNS4EU, AdGuard DNS ou Cloudflare for Families). Les requêtes adressées à Mullvad DNS (194.242.2.2), que Mullvad ferme d'ici le 2 novembre 2026, sont envoyées à Quad9 à la place. Le résolveur ne voit que l'adresse IP de la passerelle, jamais la vôtre. Si la connexion chiffrée vers ce résolveur échoue, la passerelle se rabat sur un DNS ordinaire auprès du même résolveur. Nous ne conservons aucun journal de requêtes DNS.</p>
     <h3>4.5 Comment votre app atteint les passerelles</h3>
     <p>Votre app découvre les passerelles et lit leur statut en appelant directement l'API de contrôle de chaque passerelle.
       Ces réponses sont <strong>signées avec la clé ed25519 de la passerelle et vérifiées par l'app</strong>,

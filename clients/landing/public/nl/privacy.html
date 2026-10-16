@@ -170,7 +170,7 @@
       surfgedrag. Als je sessie eindigt, wordt het niet bewaard.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-opzoekingen worden namens jou opgelost via de versleutelde tunnel, zodat je lokale netwerk en provider
-      ze niet kunnen zien. De gateway stuurt elke opzoeking vervolgens versleuteld, als DNS over HTTPS, door naar de openbare resolver van Cloudflare (1.1.1.1) of naar die van jouw keuze (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS of Cloudflare for Families). De resolver ziet alleen het IP-adres van de gateway, nooit het jouwe. Mislukt de versleutelde verbinding ermee, dan valt de gateway terug op gewone DNS naar dezelfde resolver, behalve bij Mullvad DNS, dat alleen versleutelde opzoekingen accepteert. We houden geen logs van DNS-verzoeken bij.</p>
+      ze niet kunnen zien. De gateway stuurt elke opzoeking vervolgens versleuteld, als DNS over HTTPS, door naar de openbare resolver van Cloudflare (1.1.1.1) of naar die van jouw keuze (Google Public DNS, Quad9, DNS4EU, AdGuard DNS of Cloudflare for Families). Opzoekingen gericht aan Mullvad DNS (194.242.2.2), dat Mullvad uiterlijk 2 november 2026 opheft, gaan in plaats daarvan naar Quad9. De resolver ziet alleen het IP-adres van de gateway, nooit het jouwe. Mislukt de versleutelde verbinding ermee, dan valt de gateway terug op gewone DNS naar dezelfde resolver. We houden geen logs van DNS-verzoeken bij.</p>
     <h3>4.5 Hoe je app de gateways bereikt</h3>
     <p>Je app ontdekt gateways en leest hun status door rechtstreeks de control-API van elke gateway aan te roepen.
       Die antwoorden zijn <strong>ondertekend met de ed25519-sleutel van de gateway en worden geverifieerd door de app</strong>,

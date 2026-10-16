@@ -169,7 +169,7 @@
       Surfverhalten. Wenn deine Sitzung endet, wird sie nicht aufbewahrt.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-Abfragen werden in deinem Namen über den verschlüsselten Tunnel aufgelöst, sodass dein lokales Netzwerk und dein Internetanbieter
-      sie nicht sehen können. Das Gateway leitet dann jede einzelne verschlüsselt, als DNS over HTTPS, an den öffentlichen Resolver von Cloudflare (1.1.1.1) oder an den von dir gewählten (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS oder Cloudflare for Families) weiter. Der Resolver sieht nur die IP-Adresse des Gateways, nie deine. Schlägt die verschlüsselte Verbindung zu ihm fehl, weicht das Gateway auf gewöhnliches DNS zum selben Resolver aus, außer bei Mullvad DNS, das nur verschlüsselte Abfragen annimmt. Wir führen keine Logs von DNS-Anfragen.</p>
+      sie nicht sehen können. Das Gateway leitet dann jede einzelne verschlüsselt, als DNS over HTTPS, an den öffentlichen Resolver von Cloudflare (1.1.1.1) oder an den von dir gewählten (Google Public DNS, Quad9, DNS4EU, AdGuard DNS oder Cloudflare for Families) weiter. Abfragen an Mullvad DNS (194.242.2.2), das Mullvad bis zum 2. November 2026 einstellt, werden stattdessen an Quad9 weitergeleitet. Der Resolver sieht nur die IP-Adresse des Gateways, nie deine. Schlägt die verschlüsselte Verbindung zu ihm fehl, weicht das Gateway auf gewöhnliches DNS zum selben Resolver aus. Wir führen keine Logs von DNS-Anfragen.</p>
     <h3>4.5 Wie deine App die Gateways erreicht</h3>
     <p>Deine App entdeckt Gateways und liest deren Status, indem sie die Steuer-API jedes Gateways direkt aufruft.
       Diese Antworten sind <strong>mit dem ed25519-Schlüssel des Gateways signiert und werden von der App verifiziert</strong>,
