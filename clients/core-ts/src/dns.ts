@@ -4,11 +4,9 @@
  * The tunnel's `DNS =` address is the whole mechanism: lookups travel inside
  * the tunnel to that address, and gateway 0.4.2+ answers them itself and sends
  * them on encrypted (DNS over HTTPS) to the SAME provider. Older gateways
- * relay them as ordinary DNS from the gateway, so nearly every choice works
- * against every gateway and only the encryption past the gateway depends on
- * its version. The exception is Mullvad, which answers no ordinary DNS: it
- * resolves only through gateway 0.4.3+, so it may ship only once the fleet
- * runs 0.4.3.
+ * relay them as ordinary DNS from the gateway, so every choice works against
+ * every gateway and only the encryption past the gateway depends on its
+ * version.
  *
  * Every address below must stay in the gateway's provider table
  * (gateway/internal/dnsproxy/providers.go) — an address missing there would
@@ -18,8 +16,7 @@
  */
 
 /** The DNS options the apps offer. */
-export type DnsChoice =
-  'cloudflare' | 'mullvad' | 'google' | 'quad9' | 'dns4eu' | 'adguard' | 'family';
+export type DnsChoice = 'cloudflare' | 'google' | 'quad9' | 'dns4eu' | 'adguard' | 'family';
 
 export interface DnsOption {
   readonly id: DnsChoice;
@@ -27,7 +24,7 @@ export interface DnsOption {
   readonly provider: string;
   /** What the option blocks, in English (apps localize by `id`). */
   readonly blurb: string;
-  /** IPv4 resolver addresses, primary first (Mullvad has only one). */
+  /** IPv4 resolver addresses, primary first. */
   readonly servers: readonly string[];
 }
 
@@ -44,12 +41,6 @@ export const DNS_OPTIONS: readonly DnsOption[] = [
     provider: 'Cloudflare',
     blurb: 'Fast, no filtering',
     servers: ['1.1.1.1', '1.0.0.1'],
-  },
-  {
-    id: 'mullvad',
-    provider: 'Mullvad DNS',
-    blurb: 'Privacy-focused, no filtering',
-    servers: ['194.242.2.2'],
   },
   {
     id: 'google',
@@ -90,12 +81,21 @@ export function dnsOption(choice: DnsChoice): DnsOption {
 }
 
 /**
- * Reads a stored setting. Anything unknown (corrupt storage, or an option a
- * newer build added and this one doesn't know) falls back to the default
- * rather than failing, so a bad value can never block connecting.
+ * Options that were offered once and withdrawn, mapped to what replaces them.
+ * Mullvad shuts its public DNS down by 2 November 2026 and points its users
+ * to Quad9 (mobile 1.3.1 offered it).
+ */
+const RETIRED: ReadonlyMap<unknown, DnsChoice> = new Map([['mullvad', 'quad9']]);
+
+/**
+ * Reads a stored setting. A withdrawn option becomes its replacement.
+ * Anything else unknown (corrupt storage, or an option a newer build added
+ * and this one doesn't know) falls back to the default rather than failing,
+ * so a bad value can never block connecting.
  */
 export function parseDnsChoice(value: unknown): DnsChoice {
-  return DNS_OPTIONS.some((o) => o.id === value) ? (value as DnsChoice) : DEFAULT_DNS;
+  if (DNS_OPTIONS.some((o) => o.id === value)) return value as DnsChoice;
+  return RETIRED.get(value) ?? DEFAULT_DNS;
 }
 
 /**

@@ -198,7 +198,6 @@ export const en = {
   dns_summary_title: 'DNS provider',
   dns_default: 'Default',
   dns_blurb_cloudflare: 'Fast, no filtering',
-  dns_blurb_mullvad: 'Privacy-focused, no filtering',
   dns_blurb_google: 'No filtering',
   dns_blurb_quad9: 'Blocks known malicious sites',
   dns_blurb_dns4eu: 'EU-based, blocks malware and phishing',

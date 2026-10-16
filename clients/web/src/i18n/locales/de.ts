@@ -199,7 +199,6 @@ export const de: Catalog = {
   dns_summary_title: 'DNS-Anbieter',
   dns_default: 'Standard',
   dns_blurb_cloudflare: 'Schnell, ohne Filter',
-  dns_blurb_mullvad: 'Datenschutzorientiert, ohne Filter',
   dns_blurb_google: 'Ohne Filter',
   dns_blurb_quad9: 'Blockiert bekannte schädliche Websites',
   dns_blurb_dns4eu: 'Aus der EU, blockiert Malware und Phishing',

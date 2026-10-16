@@ -119,17 +119,6 @@ describe('singleHopConfig — DNS choice', () => {
     expect(dnsLine(conf)).toBe('DNS = 9.9.9.9, 149.112.112.112');
   });
 
-  it('carries a single-server choice (Mullvad) as one address', () => {
-    const conf = singleHopConfig({
-      privateKey: 'priv',
-      enrollment: resp,
-      transport: WG,
-      dnsChoice: 'mullvad',
-      gatewayIp: '203.0.113.7',
-    });
-    expect(dnsLine(conf)).toBe('DNS = 194.242.2.2');
-  });
-
   it('applies the choice on every transport in the fallback chain', () => {
     for (const transport of [WG, AWG, WG_TLS]) {
       const conf = singleHopConfig({

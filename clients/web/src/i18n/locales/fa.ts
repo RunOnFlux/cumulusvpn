@@ -194,7 +194,6 @@ export const fa: Catalog = {
   dns_summary_title: 'ارائه‌دهندهٔ DNS',
   dns_default: 'پیش‌فرض',
   dns_blurb_cloudflare: 'سریع، بدون فیلتر',
-  dns_blurb_mullvad: 'متمرکز بر حریم خصوصی، بدون فیلتر',
   dns_blurb_google: 'بدون فیلتر',
   dns_blurb_quad9: 'سایت‌های مخرب شناخته‌شده را مسدود می‌کند',
   dns_blurb_dns4eu: 'مستقر در اتحادیه اروپا، بدافزار و فیشینگ را مسدود می‌کند',

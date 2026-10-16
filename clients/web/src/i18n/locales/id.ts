@@ -196,7 +196,6 @@ export const id: Catalog = {
   dns_summary_title: 'Penyedia DNS',
   dns_default: 'Bawaan',
   dns_blurb_cloudflare: 'Cepat, tanpa penyaringan',
-  dns_blurb_mullvad: 'Berfokus pada privasi, tanpa penyaringan',
   dns_blurb_google: 'Tanpa penyaringan',
   dns_blurb_quad9: 'Memblokir situs berbahaya yang dikenal',
   dns_blurb_dns4eu: 'Berbasis di UE, memblokir malware dan phishing',

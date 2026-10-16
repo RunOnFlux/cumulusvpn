@@ -196,7 +196,6 @@ export const tr: Catalog = {
   dns_summary_title: 'DNS sağlayıcısı',
   dns_default: 'Varsayılan',
   dns_blurb_cloudflare: 'Hızlı, filtreleme yok',
-  dns_blurb_mullvad: 'Gizlilik odaklı, filtreleme yok',
   dns_blurb_google: 'Filtreleme yok',
   dns_blurb_quad9: 'Bilinen kötü amaçlı siteleri engeller',
   dns_blurb_dns4eu: 'AB merkezli, kötü amaçlı yazılımları ve kimlik avını engeller',

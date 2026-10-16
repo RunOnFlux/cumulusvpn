@@ -17,7 +17,6 @@ describe('DNS choice', () => {
     expect(dnsServersFor('adguard', '1.1.1.1')).toBe('94.140.14.14, 94.140.15.15');
     expect(dnsServersFor('family', '1.1.1.1')).toBe('1.1.1.3, 1.0.0.3');
     expect(dnsServersFor('google', '1.1.1.1')).toBe('8.8.8.8, 8.8.4.4');
-    expect(dnsServersFor('mullvad', '1.1.1.1')).toBe('194.242.2.2');
     expect(dnsServersFor('dns4eu', '1.1.1.1')).toBe('86.54.11.1, 86.54.11.201');
   });
 
@@ -26,6 +25,13 @@ describe('DNS choice', () => {
       expect(parseDnsChoice(bad)).toBe(DEFAULT_DNS);
     }
     for (const o of DNS_OPTIONS) expect(parseDnsChoice(o.id)).toBe(o.id);
+  });
+
+  it('moves a withdrawn choice to its replacement', () => {
+    // Mullvad's public DNS shuts down by 2026-11-02; mobile 1.3.1 offered it.
+    expect(parseDnsChoice('mullvad')).toBe('quad9');
+    expect(DNS_OPTIONS.some((o) => (o.id as string) === 'mullvad')).toBe(false);
+    expect(parseDnsChoice('toString')).toBe(DEFAULT_DNS);
   });
 
   it('lists the default first, with unique ids and addresses', () => {

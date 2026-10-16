@@ -194,7 +194,6 @@ export const th: Catalog = {
   dns_summary_title: 'ผู้ให้บริการ DNS',
   dns_default: 'ค่าเริ่มต้น',
   dns_blurb_cloudflare: 'เร็ว ไม่มีการกรอง',
-  dns_blurb_mullvad: 'เน้นความเป็นส่วนตัว ไม่มีการกรอง',
   dns_blurb_google: 'ไม่มีการกรอง',
   dns_blurb_quad9: 'บล็อกเว็บไซต์อันตรายที่รู้จัก',
   dns_blurb_dns4eu: 'ตั้งอยู่ในสหภาพยุโรป บล็อกมัลแวร์และฟิชชิง',

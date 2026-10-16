@@ -142,6 +142,12 @@ describe('DNS choice', () => {
     await expect(loadDnsChoice()).resolves.toBe('cloudflare');
   });
 
+  // Mullvad's public DNS shuts down by 2026-11-02; 1.3.1 offered it.
+  it('moves a saved Mullvad choice to Quad9', async () => {
+    await AsyncStorage.setItem('cvpn:dnsChoice', 'mullvad');
+    await expect(loadDnsChoice()).resolves.toBe('quad9');
+  });
+
   it('round-trips every option', async () => {
     for (const choice of ['quad9', 'adguard', 'family', 'cloudflare'] as const) {
       await saveDnsChoice(choice);

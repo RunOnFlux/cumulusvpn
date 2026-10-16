@@ -23,6 +23,13 @@ describe('DNS choice storage', () => {
     expect(loadDnsChoice()).toBe('cloudflare');
   });
 
+  // Mullvad's public DNS shuts down by 2026-11-02; the web offered it on
+  // 2026-10-16, so a browser that saved it moves to Quad9.
+  it('moves a saved Mullvad choice to Quad9', () => {
+    localStorage.setItem(KEY, 'mullvad');
+    expect(loadDnsChoice()).toBe('quad9');
+  });
+
   it('survives storage that throws (private mode)', () => {
     vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
       throw new Error('denied');

@@ -197,7 +197,6 @@ export const ja: Catalog = {
   dns_summary_title: 'DNS プロバイダー',
   dns_default: 'デフォルト',
   dns_blurb_cloudflare: '高速、フィルタリングなし',
-  dns_blurb_mullvad: 'プライバシー重視、フィルタリングなし',
   dns_blurb_google: 'フィルタリングなし',
   dns_blurb_quad9: '既知の悪意あるサイトをブロック',
   dns_blurb_dns4eu: 'EU拠点、マルウェアとフィッシングをブロック',

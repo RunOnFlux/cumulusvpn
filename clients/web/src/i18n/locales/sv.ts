@@ -193,7 +193,6 @@ export const sv: Catalog = {
   dns_summary_title: 'DNS-leverantör',
   dns_default: 'Standard',
   dns_blurb_cloudflare: 'Snabb, ingen filtrering',
-  dns_blurb_mullvad: 'Integritetsfokuserad, ingen filtrering',
   dns_blurb_google: 'Ingen filtrering',
   dns_blurb_quad9: 'Blockerar kända skadliga webbplatser',
   dns_blurb_dns4eu: 'EU-baserad, blockerar skadlig kod och nätfiske',

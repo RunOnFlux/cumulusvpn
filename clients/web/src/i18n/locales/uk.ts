@@ -200,7 +200,6 @@ export const uk: Catalog = {
   dns_summary_title: 'DNS-провайдер',
   dns_default: 'За замовчуванням',
   dns_blurb_cloudflare: 'Швидкий, без фільтрації',
-  dns_blurb_mullvad: 'Орієнтований на приватність, без фільтрації',
   dns_blurb_google: 'Без фільтрації',
   dns_blurb_quad9: 'Блокує відомі шкідливі сайти',
   dns_blurb_dns4eu: 'Працює в ЄС, блокує шкідливе ПЗ і фішинг',

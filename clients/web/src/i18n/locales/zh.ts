@@ -186,7 +186,6 @@ export const zh: Catalog = {
   dns_summary_title: 'DNS 服务商',
   dns_default: '默认',
   dns_blurb_cloudflare: '快速，不过滤',
-  dns_blurb_mullvad: '注重隐私，不过滤',
   dns_blurb_google: '不过滤',
   dns_blurb_quad9: '拦截已知恶意网站',
   dns_blurb_dns4eu: '位于欧盟，拦截恶意软件和网络钓鱼',

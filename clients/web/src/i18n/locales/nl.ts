@@ -196,7 +196,6 @@ export const nl: Catalog = {
   dns_summary_title: 'DNS-provider',
   dns_default: 'Standaard',
   dns_blurb_cloudflare: 'Snel, geen filtering',
-  dns_blurb_mullvad: 'Privacygericht, geen filtering',
   dns_blurb_google: 'Geen filtering',
   dns_blurb_quad9: 'Blokkeert bekende kwaadaardige sites',
   dns_blurb_dns4eu: 'Gevestigd in de EU, blokkeert malware en phishing',

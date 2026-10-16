@@ -198,7 +198,6 @@ export const es: Catalog = {
   dns_summary_title: 'Proveedor de DNS',
   dns_default: 'Predeterminado',
   dns_blurb_cloudflare: 'Rápido, sin filtrado',
-  dns_blurb_mullvad: 'Centrado en la privacidad, sin filtrado',
   dns_blurb_google: 'Sin filtrado',
   dns_blurb_quad9: 'Bloquea sitios maliciosos conocidos',
   dns_blurb_dns4eu: 'Con sede en la UE, bloquea malware y phishing',

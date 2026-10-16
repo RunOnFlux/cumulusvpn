@@ -205,7 +205,6 @@ export const ar: Catalog = {
   dns_summary_title: 'مزوّد DNS',
   dns_default: 'افتراضي',
   dns_blurb_cloudflare: 'سريع، بلا تصفية',
-  dns_blurb_mullvad: 'يركّز على الخصوصية، بلا تصفية',
   dns_blurb_google: 'بلا تصفية',
   dns_blurb_quad9: 'يحظر المواقع الضارة المعروفة',
   dns_blurb_dns4eu: 'مقرّه الاتحاد الأوروبي، يحظر البرمجيات الضارة والتصيّد',

@@ -196,7 +196,6 @@ export const fi: Catalog = {
   dns_summary_title: 'DNS-palveluntarjoaja',
   dns_default: 'Oletus',
   dns_blurb_cloudflare: 'Nopea, ei suodatusta',
-  dns_blurb_mullvad: 'Yksityisyyteen keskittyvä, ei suodatusta',
   dns_blurb_google: 'Ei suodatusta',
   dns_blurb_quad9: 'Estää tunnetut haitalliset sivustot',
   dns_blurb_dns4eu: 'EU:ssa toimiva, estää haittaohjelmat ja tietojenkalastelun',

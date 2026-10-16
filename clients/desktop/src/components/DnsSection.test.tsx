@@ -11,15 +11,12 @@ describe('<DnsSection />', () => {
   it('lists the providers with what each blocks, the default marked and chosen', () => {
     render(<DnsSection />);
     const radios = screen.getAllByRole('radio');
-    expect(radios).toHaveLength(7);
+    expect(radios).toHaveLength(6);
     expect(screen.getByRole('radiogroup', { name: 'DNS provider' })).toBeTruthy();
 
     const cloudflare = screen.getByRole('radio', { name: /^Cloudflare\s*Default/ });
     expect(cloudflare).toBeChecked();
     expect(screen.getByRole('radio', { name: /Quad9.*Blocks known malicious sites/ })).toBeTruthy();
-    expect(
-      screen.getByRole('radio', { name: /Mullvad DNS.*Privacy-focused, no filtering/ }),
-    ).toBeTruthy();
     expect(screen.getByRole('radio', { name: /Google Public DNS.*No filtering/ })).toBeTruthy();
     expect(
       screen.getByRole('radio', { name: /DNS4EU.*EU-based, blocks malware and phishing/ }),

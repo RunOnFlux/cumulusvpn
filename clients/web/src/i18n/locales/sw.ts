@@ -199,7 +199,6 @@ export const sw: Catalog = {
   dns_summary_title: 'Mtoa huduma wa DNS',
   dns_default: 'Chaguo-msingi',
   dns_blurb_cloudflare: 'Haraka, bila kuchuja',
-  dns_blurb_mullvad: 'Inazingatia faragha, bila kuchuja',
   dns_blurb_google: 'Bila kuchuja',
   dns_blurb_quad9: 'Huzuia tovuti hasidi zinazojulikana',
   dns_blurb_dns4eu: 'Iko EU, huzuia programu hasidi na hadaa',

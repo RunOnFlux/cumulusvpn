@@ -190,7 +190,6 @@ export const ko: Catalog = {
   dns_summary_title: 'DNS 제공업체',
   dns_default: '기본값',
   dns_blurb_cloudflare: '빠름, 필터링 없음',
-  dns_blurb_mullvad: '개인정보 보호 중심, 필터링 없음',
   dns_blurb_google: '필터링 없음',
   dns_blurb_quad9: '알려진 악성 사이트 차단',
   dns_blurb_dns4eu: 'EU 기반, 악성코드 및 피싱 차단',

@@ -199,7 +199,6 @@ export const el: Catalog = {
   dns_summary_title: 'Πάροχος DNS',
   dns_default: 'Προεπιλογή',
   dns_blurb_cloudflare: 'Γρήγορος, χωρίς φιλτράρισμα',
-  dns_blurb_mullvad: 'Με έμφαση στην ιδιωτικότητα, χωρίς φιλτράρισμα',
   dns_blurb_google: 'Χωρίς φιλτράρισμα',
   dns_blurb_quad9: 'Μπλοκάρει γνωστούς κακόβουλους ιστότοπους',
   dns_blurb_dns4eu: 'Με έδρα την ΕΕ, μπλοκάρει κακόβουλο λογισμικό και phishing',

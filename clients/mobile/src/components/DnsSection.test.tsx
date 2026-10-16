@@ -46,7 +46,6 @@ describe('<DnsSection />', () => {
     const rows = radios(tree);
     expect(rows.map((r) => r.props.accessibilityLabel)).toEqual([
       'Cloudflare, default. Fast, no filtering',
-      'Mullvad DNS. Privacy-focused, no filtering',
       'Google Public DNS. No filtering',
       'Quad9. Blocks known malicious sites',
       'DNS4EU. EU-based, blocks malware and phishing',
@@ -55,7 +54,6 @@ describe('<DnsSection />', () => {
     ]);
     expect(rows.map((r) => r.props.accessibilityState.selected)).toEqual([
       true,
-      false,
       false,
       false,
       false,
@@ -72,11 +70,11 @@ describe('<DnsSection />', () => {
   it('shows the stored choice and persists a new one', async () => {
     await AsyncStorage.setItem('cvpn:dnsChoice', 'quad9');
     const tree = await render(false);
-    expect(radios(tree)[3]!.props.accessibilityState.selected).toBe(true);
+    expect(radios(tree)[2]!.props.accessibilityState.selected).toBe(true);
     await act(async () => {
-      radios(tree)[5]!.props.onPress();
+      radios(tree)[4]!.props.onPress();
     });
-    expect(radios(tree)[5]!.props.accessibilityState.selected).toBe(true);
+    expect(radios(tree)[4]!.props.accessibilityState.selected).toBe(true);
     await expect(loadDnsChoice()).resolves.toBe('adguard');
     act(() => tree.unmount());
   });
@@ -84,7 +82,7 @@ describe('<DnsSection />', () => {
   it('reports a change once it is saved, but not a re-tap of the current choice', async () => {
     const onChange = jest.fn(async () => {
       // The reconnect this triggers must already see the new choice.
-      await expect(loadDnsChoice()).resolves.toBe('mullvad');
+      await expect(loadDnsChoice()).resolves.toBe('google');
     });
     const tree = await render(true, onChange);
     await act(async () => {

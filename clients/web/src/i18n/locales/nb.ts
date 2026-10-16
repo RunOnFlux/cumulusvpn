@@ -194,7 +194,6 @@ export const nb: Catalog = {
   dns_summary_title: 'DNS-leverandør',
   dns_default: 'Standard',
   dns_blurb_cloudflare: 'Rask, ingen filtrering',
-  dns_blurb_mullvad: 'Personvernfokusert, ingen filtrering',
   dns_blurb_google: 'Ingen filtrering',
   dns_blurb_quad9: 'Blokkerer kjente skadelige nettsteder',
   dns_blurb_dns4eu: 'EU-basert, blokkerer skadevare og phishing',
