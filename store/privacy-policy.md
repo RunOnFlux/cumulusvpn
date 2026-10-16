@@ -1,6 +1,6 @@
 # CumulusVPN Privacy Policy
 
-**Last updated: 14 October 2026**
+**Last updated: 16 October 2026**
 **Effective date: 16 July 2026**
 
 CumulusVPN is a decentralized VPN service. This policy explains, in plain language, exactly
@@ -108,10 +108,11 @@ browsing. When your session ends, it is not retained.
 ### 4.4 DNS
 DNS look-ups are resolved on your behalf through the encrypted tunnel so your local network and
 ISP cannot see them. The gateway then sends each one on encrypted, as DNS over HTTPS, to
-Cloudflare's public resolver (1.1.1.1) or to the one you choose (Quad9, AdGuard DNS or Cloudflare
-for Families). The resolver sees only the gateway's IP address, never yours. If the encrypted
-connection to it fails, the gateway falls back to ordinary DNS to the same resolver. We do not keep
-DNS query logs.
+Cloudflare's public resolver (1.1.1.1) or to the one you choose (Mullvad DNS, Google Public DNS,
+Quad9, DNS4EU, AdGuard DNS or Cloudflare for Families). The resolver sees only the gateway's IP
+address, never yours. If the encrypted connection to it fails, the gateway falls back to ordinary
+DNS to the same resolver, except for Mullvad DNS, which accepts only encrypted look-ups. We do not
+keep DNS query logs.
 
 ### 4.5 What gateway operators can and cannot see
 Gateways run on Flux nodes owned and operated by independent third-party node operators, not

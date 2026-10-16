@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacidad por diseño</span>
     <h1>Política de privacidad</h1>
-    <p class="doc-meta">Última actualización: 14 de octubre de 2026 · Vigente desde: 14 de agosto de 2026</p>
+    <p class="doc-meta">Última actualización: 16 de octubre de 2026 · Vigente desde: 14 de agosto de 2026</p>
 
   <p class="doc-meta">Esta traducción se ofrece por comodidad; la versión en inglés en cumulusvpn.com/privacy es la
       autoritativa.</p>
@@ -170,7 +170,7 @@
       navegación. Cuando tu sesión termina, no se conserva.</p>
     <h3>4.4 DNS</h3>
     <p>Las consultas DNS se resuelven en tu nombre a través del túnel cifrado, de modo que tu red local y tu ISP
-      no pueden verlas. Después, el gateway reenvía cada una cifrada, como DNS over HTTPS, al resolutor público de Cloudflare (1.1.1.1) o al que elijas (Quad9, AdGuard DNS o Cloudflare for Families). El resolutor solo ve la dirección IP del gateway, nunca la tuya. Si la conexión cifrada con él falla, el gateway recurre al DNS ordinario con ese mismo resolutor. No guardamos registros de consultas DNS.</p>
+      no pueden verlas. Después, el gateway reenvía cada una cifrada, como DNS over HTTPS, al resolutor público de Cloudflare (1.1.1.1) o al que elijas (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS o Cloudflare for Families). El resolutor solo ve la dirección IP del gateway, nunca la tuya. Si la conexión cifrada con él falla, el gateway recurre al DNS ordinario con ese mismo resolutor, salvo con Mullvad DNS, que solo acepta consultas cifradas. No guardamos registros de consultas DNS.</p>
     <h3>4.5 Cómo tu app llega a los gateways</h3>
     <p>Tu app descubre gateways y lee su estado llamando directamente a la API de control de cada gateway.
       Esas respuestas están <strong>firmadas con la clave ed25519 del gateway y verificadas por la app</strong>,

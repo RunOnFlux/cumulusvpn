@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy door architectuur</span>
     <h1>Privacybeleid</h1>
-    <p class="doc-meta">Laatst bijgewerkt: 14 oktober 2026 · Van kracht: 14 augustus 2026</p>
+    <p class="doc-meta">Laatst bijgewerkt: 16 oktober 2026 · Van kracht: 14 augustus 2026</p>
 
   <p class="doc-meta">Deze vertaling wordt aangeboden voor het gemak; de Engelse versie op cumulusvpn.com/privacy is leidend.</p>
   </div>
@@ -170,7 +170,7 @@
       surfgedrag. Als je sessie eindigt, wordt het niet bewaard.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-opzoekingen worden namens jou opgelost via de versleutelde tunnel, zodat je lokale netwerk en provider
-      ze niet kunnen zien. De gateway stuurt elke opzoeking vervolgens versleuteld, als DNS over HTTPS, door naar de openbare resolver van Cloudflare (1.1.1.1) of naar die van jouw keuze (Quad9, AdGuard DNS of Cloudflare for Families). De resolver ziet alleen het IP-adres van de gateway, nooit het jouwe. Mislukt de versleutelde verbinding ermee, dan valt de gateway terug op gewone DNS naar dezelfde resolver. We houden geen logs van DNS-verzoeken bij.</p>
+      ze niet kunnen zien. De gateway stuurt elke opzoeking vervolgens versleuteld, als DNS over HTTPS, door naar de openbare resolver van Cloudflare (1.1.1.1) of naar die van jouw keuze (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS of Cloudflare for Families). De resolver ziet alleen het IP-adres van de gateway, nooit het jouwe. Mislukt de versleutelde verbinding ermee, dan valt de gateway terug op gewone DNS naar dezelfde resolver, behalve bij Mullvad DNS, dat alleen versleutelde opzoekingen accepteert. We houden geen logs van DNS-verzoeken bij.</p>
     <h3>4.5 Hoe je app de gateways bereikt</h3>
     <p>Je app ontdekt gateways en leest hun status door rechtstreeks de control-API van elke gateway aan te roepen.
       Die antwoorden zijn <strong>ondertekend met de ed25519-sleutel van de gateway en worden geverifieerd door de app</strong>,

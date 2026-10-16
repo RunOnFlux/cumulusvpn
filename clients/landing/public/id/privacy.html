@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privasi lewat arsitektur</span>
     <h1>Kebijakan Privasi</h1>
-    <p class="doc-meta">Terakhir diperbarui: 14 Oktober 2026 · Berlaku: 14 Agustus 2026</p>
+    <p class="doc-meta">Terakhir diperbarui: 16 Oktober 2026 · Berlaku: 14 Agustus 2026</p>
 
   <p class="doc-meta">Terjemahan ini disediakan untuk kemudahan; versi bahasa Inggris di cumulusvpn.com/privacy adalah yang otoritatif.</p>
   </div>
@@ -130,7 +130,7 @@
     <h3>4.3 Alamat IP asli Anda, secara sementara</h3>
     <p>Untuk membawa trafik Anda, gateway pasti melihat alamat IP asal koneksi Anda, pada saat itu juga, di lapisan jaringan — begitulah cara kerja server internet mana pun. CumulusVPN <strong>tidak</strong> mencatat alamat ini ke penyimpanan permanen mana pun, dan tidak mengaitkannya dengan aktivitas browsing Anda. Saat sesi Anda berakhir, alamat ini tidak disimpan.</p>
     <h3>4.4 DNS</h3>
-    <p>Pencarian DNS diselesaikan atas nama Anda lewat tunnel terenkripsi sehingga jaringan lokal dan ISP Anda tidak bisa melihatnya. Gateway lalu meneruskan setiap pencarian dalam keadaan terenkripsi, sebagai DNS over HTTPS, ke resolver publik Cloudflare (1.1.1.1) atau ke resolver pilihan Anda (Quad9, AdGuard DNS, atau Cloudflare for Families). Resolver hanya melihat alamat IP gateway, tidak pernah alamat Anda. Jika koneksi terenkripsi ke resolver itu gagal, gateway beralih ke DNS biasa ke resolver yang sama. Kami tidak menyimpan log kueri DNS.</p>
+    <p>Pencarian DNS diselesaikan atas nama Anda lewat tunnel terenkripsi sehingga jaringan lokal dan ISP Anda tidak bisa melihatnya. Gateway lalu meneruskan setiap pencarian dalam keadaan terenkripsi, sebagai DNS over HTTPS, ke resolver publik Cloudflare (1.1.1.1) atau ke resolver pilihan Anda (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS, atau Cloudflare for Families). Resolver hanya melihat alamat IP gateway, tidak pernah alamat Anda. Jika koneksi terenkripsi ke resolver itu gagal, gateway beralih ke DNS biasa ke resolver yang sama, kecuali untuk Mullvad DNS, yang hanya menerima pencarian terenkripsi. Kami tidak menyimpan log kueri DNS.</p>
     <h3>4.5 Bagaimana aplikasi Anda menjangkau gateway</h3>
     <p>Aplikasi Anda menemukan gateway dan membaca statusnya dengan memanggil control API setiap gateway secara langsung. Respons tersebut <strong>ditandatangani dengan kunci ed25519 milik gateway dan diverifikasi oleh aplikasi</strong>, sehingga upaya perusakan dapat terdeteksi meskipun kanal kontrolnya sendiri berupa koneksi biasa — jaminan integritasnya berasal dari tanda tangan, bukan dari sertifikat. Trafik internet Anda yang sebenarnya terpisah dan <strong>terenkripsi end-to-end oleh WireGuard</strong> antara perangkat Anda dan gateway.</p>
     <h3>4.6 Apa yang bisa dan tidak bisa dilihat operator gateway</h3>

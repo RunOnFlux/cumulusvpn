@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Yksityisyys arkkitehtuurin ansiosta</span>
     <h1>Tietosuojaseloste</h1>
-    <p class="doc-meta">Viimeksi päivitetty: 14. lokakuuta 2026 · Voimassa: 14. elokuuta 2026</p>
+    <p class="doc-meta">Viimeksi päivitetty: 16. lokakuuta 2026 · Voimassa: 14. elokuuta 2026</p>
 
   <p class="doc-meta">Tämä käännös on tarjottu käytön helpottamiseksi; englanninkielinen versio osoitteessa cumulusvpn.com/privacy on virallisesti pätevä.</p>
   </div>
@@ -129,7 +129,7 @@
     <h3>4.3 Todellinen IP-osoitteesi, hetkellisesti</h3>
     <p>Voidakseen välittää liikennettäsi yhdyskäytävä väistämättä näkee IP-osoitteen, josta yhteytesi saapuu, sillä hetkellä, verkkokerroksella — näin mikä tahansa internet-palvelin toimii. CumulusVPN <strong>ei</strong> tallenna tätä osoitetta mihinkään pysyvään tallennustilaan eikä yhdistä sitä selailuusi. Kun istuntosi päättyy, sitä ei säilytetä.</p>
     <h3>4.4 DNS</h3>
-    <p>DNS-haut ratkaistaan puolestasi salatun tunnelin kautta, joten paikallinen verkkosi ja operaattorisi eivät näe niitä. Yhdyskäytävä välittää sitten jokaisen niistä salattuna, DNS over HTTPS -protokollalla, Cloudflaren julkiselle nimipalvelimelle (1.1.1.1) tai valitsemallesi nimipalvelimelle (Quad9, AdGuard DNS tai Cloudflare for Families). Nimipalvelin näkee vain yhdyskäytävän IP-osoitteen – ei koskaan sinun osoitettasi. Jos salattu yhteys siihen epäonnistuu, yhdyskäytävä turvautuu tavalliseen DNS:ään saman nimipalvelimen kanssa. Emme pidä lokia DNS-kyselyistä.</p>
+    <p>DNS-haut ratkaistaan puolestasi salatun tunnelin kautta, joten paikallinen verkkosi ja operaattorisi eivät näe niitä. Yhdyskäytävä välittää sitten jokaisen niistä salattuna, DNS over HTTPS -protokollalla, Cloudflaren julkiselle nimipalvelimelle (1.1.1.1) tai valitsemallesi nimipalvelimelle (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS tai Cloudflare for Families). Nimipalvelin näkee vain yhdyskäytävän IP-osoitteen – ei koskaan sinun osoitettasi. Jos salattu yhteys siihen epäonnistuu, yhdyskäytävä turvautuu tavalliseen DNS:ään saman nimipalvelimen kanssa, paitsi Mullvad DNS:n kohdalla, joka hyväksyy vain salatut haut. Emme pidä lokia DNS-kyselyistä.</p>
     <h3>4.5 Miten sovelluksesi tavoittaa yhdyskäytävät</h3>
     <p>Sovelluksesi löytää yhdyskäytävät ja lukee niiden tilan kutsumalla kunkin yhdyskäytävän ohjaus-API:a suoraan. Nämä vastaukset ovat <strong>allekirjoitettuja yhdyskäytävän ed25519-avaimella ja sovellus varmentaa ne</strong>, joten peukalointi havaitaan, vaikka itse ohjauskanava onkin tavallinen yhteys — eheyden takaa allekirjoitus, ei varmenne. Varsinainen internet-liikenteesi on erillistä ja <strong>WireGuardin päästä päähän salaamaa</strong> laitteesi ja yhdyskäytävän välillä.</p>
     <h3>4.6 Mitä yhdyskäytävien operaattorit näkevät ja mitä eivät</h3>

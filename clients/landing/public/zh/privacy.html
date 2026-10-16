@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">架构层面的隐私</span>
     <h1>隐私政策</h1>
-    <p class="doc-meta">最近更新：2026年10月14日 · 生效日期：2026年8月14日</p>
+    <p class="doc-meta">最近更新：2026年10月16日 · 生效日期：2026年8月14日</p>
 
   <p class="doc-meta">本译文仅为方便阅读而提供；cumulusvpn.com/privacy 上的英文版本为准。</p>
   </div>
@@ -164,7 +164,7 @@
       持久化存储中，也不会将其与你的浏览行为关联。当你的会话结束时，它不会被保留。</p>
     <h3>4.4 DNS</h3>
     <p>DNS 查询会通过加密隧道代你解析，使你的本地网络和 ISP
-      无法看到它们。随后网关会将每一次查询以加密方式（DNS over HTTPS）转发至 Cloudflare 的公共解析器（1.1.1.1）或你选择的解析器（Quad9、AdGuard DNS 或 Cloudflare for Families）。解析器只能看到网关的 IP 地址，永远看不到你的地址。如果与它的加密连接失败，网关会改用普通 DNS 连接同一个解析器。我们不保留 DNS 查询日志。</p>
+      无法看到它们。随后网关会将每一次查询以加密方式（DNS over HTTPS）转发至 Cloudflare 的公共解析器（1.1.1.1）或你选择的解析器（Mullvad DNS、Google Public DNS、Quad9、DNS4EU、AdGuard DNS 或 Cloudflare for Families）。解析器只能看到网关的 IP 地址，永远看不到你的地址。如果与它的加密连接失败，网关会改用普通 DNS 连接同一个解析器，但 Mullvad DNS 除外，因为它只接受加密查询。我们不保留 DNS 查询日志。</p>
     <h3>4.5 你的应用如何联系网关</h3>
     <p>你的应用会直接调用每个网关的控制 API，以发现网关并读取其状态。
       这些响应会<strong>使用网关的 ed25519 密钥签名，并由应用进行验证</strong>，

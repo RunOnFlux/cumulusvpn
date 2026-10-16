@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Quyền riêng tư từ kiến trúc</span>
     <h1>Chính sách quyền riêng tư</h1>
-    <p class="doc-meta">Cập nhật lần cuối: 14 tháng 10 năm 2026 · Có hiệu lực: 14 tháng 8 năm 2026</p>
+    <p class="doc-meta">Cập nhật lần cuối: 16 tháng 10 năm 2026 · Có hiệu lực: 14 tháng 8 năm 2026</p>
 
   <p class="doc-meta">Bản dịch này được cung cấp để thuận tiện; phiên bản tiếng Anh tại cumulusvpn.com/privacy có giá trị pháp lý cao nhất.</p>
   </div>
@@ -166,7 +166,7 @@
       kho lưu trữ vĩnh viễn nào, và không liên kết nó với việc lướt web của bạn. Khi phiên của bạn kết thúc, nó không được giữ lại.</p>
     <h3>4.4 DNS</h3>
     <p>Việc tra cứu DNS được phân giải thay bạn qua tunnel đã mã hóa để mạng cục bộ và ISP của bạn
-      không thể thấy chúng. Sau đó gateway chuyển tiếp từng truy vấn ở dạng mã hóa, bằng DNS over HTTPS, tới resolver công khai của Cloudflare (1.1.1.1) hoặc resolver do bạn chọn (Quad9, AdGuard DNS hoặc Cloudflare for Families). Resolver chỉ thấy địa chỉ IP của gateway, không bao giờ thấy địa chỉ của bạn. Nếu kết nối mã hóa tới resolver đó thất bại, gateway sẽ chuyển sang dùng DNS thông thường tới chính resolver đó. Chúng tôi không lưu log truy vấn DNS.</p>
+      không thể thấy chúng. Sau đó gateway chuyển tiếp từng truy vấn ở dạng mã hóa, bằng DNS over HTTPS, tới resolver công khai của Cloudflare (1.1.1.1) hoặc resolver do bạn chọn (Mullvad DNS, Google Public DNS, Quad9, DNS4EU, AdGuard DNS hoặc Cloudflare for Families). Resolver chỉ thấy địa chỉ IP của gateway, không bao giờ thấy địa chỉ của bạn. Nếu kết nối mã hóa tới resolver đó thất bại, gateway sẽ chuyển sang dùng DNS thông thường tới chính resolver đó, ngoại trừ Mullvad DNS, vốn chỉ chấp nhận các truy vấn đã mã hóa. Chúng tôi không lưu log truy vấn DNS.</p>
     <h3>4.5 Cách ứng dụng của bạn kết nối đến các gateway</h3>
     <p>Ứng dụng của bạn khám phá gateway và đọc trạng thái của chúng bằng cách gọi trực tiếp control API của từng gateway.
       Các phản hồi đó <strong>được ký bằng khóa ed25519 của gateway và được ứng dụng xác minh</strong>,
