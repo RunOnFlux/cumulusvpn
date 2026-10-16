@@ -85,9 +85,9 @@ defaults:
   # and still reports version "0.4.0" in /v1/info — tell it apart by build_commit.
   # 0.4.2 (2026-10-13) answers peers' DNS in the gateway and sends it on as DNS
   # over HTTPS (docs/03 "DNS"); /v1/info reports version "0.4.2" and `dns`.
-  # 0.4.3 (2026-10-16) adds Mullvad DNS (DoH only, no plain fallback) and
-  # DNS4EU; the apps may offer Mullvad only once every gateway runs it.
-  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.4.3'
+  # 0.4.3 (2026-10-16) adds DNS4EU. 0.4.4 (2026-10-16): Quad9 answers
+  # 194.242.2.2, Mullvad's DNS, which Mullvad shuts down by 2026-11-02.
+  repotag: 'ghcr.io/runonflux/cumulusvpn-gateway:0.4.4'
   # nodes: []                         # optional: pin to specific enterprise node txhash:idx for hard geo control
 
 countries:
