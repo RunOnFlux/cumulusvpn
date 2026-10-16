@@ -13,32 +13,36 @@ type Provider struct {
 	// to, and also what the gateway dials for DoH, so no bootstrap lookup of
 	// Host is ever needed (the node's own resolver is never consulted).
 	Addrs []netip.Addr
-	// DoHOnly marks a resolver that doesn't answer ordinary DNS at all. Its
-	// lookups never fall back: a failed DoH attempt fails the lookup, and the
-	// failure breaker never skips DoH (there is nothing to skip to).
-	DoHOnly bool
+	// Retired are addresses of resolvers that have shut down, now answered
+	// by this provider, so clients still configured for them (an older app
+	// build, a downloaded config) keep resolving instead of timing out. They
+	// are intercepted but never dialed; the plain fallback goes to Addrs.
+	Retired []netip.Addr
 }
 
 // Providers are the resolvers the gateway encrypts lookups to. A client picks
 // one simply by its address (the tunnel's DNS = setting): a lookup sent to
 // 9.9.9.9 is answered by Quad9 over DoH, one sent to 1.1.1.1 by Cloudflare.
 // Each entry was checked to serve DoH over HTTP/2 on every one of its Addrs
-// with Host as the TLS name (2026-10-13; Mullvad and DNS4EU 2026-10-16).
+// with Host as the TLS name (2026-10-13; DNS4EU 2026-10-16).
 var Providers = []Provider{
 	// The default: the fleet advertises 1.1.1.1 in every enroll response.
 	{Name: "cloudflare", Host: "cloudflare-dns.com", Addrs: addrs("1.1.1.1", "1.0.0.1")},
 	// Cloudflare for Families: malware blocking, then malware + adult content.
 	{Name: "cloudflare-security", Host: "security.cloudflare-dns.com", Addrs: addrs("1.1.1.2", "1.0.0.2")},
 	{Name: "cloudflare-family", Host: "family.cloudflare-dns.com", Addrs: addrs("1.1.1.3", "1.0.0.3")},
-	// Quad9: Swiss non-profit, blocks known-malicious domains.
-	{Name: "quad9", Host: "dns.quad9.net", Addrs: addrs("9.9.9.9", "149.112.112.112")},
+	// Quad9: Swiss non-profit, blocks known-malicious domains. It also takes
+	// over 194.242.2.2, Mullvad's encrypted DNS: Mullvad shuts it down by
+	// 2 November 2026 and points its users to Quad9. Mobile 1.3.1 and web
+	// configs made 2026-10-16 may still send lookups there.
+	{
+		Name: "quad9", Host: "dns.quad9.net", Addrs: addrs("9.9.9.9", "149.112.112.112"),
+		Retired: addrs("194.242.2.2"),
+	},
 	// AdGuard DNS: blocks ads and trackers.
 	{Name: "adguard", Host: "dns.adguard-dns.com", Addrs: addrs("94.140.14.14", "94.140.15.15")},
 	// Google Public DNS: no filtering. Also what many apps hard-code.
 	{Name: "google", Host: "dns.google", Addrs: addrs("8.8.8.8", "8.8.4.4")},
-	// Mullvad DNS: no logging, no filtering. It serves only encrypted DNS
-	// (nothing on port 53), so it needs gateway 0.4.3+ to resolve at all.
-	{Name: "mullvad", Host: "dns.mullvad.net", Addrs: addrs("194.242.2.2"), DoHOnly: true},
 	// DNS4EU Protective: EU-run (GDPR), blocks malware and phishing.
 	{Name: "dns4eu", Host: "protective.joindns4.eu", Addrs: addrs("86.54.11.1", "86.54.11.201")},
 }

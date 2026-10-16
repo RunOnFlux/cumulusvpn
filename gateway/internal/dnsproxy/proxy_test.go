@@ -19,6 +19,9 @@ import (
 // documentation space, so nothing real ever answers it.
 var testResolver = netip.MustParseAddr("192.0.2.53")
 
+// testRetired is a shut-down resolver's address that testResolver took over.
+var testRetired = netip.MustParseAddr("192.0.2.54")
+
 // buildQuery makes a wire-format A query for name; udpSize > 0 adds an EDNS
 // OPT record advertising that UDP payload size.
 func buildQuery(t *testing.T, id uint16, name string, udpSize int) []byte {
@@ -123,10 +126,13 @@ func newTestProxy(t *testing.T, srv *httptest.Server, plain func(context.Context
 	}
 	return New(Options{
 		// httptest's certificate is issued for example.com.
-		Providers: []Provider{{Name: "test", Host: "example.com", Addrs: []netip.Addr{testResolver}}},
-		RootCAs:   roots,
-		DialAddr:  func(netip.Addr) string { return addr },
-		Plain:     plain,
+		Providers: []Provider{{
+			Name: "test", Host: "example.com",
+			Addrs: []netip.Addr{testResolver}, Retired: []netip.Addr{testRetired},
+		}},
+		RootCAs:  roots,
+		DialAddr: func(netip.Addr) string { return addr },
+		Plain:    plain,
 	})
 }
 
@@ -196,27 +202,35 @@ func TestBreakerSkipsDoHAfterRepeatedFailures(t *testing.T) {
 	}
 }
 
-func TestDoHOnlyProviderNeverFallsBack(t *testing.T) {
-	srv, hits := dohServer(t, func(w http.ResponseWriter, _ *http.Request) {
+func TestRetiredResolverIsAnsweredByItsSuccessor(t *testing.T) {
+	q := buildQuery(t, 9, "example.org.", 0)
+
+	srv, hits := dohServer(t, answeringDoH(t, 1))
+	p := newTestProxy(t, srv, nil)
+	if !p.Handles(testRetired) {
+		t.Fatal("the retired address is not intercepted")
+	}
+	if _, err := p.Exchange(context.Background(), testRetired, q); err != nil {
+		t.Fatalf("Exchange: %v", err)
+	}
+	if hits.Load() != 1 {
+		t.Fatalf("DoH requests = %d, want 1 (to the successor)", hits.Load())
+	}
+
+	// The retired resolver answers nothing, so the fallback asks the successor.
+	down, _ := dohServer(t, func(w http.ResponseWriter, _ *http.Request) {
 		http.Error(w, "nope", http.StatusBadGateway)
 	})
-	p := newTestProxy(t, srv, nil) // the plain stub fails the test if used
-	for _, u := range p.upstreams {
-		u.dohOnly = true
+	var plainDst netip.Addr
+	p = newTestProxy(t, down, func(_ context.Context, dst netip.Addr, query []byte) ([]byte, error) {
+		plainDst = dst
+		return buildAnswer(t, query, 1), nil
+	})
+	if _, err := p.Exchange(context.Background(), testRetired, q); err != nil {
+		t.Fatalf("Exchange: %v", err)
 	}
-	// Past the breaker's trip count DoH is still tried every time: skipping it
-	// would only fail faster, and the first lookup after an outage should work.
-	n := breakerTrips + 3
-	for i := 0; i < n; i++ {
-		if _, err := p.Exchange(context.Background(), testResolver, buildQuery(t, uint16(i), "example.org.", 0)); err == nil {
-			t.Fatalf("Exchange %d succeeded, want the DoH failure", i)
-		}
-	}
-	if got := hits.Load(); got != int32(n) {
-		t.Fatalf("DoH attempts = %d, want %d (never skipped)", got, n)
-	}
-	if s := p.Stats(); s != (Stats{Failed: uint64(n)}) {
-		t.Fatalf("stats = %+v, want %d failed and no fallbacks", s, n)
+	if plainDst != testResolver {
+		t.Fatalf("fallback went to %v, want the successor %v", plainDst, testResolver)
 	}
 }
 
@@ -325,7 +339,7 @@ func TestProvidersTable(t *testing.T) {
 		if pr.Name == "" || pr.Host == "" || len(pr.Addrs) == 0 {
 			t.Fatalf("incomplete provider %+v", pr)
 		}
-		for _, a := range pr.Addrs {
+		for _, a := range append(append([]netip.Addr(nil), pr.Addrs...), pr.Retired...) {
 			if !a.Is4() || a.IsPrivate() || a.IsLoopback() {
 				t.Fatalf("%s: %v is not a public IPv4 resolver address", pr.Name, a)
 			}
@@ -335,12 +349,11 @@ func TestProvidersTable(t *testing.T) {
 			seen[a] = pr.Name
 		}
 	}
-	// Only Mullvad is known to refuse ordinary DNS; marking a resolver that
-	// does answer it as DoHOnly would throw away its fallback for nothing.
-	for _, pr := range Providers {
-		if pr.DoHOnly != (pr.Name == "mullvad") {
-			t.Fatalf("%s: DoHOnly = %v", pr.Name, pr.DoHOnly)
-		}
+	// Mullvad's encrypted DNS shuts down by 2026-11-02; apps 1.3.1 and web
+	// configs from 2026-10-16 may still use it, so Quad9 must answer it.
+	mullvad := netip.MustParseAddr("194.242.2.2")
+	if p := New(Options{}); !p.Handles(mullvad) || p.replaced[mullvad] != netip.MustParseAddr("9.9.9.9") {
+		t.Fatal("194.242.2.2 (Mullvad, retired) is not answered by Quad9")
 	}
 	// The fleet advertises 1.1.1.1; it must always be encrypted.
 	if !New(Options{}).Handles(netip.MustParseAddr("1.1.1.1")) {

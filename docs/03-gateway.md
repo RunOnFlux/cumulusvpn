@@ -192,9 +192,9 @@ a known public resolver: `internal/dnsproxy` answers them in-process and sends e
 | `1.1.1.1`, `1.0.0.1` (the default) | Cloudflare `cloudflare-dns.com` |
 | `1.1.1.2`, `1.0.0.2` / `1.1.1.3`, `1.0.0.3` | Cloudflare for Families: malware / malware + adult |
 | `9.9.9.9`, `149.112.112.112` | Quad9 `dns.quad9.net` |
+| `194.242.2.2` (0.4.4+) | Quad9, standing in for Mullvad's DNS (retired 2 Nov 2026, see below) |
 | `94.140.14.14`, `94.140.15.15` | AdGuard DNS `dns.adguard-dns.com` (ads + trackers) |
 | `8.8.8.8`, `8.8.4.4` | Google `dns.google` |
-| `194.242.2.2` (0.4.3+) | Mullvad `dns.mullvad.net` (no logging; DoH only — see Fallback) |
 | `86.54.11.1`, `86.54.11.201` (0.4.3+) | DNS4EU Protective `protective.joindns4.eu` (malware + phishing) |
 
 - **Choice by address.** Because the provider follows the destination, a client picks its
@@ -206,9 +206,12 @@ a known public resolver: `internal/dnsproxy` answers them in-process and sends e
   address (availability over strictness); three failures in a row skip DoH for a minute so a
   network that blocks DoH costs one slow lookup per minute, not every lookup.
   `/v1/info` `dns` counts `encrypted` vs `fallbacks`, so a node stuck in fallback is visible.
-  Mullvad answers nothing on port 53, so it has no fallback (`DoHOnly`): its lookups are always
-  tried over DoH and count as `failed` if that fails. Before 0.4.3 a gateway relays them as plain
-  DNS, which Mullvad ignores, so the apps may offer Mullvad only once the fleet runs 0.4.3.
+- **Retired resolvers** (`Provider.Retired`). Mullvad shuts its public DNS down by
+  2 November 2026 and points users to Quad9. Mobile 1.3.1 and web configs made on 2026-10-16
+  offered it (`194.242.2.2`, DoH only — it never answered port 53), so from 0.4.4 Quad9 answers
+  that address, fallback included (plain DNS goes to `9.9.9.9`), and those configs keep working.
+  The web app dropped Mullvad at once and moves a saved Mullvad choice to Quad9; mobile and
+  desktop do the same from their next release after 1.3.1 / 1.4.1.
 - **UDP sizing.** DoH answers can exceed what the client accepts over UDP; they are fitted to the
   client's EDNS size (512 without EDNS, at most 1232) or truncated (TC), and the client's TCP
   retry is answered the same way.
