@@ -903,12 +903,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=42d35f&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=ed29f2&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.4.0"
     "@noble/hashes": "npm:2.4.0"
     "@scure/base": "npm:2.4.0"
-  checksum: 10c0/06001275a8165a48614ae1617d22f7d26886e790a7cae8fb179022a63d7001be38a196acdcee1abecbf6b479fa235f5ba2efd0ac4c5b6df07f2def08afce97ab
+  checksum: 10c0/0d3c23f4ffc3453dc45cefaafeefdea4053d4bae1906df28e45b14380d761988de21588ab22f3b06d974cb39f00d5f5cbdac0a68ec4b2493a1f28fc519c1173c
   languageName: node
   linkType: hard
 
@@ -934,13 +934,13 @@ __metadata:
     jest: "npm:29.7.0"
     prettier: "npm:3.9.10"
     qrcode-generator: "npm:2.0.4"
-    react: "npm:19.2.8"
+    react: "npm:19.2.9"
     react-native: "npm:0.87.1"
     react-native-get-random-values: "npm:2.0.0"
     react-native-iap: "npm:16.0.2"
     react-native-nitro-modules: "npm:0.36.5"
     react-native-safe-area-context: "npm:5.10.1"
-    react-test-renderer: "npm:19.2.8"
+    react-test-renderer: "npm:19.2.9"
     text-encoding-polyfill: "npm:0.6.7"
     typescript: "npm:6.0.3"
     typescript-eslint: "npm:8.71.1"
@@ -5854,10 +5854,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-is@npm:^19.2.8":
-  version: 19.2.8
-  resolution: "react-is@npm:19.2.8"
-  checksum: 10c0/ed5322c84efe035c8fc814b1614ff5ca7fb8c2872a7c045197daf99f9b1bd68f32a2c79ffcbcfcff2fc5d93924ff9f9447400898f5b1534e6302bb0736a257f0
+"react-is@npm:^19.2.9":
+  version: 19.3.1
+  resolution: "react-is@npm:19.3.1"
+  checksum: 10c0/428e02d986d56f1859c57756084489f6d2900fd686905003c405b32f1168738b78772bfa4bb6c706f5ac821199171522c28bf6434281f524f901459390a19606
   languageName: node
   linkType: hard
 
@@ -5963,22 +5963,22 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-test-renderer@npm:19.2.8":
-  version: 19.2.8
-  resolution: "react-test-renderer@npm:19.2.8"
+"react-test-renderer@npm:19.2.9":
+  version: 19.2.9
+  resolution: "react-test-renderer@npm:19.2.9"
   dependencies:
-    react-is: "npm:^19.2.8"
+    react-is: "npm:^19.2.9"
     scheduler: "npm:^0.27.0"
   peerDependencies:
-    react: ^19.2.8
-  checksum: 10c0/3ecb6b68f9658050bbe7f8e04fed58644c5693b1a5a716d78dd4ad9defac184e658f8a153265903e75b438f4aee5a7f2c6a9565ccce8e6321a93bb0237c04e66
+    react: ^19.2.9
+  checksum: 10c0/432e905c01bfba7ad1dda931b6b55ccc63aaf190c0f042a344d9f7d9af4fe53224add7938c4310ac74fe1d0b5fbf32987f508681eb719244406a158369e42d2c
   languageName: node
   linkType: hard
 
-"react@npm:19.2.8":
-  version: 19.2.8
-  resolution: "react@npm:19.2.8"
-  checksum: 10c0/5f86bdb56426652fd6d989d30a6f2e603c057272c47c9ca3a3fbe190a3a39ee9ccce937d63cfc039717abed1b8891d6a499134bc35311acc07eafdacd86537cd
+"react@npm:19.2.9":
+  version: 19.2.9
+  resolution: "react@npm:19.2.9"
+  checksum: 10c0/2177cc3206824d0d18fa2c40bbbfd64f5716d5f932917d1be6863ce2f14555e6df60fa4621a69780f8986f27d5e0d696b0d8d6cac941f45b3bacf1bea2e0f732
   languageName: node
   linkType: hard
 
