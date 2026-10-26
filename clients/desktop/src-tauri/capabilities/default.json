@@ -9,6 +9,14 @@
     "core:window:allow-show",
     "core:window:allow-close",
     "opener:default",
+    {
+      "identifier": "http:default",
+      "allow": [
+        { "url": "http://*:51821/*" },
+        { "url": "http://*:16127/*" },
+        { "url": "https://api.runonflux.io/*" }
+      ]
+    },
     "shell:allow-execute",
     {
       "identifier": "shell:allow-spawn",

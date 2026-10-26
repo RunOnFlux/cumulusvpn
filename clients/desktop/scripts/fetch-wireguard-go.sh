@@ -28,7 +28,9 @@
 set -euo pipefail
 
 # Pinned AmneziaWG module version (AWG-1.5 line). Bump in lockstep with the
-# gateway and wgnest go.mod pins.
+# gateway and wgnest go.mod pins, and check the UAPI paths the desktop tunnel
+# expects (src-tauri/tunnel/src/wggo.rs, uapi_socket_path) against the new
+# version's ipc/uapi_unix.go and ipc/uapi_windows.go.
 AWG_MODULE="github.com/amnezia-vpn/amneziawg-go"
 AWG_VERSION="v0.2.19"
 

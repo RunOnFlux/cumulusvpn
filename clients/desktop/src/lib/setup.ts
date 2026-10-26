@@ -46,14 +46,14 @@ export function setupBanner(state: HelperRegistration, os: DesktopOs): SetupBann
     case 'notNeeded':
       return null;
     case 'elevated':
-      return {
-        text:
-          os === 'windows'
-            ? 'Running as administrator without CumulusVPN’s background service — the VPN stops when the app quits. Reinstall CumulusVPN to run it without administrator rights.'
-            : 'Running as root without CumulusVPN’s background service — the VPN stops when the app quits. Install the .deb or .rpm package to run it without root.',
-        openSettings: false,
-        blocking: false,
-      };
+      // The backend reports `elevated` on Linux only (`backend::choose`).
+      return os === 'linux'
+        ? {
+            text: 'Running as root without CumulusVPN’s background service — the VPN stops when the app quits. Install the .deb or .rpm package to run it without root.',
+            openSettings: false,
+            blocking: false,
+          }
+        : null;
     case 'requiresApproval':
       return block('Allow the CumulusVPN network helper in System Settings to finish setup.', true);
     case 'notFound':

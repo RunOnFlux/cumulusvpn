@@ -4,7 +4,8 @@
 //! (`binaries/wireguard-go-<target-triple>`). It creates a TUN device
 //! (`wintun` on Windows, `utun` on macOS, `/dev/net/tun` on Linux) and exposes
 //! the WireGuard **UAPI** control socket — a Unix domain socket at
-//! `/var/run/wireguard/<iface>.sock` on Unix, or a named pipe on Windows.
+//! `/var/run/amneziawg/<iface>.sock` on Unix, or a named pipe on Windows (see
+//! `uapi_socket_path`).
 //!
 //! We drive it entirely over UAPI: after spawn we open the socket and write a
 //! `set=1` block translated from the `.conf` produced by `@cumulusvpn/core`'s
@@ -17,10 +18,10 @@
 //! [`super::routing`]), and process reaping. **Elevation:** creating a TUN
 //! device and editing the routing table require root/Admin, so this crate runs
 //! inside the privileged `cumulusvpn-helper` daemon (a LaunchDaemon on macOS, a
-//! systemd service on Linux, a LocalSystem service on Windows), or in an app
-//! that is itself elevated. Run unelevated, `spawn` fails cleanly ("needs
-//! elevated privileges"); Windows additionally refuses up front with an
-//! actionable message (`super::ensure_elevated`). The sidecar is found next to
+//! systemd service on Linux, a LocalSystem service on Windows), or on macOS and
+//! Linux in an app that is itself root. Run unprivileged, `spawn` fails
+//! ("needs elevated privileges"); Windows refuses any host but LocalSystem up
+//! front with the reason (`super::ensure_privileged`). The sidecar is found next to
 //! the running executable, which for the daemon is the helper: the installers
 //! put it beside `wireguard-go` (`/usr/bin`, the Windows install directory).
 //!
@@ -325,16 +326,22 @@ fn resolve_wireguard_go() -> Result<PathBuf, TunnelError> {
     Err(TunnelError::Sidecar("wireguard-go binary not found"))
 }
 
-/// Path of the wireguard-go UAPI control endpoint for a device name.
+/// Path of the sidecar's UAPI control endpoint for a device name.
+///
+/// The sidecar is amneziawg-go (`scripts/fetch-wireguard-go.sh`), which serves
+/// UAPI under its own directory: `ipc/uapi_unix.go`
+/// (`socketDirectory = "/var/run/amneziawg"`) and `ipc/uapi_windows.go`
+/// (`ProtectedPrefix\Administrators\AmneziaWG\`). Keep in lockstep with the
+/// pinned `AWG_VERSION`; `the_uapi_path_is_the_sidecars` pins both.
 fn uapi_socket_path(iface: &str) -> PathBuf {
     #[cfg(unix)]
     {
-        PathBuf::from(format!("/var/run/wireguard/{iface}.sock"))
+        PathBuf::from(format!("/var/run/amneziawg/{iface}.sock"))
     }
     #[cfg(windows)]
     {
         PathBuf::from(format!(
-            r"\\.\pipe\ProtectedPrefix\Administrators\WireGuard\{iface}"
+            r"\\.\pipe\ProtectedPrefix\Administrators\AmneziaWG\{iface}"
         ))
     }
 }
@@ -436,33 +443,60 @@ fn reap_orphans_linux(names: &[&str]) {
     }
 }
 
-/// Stop every `wireguard-go.exe` started from our own install. Get-Process
-/// rather than a command-line match: wintun names the adapter exactly as
-/// requested, and nothing but this app runs the copy in our install directory.
+/// `ERROR_PIPE_BUSY`: every instance of the pipe is connected.
+#[cfg(windows)]
+const ERROR_PIPE_BUSY: i32 = 231;
+
+/// How long a UAPI open may wait for a free pipe instance.
+#[cfg(windows)]
+const UAPI_BUSY_WAIT: Duration = Duration::from_secs(2);
+
+/// Open the sidecar's UAPI pipe as a client. The server creates its next
+/// instance only after accepting the previous connection (our own readiness
+/// probe in [`Sidecar::spawn`], or the last exchange), so an open can briefly
+/// find every instance busy. As the sidecar's own dialer does
+/// (`ipc/namedpipe/namedpipe.go`, `tryDialPipe`), retry every 10 ms on
+/// `ERROR_PIPE_BUSY` until a deadline; any other error is returned at once.
+#[cfg(windows)]
+fn open_uapi_pipe(path: &std::path::Path) -> std::io::Result<fs::File> {
+    let deadline = Instant::now() + UAPI_BUSY_WAIT;
+    let mut waited = false;
+    loop {
+        match fs::OpenOptions::new().read(true).write(true).open(path) {
+            Ok(pipe) => {
+                if waited {
+                    eprintln!(
+                        "cumulusvpn-tunnel: UAPI pipe was busy; opened after {:?}",
+                        UAPI_BUSY_WAIT
+                            .saturating_sub(deadline.saturating_duration_since(Instant::now()))
+                    );
+                }
+                return Ok(pipe);
+            }
+            Err(e) if e.raw_os_error() == Some(ERROR_PIPE_BUSY) && Instant::now() < deadline => {
+                waited = true;
+                thread::sleep(Duration::from_millis(10));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+}
+
+/// Log the I/O error behind a UAPI failure; [`TunnelError`] carries the fixed message.
+#[cfg(windows)]
+fn uapi_failure(what: &'static str, e: std::io::Error) -> TunnelError {
+    eprintln!("cumulusvpn-tunnel: {what}: {e}");
+    TunnelError::Uapi(what)
+}
+
+/// Stop every `wireguard-go.exe` running from our own install, matched by its
+/// image path: the copy in our install directory is run by this app alone.
 #[cfg(windows)]
 fn reap_orphans_windows() {
-    use std::os::windows::process::CommandExt;
     let Ok(bin) = resolve_wireguard_go() else {
         return;
     };
-    let script = windows_reap_script(&bin.to_string_lossy());
-    let _ = Command::new("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &script])
-        .creation_flags(super::CREATE_NO_WINDOW)
-        .output();
-}
-
-/// The PowerShell for [`reap_orphans_windows`]. The path is ours (resolved next
-/// to our own executable), but it is quoted as a PowerShell literal anyway.
-/// `-eq` on strings is case-insensitive, as Windows paths are.
-#[cfg_attr(not(windows), allow(dead_code))]
-fn windows_reap_script(bin_path: &str) -> String {
-    let quoted = bin_path.replace('\'', "''");
-    format!(
-        "Get-Process -Name 'wireguard-go' -ErrorAction SilentlyContinue | \
-         Where-Object {{ $_.Path -eq '{quoted}' }} | \
-         Stop-Process -Force -ErrorAction SilentlyContinue"
-    )
+    super::win::process::terminate_image(&bin);
 }
 
 /// The interface name we ask wireguard-go to create.
@@ -587,35 +621,71 @@ impl Sidecar {
         use std::os::windows::process::CommandExt;
 
         let bin = resolve_wireguard_go()?;
+        // wireguard-go's own output (error level) goes to a per-device log,
+        // which records why a start failed.
+        let log_path = std::env::temp_dir().join(format!("cumulusvpn-wireguard-go-{logical}.log"));
+        let log = fs::File::create(&log_path).map_err(|e| {
+            eprintln!(
+                "cumulusvpn-tunnel: cannot create {}: {e}",
+                log_path.display()
+            );
+            TunnelError::Sidecar("cannot create the wireguard-go log file")
+        })?;
+        let log_err = log.try_clone().map_err(|e| {
+            eprintln!(
+                "cumulusvpn-tunnel: cannot share {}: {e}",
+                log_path.display()
+            );
+            TunnelError::Sidecar("cannot create the wireguard-go log file")
+        })?;
+        eprintln!(
+            "cumulusvpn-tunnel: starting {} {logical} (log: {})",
+            bin.display(),
+            log_path.display()
+        );
         let mut child = Command::new(&bin)
             .arg(logical) // windows main: exactly one arg, always foreground
             .env("LOG_LEVEL", "error")
             .creation_flags(super::CREATE_NO_WINDOW) // GUI app: no console flash
             .stdin(Stdio::null())
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
+            .stdout(log)
+            .stderr(log_err)
             .spawn()
-            .map_err(|_| TunnelError::Sidecar("failed to spawn wireguard-go"))?;
+            .map_err(|e| {
+                eprintln!("cumulusvpn-tunnel: cannot spawn {}: {e}", bin.display());
+                TunnelError::Sidecar("failed to spawn wireguard-go")
+            })?;
 
         let uapi_path = uapi_socket_path(logical);
         let deadline = Instant::now() + Duration::from_secs(5);
         loop {
-            if let Ok(Some(_status)) = child.try_wait() {
+            if let Ok(Some(status)) = child.try_wait() {
+                eprintln!(
+                    "cumulusvpn-tunnel: wireguard-go exited during startup ({status}); its output: {}",
+                    fs::read_to_string(&log_path)
+                        .unwrap_or_default()
+                        .trim()
+                );
                 return Err(TunnelError::Sidecar(
-                    "wireguard-go exited during startup (needs Administrator to create the wintun adapter, and wintun.dll next to the app)",
+                    "wireguard-go exited during startup; its error is in the wireguard-go log named in the helper log",
                 ));
             }
-            if fs::OpenOptions::new()
+            let opened = fs::OpenOptions::new()
                 .read(true)
                 .write(true)
-                .open(&uapi_path)
-                .is_ok()
-            {
+                .open(&uapi_path);
+            if opened.is_ok() {
                 break;
             }
             if Instant::now() > deadline {
                 let _ = child.kill();
                 let _ = child.wait();
+                if let Err(e) = opened {
+                    eprintln!(
+                        "cumulusvpn-tunnel: UAPI pipe {} not openable after 5s: {e}",
+                        uapi_path.display()
+                    );
+                }
                 return Err(TunnelError::Sidecar(
                     "wireguard-go started but its UAPI pipe never appeared",
                 ));
@@ -675,8 +745,8 @@ impl Sidecar {
         Ok(String::from_utf8_lossy(&buf).into_owned())
     }
 
-    /// Windows UAPI client. wireguard-go serves UAPI on the byte-mode named
-    /// pipe `\\.\pipe\ProtectedPrefix\Administrators\WireGuard\<iface>`; for
+    /// Windows UAPI client. The sidecar serves UAPI on the byte-mode named
+    /// pipe `\\.\pipe\ProtectedPrefix\Administrators\AmneziaWG\<iface>`; for
     /// our strictly request→response usage a plain synchronous `File` opened
     /// read+write IS a pipe client — no overlapped IO needed. Fresh connection
     /// per exchange, like the Unix client. There is no read timeout (`File`
@@ -687,15 +757,12 @@ impl Sidecar {
     fn uapi_exchange(&self, request: &str) -> Result<String, TunnelError> {
         use std::io::{Read, Write};
 
-        let mut pipe = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&self.uapi_path)
-            .map_err(|_| TunnelError::Uapi("cannot open wireguard-go UAPI pipe"))?;
+        let mut pipe = open_uapi_pipe(&self.uapi_path)
+            .map_err(|e| uapi_failure("cannot open wireguard-go UAPI pipe", e))?;
         pipe.write_all(request.as_bytes())
-            .map_err(|_| TunnelError::Uapi("failed to write UAPI request"))?;
+            .map_err(|e| uapi_failure("failed to write UAPI request", e))?;
         pipe.flush()
-            .map_err(|_| TunnelError::Uapi("failed to flush UAPI request"))?;
+            .map_err(|e| uapi_failure("failed to flush UAPI request", e))?;
 
         let mut buf: Vec<u8> = Vec::with_capacity(1024);
         let mut chunk = [0u8; 1024];
@@ -712,7 +779,7 @@ impl Sidecar {
                 // A broken pipe after (partial) data is the peer going away —
                 // return what we have, mirroring the Unix timeout path.
                 Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => break,
-                Err(_) => return Err(TunnelError::Uapi("failed to read UAPI response")),
+                Err(e) => return Err(uapi_failure("failed to read UAPI response", e)),
             }
         }
         Ok(String::from_utf8_lossy(&buf).into_owned())
@@ -722,11 +789,7 @@ impl Sidecar {
     /// the TUN device up with its address + MTU. wireguard-go configures crypto
     /// only — the interface address, MTU, and routes are the host's job.
     pub fn configure(&self, config: &WgConfig) -> Result<(), TunnelError> {
-        let request = config.to_uapi_set()?;
-        let reply = self.uapi_exchange(&request)?;
-        if !reply.contains("errno=0") {
-            return Err(TunnelError::Uapi("set rejected by wireguard-go"));
-        }
+        self.apply(config)?;
         // Assign the tunnel address + MTU and bring the link up. The catch-all /
         // host routes are installed by the caller (`TunnelManager`) so single-
         // and multi-hop can share this step.
@@ -734,6 +797,22 @@ impl Sidecar {
         // DNS is NOT set here: it is system-wide, and has to wait until the
         // routes point at the tunnel. `TunnelManager` applies it last, for the
         // single-hop device or the multi-hop exit (see `super::dns`).
+        Ok(())
+    }
+
+    /// Send `config` to the device over UAPI `set`.
+    fn apply(&self, config: &WgConfig) -> Result<(), TunnelError> {
+        let request = config.to_uapi_set()?;
+        let reply = self.uapi_exchange(&request)?;
+        if !reply.contains("errno=0") {
+            // The reply is `errno=<n>`; it is logged, and the request, which
+            // holds the private key, stays out of the log.
+            eprintln!(
+                "cumulusvpn-tunnel: wireguard-go rejected the UAPI set: {}",
+                reply.trim()
+            );
+            return Err(TunnelError::Uapi("set rejected by wireguard-go"));
+        }
         Ok(())
     }
 
@@ -790,9 +869,46 @@ impl Drop for Sidecar {
     }
 }
 
+/// The UAPI endpoint is where the pinned amneziawg-go serves it; a mismatch
+/// shows up as a sidecar that starts and a connect that times out waiting for
+/// its control endpoint.
+#[cfg(test)]
+mod uapi_path_tests {
+    use super::uapi_socket_path;
+    use std::path::PathBuf;
+
+    #[test]
+    fn the_uapi_path_is_the_sidecars() {
+        #[cfg(unix)]
+        assert_eq!(
+            uapi_socket_path("cvpn0"),
+            PathBuf::from("/var/run/amneziawg/cvpn0.sock")
+        );
+        #[cfg(windows)]
+        assert_eq!(
+            uapi_socket_path("cvpn0"),
+            PathBuf::from(r"\\.\pipe\ProtectedPrefix\Administrators\AmneziaWG\cvpn0")
+        );
+    }
+
+    /// Only `ERROR_PIPE_BUSY` is waited out; a pipe that does not exist fails
+    /// at once.
+    #[cfg(windows)]
+    #[test]
+    fn a_missing_uapi_pipe_fails_without_waiting() {
+        let started = std::time::Instant::now();
+        let err = super::open_uapi_pipe(std::path::Path::new(
+            r"\\.\pipe\CumulusVPN.test.no-such-uapi-pipe",
+        ))
+        .expect_err("no such pipe");
+        assert_eq!(err.kind(), std::io::ErrorKind::NotFound, "{err}");
+        assert!(started.elapsed() < super::UAPI_BUSY_WAIT / 2);
+    }
+}
+
 #[cfg(test)]
 mod orphan_tests {
-    use super::{is_our_sidecar_argv, strip_deleted_suffix, windows_reap_script};
+    use super::{is_our_sidecar_argv, strip_deleted_suffix};
 
     const NAMES: &[&str] = &["cvpn0", "cvpn-entry", "cvpn-exit"];
 
@@ -836,19 +952,6 @@ mod orphan_tests {
             strip_deleted_suffix("/usr/bin/wireguard-go"),
             "/usr/bin/wireguard-go"
         );
-    }
-
-    #[test]
-    fn the_windows_reaper_matches_our_binary_by_path_only() {
-        let s = windows_reap_script(r"C:\Program Files\CumulusVPN\wireguard-go.exe");
-        assert!(
-            s.contains(r"$_.Path -eq 'C:\Program Files\CumulusVPN\wireguard-go.exe'"),
-            "{s}"
-        );
-        assert!(s.contains("Stop-Process -Force"), "{s}");
-        // A quote in the path cannot end the literal early.
-        let s = windows_reap_script(r"C:\it's\wireguard-go.exe");
-        assert!(s.contains(r"'C:\it''s\wireguard-go.exe'"), "{s}");
     }
 }
 

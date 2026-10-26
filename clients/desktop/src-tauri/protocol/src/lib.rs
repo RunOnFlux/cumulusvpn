@@ -156,12 +156,23 @@ pub struct ConnectRequest {
     pub split: Option<SplitParams>,
 }
 
-/// Multi-hop connect: two stacked devices sharing one key.
+/// Multi-hop connect, step 1: the entry hop, with the exit gateway's IP routed
+/// through it.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct MultihopRequest {
+pub struct MultihopEntryRequest {
     pub entry_country: String,
-    pub exit_country: String,
     pub outer: String,
+    pub entry_endpoint: String,
+    pub exit_endpoint: String,
+    pub kill_switch: bool,
+    pub split: Option<SplitParams>,
+}
+
+/// Multi-hop connect, step 2: the exit hop, through the entry hop step 1 left
+/// up.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MultihopExitRequest {
+    pub exit_country: String,
     pub inner: String,
     pub entry_endpoint: String,
     pub exit_endpoint: String,
@@ -178,7 +189,8 @@ pub struct MultihopRequest {
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Request {
     Connect(Box<ConnectRequest>),
-    ConnectMultihop(Box<MultihopRequest>),
+    ConnectMultihopEntry(Box<MultihopEntryRequest>),
+    ConnectMultihopExit(Box<MultihopExitRequest>),
     Disconnect,
     Status,
     /// Liveness probe used by the app to decide whether the helper is installed

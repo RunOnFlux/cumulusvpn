@@ -14,10 +14,10 @@
 //! * **Windows**: a LocalSystem service registered by the installer (named
 //!   pipe).
 //!
-//! An elevated app can also run it in-process: on macOS when launched as root,
-//! on Linux and Windows when no daemon answers (an AppImage, a build without
-//! its service). `ensure_elevated` turns a missing Administrator token into one
-//! actionable error up front on Windows.
+//! A root app can also run it in-process: on macOS when launched as root, on
+//! Linux when no daemon answers (an AppImage). On Windows it runs only in the
+//! LocalSystem service; `ensure_privileged` refuses any other host up front
+//! with that reason.
 //!
 //! Every host drives it the same way. They pass the wire-level requests from
 //! `cumulusvpn-protocol` ([`TunnelManager::connect_request`],
@@ -28,10 +28,12 @@
 
 pub mod dns;
 pub mod killswitch;
+pub mod logfile;
 pub mod routing;
 pub mod tlsbridge;
 mod validate;
 pub mod wggo;
+mod win;
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::{Arc, Mutex};
@@ -41,7 +43,8 @@ use std::time::{Duration, Instant};
 use thiserror::Error;
 
 pub use cumulusvpn_protocol::{
-    ConnectRequest, MultihopRequest, SplitParams, TlsParams, TunnelState, TunnelStatus,
+    ConnectRequest, MultihopEntryRequest, MultihopExitRequest, SplitParams, TlsParams, TunnelState,
+    TunnelStatus,
 };
 
 use killswitch::Backend;
@@ -53,48 +56,57 @@ use wggo::{Sidecar, WgConfig};
 #[cfg(windows)]
 pub(crate) const CREATE_NO_WINDOW: u32 = 0x0800_0000;
 
-/// Fail fast if the process cannot edit the network stack. On Windows every
-/// step of a connect — creating the wintun adapter, opening the
-/// `ProtectedPrefix` UAPI pipe, netsh route edits, the firewall kill switch —
-/// needs Administrator, and each would otherwise fail mid-connect with its own
-/// cryptic error; one check up front turns that into a single actionable
-/// message. Detection is the exact `WindowsPrincipal` role test via PowerShell
-/// (already this codebase's Windows toolbox — see `killswitch`) rather than a
-/// new windows-sys dependency.
-#[cfg(windows)]
-fn ensure_elevated() -> Result<(), TunnelError> {
-    use std::os::windows::process::CommandExt;
-    let out = std::process::Command::new("powershell")
-        .args([
-            "-NoProfile",
-            "-Command",
-            "[Security.Principal.WindowsPrincipal]::new([Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)",
-        ])
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
-    match out {
-        Ok(o)
-            if o.status.success()
-                && String::from_utf8_lossy(&o.stdout)
-                    .trim()
-                    .eq_ignore_ascii_case("true") =>
-        {
-            Ok(())
+/// Run `cmd` (already given `program` and `args`) to completion, logging to
+/// stderr — the helper's log, or the app's in the in-process fallback — how
+/// long it took, and on failure its exit status and output. [`TunnelError`]
+/// carries a fixed message for the UI; this is where the real reason goes.
+pub(crate) fn run_logged(
+    cmd: &mut std::process::Command,
+    program: &str,
+    args: &[&str],
+) -> std::io::Result<std::process::Output> {
+    let started = Instant::now();
+    let result = cmd.output();
+    let ms = started.elapsed().as_millis();
+    let line = args.join(" ");
+    // The summary keeps the first 120 characters of a long command line.
+    let short: String = line.chars().take(120).collect();
+    match &result {
+        Ok(out) if out.status.success() => {
+            eprintln!("cumulusvpn-tunnel: `{program} {short}` ok in {ms} ms");
         }
-        // Cannot prove elevation (including a missing/failed PowerShell): the
-        // connect would fail anyway, so surface the actionable message now.
-        _ => Err(TunnelError::Sidecar(
-            "not running elevated — run CumulusVPN as Administrator",
-        )),
+        Ok(out) => eprintln!(
+            "cumulusvpn-tunnel: `{program} {line}` failed ({}) in {ms} ms: stderr: {} | stdout: {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr).trim(),
+            String::from_utf8_lossy(&out.stdout).trim(),
+        ),
+        Err(e) => eprintln!("cumulusvpn-tunnel: `{program}` could not be started: {e}"),
+    }
+    result
+}
+
+/// Fail fast unless this process can run the tunnel. On Windows that is
+/// LocalSystem — the CumulusVPN Helper service: wireguard-go creates its UAPI
+/// pipe owned by SYSTEM, which only a SYSTEM process may do, so any other host
+/// (an elevated app, `cumulusvpn-helper --console`) is refused here, before
+/// anything on the machine changes, with the reason.
+#[cfg(windows)]
+fn ensure_privileged() -> Result<(), TunnelError> {
+    if win::process::is_local_system() {
+        Ok(())
+    } else {
+        Err(TunnelError::Sidecar(
+            "the tunnel runs only in the CumulusVPN Helper service (LocalSystem)",
+        ))
     }
 }
 
-/// macOS and Linux need root too. This code normally runs inside the root
-/// helper daemon; in the in-process fallback the app itself must be root.
-/// Unelevated, their commands fail with clear "needs root" errors, so no
-/// separate pre-check is needed.
+/// macOS and Linux need root. This code runs inside the root helper daemon, or
+/// in an app that is itself root (the in-process mode); unprivileged, their
+/// commands fail with "needs root" errors.
 #[cfg(not(windows))]
-fn ensure_elevated() -> Result<(), TunnelError> {
+fn ensure_privileged() -> Result<(), TunnelError> {
     Ok(())
 }
 
@@ -122,34 +134,57 @@ fn strip_endpoint_port(endpoint: &str) -> &str {
 // The status, parameter and request types are defined in `cumulusvpn-protocol`.
 // They cross the app<->helper channel and are also the in-process interface,
 // so the wire definition is the single source of truth.
-// Re-exported above for this crate's callers. `MultihopParams` stays here: it
-// borrows, and never crosses the wire.
+// Re-exported above for this crate's callers. The `Multihop*Params` stay
+// here: they borrow, and never cross the wire.
 
-/// Parameters for [`TunnelManager::connect_multihop`]: the two nested WireGuard
-/// configs from core-ts `buildMultihopConfig` plus the routing facts.
+/// Parameters for [`TunnelManager::connect_multihop_entry`]: the outer config
+/// from core-ts `buildMultihopOuterConfig` plus the routing facts.
 #[derive(Debug, Clone)]
-pub struct MultihopParams<'a> {
-    /// ISO country of the ENTRY hop (retained for status + kill-switch scoping).
+pub struct MultihopEntryParams<'a> {
+    /// ISO country of the ENTRY hop, reported in status while connecting.
     pub entry_country: &'a str,
-    /// ISO country of the EXIT hop (the effective egress location).
-    pub exit_country: &'a str,
     /// Outer `.conf` (wg-entry): `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS.
     pub outer: &'a str,
-    /// Inner `.conf` (wg-exit): `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340, DNS.
-    pub inner: &'a str,
-    /// `<entryIp>:51820` — the only real UDP egress; allow-listed by the switch.
+    /// `<entryIp>:<port>` — the only real UDP egress; allow-listed by the switch.
     pub entry_endpoint: &'a str,
     /// `<exitIp>:51820` — host-routed via the outer interface.
+    pub exit_endpoint: &'a str,
+    /// Whether to engage the leak-protection kill switch for this session.
+    pub kill_switch: bool,
+    /// Compiled split-tunneling routes; their bypass prefixes are punched
+    /// through the kill switch.
+    pub split: Option<&'a SplitParams>,
+}
+
+/// Parameters for [`TunnelManager::connect_multihop_exit`]: the inner config
+/// from core-ts `buildMultihopInnerConfig` plus the routing facts.
+#[derive(Debug, Clone)]
+pub struct MultihopExitParams<'a> {
+    /// ISO country of the EXIT hop (the effective egress location).
+    pub exit_country: &'a str,
+    /// Inner `.conf` (wg-exit): `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340, DNS.
+    pub inner: &'a str,
+    /// The entry step's `entry_endpoint`.
+    pub entry_endpoint: &'a str,
+    /// The entry step's `exit_endpoint`.
     pub exit_endpoint: &'a str,
     /// Inner interface MTU (1340).
     pub inner_mtu: u16,
     /// Inner (exit) assigned tunnel address, surfaced back in status.
     pub assigned_ip: &'a str,
-    /// Whether to engage the leak-protection kill switch for this session.
+    /// The entry step's `kill_switch`.
     pub kill_switch: bool,
     /// Compiled split-tunneling routes; `None`/empty = full tunnel. Applies to
     /// the inner (exit) device — that is where the default route lives (§7.2).
     pub split: Option<&'a SplitParams>,
+}
+
+/// The entry hop of a multi-hop session whose exit is not up yet: what the
+/// exit step checks its request against.
+struct EntryHop {
+    /// The entry device's tunnel address; the exit's must differ.
+    address: String,
+    kill_switch: bool,
 }
 
 /// Anything that can go wrong bringing a tunnel up or down.
@@ -183,6 +218,8 @@ struct Inner {
     bridge: Option<tlsbridge::ClientBridge>,
     /// Exit gateway IP whose host route we installed, for teardown cleanup.
     exit_ip: Option<String>,
+    /// Set by the multi-hop entry step, taken by the exit step.
+    entry_hop: Option<EntryHop>,
     /// Split-tunneling bypass routes we installed, for teardown cleanup.
     /// (Include-mode tunnel routes are interface-scoped and die with the
     /// device, so they need no tracking.)
@@ -356,14 +393,13 @@ const HANDSHAKE_DEAD_SEC: i64 = 200;
 /// WireGuard keepalive interval (25s) plus margin for the handshake to complete.
 const REPAIR_GRACE: Duration = Duration::from_secs(40);
 
-/// Whether the kill switch needs the phase-2 re-engage once the kernel tun
-/// names are known. Only macOS does: pf cannot name `utunN` up front, so phase 1
-/// blocks it and phase 2 passes it. Linux (nftables) and Windows (WFP) already
-/// allow the tun by the `cvpn*` prefix in phase 1 and ignore `tun_interfaces`,
-/// so re-engaging there would only re-apply the identical ruleset. On Windows
-/// that costs several PowerShell round-trips per hop. Skipping it keeps their
-/// connect sequence exactly what it was before the helper split: one engage.
-const KILL_SWITCH_NEEDS_TUN_PASS: bool = cfg!(target_os = "macos");
+/// Whether the kill switch needs the phase-2 re-engage once the tunnel devices
+/// exist. macOS does (pf cannot name `utunN` up front) and so does Windows (WFP
+/// names the adapter by its LUID, which exists only once wireguard-go has
+/// created it): phase 1 blocks the tunnel, phase 2 passes it. Each re-engage is
+/// one WFP transaction, milliseconds. Linux (nftables) allows the tun by the
+/// `cvpn*` prefix in phase 1 and ignores `tun_interfaces`.
+const KILL_SWITCH_NEEDS_TUN_PASS: bool = cfg!(any(target_os = "macos", windows));
 
 /// Phase-2 kill-switch engage: replace the ruleset with one that also passes
 /// traffic out the named kernel tun devices.
@@ -381,7 +417,6 @@ fn engage_with_tuns(
     bypass_cidrs: &[String],
     tuns: &[String],
     dns_servers: &[IpAddr],
-    tunnel_address: Option<IpAddr>,
 ) -> Result<(), TunnelError> {
     killswitch::engage(
         backend,
@@ -393,21 +428,17 @@ fn engage_with_tuns(
             bypass_cidrs,
             bypass_apps: &[],
             dns_servers,
-            tunnel_address,
         },
     )
 }
 
-/// The resolver(s) and tunnel address a parsed `.conf` names, typed. These
-/// reach firewall rules and scripts, so they are parsed here rather than passed
-/// on as text.
-fn dns_facts(config: &WgConfig) -> (Vec<IpAddr>, Option<IpAddr>) {
-    let servers = config
+/// The resolver(s) a parsed `.conf` names, typed, for the firewall rules.
+fn dns_servers_of(config: &WgConfig) -> Vec<IpAddr> {
+    config
         .dns
         .as_deref()
         .map(dns::parse_servers)
-        .unwrap_or_default();
-    (servers, config.address.parse().ok())
+        .unwrap_or_default()
 }
 
 /// The address the OS would send from to reach `endpoint`, or `None` if it has
@@ -450,6 +481,16 @@ impl Default for TunnelManager {
 /// poll, which this replaces whenever the window is hidden or throttled.
 pub const REPAIR_POLL_INTERVAL: Duration = Duration::from_millis(1500);
 
+/// How many WFP filters the kill switch and the DNS leak block hold right now,
+/// for `cumulusvpn-helper --filters` and the validation runbook.
+#[cfg(windows)]
+pub fn windows_filter_counts() -> Result<(usize, usize), String> {
+    Ok((
+        win::wfp::count(win::wfp::Sublayer::KillSwitch)?,
+        win::wfp::count(win::wfp::Sublayer::Dns)?,
+    ))
+}
+
 /// Drive [`TunnelManager::status`] forever on a dedicated thread.
 ///
 /// Roam repair and the dead-tunnel watchdog both run inside `status()`. If the
@@ -488,17 +529,32 @@ impl TunnelManager {
         )
     }
 
-    /// Bring a multi-hop tunnel up from its wire-level request. See
+    /// The multi-hop entry step from its wire-level request. See
     /// [`Self::connect_request`].
-    pub fn connect_multihop_request(
+    pub fn connect_multihop_entry_request(
         &self,
-        r: &MultihopRequest,
+        r: &MultihopEntryRequest,
     ) -> Result<TunnelStatus, TunnelError> {
-        validate::multihop_request(r)?;
-        self.connect_multihop(&MultihopParams {
+        validate::multihop_entry_request(r)?;
+        self.connect_multihop_entry(&MultihopEntryParams {
             entry_country: &r.entry_country,
-            exit_country: &r.exit_country,
             outer: &r.outer,
+            entry_endpoint: &r.entry_endpoint,
+            exit_endpoint: &r.exit_endpoint,
+            kill_switch: r.kill_switch,
+            split: r.split.as_ref(),
+        })
+    }
+
+    /// The multi-hop exit step from its wire-level request. See
+    /// [`Self::connect_request`].
+    pub fn connect_multihop_exit_request(
+        &self,
+        r: &MultihopExitRequest,
+    ) -> Result<TunnelStatus, TunnelError> {
+        validate::multihop_exit_request(r)?;
+        self.connect_multihop_exit(&MultihopExitParams {
+            exit_country: &r.exit_country,
             inner: &r.inner,
             entry_endpoint: &r.entry_endpoint,
             exit_endpoint: &r.exit_endpoint,
@@ -522,6 +578,7 @@ impl TunnelManager {
                 exit_sidecar: None,
                 bridge: None,
                 exit_ip: None,
+                entry_hop: None,
                 bypass_routes: Vec::new(),
                 dns: None,
                 backend: killswitch::detect_backend(),
@@ -548,9 +605,9 @@ impl TunnelManager {
         tls: Option<TlsParams>,
         split: Option<&SplitParams>,
     ) -> Result<TunnelStatus, TunnelError> {
-        ensure_elevated()?;
+        ensure_privileged()?;
         let mut config = WgConfig::parse(wg_config)?;
-        let (dns_servers, tunnel_address) = dns_facts(&config);
+        let dns_servers = dns_servers_of(&config);
         // wg-tls rides a TLS/TCP session; vanilla/awg dial the gateway over UDP.
         // The kill switch + endpoint bypass are scoped to `endpoint` (the real
         // gateway address) either way — for wg-tls that's the TLS relay's TCP
@@ -569,6 +626,7 @@ impl TunnelManager {
         // leak-protection state, not just its sidecars. DNS first, while the old
         // device it may be bound to still exists.
         inner.restore_dns();
+        inner.entry_hop = None;
         if let Some(old) = inner.sidecar.take() {
             let _ = old.kill();
         }
@@ -621,7 +679,6 @@ impl TunnelManager {
                     bypass_cidrs: split_bypass,
                     bypass_apps: &[],
                     dns_servers: &dns_servers,
-                    tunnel_address,
                 },
             )
             .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
@@ -663,8 +720,8 @@ impl TunnelManager {
 
         // Phase 2: the kernel tun name is known now, so re-engage with the pass
         // that lets tunnel traffic out. Before `configure`, so the rule is in
-        // place ahead of the first handshake rather than racing it. macOS only:
-        // on Linux and Windows the `cvpn*` prefix already covers the real name
+        // place ahead of the first handshake rather than racing it. macOS and
+        // Windows; on Linux the `cvpn*` prefix already covers the real name
         // (see `KILL_SWITCH_NEEDS_TUN_PASS`).
         if kill_switch && KILL_SWITCH_NEEDS_TUN_PASS {
             let tuns = [sidecar.interface.clone()];
@@ -676,7 +733,6 @@ impl TunnelManager {
                 split_bypass,
                 &tuns,
                 &dns_servers,
-                tunnel_address,
             ) {
                 let _ = sidecar.kill();
                 let _ = killswitch::disengage(inner.backend);
@@ -732,7 +788,6 @@ impl TunnelManager {
         inner.dns = Some(dns::DnsSession::start(dns::DnsTarget {
             interface: sidecar.interface.clone(),
             servers: dns_servers,
-            tunnel_address,
             endpoint_ips: endpoint_ip.parse().ok().into_iter().collect(),
             pin_route: split.is_some(),
             kill_switch,
@@ -755,28 +810,23 @@ impl TunnelManager {
         Ok(inner.snapshot())
     }
 
-    /// Bring an opt-in **multi-hop** tunnel up (`docs/11-multihop.md`): two
-    /// stacked wireguard-go devices sharing the same client key `K`.
+    /// Multi-hop (`docs/11-multihop.md`), step 1 of 2: bring the ENTRY hop up
+    /// and route the exit gateway's IP through it.
     ///
-    /// Ordering mirrors single-hop but doubled: engage the kill switch on the
-    /// entry endpoint (the only real UDP egress), spawn + configure the outer
-    /// (entry) device from `outer`, spawn + configure the inner (exit) device
-    /// from `inner`, then install the routes — host route `<exitIp>/32` → the
-    /// outer interface (so only the inner tunnel's UDP to the exit traverses the
-    /// entry), and the default route → the inner interface. Any failure tears
-    /// down everything set up so far, so we never leave a half-open pair.
-    pub fn connect_multihop(
+    /// After this, every packet to the exit gateway — the client's enroll at
+    /// the exit included — leaves inside the entry tunnel, so the exit never
+    /// sees the client's real address. Engages the kill switch on the entry
+    /// endpoint (the only real UDP egress), spawns + configures the outer
+    /// device from `outer`, pins the entry endpoint to the physical gateway and
+    /// `<exitIp>/32` to the outer device. The state stays `Connecting` until
+    /// [`Self::connect_multihop_exit`]. Replaces any existing session; any
+    /// failure tears down everything set up so far.
+    pub fn connect_multihop_entry(
         &self,
-        params: &MultihopParams<'_>,
+        params: &MultihopEntryParams<'_>,
     ) -> Result<TunnelStatus, TunnelError> {
-        ensure_elevated()?;
-        // Parse both nested configs before touching any state. The outer config
-        // legitimately carries no DNS; the inner sets the exit's DNS + 1340 MTU.
+        ensure_privileged()?;
         let outer_cfg = WgConfig::parse(params.outer)?;
-        let inner_cfg = WgConfig::parse(params.inner)?;
-        // DNS belongs to the inner (exit) device: that is where the default
-        // route, and so the resolver's traffic, goes.
-        let (dns_servers, tunnel_address) = dns_facts(&inner_cfg);
         let exit_ip = strip_endpoint_port(params.exit_endpoint).to_string();
         let entry_ip = strip_endpoint_port(params.entry_endpoint).to_string();
 
@@ -786,6 +836,7 @@ impl TunnelManager {
         // Reachable via reconnect without a disconnect(), so clear the previous
         // session's leak-protection state fully (see connect()).
         inner.restore_dns();
+        inner.entry_hop = None;
         if let Some(old) = inner.sidecar.take() {
             let _ = old.kill();
         }
@@ -808,25 +859,21 @@ impl TunnelManager {
             .split
             .map(|s| s.bypass_routes.as_slice())
             .unwrap_or(&[]);
-        let split_tunnel: &[String] = params
-            .split
-            .map(|s| s.tunnel_routes.as_slice())
-            .unwrap_or(&[]);
 
         inner.state = TunnelState::Connecting;
-        // Surface the exit country as the effective location; the entry endpoint
-        // is the wire endpoint (what actually leaves the host).
-        inner.country = Some(params.exit_country.to_string());
+        inner.country = Some(params.entry_country.to_string());
+        // The entry endpoint is the wire endpoint (what actually leaves the host).
         inner.endpoint = Some(params.entry_endpoint.to_string());
+        inner.assigned_ip = None;
         inner.error = None;
 
         // Kill switch allow-lists the entry endpoint only — the exit is reached
-        // *through* the entry tunnel, never directly from the host. Multi-hop is
-        // vanilla UDP today (Stealth+multi-hop isn't wired), so proto is Udp. Off
-        // → tear down any ruleset a prior session left engaged (see connect()).
-        // Split bypass prefixes are punched through here too — the compile step
-        // already rejects prefixes containing the entry/exit endpoints, so the
-        // bypass can never shadow the entry allowance (§7.2).
+        // *through* the entry tunnel, never directly from the host. No resolver
+        // yet: the exit step brings DNS. Split bypass prefixes are punched
+        // through here too — the compile step already rejects prefixes
+        // containing the entry/exit endpoints, so the bypass can never shadow
+        // the entry allowance (§7.2). Off → tear down any ruleset a prior
+        // session left engaged (see connect()).
         if params.kill_switch {
             killswitch::engage(
                 inner.backend,
@@ -838,8 +885,7 @@ impl TunnelManager {
                     proto: killswitch::Proto::Udp,
                     bypass_cidrs: split_bypass,
                     bypass_apps: &[],
-                    dns_servers: &dns_servers,
-                    tunnel_address,
+                    dns_servers: &[],
                 },
             )
             .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
@@ -847,10 +893,9 @@ impl TunnelManager {
             let _ = killswitch::disengage(inner.backend);
         }
 
-        // Helper: unwind everything set up so far on any failure.
+        // Unwind everything set up so far on any failure.
         let fail = |inner: &mut Inner,
                     entry_sc: Option<Sidecar>,
-                    exit_sc: Option<Sidecar>,
                     routed: bool,
                     e: TunnelError|
          -> Result<TunnelStatus, TunnelError> {
@@ -859,9 +904,6 @@ impl TunnelManager {
             }
             // Best-effort: the entry bypass may or may not have been installed.
             routing::remove_endpoint_bypass(&entry_ip);
-            if let Some(sc) = exit_sc {
-                let _ = sc.kill();
-            }
             if let Some(sc) = entry_sc {
                 let _ = sc.kill();
             }
@@ -871,15 +913,13 @@ impl TunnelManager {
             Err(e)
         };
 
-        // Outer (entry) device.
         let entry_sidecar = match Sidecar::spawn(IFACE_ENTRY) {
             Ok(s) => s,
-            Err(e) => return fail(&mut inner, None, None, false, e),
+            Err(e) => return fail(&mut inner, None, false, e),
         };
-        // Phase 2a: allow the entry tun. This is not just for the entry's own
-        // payload — the EXIT device's handshake is encapsulated and leaves the
-        // host through this device, so it must be passable before the exit
-        // sidecar is configured below. macOS only (`KILL_SWITCH_NEEDS_TUN_PASS`).
+        // Phase 2a: allow the entry tun — it carries everything sent to the
+        // exit gateway, the exit's handshake and the enroll at the exit
+        // included. macOS and Windows (`KILL_SWITCH_NEEDS_TUN_PASS`).
         if params.kill_switch && KILL_SWITCH_NEEDS_TUN_PASS {
             let tuns = [entry_sidecar.interface.clone()];
             if let Err(e) = engage_with_tuns(
@@ -889,27 +929,142 @@ impl TunnelManager {
                 killswitch::Proto::Udp,
                 split_bypass,
                 &tuns,
-                &dns_servers,
-                tunnel_address,
+                &[],
             ) {
-                return fail(&mut inner, Some(entry_sidecar), None, false, e);
+                return fail(&mut inner, Some(entry_sidecar), false, e);
             }
         }
         if let Err(e) = entry_sidecar.configure(&outer_cfg) {
-            return fail(&mut inner, Some(entry_sidecar), None, false, e);
+            return fail(&mut inner, Some(entry_sidecar), false, e);
         }
 
-        // Inner (exit) device.
+        // Routes. Use the *real* kernel-assigned device name (utunN on macOS),
+        // not the logical IFACE_* label, since that is what the routing table
+        // keys on.
+        let entry_if = entry_sidecar.interface.clone();
+
+        // Pin the entry endpoint to the physical gateway so the outer tunnel's
+        // own UDP escapes (same bypass as single-hop, on the entry endpoint).
+        if let Err(e) = routing::add_endpoint_bypass(&entry_ip) {
+            return fail(&mut inner, Some(entry_sidecar), false, e);
+        }
+        // Pin the exit gateway through the entry tunnel: every packet to it
+        // must leave inside the entry tunnel — never from the real address.
+        if let Err(e) = routing::add_host_route(&exit_ip, &entry_if) {
+            return fail(&mut inner, Some(entry_sidecar), false, e);
+        }
+        eprintln!("cumulusvpn-tunnel: exit gateway {exit_ip} pinned to {entry_if}");
+
+        inner.sidecar = Some(entry_sidecar);
+        inner.exit_ip = Some(exit_ip);
+        inner.entry_hop = Some(EntryHop {
+            address: outer_cfg.address,
+            kill_switch: params.kill_switch,
+        });
+        Ok(inner.snapshot())
+    }
+
+    /// Multi-hop, step 2 of 2: bring the EXIT hop up through the entry hop
+    /// [`Self::connect_multihop_entry`] left `Connecting`, then route all
+    /// traffic and DNS to it.
+    ///
+    /// Refuses unless that entry step is pending for the same entry and exit
+    /// endpoints and kill-switch choice, and unless the exit's tunnel address
+    /// differs from the entry's (two interfaces, one address each). Spawns +
+    /// configures the inner device from `inner`, installs the default route
+    /// (or the split routes) on it, and applies DNS last. Any failure, a
+    /// refusal included, tears the whole session down.
+    pub fn connect_multihop_exit(
+        &self,
+        params: &MultihopExitParams<'_>,
+    ) -> Result<TunnelStatus, TunnelError> {
+        ensure_privileged()?;
+        let inner_cfg = WgConfig::parse(params.inner)?;
+        // DNS belongs to the inner (exit) device: that is where the default
+        // route, and so the resolver's traffic, goes.
+        let dns_servers = dns_servers_of(&inner_cfg);
+        let exit_ip = strip_endpoint_port(params.exit_endpoint).to_string();
+        let entry_ip = strip_endpoint_port(params.entry_endpoint).to_string();
+        let split_bypass: &[String] = params
+            .split
+            .map(|s| s.bypass_routes.as_slice())
+            .unwrap_or(&[]);
+        let split_tunnel: &[String] = params
+            .split
+            .map(|s| s.tunnel_routes.as_slice())
+            .unwrap_or(&[]);
+
+        let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
+
+        // Unwind the whole session on any failure.
+        let fail = |inner: &mut Inner,
+                    exit_sc: Option<Sidecar>,
+                    e: TunnelError|
+         -> Result<TunnelStatus, TunnelError> {
+            if let Some(ip) = inner.exit_ip.take() {
+                let _ = routing::clear_multihop_routes(&ip);
+            }
+            if let Some(ep) = inner.endpoint.as_deref() {
+                routing::remove_endpoint_bypass(strip_endpoint_port(ep));
+            }
+            let bypass = std::mem::take(&mut inner.bypass_routes);
+            routing::remove_bypass_routes(&bypass);
+            if let Some(sc) = exit_sc {
+                let _ = sc.kill();
+            }
+            if let Some(sc) = inner.sidecar.take() {
+                let _ = sc.kill();
+            }
+            inner.entry_hop = None;
+            let _ = killswitch::disengage(inner.backend);
+            inner.state = TunnelState::Error;
+            inner.error = Some(e.to_string());
+            Err(e)
+        };
+
+        let pending = inner.entry_hop.take();
+        let matches = inner.state == TunnelState::Connecting
+            && inner.sidecar.is_some()
+            && inner.endpoint.as_deref() == Some(params.entry_endpoint)
+            && inner.exit_ip.as_deref() == Some(exit_ip.as_str());
+        let Some(hop) = pending.filter(|h| matches && h.kill_switch == params.kill_switch) else {
+            eprintln!(
+                "cumulusvpn-tunnel: connect_multihop_exit refused: no entry hop up for {} -> {exit_ip}",
+                params.entry_endpoint
+            );
+            return fail(
+                &mut inner,
+                None,
+                TunnelError::BadConfig("no matching multi-hop entry hop is up"),
+            );
+        };
+        // The two devices are separate interfaces, and an address belongs to one
+        // interface: the pair needs distinct tunnel addresses.
+        if hop.address == inner_cfg.address {
+            eprintln!(
+                "cumulusvpn-tunnel: connect_multihop_exit refused: entry and exit both assigned {}",
+                hop.address
+            );
+            return fail(
+                &mut inner,
+                None,
+                TunnelError::BadConfig("entry and exit hops assigned the same tunnel address"),
+            );
+        }
+        let entry_if = inner
+            .sidecar
+            .as_ref()
+            .map(|sc| sc.interface.clone())
+            .expect("checked above");
+
         let exit_sidecar = match Sidecar::spawn(IFACE_EXIT) {
             Ok(s) => s,
-            Err(e) => return fail(&mut inner, Some(entry_sidecar), None, false, e),
+            Err(e) => return fail(&mut inner, None, e),
         };
-        // Phase 2b: both devices known. macOS only, as above.
+        // Phase 2b: both devices known, and the resolvers. macOS and Windows
+        // (`KILL_SWITCH_NEEDS_TUN_PASS`).
         if params.kill_switch && KILL_SWITCH_NEEDS_TUN_PASS {
-            let tuns = [
-                entry_sidecar.interface.clone(),
-                exit_sidecar.interface.clone(),
-            ];
+            let tuns = [entry_if, exit_sidecar.interface.clone()];
             if let Err(e) = engage_with_tuns(
                 inner.backend,
                 params.entry_endpoint,
@@ -918,54 +1073,15 @@ impl TunnelManager {
                 split_bypass,
                 &tuns,
                 &dns_servers,
-                tunnel_address,
             ) {
-                return fail(
-                    &mut inner,
-                    Some(entry_sidecar),
-                    Some(exit_sidecar),
-                    false,
-                    e,
-                );
+                return fail(&mut inner, Some(exit_sidecar), e);
             }
         }
         if let Err(e) = exit_sidecar.configure(&inner_cfg) {
-            return fail(
-                &mut inner,
-                Some(entry_sidecar),
-                Some(exit_sidecar),
-                false,
-                e,
-            );
+            return fail(&mut inner, Some(exit_sidecar), e);
         }
-
-        // Routes. Use the *real* kernel-assigned device names (utunN on macOS),
-        // not the logical IFACE_* labels, since that is what the routing table
-        // keys on.
-        let entry_if = entry_sidecar.interface.clone();
         let exit_if = exit_sidecar.interface.clone();
 
-        // Pin the entry endpoint to the physical gateway so the outer tunnel's
-        // own UDP escapes (same bypass as single-hop, on the entry endpoint).
-        if let Err(e) = routing::add_endpoint_bypass(&entry_ip) {
-            return fail(
-                &mut inner,
-                Some(entry_sidecar),
-                Some(exit_sidecar),
-                false,
-                e,
-            );
-        }
-        // Pin the exit endpoint through the entry tunnel, then default via exit.
-        if let Err(e) = routing::add_host_route(&exit_ip, &entry_if) {
-            return fail(
-                &mut inner,
-                Some(entry_sidecar),
-                Some(exit_sidecar),
-                false,
-                e,
-            );
-        }
         // Split rules apply to the inner (exit) device — that is where the
         // default route lives (§7.2). Include mode: only the listed prefixes
         // via the exit device; otherwise split-default + bypass routes.
@@ -977,7 +1093,7 @@ impl TunnelManager {
         };
         if let Err(e) = route_result {
             routing::remove_bypass_routes(split_bypass);
-            return fail(&mut inner, Some(entry_sidecar), Some(exit_sidecar), true, e);
+            return fail(&mut inner, Some(exit_sidecar), e);
         }
         inner.bypass_routes = split_bypass.to_vec();
         // The inner interface MTU (params.inner_mtu, 1340) is applied to the
@@ -996,15 +1112,13 @@ impl TunnelManager {
         inner.dns = Some(dns::DnsSession::start(dns::DnsTarget {
             interface: exit_if.clone(),
             servers: dns_servers,
-            tunnel_address,
             endpoint_ips,
             pin_route: params.split.is_some(),
             kill_switch: params.kill_switch,
         }));
 
-        inner.sidecar = Some(entry_sidecar);
         inner.exit_sidecar = Some(exit_sidecar);
-        inner.exit_ip = Some(exit_ip);
+        inner.country = Some(params.exit_country.to_string());
         inner.assigned_ip = Some(params.assigned_ip.to_string());
         inner.state = TunnelState::Up;
         inner.last_handshake = None; // see connect(): only a real UAPI value counts
@@ -1075,22 +1189,22 @@ impl TunnelManager {
 
     /// Clean up everything a host that died mid-session can leave behind: the
     /// system DNS, orphaned `wireguard-go` processes (whose tun devices, and the
-    /// routes through them, go with them), and the kill switch. Linux and
-    /// Windows call this once at startup — the helper daemon, and the elevated
-    /// in-process app — before anything can connect.
+    /// routes through them, go with them), on Windows the routes on the
+    /// physical interface listed in the route record (`win::net`), and the
+    /// kill switch. Linux and Windows call this once at startup — the helper
+    /// daemon, and the elevated in-process app — before anything can connect.
     ///
     /// Why the kill switch too: at startup there is no session to protect. The
     /// sidecar that carried the tunnel is dead (systemd kills the service's
     /// cgroup; on Windows it is reaped here), so the rules can only block, and
-    /// nobody is left who knows to lift them. On Windows they would even
-    /// outlive a reboot, since `DefaultOutboundAction` is persistent firewall
-    /// policy. If the app is running it sees the drop and reconnects, which
-    /// re-engages the switch for the new session.
+    /// the process that knew to lift them is gone. If the app is running it
+    /// sees the drop and reconnects, which re-engages the switch for the new
+    /// session.
     ///
-    /// Order mirrors [`Self::disconnect`]: DNS first, then the devices, the
-    /// kill switch last. Each step is a no-op when nothing of ours is there, and
-    /// none touches state that is not ours (our nft table, our firewall-rule
-    /// groups, sidecars started from our own binary for our interface names).
+    /// Order mirrors [`Self::disconnect`]: DNS first, then the devices and
+    /// routes, the kill switch last. Each step acts only on what is ours (our
+    /// nft table, our WFP sublayers, our recorded routes, sidecars started from
+    /// our own binary for our interface names) and is a no-op when none is there.
     /// Like [`Self::recover_stale_dns`], a no-op if this manager has a session.
     pub fn recover_stale(&self) {
         let inner = self.inner.lock().expect("tunnel mutex poisoned");
@@ -1099,20 +1213,20 @@ impl TunnelManager {
         }
         dns::recover_stale(&[IFACE, IFACE_EXIT]);
         wggo::reap_orphans(&[IFACE, IFACE_ENTRY, IFACE_EXIT]);
+        #[cfg(windows)]
+        win::net::recover_stale();
         killswitch::recover_stale(inner.backend);
     }
 
     /// Tear down only if something is up. Returns whether it did.
     ///
-    /// The quit and stop paths use this rather than [`Self::disconnect`],
-    /// which is unconditional by design: it lifts the kill switch and restores
-    /// the platform firewall default whether or not we engaged anything (on
-    /// Windows, `DefaultOutboundAction Allow` on every profile). That is right
-    /// for an explicit Disconnect, but wrong for an app quitting or a service
-    /// stopping without ever having connected, where it would overwrite a
-    /// policy the user or an administrator set. `Down` means nothing of ours is
-    /// engaged: every failed connect unwinds to `Error`, and `disconnect` is
-    /// the only way back to `Down`.
+    /// The quit and stop paths use this; [`Self::disconnect`] is unconditional
+    /// by design: it lifts the kill switch whether or not we engaged anything,
+    /// which on macOS reloads the main pf ruleset from `/etc/pf.conf`. That is
+    /// right for an explicit Disconnect; an app quitting or a service stopping
+    /// without ever having connected leaves the firewall as it found it.
+    /// `Down` means nothing of ours is engaged: every failed connect unwinds to
+    /// `Error`, and `disconnect` is the only way back to `Down`.
     pub fn disconnect_if_active(&self) -> bool {
         let state = self.inner.lock().expect("tunnel mutex poisoned").state;
         if state == TunnelState::Down {
@@ -1166,6 +1280,7 @@ impl TunnelManager {
             exit_sidecar: None,
             bridge: None,
             exit_ip: None,
+            entry_hop: None,
             bypass_routes: Vec::new(),
             dns: None,
             backend,
@@ -1286,7 +1401,7 @@ mod roam_tests {
 }
 
 #[cfg(test)]
-mod dns_facts_tests {
+mod dns_servers_tests {
     use super::*;
 
     const KEY: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
@@ -1300,21 +1415,18 @@ mod dns_facts_tests {
     }
 
     /// What a connect hands the kill switch and the DNS session: EVERY resolver
-    /// on the `.conf` line, in order, and the tunnel address — for the default
-    /// as for a Settings → DNS provider.
+    /// on the `.conf` line, in order — for the default as for a Settings → DNS
+    /// provider.
     #[test]
     fn every_resolver_on_the_dns_line_reaches_the_leak_protection() {
         let ip = |s: &str| s.parse::<IpAddr>().unwrap();
+        assert_eq!(dns_servers_of(&conf("1.1.1.1")), vec![ip("1.1.1.1")]);
         assert_eq!(
-            dns_facts(&conf("1.1.1.1")),
-            (vec![ip("1.1.1.1")], Some(ip("10.8.0.2")))
-        );
-        assert_eq!(
-            dns_facts(&conf("9.9.9.9, 149.112.112.112")).0,
+            dns_servers_of(&conf("9.9.9.9, 149.112.112.112")),
             vec![ip("9.9.9.9"), ip("149.112.112.112")]
         );
         assert_eq!(
-            dns_facts(&conf("94.140.14.14,94.140.15.15")).0,
+            dns_servers_of(&conf("94.140.14.14,94.140.15.15")),
             vec![ip("94.140.14.14"), ip("94.140.15.15")]
         );
     }
@@ -1328,6 +1440,6 @@ mod dns_facts_tests {
              [Peer]\nPublicKey = {KEY}\nEndpoint = 203.0.113.7:51820\nAllowedIPs = 198.51.100.9/32\n"
         ))
         .expect("parse");
-        assert!(dns_facts(&outer).0.is_empty());
+        assert!(dns_servers_of(&outer).is_empty());
     }
 }

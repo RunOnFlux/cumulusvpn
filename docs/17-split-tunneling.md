@@ -467,7 +467,7 @@ pub fn engage(backend: Backend, policy: &LeakPolicy<'_>) -> Result<(), TunnelErr
 ```
 
 Each backend extends its existing scoped ruleset (pf anchor `com.cumulusvpn`, nft table
-`inet cumulusvpn`, firewall group `CumulusVPN`) — the self-contained/removable property in the
+`inet cumulusvpn`, WFP sublayer `CumulusVPN kill switch`) — the self-contained/removable property in the
 `killswitch.rs` module docs must be preserved exactly.
 
 On Android the OS lockdown toggle ("Block connections without VPN") is reached via

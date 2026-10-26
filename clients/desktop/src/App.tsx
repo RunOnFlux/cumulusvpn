@@ -75,8 +75,8 @@ export function App(): JSX.Element {
           (LaunchDaemon / systemd service / Windows service). Until it is there
           and serves this app Connect cannot work, so say that up front with
           the fix attached, rather than letting the user press Connect and meet
-          a transport error. An elevated app running the tunnel itself gets a
-          non-blocking note instead (lib/setup.ts). */}
+          a transport error. A root app running the tunnel itself (macOS,
+          Linux) gets a non-blocking note instead (lib/setup.ts). */}
       {banner && (
         <div className={banner.blocking ? 'setup' : 'setup info'} role="status">
           <div className="setup-text">{banner.text}</div>
@@ -88,7 +88,9 @@ export function App(): JSX.Element {
         </div>
       )}
 
-      <div className="shell-body scroll-y">
+      {/* The connection's state and its control: pinned, so no settings panel
+          below can scroll them out of view. */}
+      <div className="shell-status">
         <ConnectOrb
           phase={conn.phase}
           onToggle={connected || busy ? conn.disconnect : conn.connect}
@@ -105,7 +107,9 @@ export function App(): JSX.Element {
             {conn.dnsWarning}
           </div>
         )}
+      </div>
 
+      <div className="shell-body scroll-y">
         <button
           className="loc-btn"
           onClick={() => setPicker('entry')}
@@ -135,6 +139,14 @@ export function App(): JSX.Element {
           locked={locked}
         />
 
+        {connected && <StatBar tunnel={conn.tunnel} />}
+
+        {conn.error && <div className="err">{conn.error}</div>}
+      </div>
+
+      <div className="shell-foot">
+        {/* The kill switch governs every connect, so it sits with Connect and no
+            mode panel above can scroll it out of view. */}
         <button
           type="button"
           className="ks-row"
@@ -157,12 +169,6 @@ export function App(): JSX.Element {
           </span>
         </button>
 
-        {connected && <StatBar tunnel={conn.tunnel} />}
-
-        {conn.error && <div className="err">{conn.error}</div>}
-      </div>
-
-      <div className="shell-foot">
         <RecoveryNudge
           entitlement={conn.entitlement}
           onShowKey={() => {

@@ -33,9 +33,12 @@ tauri-build = { version = "2.7.2", features = [] }
 tauri = { version = "2.12.3", features = ["tray-icon"] }
 tauri-plugin-shell = "2.5.0"
 tauri-plugin-opener = "2.7.1"
+tauri-plugin-http = "2.8.0"
 serde = { version = "1.0.229", features = ["derive"] }
 # Required in scope by `tauri::generate_context!`, not used directly.
 serde_json = "1.0.154"
+# The enroll proof-of-work digest (src/pow.rs).
+sha2 = "0.10.9"
 cumulusvpn-protocol = { path = "protocol" }
 # The in-process tunnel: the elevated fallback when the app runs as root /
 # Administrator and no helper daemon answers (macOS: whenever it runs as root).

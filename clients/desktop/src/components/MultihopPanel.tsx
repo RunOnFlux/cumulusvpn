@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { JSX } from 'react';
 import type { CountryOption } from '../lib/session.js';
 import type { MultihopStyle } from '../hooks/useConnection.js';
@@ -46,6 +47,16 @@ export function MultihopPanel({
   onOpenExit,
   locked,
 }: Props): JSX.Element {
+  // Opening multi-hop or switching style reveals controls below the fold:
+  // bring into view the one that matters — the Max privacy EXIT picker, which
+  // Connect waits on, or else the route styles.
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const exitRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const target = routeStyle === 'multihop-cross-jurisdiction' ? exitRef : bodyRef;
+    target.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  }, [multihop, routeStyle]);
+
   return (
     <div className="mh">
       <div className="mh-toggle" role="group" aria-label="Tunnel mode">
@@ -68,7 +79,7 @@ export function MultihopPanel({
       </div>
 
       {multihop && (
-        <div className="mh-body">
+        <div className="mh-body" ref={bodyRef}>
           <div className="mh-styles" role="group" aria-label="Route style">
             <button
               className={`rstyle ${routeStyle === 'multihop-same-country' ? 'on' : ''}`}
@@ -95,7 +106,12 @@ export function MultihopPanel({
               picker would be misleading since the pick is ignored. Only
               cross-jurisdiction lets the user choose where traffic emerges. */}
           {routeStyle === 'multihop-cross-jurisdiction' ? (
-            <button className="loc-btn mh-exit" onClick={onOpenExit} disabled={locked}>
+            <button
+              ref={exitRef}
+              className="loc-btn mh-exit"
+              onClick={onOpenExit}
+              disabled={locked}
+            >
               <span className="hop-tag">EXIT</span>
               <span className="flag">{exit?.flag ?? '🌐'}</span>
               <span className="meta">
@@ -117,8 +133,8 @@ export function MultihopPanel({
             Slower, worse ping — but no single server sees both who you are and where you go.
           </p>
           <p className="mh-caveat">
-            v1: both hops use the same key. Defeats any single operator; an adversary controlling{' '}
-            <em>both</em> your hops could still correlate. Distinct-key-per-hop lands in v1.5.
+            The exit is reached only through the entry, on a key made for this session: it never
+            learns your IP or your account key. The exit hop runs at the exit&apos;s free tier.
           </p>
         </div>
       )}

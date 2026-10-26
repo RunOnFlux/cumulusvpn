@@ -1,6 +1,7 @@
 //! Linux and Windows: what the setup state needs to know besides whether the
 //! helper answers — is its service installed at all, and is this app elevated
-//! (and so able to run the tunnel in-process when no helper answers)?
+//! (on Linux, root runs the tunnel in-process when no helper answers;
+//! `backend::choose`)?
 //!
 //! Not compiled on macOS, where `SMAppService` answers the first question and
 //! the second is a plain euid check in `backend.rs`.

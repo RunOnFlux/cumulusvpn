@@ -93,11 +93,18 @@ impl HelperClient {
         self.status_request(proto::Request::Connect(Box::new(req)))
     }
 
-    pub fn connect_multihop(
+    pub fn connect_multihop_entry(
         &self,
-        req: proto::MultihopRequest,
+        req: proto::MultihopEntryRequest,
     ) -> Result<proto::TunnelStatus, String> {
-        self.status_request(proto::Request::ConnectMultihop(Box::new(req)))
+        self.status_request(proto::Request::ConnectMultihopEntry(Box::new(req)))
+    }
+
+    pub fn connect_multihop_exit(
+        &self,
+        req: proto::MultihopExitRequest,
+    ) -> Result<proto::TunnelStatus, String> {
+        self.status_request(proto::Request::ConnectMultihopExit(Box::new(req)))
     }
 
     pub fn disconnect(&self) -> Result<proto::TunnelStatus, String> {

@@ -81,8 +81,12 @@ async function probe(ip: string, fetchImpl: FetchImpl): Promise<GatewayInfo | nu
  * country and sorted by load (ascending) so the caller can pick the least-busy
  * gateway in a given country.
  *
+ * Each verified gateway is also passed to `options.onGateway` the moment its
+ * probe succeeds, so a caller need not wait for the slowest candidate.
+ *
  * @param specNames - Flux app-spec names, e.g. `["cumulusvpnde", "cumulusvpnus"]`.
- * @param options - Optional extra Flux nodes and a custom fetch implementation.
+ * @param options - Optional extra Flux nodes, a custom fetch implementation and
+ *   a per-gateway callback.
  * @returns Verified gateways, grouped by country and sorted by load.
  */
 export async function discoverGateways(
@@ -118,10 +122,18 @@ export async function discoverGateways(
     }),
   );
 
-  const probed = await Promise.all([...ipCountry.keys()].map((ip) => probe(ip, fetchImpl)));
-  const gateways = probed
-    .filter((g): g is GatewayInfo => g !== null)
-    .map((g) => ({ ...g, country: reportedCountry(g.country) || ipCountry.get(g.ip) || '' }));
+  const probed = await Promise.all(
+    [...ipCountry.keys()].map(async (ip) => {
+      const g = await probe(ip, fetchImpl);
+      if (!g) {
+        return null;
+      }
+      const gateway = { ...g, country: reportedCountry(g.country) || ipCountry.get(ip) || '' };
+      options.onGateway?.(gateway);
+      return gateway;
+    }),
+  );
+  const gateways = probed.filter((g): g is GatewayInfo => g !== null);
 
   // Group by country, then order least-loaded first (latency tiebreak is a
   // POC: probe timing is not yet captured; load is a good enough proxy).

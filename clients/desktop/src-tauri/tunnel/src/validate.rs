@@ -1,6 +1,7 @@
 //! Shape checks for the requests that cross the privilege boundary.
 //!
-//! Every field of a [`ConnectRequest`] or [`MultihopRequest`] ends up somewhere
+//! Every field of a [`ConnectRequest`], [`MultihopEntryRequest`] or
+//! [`MultihopExitRequest`] ends up somewhere
 //! a privileged process interprets text: the pf anchor and the nftables table
 //! (`killswitch`), PowerShell scripts running as SYSTEM (`killswitch`, `dns`,
 //! `routing` on Windows), `ip` / `route` / `netsh` argv, the wireguard-go UAPI.
@@ -21,7 +22,9 @@
 
 use std::net::{IpAddr, SocketAddr};
 
-use cumulusvpn_protocol::{ConnectRequest, MultihopRequest, SplitParams, TlsParams};
+use cumulusvpn_protocol::{
+    ConnectRequest, MultihopEntryRequest, MultihopExitRequest, SplitParams, TlsParams,
+};
 
 use super::TunnelError;
 
@@ -59,11 +62,21 @@ pub fn connect_request(r: &ConnectRequest) -> Result<(), TunnelError> {
     Ok(())
 }
 
-/// Check a multi-hop request before any of it is acted on.
-pub fn multihop_request(r: &MultihopRequest) -> Result<(), TunnelError> {
+/// Check a multi-hop entry request before any of it is acted on.
+pub fn multihop_entry_request(r: &MultihopEntryRequest) -> Result<(), TunnelError> {
     label(&r.entry_country)?;
-    label(&r.exit_country)?;
     config_text(&r.outer)?;
+    endpoint(&r.entry_endpoint)?;
+    endpoint(&r.exit_endpoint)?;
+    if let Some(split) = &r.split {
+        split_params(split)?;
+    }
+    Ok(())
+}
+
+/// Check a multi-hop exit request before any of it is acted on.
+pub fn multihop_exit_request(r: &MultihopExitRequest) -> Result<(), TunnelError> {
+    label(&r.exit_country)?;
     config_text(&r.inner)?;
     endpoint(&r.entry_endpoint)?;
     endpoint(&r.exit_endpoint)?;
@@ -358,10 +371,24 @@ mod tests {
 
     #[test]
     fn multihop_requests_are_checked_the_same_way() {
-        let good = MultihopRequest {
+        let entry = MultihopEntryRequest {
             entry_country: "DE".into(),
-            exit_country: "NL".into(),
             outer: conf(),
+            entry_endpoint: "203.0.113.7:51820".into(),
+            exit_endpoint: "198.51.100.9:51820".into(),
+            kill_switch: true,
+            split: None,
+        };
+        assert!(multihop_entry_request(&entry).is_ok());
+        let mut bad = entry.clone();
+        bad.exit_endpoint = "198.51.100.9 accept:51820".into();
+        assert!(multihop_entry_request(&bad).is_err());
+        let mut bad = entry.clone();
+        bad.entry_country = "DE\n".into();
+        assert!(multihop_entry_request(&bad).is_err());
+
+        let exit = MultihopExitRequest {
+            exit_country: "NL".into(),
             inner: conf(),
             entry_endpoint: "203.0.113.7:51820".into(),
             exit_endpoint: "198.51.100.9:51820".into(),
@@ -370,12 +397,12 @@ mod tests {
             kill_switch: true,
             split: None,
         };
-        assert!(multihop_request(&good).is_ok());
-        let mut bad = good.clone();
-        bad.exit_endpoint = "198.51.100.9 accept:51820".into();
-        assert!(multihop_request(&bad).is_err());
-        let mut bad = good.clone();
+        assert!(multihop_exit_request(&exit).is_ok());
+        let mut bad = exit.clone();
+        bad.entry_endpoint = "203.0.113.7".into();
+        assert!(multihop_exit_request(&bad).is_err());
+        let mut bad = exit.clone();
         bad.inner_mtu = 0;
-        assert!(multihop_request(&bad).is_err());
+        assert!(multihop_exit_request(&bad).is_err());
     }
 }

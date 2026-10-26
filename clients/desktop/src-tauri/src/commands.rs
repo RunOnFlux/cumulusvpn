@@ -69,17 +69,39 @@ pub async fn connect(
     })
 }
 
-/// Bring an opt-in multi-hop tunnel up: two stacked wireguard-go devices sharing
-/// the same key `K`. Args are the two nested configs from core-ts
-/// `buildMultihopConfig` plus the routing facts; Tauri maps the JS `camelCase`
-/// keys (`entryCountry`, `entryEndpoint`, `exitEndpoint`, `innerMtu`,
-/// `assignedIp`) onto these `snake_case` parameters.
+/// Multi-hop, step 1: bring the entry hop up with the exit gateway's IP routed
+/// through it. `outer` is core-ts `buildMultihopOuterConfig`'s; Tauri maps the
+/// JS `camelCase` keys (`entryCountry`, `entryEndpoint`, `exitEndpoint`) onto
+/// these `snake_case` parameters.
 #[tauri::command]
 #[allow(clippy::too_many_arguments)]
-pub async fn connect_multihop(
+pub async fn connect_multihop_entry(
     entry_country: String,
-    exit_country: String,
     outer: String,
+    entry_endpoint: String,
+    exit_endpoint: String,
+    kill_switch: bool,
+    bypass_routes: Option<Vec<String>>,
+    tunnel_routes: Option<Vec<String>>,
+    backend: State<'_, TunnelBackend>,
+) -> Result<proto::TunnelStatus, String> {
+    backend.connect_multihop_entry(proto::MultihopEntryRequest {
+        entry_country,
+        outer,
+        entry_endpoint,
+        exit_endpoint,
+        kill_switch,
+        split: split_params(bypass_routes, tunnel_routes),
+    })
+}
+
+/// Multi-hop, step 2: bring the exit hop up through the entry hop. `inner` is
+/// core-ts `buildMultihopInnerConfig`'s; the endpoints and `kill_switch` are the
+/// entry step's.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn connect_multihop_exit(
+    exit_country: String,
     inner: String,
     entry_endpoint: String,
     exit_endpoint: String,
@@ -90,10 +112,8 @@ pub async fn connect_multihop(
     tunnel_routes: Option<Vec<String>>,
     backend: State<'_, TunnelBackend>,
 ) -> Result<proto::TunnelStatus, String> {
-    backend.connect_multihop(proto::MultihopRequest {
-        entry_country,
+    backend.connect_multihop_exit(proto::MultihopExitRequest {
         exit_country,
-        outer,
         inner,
         entry_endpoint,
         exit_endpoint,
@@ -149,4 +169,50 @@ pub async fn open_helper_settings() -> Result<(), String> {
     #[cfg(target_os = "macos")]
     crate::helper_install::open_approval_settings();
     Ok(())
+}
+
+/// A diagnostic line from the webview, whose own console is invisible outside
+/// devtools: printed to stderr and appended to `<app log dir>/desktop.log`,
+/// which is size-capped (`cumulusvpn_tunnel::logfile`).
+#[tauri::command]
+pub fn frontend_log(app: tauri::AppHandle, line: String) {
+    use std::io::Write;
+    use std::sync::Mutex;
+    use tauri::Manager;
+
+    use cumulusvpn_tunnel::logfile::{self, MAX_LOG_BYTES};
+
+    // Lines arrive from concurrent commands; one at a time, so two cannot both
+    // find the log full and rotate it twice.
+    static WRITE: Mutex<()> = Mutex::new(());
+
+    eprintln!("CumulusVPN[ui]: {line}");
+    let Ok(dir) = app.path().app_log_dir() else {
+        return;
+    };
+    if std::fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let _one = WRITE
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
+    if let Ok((mut f, _)) = logfile::open_capped(&dir.join("desktop.log"), MAX_LOG_BYTES) {
+        let _ = writeln!(f, "{secs} {line}");
+    }
+}
+
+/// Solve the enroll proof-of-work ([`crate::pow`]) off the async runtime.
+#[tauri::command]
+pub async fn solve_pow(
+    public_key: String,
+    bits: u32,
+    start: u64,
+) -> Result<crate::pow::PowSolution, String> {
+    tauri::async_runtime::spawn_blocking(move || crate::pow::solve(&public_key, bits, start))
+        .await
+        .map_err(|e| format!("proof-of-work task failed: {e}"))?
 }

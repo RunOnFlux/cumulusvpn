@@ -81,6 +81,25 @@ export interface SelectHopsOptions {
    * on its own, prove two different operators.
    */
   readonly requireDistinctSubnet?: boolean;
+  /**
+   * Entry/exit pairs the client has enrolled at and found unusable: both
+   * gateways assigned the same tunnel address, and the two stacked devices need
+   * distinct addresses. Each entry candidate takes its next valid exit instead,
+   * and an entry with no exit left gives way to the next entry.
+   */
+  readonly unusablePairs?: readonly HopPairIps[];
+  /**
+   * Gateways that must never be the exit: the ones that have seen the client's
+   * long-lived key, so an exit among them could tie the session to the client.
+   * They remain eligible as the entry, which sees the client by design.
+   */
+  readonly excludeExitIps?: readonly string[];
+}
+
+/** An entry/exit pair by gateway IP. */
+export interface HopPairIps {
+  readonly entryIp: string;
+  readonly exitIp: string;
 }
 
 /** The ordered hops chosen by {@link selectHops}. `exit` is absent for `'single'`. */
@@ -90,6 +109,28 @@ export interface SelectedHops {
 }
 
 /** The two nested interface configs plus the routing facts a client needs. */
+/** The ENTRY hop of a multi-hop route: see {@link buildMultihopOuterConfig}. */
+export interface MultihopOuterConfig {
+  /** wg-entry `.conf`: `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS. Carries the
+   *  entry hop's AmneziaWG obfuscation `[Interface]` lines when Stealth is on. */
+  readonly outer: string;
+  /** The ENTRY hop's wire endpoint — `<entryIp>:51820` normally, or `<entryIp>:51821`
+   *  for an obfuscated (awg) entry. The native side allow-lists/routes on this. */
+  readonly entryEndpoint: string;
+  /** `<exitIp>:51820` — must route via the outer interface. */
+  readonly exitEndpoint: string;
+}
+
+/** The EXIT hop of a multi-hop route: see {@link buildMultihopInnerConfig}. */
+export interface MultihopInnerConfig {
+  /** wg-exit `.conf`: `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340, DNS = exit dns. */
+  readonly inner: string;
+  /** `<exitIp>:51820` — must route via the outer interface. */
+  readonly exitEndpoint: string;
+  /** Inner interface MTU (leaves headroom for two WireGuard headers). */
+  readonly innerMtu: number;
+}
+
 export interface MultihopConfig {
   /** wg-entry `.conf`: `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS. Carries the
    *  entry hop's AmneziaWG obfuscation `[Interface]` lines when Stealth is on. */
@@ -189,6 +230,8 @@ export function selectHops(
 
   const entryIps = opts.entryIps ? new Set(opts.entryIps) : undefined;
   const exitIps = opts.exitIps ? new Set(opts.exitIps) : undefined;
+  const unusable = new Set((opts.unusablePairs ?? []).map((p) => `${p.entryIp} ${p.exitIp}`));
+  const excludedExits = new Set(opts.excludeExitIps ?? []);
   const entryPool = sorted.filter(
     (g) =>
       (!opts.entryCountry || g.country === opts.entryCountry) && (!entryIps || entryIps.has(g.ip)),
@@ -219,6 +262,12 @@ export function selectHops(
       if (exitIps && !exitIps.has(g.ip)) {
         return false; // city-level exit pick
       }
+      if (excludedExits.has(g.ip)) {
+        return false; // has seen the client's key
+      }
+      if (unusable.has(`${from.ip} ${g.ip}`)) {
+        return false; // this pair was enrolled and found unusable
+      }
       if (opts.requireDistinctSubnet && subnetGroup(g.ip) === subnetGroup(from.ip)) {
         return false; // co-location guard: entry and exit must differ by subnet
       }
@@ -246,56 +295,37 @@ export function selectHops(
       : `in country "${entry.country}"`;
   const subnetNote = opts.requireDistinctSubnet ? ' on a distinct subnet' : '';
   const cityNote = exitIps ? ' at the chosen exit city' : '';
-  throw new Error(`selectHops: no distinct exit ${jurisdiction}${cityNote}${subnetNote}`);
+  const keyNote = excludedExits.size > 0 ? ' that has not seen the client key' : '';
+  throw new Error(`selectHops: no distinct exit ${jurisdiction}${cityNote}${subnetNote}${keyNote}`);
 }
 
 /**
- * Build the two nested WireGuard interface configs for a multi-hop route.
+ * Build the OUTER (entry) interface config of a multi-hop route. It needs only
+ * the exit's IP, not its enrollment, so the entry hop can be up — and carry
+ * the client's requests to the exit gateway — before the exit is enrolled.
  *
- * Both interfaces use the *same* client private key (one payment, key `K` is
- * premium at entry and exit). The outer interface pins `AllowedIPs` to the
- * exit's IP `/32` only, so exclusively the inner tunnel's UDP packets to the
- * exit traverse the entry; the inner interface routes all traffic and sets the
- * exit's DNS and the reduced 1340 MTU.
+ * The outer interface pins `AllowedIPs` to the exit's IP `/32` only, so only
+ * traffic to the exit gateway traverses the entry.
  *
  * Stealth multi-hop obfuscates the ENTRY hop only (the local censor sees just the
  * entry handshake; the inner exit hop travels encapsulated). Pass the entry
  * gateway's chosen `entryTransport` (an `awg` transport) and the outer config
- * gains its AmneziaWG `[Interface]` lines and points at the awg port; the inner
- * (exit) hop stays vanilla. Omit it (or pass a vanilla `wg` transport) for a
- * fully vanilla multi-hop — the output is then byte-identical to before.
+ * gains its AmneziaWG `[Interface]` lines and points at the awg port. Omit it
+ * (or pass a vanilla `wg` transport) for a vanilla entry hop.
  *
- * Split tunneling (docs/17 §7.2): rules apply to the INNER (exit) hop — that is
- * where the default route lives. Pass a `split` compiled with
- * `supportsExcludeRoute: false` and the inner `.conf`'s `AllowedIPs` becomes the
- * compiled `tunnelRoutes`; the outer hop's `<exitIp>/32` pin is untouched. The
- * compile step must have been given both hop IPs as `endpointIps` so no rule
- * can shadow either pin. Absent or noop keeps the output byte-identical.
- *
- * @param args.privateKey - Client WireGuard private key (base64), used on both.
- * @param args.entry - Enrollment of key `K` at the ENTRY gateway.
- * @param args.exit - Enrollment of key `K` at the EXIT gateway.
+ * @param args.privateKey - The ENTRY hop's private key (base64).
+ * @param args.entry - Enrollment of that key at the ENTRY gateway.
+ * @param args.exitIp - The EXIT gateway's IP (no port).
  * @param args.entryTransport - ENTRY hop transport (an `awg` profile obfuscates it).
- * @param args.split - Compiled split policy for the exit hop's `AllowedIPs`.
- * @param args.dns - The inner hop's `DNS =` value (see `dnsServersFor`); defaults
- *   to the exit's advertised `dns`, which keeps the output byte-identical.
- * @returns The `outer`/`inner` `.conf` strings, `entryEndpoint`, `exitEndpoint`, `innerMtu`.
+ * @returns The `outer` `.conf`, `entryEndpoint` and `exitEndpoint`.
  */
-export function buildMultihopConfig(args: {
+export function buildMultihopOuterConfig(args: {
   privateKey: string;
   entry: EnrollResponse;
-  exit: EnrollResponse;
+  exitIp: string;
   entryTransport?: Transport;
-  split?: CompiledSplit;
-  dns?: string;
-}): MultihopConfig {
-  const { privateKey, entry, exit, entryTransport, split } = args;
-  const dns = args.dns ?? exit.dns;
-  const exitIp = stripEndpointPort(exit.endpoint);
-  const exitEndpoint = `${exitIp}:${WG_PORT}`;
-
-  // Stealth: fold the entry hop's awg obfuscation into the outer [Interface] and
-  // point it at the transport's port (awg = 51821). Vanilla when absent.
+}): MultihopOuterConfig {
+  const { privateKey, entry, exitIp, entryTransport } = args;
   const entryObfs = entryTransport ? obfsForTransport(entryTransport) : undefined;
   const entryEndpoint = entryTransport
     ? applyTransportToEndpoint(entry.endpoint, entryTransport)
@@ -316,6 +346,36 @@ export function buildMultihopConfig(args: {
     'PersistentKeepalive = 25',
   ];
   const outer = `${outerIface.join('\n')}\n\n${outerPeer.join('\n')}\n`;
+  return { outer, entryEndpoint, exitEndpoint: `${exitIp}:${WG_PORT}` };
+}
+
+/**
+ * Build the INNER (exit) interface config of a multi-hop route: all traffic,
+ * the exit's DNS and the reduced 1340 MTU.
+ *
+ * Split tunneling (docs/17 §7.2): rules apply to the INNER (exit) hop — that is
+ * where the default route lives. Pass a `split` compiled with
+ * `supportsExcludeRoute: false` and the inner `.conf`'s `AllowedIPs` becomes the
+ * compiled `tunnelRoutes`. The compile step must have been given both hop IPs
+ * as `endpointIps` so no rule can shadow either pin. Absent or noop keeps
+ * `AllowedIPs = 0.0.0.0/0, ::/0`.
+ *
+ * @param args.privateKey - The EXIT hop's private key (base64).
+ * @param args.exit - Enrollment of that key at the EXIT gateway.
+ * @param args.split - Compiled split policy for the exit hop's `AllowedIPs`.
+ * @param args.dns - The `DNS =` value (see `dnsServersFor`); defaults to the
+ *   exit's advertised `dns`.
+ * @returns The `inner` `.conf`, `exitEndpoint` and `innerMtu`.
+ */
+export function buildMultihopInnerConfig(args: {
+  privateKey: string;
+  exit: EnrollResponse;
+  split?: CompiledSplit;
+  dns?: string;
+}): MultihopInnerConfig {
+  const { privateKey, exit, split } = args;
+  const dns = args.dns ?? exit.dns;
+  const exitEndpoint = `${stripEndpointPort(exit.endpoint)}:${WG_PORT}`;
 
   // Android per-app rules (docs/17 §4.1) ride the INNER config's [Interface]
   // like the single-hop path: the official Config parser reads these keys and
@@ -346,6 +406,43 @@ export function buildMultihopConfig(args: {
     'PersistentKeepalive = 25',
   ];
   const inner = `${innerIface.join('\n')}\n\n${innerPeer.join('\n')}\n`;
+  return { inner, exitEndpoint, innerMtu: INNER_MTU };
+}
 
-  return { outer, inner, entryEndpoint, exitEndpoint, innerMtu: INNER_MTU };
+/**
+ * Build the two nested WireGuard interface configs for a multi-hop route with
+ * ONE client key on both hops: {@link buildMultihopOuterConfig} and
+ * {@link buildMultihopInnerConfig} for the same `privateKey`.
+ *
+ * @param args.privateKey - Client WireGuard private key (base64), used on both.
+ * @param args.entry - Enrollment of key `K` at the ENTRY gateway.
+ * @param args.exit - Enrollment of key `K` at the EXIT gateway.
+ * @param args.entryTransport - ENTRY hop transport (an `awg` profile obfuscates it).
+ * @param args.split - Compiled split policy for the exit hop's `AllowedIPs`.
+ * @param args.dns - The inner hop's `DNS =` value (see `dnsServersFor`); defaults
+ *   to the exit's advertised `dns`.
+ * @returns The `outer`/`inner` `.conf` strings, `entryEndpoint`, `exitEndpoint`, `innerMtu`.
+ */
+export function buildMultihopConfig(args: {
+  privateKey: string;
+  entry: EnrollResponse;
+  exit: EnrollResponse;
+  entryTransport?: Transport;
+  split?: CompiledSplit;
+  dns?: string;
+}): MultihopConfig {
+  const { privateKey, entry, exit, entryTransport, split, dns } = args;
+  const { outer, entryEndpoint } = buildMultihopOuterConfig({
+    privateKey,
+    entry,
+    exitIp: stripEndpointPort(exit.endpoint),
+    ...(entryTransport ? { entryTransport } : {}),
+  });
+  const { inner, exitEndpoint, innerMtu } = buildMultihopInnerConfig({
+    privateKey,
+    exit,
+    ...(split ? { split } : {}),
+    ...(dns !== undefined ? { dns } : {}),
+  });
+  return { outer, inner, entryEndpoint, exitEndpoint, innerMtu };
 }

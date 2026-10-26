@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { buildMultihopConfig, selectHops } from './multihop.js';
+import {
+  buildMultihopConfig,
+  buildMultihopInnerConfig,
+  buildMultihopOuterConfig,
+  selectHops,
+} from './multihop.js';
 import { EMPTY_POLICY, compileSplitPolicy } from './split.js';
 import type { EnrollResponse, GatewayInfo } from './types.js';
 
@@ -157,6 +162,52 @@ describe('buildMultihopConfig', () => {
   });
 });
 
+describe('buildMultihopOuterConfig / buildMultihopInnerConfig', () => {
+  const entry = enrollResp({
+    server_pubkey: 'ENTRY_PUB',
+    endpoint: '9.9.9.9:51820',
+    assigned_ip: '10.8.0.5',
+    dns: '10.8.0.1',
+  });
+  const exit = enrollResp({
+    server_pubkey: 'EXIT_PUB',
+    endpoint: '5.6.7.8:51820',
+    assigned_ip: '10.8.9.9',
+    dns: '9.9.9.9',
+  });
+
+  it('builds the entry hop from the exit IP alone, before the exit is enrolled', () => {
+    const o = buildMultihopOuterConfig({ privateKey: 'ENTRY_KEY', entry, exitIp: '5.6.7.8' });
+    expect(o.outer).toContain('PrivateKey = ENTRY_KEY');
+    expect(o.outer).toContain('AllowedIPs = 5.6.7.8/32');
+    expect(o.entryEndpoint).toBe('9.9.9.9:51820');
+    expect(o.exitEndpoint).toBe('5.6.7.8:51820');
+  });
+
+  it('gives each hop its own key', () => {
+    const o = buildMultihopOuterConfig({ privateKey: 'ENTRY_KEY', entry, exitIp: '5.6.7.8' });
+    const i = buildMultihopInnerConfig({ privateKey: 'EXIT_KEY', exit });
+    expect(o.outer).not.toContain('EXIT_KEY');
+    expect(i.inner).toContain('PrivateKey = EXIT_KEY');
+    expect(i.inner).not.toContain('ENTRY_KEY');
+    expect(i.exitEndpoint).toBe('5.6.7.8:51820');
+    expect(i.innerMtu).toBe(1340);
+  });
+
+  it('with one key, the two halves are exactly buildMultihopConfig', () => {
+    const both = buildMultihopConfig({ privateKey: 'K', entry, exit, dns: '9.9.9.9' });
+    const o = buildMultihopOuterConfig({ privateKey: 'K', entry, exitIp: '5.6.7.8' });
+    const i = buildMultihopInnerConfig({ privateKey: 'K', exit, dns: '9.9.9.9' });
+    expect(both).toStrictEqual({
+      outer: o.outer,
+      inner: i.inner,
+      entryEndpoint: o.entryEndpoint,
+      exitEndpoint: i.exitEndpoint,
+      innerMtu: i.innerMtu,
+    });
+  });
+});
+
 describe('selectHops', () => {
   const us1 = gateway({ ip: '1.0.0.1', country: 'US', load: 0.1 });
   const us2 = gateway({ ip: '1.0.0.2', country: 'US', load: 0.5 });
@@ -178,6 +229,51 @@ describe('selectHops', () => {
 
   it('throws when same-country has no distinct exit', () => {
     expect(() => selectHops([us1, de1], 'multihop-same-country')).toThrow();
+  });
+
+  it('skips pairs the client found unusable, and moves to the next entry when none is left', () => {
+    const us3 = gateway({ ip: '1.0.0.3', country: 'US', load: 0.7 });
+    // us1 (entry) would pair with us2 first; that pair unusable picks us3.
+    const avoided = selectHops([us1, us2, us3], 'multihop-same-country', {
+      unusablePairs: [{ entryIp: '1.0.0.1', exitIp: '1.0.0.2' }],
+    });
+    expect([avoided.entry.ip, avoided.exit?.ip]).toEqual(['1.0.0.1', '1.0.0.3']);
+    // Every exit for us1 unusable: the next entry (us2) pairs with us1 — the
+    // pair is what is unusable, not the gateway.
+    const next = selectHops([us1, us2, us3], 'multihop-same-country', {
+      unusablePairs: [
+        { entryIp: '1.0.0.1', exitIp: '1.0.0.2' },
+        { entryIp: '1.0.0.1', exitIp: '1.0.0.3' },
+      ],
+    });
+    expect([next.entry.ip, next.exit?.ip]).toEqual(['1.0.0.2', '1.0.0.1']);
+    // Nothing left to pair: a clear failure, not a reused pair.
+    expect(() =>
+      selectHops([us1, us2], 'multihop-same-country', {
+        unusablePairs: [
+          { entryIp: '1.0.0.1', exitIp: '1.0.0.2' },
+          { entryIp: '1.0.0.2', exitIp: '1.0.0.1' },
+        ],
+      }),
+    ).toThrow(/no distinct exit/);
+  });
+
+  it('never picks an excluded gateway as the exit, but may use it as the entry', () => {
+    const us3 = gateway({ ip: '1.0.0.3', country: 'US', load: 0.7 });
+    // us2 would be us1's exit; excluded, us3 is.
+    const a = selectHops([us1, us2, us3], 'multihop-same-country', {
+      excludeExitIps: ['1.0.0.2'],
+    });
+    expect([a.entry.ip, a.exit?.ip]).toEqual(['1.0.0.1', '1.0.0.3']);
+    // The least-loaded gateway excluded as an exit is still the entry.
+    const b = selectHops([us1, us2, us3], 'multihop-same-country', {
+      excludeExitIps: ['1.0.0.1'],
+    });
+    expect([b.entry.ip, b.exit?.ip]).toEqual(['1.0.0.1', '1.0.0.2']);
+    // Every possible exit excluded: a failure that says why.
+    expect(() =>
+      selectHops([us1, us2], 'multihop-same-country', { excludeExitIps: ['1.0.0.1', '1.0.0.2'] }),
+    ).toThrow(/no distinct exit .* that has not seen the client key/);
   });
 
   it('enforces cross-country for cross-jurisdiction', () => {

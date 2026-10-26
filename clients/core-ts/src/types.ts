@@ -152,6 +152,12 @@ export interface DiscoverOptions {
   readonly nodes?: readonly string[];
   /** Override the fetch implementation. */
   readonly fetchImpl?: FetchImpl;
+  /**
+   * Called with each gateway as soon as its `/v1/info` verifies, before the
+   * slower probes finish — an unreachable candidate holds the returned promise
+   * until its request times out, but not this.
+   */
+  readonly onGateway?: (gateway: GatewayInfo) => void;
 }
 
 /** Options for {@link enroll} and {@link status}. */

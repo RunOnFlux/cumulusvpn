@@ -50,14 +50,14 @@ describe('setupBanner', () => {
     expect(setupBanner('notNeeded', 'macos')).toBeNull();
   });
 
-  // The elevated fallback works, but the tunnel dies with the app: say so,
+  // Linux as root runs the tunnel itself, and it dies with the app: say so,
   // without blocking Connect.
-  it('notes the elevated in-process fallback without blocking', () => {
+  it('notes the Linux in-process mode without blocking', () => {
     const linux = setupBanner('elevated', 'linux');
     expect(linux?.blocking).toBe(false);
     expect(linux?.text).toMatch(/stops when the app quits/);
     expect(linux?.text).toMatch(/\.deb or \.rpm/);
-    expect(setupBanner('elevated', 'windows')?.text).toMatch(/administrator/);
+    expect(setupBanner('elevated', 'windows')).toBeNull();
   });
 
   it('keeps the macOS approval flow and its Settings button', () => {

@@ -24,6 +24,7 @@ mod helper_client;
 mod helper_install;
 #[cfg(not(target_os = "macos"))]
 mod platform;
+mod pow;
 
 use tauri::menu::{MenuBuilder, MenuItemBuilder};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
@@ -89,15 +90,19 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_http::init())
         .manage(TunnelBackend::new())
         .invoke_handler(tauri::generate_handler![
             commands::connect,
-            commands::connect_multihop,
+            commands::connect_multihop_entry,
+            commands::connect_multihop_exit,
             commands::disconnect,
             commands::status,
             commands::helper_status,
             commands::helper_registration,
             commands::open_helper_settings,
+            commands::frontend_log,
+            commands::solve_pow,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

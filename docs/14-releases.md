@@ -4,11 +4,11 @@ Signed release pipelines for the native apps, mirroring the ssp-key setup. All a
 **tag-triggered** and publish artifacts to a GitHub Release. The gateway image and
 the two websites already auto-deploy (see `.github/workflows/README.md`).
 
-| App     | Workflow                          | Trigger tag      | Output                                                               |
-| ------- | --------------------------------- | ---------------- | -------------------------------------------------------------------- |
-| Android | `android-release.yml`             | `mobile-v*`      | signed **APK + AAB** → GitHub Release                                |
-| Desktop | `desktop-release.yml`             | `desktop-v*`     | macOS **Apple Silicon** `.dmg`/`.app` (Intel/Windows/Linux deferred) |
-| iOS     | Xcode Cloud (+ `ios/ci_scripts/`) | (Xcode Cloud UI) | TestFlight / App Store                                               |
+| App     | Workflow                          | Trigger tag      | Output                                                                                 |
+| ------- | --------------------------------- | ---------------- | -------------------------------------------------------------------------------------- |
+| Android | `android-release.yml`             | `mobile-v*`      | signed **APK + AAB** → GitHub Release                                                  |
+| Desktop | `desktop-release.yml`             | `desktop-v*`     | macOS Apple Silicon, Linux x86_64 and Windows x86_64 installers (draft GitHub Release) |
+| iOS     | Xcode Cloud (+ `ios/ci_scripts/`) | (Xcode Cloud UI) | TestFlight / App Store                                                                 |
 
 > **Generate the keys yourself** with the commands below — don't paste private keys
 > into chat/issues. They go straight into **GitHub → Settings → Secrets and
@@ -52,10 +52,94 @@ _(Optional)_ auto-upload to Play: add a Play service-account JSON secret and a
 
 ## Desktop (Tauri)
 
-`desktop-release.yml` builds all platforms via `tauri-action`. The **updater** is
-enabled (`tauri.conf.json`), so it needs an updater signing key.
+`desktop-release.yml` builds three legs with `tauri-action` and publishes them to
+a **draft** GitHub Release on a `desktop-v*` tag (a manual run only builds):
 
-**1. Generate the updater key:**
+| Leg                 | Runner           | Artifacts                                    | Privileged helper                                                                         |
+| ------------------- | ---------------- | -------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| macOS Apple Silicon | `macos-latest`   | `.dmg`, `.app.tar.gz`                        | LaunchDaemon inside the `.app`, registered with `SMAppService`                            |
+| Linux x86_64        | `ubuntu-latest`  | `.deb`, `.rpm`, `.AppImage`                  | systemd service from the `.deb` / `.rpm`; the AppImage runs the tunnel in-process as root |
+| Windows x86_64      | `windows-latest` | NSIS `-setup.exe`, `.msi` (both per-machine) | `CumulusVPNHelper` LocalSystem service; the tunnel runs only in that service on Windows   |
+
+Each leg builds the `wireguard-go` (AmneziaWG) sidecar from source
+(`scripts/fetch-wireguard-go.sh`) and the helper (`scripts/build-helper.mjs`),
+then installs the packages on the runner and checks the service, its
+permissions, peer authentication and uninstall cleanup. The Windows leg also
+fetches the pinned `wintun.dll` (SHA256-checked). Intel Macs have no leg.
+
+The latest published release is `desktop-v1.2.0` (2026-08-23), with all seven
+artifacts above. Tags `desktop-v1.3.0` to `desktop-v1.4.1` exist without a
+published release. The repo's version strings say `1.4.1`, and the working tree
+carries the unreleased changes below, so the next release needs a new version.
+
+**The app and the helper ship as a pair.** They speak the protocol in
+`src-tauri/protocol`, which has no version negotiation: multi-hop is two
+requests (`connect_multihop_entry`, `connect_multihop_exit`), and a helper from
+`1.4.1` or earlier does not know them. Every package installs both and restarts
+the helper.
+
+### Unreleased desktop changes (since `desktop-v1.4.1`)
+
+**Windows**
+
+- The tunnel runs only in the `CumulusVPNHelper` service; there is no
+  Run-as-Administrator mode.
+- Routes, addresses, adapter DNS, the kill switch and the DNS leak block use
+  IP Helper and WFP directly (no PowerShell or `netsh`). Routes the service adds
+  on the physical interface are recorded in `routes.txt` and removed at the next
+  start after a crash.
+- Gateway requests go through the native HTTP client, so discovery works in
+  WebView2.
+- The MSI closes a running app before it replaces it.
+
+**All platforms**
+
+- Multi-hop:
+  - The entry hop comes up first, with the exit gateway's IP routed through it.
+    The enroll at the exit then leaves inside the entry tunnel, on a key made
+    for that session alone, so the exit never sees the user's IP or account key.
+    The exit hop runs at the exit gateway's free tier.
+  - The exit is never a gateway the app has sent the account key to since launch.
+  - An entry and exit that assign the same tunnel address are replaced by the
+    next pair.
+  - Entitlement is checked at the entry.
+- The kill switch allows the gateway control port (51821).
+- The enroll proof-of-work is solved natively on every core: milliseconds,
+  where the webview's JavaScript took up to several seconds per enroll.
+- Discovery reports gateways as they verify. The app is ready once the
+  country it opens on has one (about 250 ms on the test machine); unreachable
+  gateways no longer hold it for their 12 s timeout.
+- Interface:
+  - The kill switch is pinned above Connect.
+  - The connect orb and status are pinned under the title bar.
+  - A user disconnect no longer shows "connection lost".
+- Logs:
+  - `desktop.log` and the helper's log are capped at 1 MiB, with one older
+    part kept as `<name>.1`.
+  - The macOS helper logs to `/Library/Logs/CumulusVPN/helper.log`.
+  - Discovery logs one summary line and its failures.
+
+See `docs/11-multihop.md` and the desktop README's "Logs" section.
+
+**Signing.** All three legs build unsigned by default:
+
+- **macOS:** add `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
+  `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (app-specific
+  password) and `APPLE_TEAM_ID` for a signed, notarized `.dmg`. An unsigned
+  build cannot register its helper; it runs only when launched as root, which
+  uses the in-process tunnel.
+- **Windows:** there is no code-signing certificate, so SmartScreen warns on
+  install, and the helper's Authenticode check (`REQUIRE_AUTHENTICODE` in
+  `helper/src/peer_windows.rs`) stays off.
+- **Linux:** packages are unsigned.
+
+**Updater.** `tauri.conf.json` carries a `plugins.updater` block (endpoint
+`releases/latest/download/latest.json`, public key), and the workflow passes
+`TAURI_SIGNING_PRIVATE_KEY` / `_PASSWORD`. The app does not include
+`tauri-plugin-updater` and the bundle config does not set
+`createUpdaterArtifacts`, so releases carry no `latest.json` and installed apps
+update by installing the new release. Enabling it means adding the plugin to the
+app, setting `bundle.createUpdaterArtifacts`, and generating the key:
 
 ```bash
 cd clients/desktop
@@ -63,26 +147,12 @@ yarn tauri signer generate -w cumulusvpn-updater.key
 # prints a PUBLIC key and writes the private key to cumulusvpn-updater.key (gitignored)
 ```
 
-- Put the **public key** into `clients/desktop/src-tauri/tauri.conf.json` under
-  `plugins.updater.pubkey` (and set `plugins.updater.endpoints` to your release
-  feed, e.g. the GitHub Releases `latest.json`).
-- Secrets: `TAURI_SIGNING_PRIVATE_KEY` = the contents of `cumulusvpn-updater.key`;
-  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` = the password you set.
+The public key goes in `plugins.updater.pubkey`; the private key and its
+password go in the `TAURI_SIGNING_PRIVATE_KEY` / `_PASSWORD` secrets.
 
-**2. macOS sign + notarize** (optional — needed for a Gatekeeper-clean `.dmg`;
-requires an Apple Developer account): add `APPLE_CERTIFICATE`,
-`APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`,
-`APPLE_PASSWORD` (app-specific password), `APPLE_TEAM_ID`. Without them the build
-still produces unsigned installers.
-
-**3. Release:** `git tag desktop-v1.0.0 && git push origin desktop-v1.0.0` → builds
-the **Apple Silicon** macOS installer and publishes a **draft** GitHub Release.
-
-> **Apple Silicon only (decided):** Intel Macs are dropped (obsolete). The vendored
-> `wireguard-go` sidecar covers `aarch64-apple-darwin`, so this build works as-is —
-> no cross-compile needed. To add Windows/Linux later, extend
-> `clients/desktop/scripts/fetch-wireguard-go.sh` to cross-compile wireguard-go per
-> platform and re-add those matrix legs to `desktop-release.yml`.
+**Release:** bump the versions (below) to the new version, then
+`git tag desktop-v<x.y.z> && git push origin desktop-v<x.y.z>`, and publish the
+draft once the three legs are green.
 
 ## iOS (Xcode Cloud)
 
@@ -109,12 +179,12 @@ No GitHub secrets are needed for iOS — signing lives in App Store Connect.
 
 ## Secrets summary
 
-| Secret                                                                                          | Used by                    | Who provides                    |
-| ----------------------------------------------------------------------------------------------- | -------------------------- | ------------------------------- |
-| `ANDROID_SIGNING_KEY` / `ANDROID_ALIAS` / `ANDROID_KEY_STORE_PASSWORD` / `ANDROID_KEY_PASSWORD` | Android                    | you (keytool)                   |
-| `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`                              | Desktop updater            | you (tauri signer)              |
-| `APPLE_*` (6)                                                                                   | Desktop macOS notarization | Apple Developer acct (optional) |
-| — (Xcode Cloud)                                                                                 | iOS                        | App Store Connect               |
+| Secret                                                                                          | Used by                        | Who provides                    |
+| ----------------------------------------------------------------------------------------------- | ------------------------------ | ------------------------------- |
+| `ANDROID_SIGNING_KEY` / `ANDROID_ALIAS` / `ANDROID_KEY_STORE_PASSWORD` / `ANDROID_KEY_PASSWORD` | Android                        | you (keytool)                   |
+| `TAURI_SIGNING_PRIVATE_KEY` / `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`                              | Desktop updater (once enabled) | you (tauri signer)              |
+| `APPLE_*` (6)                                                                                   | Desktop macOS notarization     | Apple Developer acct (optional) |
+| — (Xcode Cloud)                                                                                 | iOS                            | App Store Connect               |
 
 ## Versioning
 
@@ -134,11 +204,12 @@ the failure this checklist exists to prevent.)
 
 **Desktop** (tag `desktop-v<x.y.z>`):
 
-| File                                          | Field                                     |
-| --------------------------------------------- | ----------------------------------------- |
-| `clients/desktop/package.json`                | `version`                                 |
-| `clients/desktop/src-tauri/tauri.conf.json`   | `version` (the binary + updater manifest) |
-| `clients/desktop/src/components/Settings.tsx` | `APP_VERSION` (the About row)             |
+| File                                          | Field                                                                                   |
+| --------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `clients/desktop/package.json`                | `version`                                                                               |
+| `clients/desktop/src-tauri/tauri.conf.json`   | `version` (the installers and the binary)                                               |
+| `clients/desktop/src/components/Settings.tsx` | `APP_VERSION` (the About row)                                                           |
+| `clients/desktop/src-tauri/helper/Cargo.toml` | `version` — what `cumulusvpn-helper --version` and `--ping` report (`0.1.0` at `1.4.1`) |
 
 (A future improvement: derive all of these from the tag in CI.)
 

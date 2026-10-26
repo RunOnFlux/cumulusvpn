@@ -3,8 +3,9 @@
  * `src-tauri/src/commands.rs`: `connect`, `connect_multihop`, `disconnect`,
  * `status`, plus the helper setup commands. The same commands work on every
  * desktop OS: they reach the privileged helper daemon (a LaunchDaemon on macOS,
- * a systemd service on Linux, a Windows service), or the tunnel inside the app
- * when it runs elevated without one (`src-tauri/src/backend.rs`).
+ * a systemd service on Linux, a Windows service), or, on macOS and Linux, the
+ * tunnel inside the app when it runs as root without one
+ * (`src-tauri/src/backend.rs`).
  *
  * When the frontend runs outside a Tauri window (plain `vite dev`, CI build,
  * Storybook), `isTauri()` is false and we fall back to an in-memory mock tunnel
@@ -85,30 +86,46 @@ export interface ConnectArgs {
  * (host route `<exitIp>/32` → wg-entry), the inner (to EXIT) carries the default
  * route. See `docs/11-multihop.md`.
  */
-export interface MultihopConnectArgs {
+/** Split tunneling routes — see `ConnectArgs.split`. */
+interface SplitRoutes {
+  readonly bypassRoutes: readonly string[];
+  readonly tunnelRoutes: readonly string[];
+}
+
+/** Multi-hop step 1: the ENTRY hop, with the exit gateway's IP routed through it. */
+export interface MultihopEntryArgs {
   /** ISO country of the ENTRY hop (sees your real IP, not your destination). */
   readonly entryCountry: string;
-  /** ISO country of the EXIT hop (sees your destination, not your real IP). */
-  readonly exitCountry: string;
   /** Outer `.conf` (wg-entry): `AllowedIPs = <exitIp>/32`, MTU 1420, no DNS. */
   readonly outer: string;
-  /** Inner `.conf` (wg-exit): `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340, exit DNS. */
-  readonly inner: string;
-  /** `<entryIp>:51820` — the only real UDP egress; allow-listed by the kill switch. */
+  /** `<entryIp>:<port>` — the only real UDP egress; allow-listed by the kill switch. */
   readonly entryEndpoint: string;
   /** `<exitIp>:51820` — routed via the outer interface (host route). */
+  readonly exitEndpoint: string;
+  /** Engage the leak-protection kill switch (firewall rules) for this session. */
+  readonly killSwitch: boolean;
+  /** Split tunneling; its bypass prefixes are punched through the kill switch. */
+  readonly split?: SplitRoutes;
+}
+
+/** Multi-hop step 2: the EXIT hop, through the entry hop step 1 brought up. */
+export interface MultihopExitArgs {
+  /** ISO country of the EXIT hop (sees your destination, not your real IP). */
+  readonly exitCountry: string;
+  /** Inner `.conf` (wg-exit): `AllowedIPs = 0.0.0.0/0, ::/0`, MTU 1340, exit DNS. */
+  readonly inner: string;
+  /** Step 1's `entryEndpoint`. */
+  readonly entryEndpoint: string;
+  /** Step 1's `exitEndpoint`. */
   readonly exitEndpoint: string;
   /** Inner interface MTU (1340) — headroom for two stacked WireGuard headers. */
   readonly innerMtu: number;
   /** Inner (exit) assigned tunnel address, surfaced back in status. */
   readonly assignedIp: string;
-  /** Engage the leak-protection kill switch (firewall rules) for this session. */
+  /** Step 1's `killSwitch`. */
   readonly killSwitch: boolean;
   /** Split tunneling — see `ConnectArgs.split`. Applies to the exit device. */
-  readonly split?: {
-    readonly bypassRoutes: readonly string[];
-    readonly tunnelRoutes: readonly string[];
-  };
+  readonly split?: SplitRoutes;
 }
 
 const DOWN: TunnelStatus = {
@@ -159,7 +176,13 @@ function mockConnect(args: ConnectArgs): Promise<TunnelStatus> {
   return bringMockUp(args.endpoint, args.country, args.assignedIp);
 }
 
-function mockConnectMultihop(args: MultihopConnectArgs): Promise<TunnelStatus> {
+function mockConnectMultihopEntry(args: MultihopEntryArgs): TunnelStatus {
+  stopMockCounters();
+  mock = { ...DOWN, state: 'connecting', endpoint: args.entryEndpoint, country: args.entryCountry };
+  return mock;
+}
+
+function mockConnectMultihopExit(args: MultihopExitArgs): Promise<TunnelStatus> {
   // The mock surfaces the entry as the wire endpoint (the only real UDP egress)
   // and the exit country as the effective location (where traffic emerges).
   return bringMockUp(args.entryEndpoint, args.exitCountry, args.assignedIp);
@@ -194,18 +217,36 @@ export async function connect(args: ConnectArgs): Promise<TunnelStatus> {
 }
 
 /**
- * Bring a **multi-hop** tunnel up: two stacked wireguard-go devices via the
- * native `connect_multihop` command (or the browser mock). Tauri maps these
- * `camelCase` keys to the `snake_case` Rust parameters.
+ * Multi-hop, step 1: bring the entry hop up and route the exit gateway's IP
+ * through it (native `connect_multihop_entry`, or the browser mock). Requests
+ * to the exit gateway made after this leave inside the entry tunnel. Tauri
+ * maps these `camelCase` keys to the `snake_case` Rust parameters.
  */
-export async function connectMultihop(args: MultihopConnectArgs): Promise<TunnelStatus> {
+export async function connectMultihopEntry(args: MultihopEntryArgs): Promise<TunnelStatus> {
   if (!isTauri()) {
-    return mockConnectMultihop(args);
+    return mockConnectMultihopEntry(args);
   }
-  return invoke<TunnelStatus>('connect_multihop', {
+  return invoke<TunnelStatus>('connect_multihop_entry', {
     entryCountry: args.entryCountry,
-    exitCountry: args.exitCountry,
     outer: args.outer,
+    entryEndpoint: args.entryEndpoint,
+    exitEndpoint: args.exitEndpoint,
+    killSwitch: args.killSwitch,
+    bypassRoutes: args.split?.bypassRoutes ?? null,
+    tunnelRoutes: args.split?.tunnelRoutes ?? null,
+  });
+}
+
+/**
+ * Multi-hop, step 2: bring the exit hop up through the entry hop and route all
+ * traffic and DNS to it (native `connect_multihop_exit`, or the browser mock).
+ */
+export async function connectMultihopExit(args: MultihopExitArgs): Promise<TunnelStatus> {
+  if (!isTauri()) {
+    return mockConnectMultihopExit(args);
+  }
+  return invoke<TunnelStatus>('connect_multihop_exit', {
+    exitCountry: args.exitCountry,
     inner: args.inner,
     entryEndpoint: args.entryEndpoint,
     exitEndpoint: args.exitEndpoint,
@@ -215,6 +256,38 @@ export async function connectMultihop(args: MultihopConnectArgs): Promise<Tunnel
     bypassRoutes: args.split?.bypassRoutes ?? null,
     tunnelRoutes: args.split?.tunnelRoutes ?? null,
   });
+}
+
+/**
+ * Diagnostic line to the native side (stderr + `desktop.log` in the app log
+ * dir), so webview-only failures are visible without devtools. Never throws.
+ */
+export function logLine(line: string): void {
+  console.info(line);
+  if (!isTauri()) {
+    return;
+  }
+  invoke('frontend_log', { line }).catch(() => undefined);
+}
+
+/** A solved enroll proof-of-work. */
+export interface PowSolution {
+  /** The winning counter, as a decimal string. */
+  readonly nonce: string;
+  /** Hashes computed across all threads. */
+  readonly hashes: number;
+}
+
+/**
+ * Solve the enroll proof-of-work natively, on every core, searching from
+ * `start` (`src-tauri/src/pow.rs`).
+ */
+export async function solvePow(
+  publicKey: string,
+  bits: number,
+  start: number,
+): Promise<PowSolution> {
+  return invoke<PowSolution>('solve_pow', { publicKey, bits, start });
 }
 
 /** Tear the tunnel down and drop the kill-switch rules. */
@@ -244,9 +317,9 @@ export function nativeAvailable(): boolean {
  * Ready:
  * - `enabled` — the privileged helper daemon answers and serves this app.
  * - `notNeeded` — macOS launched as root: the tunnel runs inside the app.
- * - `elevated` — Linux / Windows run as root / Administrator with no helper
- *   answering (an AppImage, a build without its service): the tunnel runs
- *   inside the app, and stops when the app quits.
+ * - `elevated` — Linux run as root with no helper answering (an AppImage):
+ *   the tunnel runs inside the app, and stops when the app quits. Windows runs
+ *   the tunnel in its helper service only.
  *
  * Setup steps (Connect is disabled and a banner explains the fix — the app
  * itself holds no privileges, so nothing can connect until it is done):

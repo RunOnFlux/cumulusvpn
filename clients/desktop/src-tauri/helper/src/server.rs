@@ -129,6 +129,20 @@ pub fn serve<S: Read + Write>(
 }
 
 fn dispatch(request: proto::Request, manager: &TunnelManager) -> proto::Response {
+    let what = match &request {
+        proto::Request::Ping => "ping",
+        proto::Request::Status => "status",
+        proto::Request::Disconnect => "disconnect",
+        proto::Request::Connect(_) => "connect",
+        proto::Request::ConnectMultihopEntry(_) => "connect_multihop_entry",
+        proto::Request::ConnectMultihopExit(_) => "connect_multihop_exit",
+    };
+    // Status and ping are polled; log only the requests that change state.
+    let logged = !matches!(request, proto::Request::Ping | proto::Request::Status);
+    if logged {
+        eprintln!("cumulusvpn-helper: {what} requested");
+    }
+    let started = std::time::Instant::now();
     let result = match request {
         proto::Request::Ping => {
             return proto::Response::Pong {
@@ -138,13 +152,26 @@ fn dispatch(request: proto::Request, manager: &TunnelManager) -> proto::Response
         proto::Request::Status => Ok(manager.status()),
         proto::Request::Disconnect => manager.disconnect(),
         proto::Request::Connect(r) => manager.connect_request(&r),
-        proto::Request::ConnectMultihop(r) => manager.connect_multihop_request(&r),
+        proto::Request::ConnectMultihopEntry(r) => manager.connect_multihop_entry_request(&r),
+        proto::Request::ConnectMultihopExit(r) => manager.connect_multihop_exit_request(&r),
     };
+    if logged {
+        eprintln!(
+            "cumulusvpn-helper: {what} {} in {} ms",
+            if result.is_ok() { "done" } else { "failed" },
+            started.elapsed().as_millis()
+        );
+        #[cfg(any(windows, target_os = "macos"))]
+        crate::logfile::rotate_if_full();
+    }
     match result {
         Ok(status) => proto::Response::Status(Box::new(status)),
-        Err(e) => proto::Response::Error {
-            message: e.to_string(),
-        },
+        Err(e) => {
+            eprintln!("cumulusvpn-helper: {what} failed: {e}");
+            proto::Response::Error {
+                message: e.to_string(),
+            }
+        }
     }
 }
 

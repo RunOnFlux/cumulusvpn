@@ -8,12 +8,14 @@
  */
 import {
   applyTransportToEndpoint,
-  buildMultihopConfig,
+  buildMultihopInnerConfig,
+  buildMultihopOuterConfig,
   buildWgConfig,
   compileSplitPolicy,
   discoverGateways,
   dnsServersFor,
   enroll,
+  generateKeypair,
   hasPremiumTransport,
   obfsForTransport,
   requireTransport,
@@ -24,6 +26,7 @@ import {
 import type {
   EnrollResponse,
   GatewayInfo,
+  HopPairIps,
   Keypair,
   RouteStyle,
   SplitPlatform,
@@ -34,6 +37,7 @@ import type {
 } from '@cumulusvpn/core';
 import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
+import { gatewayFetch } from './gatewayFetch.js';
 import { loadDnsChoice, loadSplitPolicy } from './storage.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
@@ -45,6 +49,27 @@ import type { TunnelStatus } from './tauri.js';
  * core `requireTransport`.
  */
 const IMPLEMENTED_TRANSPORTS: ReadonlySet<string> = new Set(['wg', 'awg', 'wg-tls']);
+
+/**
+ * The enroll proof-of-work solver: native (`tunnel.solvePow`), from a random
+ * start so repeated solves for one key give different nonces (the gateway
+ * accepts each once). Its duration and hash count are logged.
+ */
+function nativePoW(gatewayIp: string): (publicKeyB64: string, bits: number) => Promise<string> {
+  return async (publicKeyB64, bits) => {
+    const started = performance.now();
+    const solution = await tunnel.solvePow(
+      publicKeyB64,
+      bits,
+      Math.floor(Math.random() * 0x40000000),
+    );
+    tunnel.logLine(
+      `enroll ${gatewayIp}: proof-of-work (${bits} bits) solved in ` +
+        `${Math.round(performance.now() - started)} ms, ${solution.hashes} hashes`,
+    );
+    return solution.nonce;
+  };
+}
 
 /**
  * Enroll at a gateway — or, when running outside Tauri (a plain browser: dev,
@@ -59,12 +84,13 @@ async function enrollOrMock(
   options: ReturnType<typeof enrollOptsFor>,
 ): Promise<EnrollResponse> {
   if (isTauri()) {
-    return enroll(gatewayIp, publicKey, options);
+    return enroll(gatewayIp, publicKey, { ...options, powSolver: nativePoW(gatewayIp) });
   }
   return {
     server_pubkey: '2YOz4coIWsUlxKe3TNGFZqri7gX0nDJECrJ8olPG/AA=',
     endpoint: `${gatewayIp}:51820`,
-    assigned_ip: '10.8.0.2',
+    // Per-gateway, like a real pool: a multi-hop pair needs distinct addresses.
+    assigned_ip: `10.8.0.${(Number(gatewayIp.split('.').at(-1)) % 250) + 2}`,
     dns: '1.1.1.1',
     payment_address: BUNDLED_DIRECTORY.payment_address,
     payment_memo: 'CVPN1:demo',
@@ -113,12 +139,11 @@ export interface MultihopResult {
   readonly entryGatewayIp: string;
   readonly exitGatewayIp: string;
   /**
-   * The ACTUAL exit gateway's signing pubkey, for entitlement polling. This is
-   * `hops.exit.sign_pubkey`, not the user-picked exit CountryOption's key — for a
-   * same-country route the exit is auto-chosen within the entry country, so the
-   * picked country's key would fail signature verification against the real exit.
+   * The entry gateway's signing pubkey, for entitlement polling: the entry is
+   * the only hop that knows the client's key, so it is the one asked. This is
+   * `hops.entry.sign_pubkey`, the gateway actually dialled.
    */
-  readonly exitSignPubKey: string;
+  readonly entrySignPubKey: string;
   readonly entryEnroll: EnrollResponse;
   readonly exitEnroll: EnrollResponse;
   readonly tunnel: TunnelStatus;
@@ -171,13 +196,43 @@ export interface FleetDiscovery {
  * spec names; if nothing is reachable, falls back to the bundled directory's
  * seed gateways so the picker is never empty offline.
  *
+ * `onProgress` receives the fleet so far each time another gateway verifies:
+ * an unreachable candidate holds the returned promise until its request times
+ * out, and the picker need not wait for it.
+ *
  * // POC: the offline fallback yields countries with no live `/v1/info` metrics
  * (load defaults to 0, city empty); a real client also reads a TTL disk cache
  * ahead of live discovery.
  */
-export async function discoverFleetAndCountries(fetchImpl?: typeof fetch): Promise<FleetDiscovery> {
-  const options = fetchImpl ? { fetchImpl } : {};
+export async function discoverFleetAndCountries(
+  fetchImpl?: typeof fetch,
+  onProgress?: (discovery: FleetDiscovery) => void,
+): Promise<FleetDiscovery> {
+  // One line per failed request, then this summary: discovery asks every
+  // gateway at every launch.
+  let requests = 0;
+  let failed = 0;
+  const started = performance.now();
+  const arrived: GatewayInfo[] = [];
+  const options = {
+    fetchImpl: gatewayFetch(fetchImpl, {
+      failuresOnly: true,
+      onOutcome: (ok) => {
+        requests += 1;
+        failed += ok ? 0 : 1;
+      },
+    }),
+    onGateway: (g: GatewayInfo): void => {
+      arrived.push(g);
+      onProgress?.({ countries: toCountryOptions(arrived), fleet: [...arrived] });
+    },
+  };
   const gateways = await discoverGateways(BUNDLED_DIRECTORY.specs, options);
+  tunnel.logLine(
+    `discovery: ${gateways.length} verified gateway(s) from ${BUNDLED_DIRECTORY.specs.length} ` +
+      `spec(s); ${requests} request(s), ${failed} failed, in ` +
+      `${Math.round(performance.now() - started)} ms`,
+  );
   if (gateways.length > 0) {
     return { countries: toCountryOptions(gateways), fleet: gateways };
   }
@@ -249,15 +304,17 @@ async function resolveGatewayTier(
     readonly transports?: readonly Transport[];
   },
   publicKey: string,
+  keyed: KeyedGateways,
   cached: Tier,
   fetchImpl?: typeof fetch,
 ): Promise<Tier> {
   if (!hasPremiumTransport(gw.transports) || !isTauri()) {
     return cached;
   }
+  keyed.add(gw.gatewayIp);
   try {
     const s = await entitlementStatus(gw.gatewayIp, publicKey, {
-      ...(fetchImpl ? { fetchImpl } : {}),
+      fetchImpl: gatewayFetch(fetchImpl),
       ...(gw.signPubKey ? { signPubKey: gw.signPubKey } : {}),
     });
     return s.tier;
@@ -266,10 +323,31 @@ async function resolveGatewayTier(
   }
 }
 
+/**
+ * The gateways the client key has been sent to in this app run — by an enroll,
+ * an entitlement status request, or a tunnel to that gateway. A gateway is
+ * recorded before the request leaves, so one that failed still counts. A
+ * multi-hop exit is never one of them: an exit that has seen the key from the
+ * client's own address could tie the session to the client.
+ */
+export class KeyedGateways {
+  readonly #ips = new Set<string>();
+
+  /** Record that the client key is about to be sent to `ip`. */
+  add(ip: string): void {
+    this.#ips.add(ip);
+  }
+
+  /** Every gateway recorded so far. */
+  list(): readonly string[] {
+    return [...this.#ips];
+  }
+}
+
 /** Per-gateway enroll options: attach the pinned sign key + any fetch override. */
 function enrollOptsFor(country: CountryOption, fetchImpl?: typeof fetch) {
   return {
-    ...(fetchImpl ? { fetchImpl } : {}),
+    fetchImpl: gatewayFetch(fetchImpl),
     ...(country.signPubKey ? { signPubKey: country.signPubKey } : {}),
   };
 }
@@ -277,7 +355,7 @@ function enrollOptsFor(country: CountryOption, fetchImpl?: typeof fetch) {
 /** Enroll options from a live {@link GatewayInfo} (multi-hop hops come from the fleet). */
 function enrollOptsForGateway(g: GatewayInfo, fetchImpl?: typeof fetch) {
   return {
-    ...(fetchImpl ? { fetchImpl } : {}),
+    fetchImpl: gatewayFetch(fetchImpl),
     ...(g.sign_pubkey ? { signPubKey: g.sign_pubkey } : {}),
   };
 }
@@ -423,6 +501,7 @@ function splitForSession(
 export async function establish(
   country: CountryOption,
   keypair: Keypair,
+  keyed: KeyedGateways,
   killSwitch: boolean,
   transportMode: TransportMode = 'auto',
   tier: Tier = 'free',
@@ -436,7 +515,7 @@ export async function establish(
   // one. The chain is already filtered by mode, this build's capabilities, and
   // entitlement, which is what keeps fallback safe: it can only ever walk within
   // the mode's own preference list, so Stealth can never fall back to plain WG.
-  const gwTier = await resolveGatewayTier(country, keypair.publicKey, tier, fetchImpl);
+  const gwTier = await resolveGatewayTier(country, keypair.publicKey, keyed, tier, fetchImpl);
   const chain = transportFallbackChain(
     country.transports,
     transportMode,
@@ -455,6 +534,7 @@ export async function establish(
   // limits enroll to one per source IP per 2s — re-enrolling per attempt would
   // both waste a PoW and trip that limit mid-fallback.
   const enrollOpts = enrollOptsFor(country, fetchImpl);
+  keyed.add(country.gatewayIp);
   const reply = await enrollOrMock(country.gatewayIp, keypair.publicKey, enrollOpts);
 
   // Split tunneling: one compile for the whole chain — every attempt dials the
@@ -479,6 +559,9 @@ export async function establish(
     onAttempt?.(transport, i, chain.length);
 
     const endpoint = applyTransportToEndpoint(reply.endpoint, transport);
+    tunnel.logLine(
+      `connect ${country.code} attempt ${i + 1}/${chain.length}: ${transport.type} -> ${endpoint}`,
+    );
     const obfs = obfsForTransport(transport);
     // wg-tls: the endpoint is the gateway's TLS relay (TCP `ip:tlsPort`). The
     // native side bridges the WG device over TLS to it and rewrites the config's
@@ -518,6 +601,9 @@ export async function establish(
         ...(split ? { split } : {}),
       });
     } catch (err) {
+      tunnel.logLine(
+        `connect ${country.code} ${transport.type} failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
       // Distinguish "this transport doesn't work here" from "this machine can't
       // bring up any tunnel". Sweeping the whole chain over a missing privileged
       // helper would just repeat the same failure N times and bury the real cause.
@@ -544,6 +630,7 @@ export async function establish(
         splitApplied: split !== undefined,
       };
     }
+    tunnel.logLine(`connect ${country.code} ${transport.type}: no handshake within ${PROBE_MS}ms`);
     lastError = new Error(`${transport.type}: no handshake`);
   }
 
@@ -560,15 +647,28 @@ export async function establish(
 /**
  * Bring up an opt-in **multi-hop** tunnel (`docs/11-multihop.md`).
  *
- * Uses the core contract end to end: `selectHops` orders + validates the pair
- * for the chosen {@link RouteStyle} (rejects entry == exit; enforces
- * cross-jurisdiction when asked), then the *same* key `K` is enrolled at BOTH
- * the entry and exit gateways — one payment covers both, since entitlement
- * follows the key on every gateway, so no gateway protocol change is needed.
- * `buildMultihopConfig` renders the two nested WireGuard interfaces (outer to
- * ENTRY, `AllowedIPs = <exitIp>/32`, MTU 1420; inner to EXIT, default route,
- * MTU 1340, the chosen DNS), which the native `connectMultihop` command runs as two
- * stacked wireguard-go devices.
+ * `selectHops` orders + validates the pair for the chosen {@link RouteStyle}
+ * (rejects entry == exit; enforces cross-jurisdiction when asked). Then:
+ *
+ * 1. Enroll the client key `K` at the ENTRY — directly; the entry sees the
+ *    real IP by design.
+ * 2. Bring the entry hop up with the exit gateway's IP routed through it
+ *    (`tunnel.connectMultihopEntry`, outer `.conf` from `buildMultihopOuterConfig`).
+ * 3. Enroll a key generated for this session alone at the EXIT. The request
+ *    leaves inside the entry tunnel, so the exit sees the entry's IP, never the
+ *    client's — and never `K`, which other gateways have seen with the real IP.
+ * 4. Bring the exit hop up with that key (`tunnel.connectMultihopExit`, inner
+ *    `.conf` from `buildMultihopInnerConfig`: default route, MTU 1340, the
+ *    chosen DNS).
+ *
+ * The exit is never a gateway in `keyed`: one that has seen `K` from the
+ * client's own address could tie the session to the client, if only by timing.
+ * The exit key has no payment behind it, so the exit hop runs at the exit
+ * gateway's free tier. The two devices need distinct tunnel addresses (an OS
+ * holds one address on one interface) and each gateway assigns from its own
+ * pool, so a pair whose gateways assigned the same address is unusable: it is
+ * marked and another pair selected. Any failure once the entry hop is up tears
+ * the session down.
  *
  * @param fleet - The full discovered fleet (from {@link discoverFleetAndCountries});
  *   hop selection needs several gateways per country. Falls back to the two
@@ -576,8 +676,12 @@ export async function establish(
  * @param entryCountry - The user's chosen ENTRY (sees real IP, not destination).
  * @param exitCountry - The user's chosen EXIT (sees destination, not real IP).
  * @param style - `'multihop-same-country'` or `'multihop-cross-jurisdiction'`.
+ * @param keyed - The gateways `K` has been sent to this run; the entry is added.
  * @throws {Error} If `selectHops` can't satisfy the style (e.g. no distinct
- *   exit, or same country when cross-jurisdiction was asked).
+ *   exit, one that has not seen `K`, or same country when cross-jurisdiction
+ *   was asked), every pair that
+ *   satisfies it assigned the same tunnel address at both gateways, or a step
+ *   fails.
  */
 export async function establishMultihop(
   fleet: readonly GatewayInfo[],
@@ -585,6 +689,7 @@ export async function establishMultihop(
   exitCountry: CountryOption,
   style: RouteStyle,
   keypair: Keypair,
+  keyed: KeyedGateways,
   killSwitch: boolean,
   transportMode: TransportMode = 'auto',
   tier: Tier = 'free',
@@ -603,86 +708,187 @@ export async function establishMultihop(
     style === 'multihop-same-country'
       ? { entryCountry: entryCountry.code }
       : { entryCountry: entryCountry.code, exitCountry: exitCountry.code };
-  const hops = selectHops(candidates, style, hopOpts);
-  if (!hops.exit) {
-    throw new Error('multi-hop requires a distinct exit hop');
-  }
 
-  // Stealth obfuscates the ENTRY hop with AmneziaWG (the exit stays vanilla).
-  // wg-tls isn't wired for the multi-hop entry, so restrict to awg; if the entry
-  // gateway doesn't advertise awg, requireTransport THROWS rather than downgrade.
-  // Resolved BEFORE enrolling so a refusal doesn't spend an enrollment.
-  const entryTransport =
-    transportMode === 'stealth'
-      ? requireTransport(
-          hops.entry.transports,
-          'stealth',
-          new Set(['awg']),
-          // Same rule as single-hop: the entry gateway enforces its own gate.
-          await resolveGatewayTier(
-            {
-              gatewayIp: hops.entry.ip,
-              signPubKey: hops.entry.sign_pubkey,
-              ...(hops.entry.transports ? { transports: hops.entry.transports } : {}),
-            },
-            keypair.publicKey,
-            tier,
-            fetchImpl,
-          ),
-        )
-      : undefined;
-
-  // Enroll the SAME key K at both gateways — one payment, premium follows K.
-  const entryReply = await enrollOrMock(
-    hops.entry.ip,
-    keypair.publicKey,
-    enrollOptsForGateway(hops.entry, fetchImpl),
-  );
-  const exitReply = await enrollOrMock(
-    hops.exit.ip,
-    keypair.publicKey,
-    enrollOptsForGateway(hops.exit, fetchImpl),
-  );
-
-  const cfg = buildMultihopConfig({
-    privateKey: keypair.privateKey,
-    entry: entryReply,
-    exit: exitReply,
-    ...(entryTransport ? { entryTransport } : {}),
-    // DNS rides the inner (exit) hop, so the choice resolves against the exit's
-    // advertised `dns` (see establish()).
-    dns: dnsServersFor(loadDnsChoice(), exitReply.dns),
-  });
-
-  // Split tunneling: rules apply to the exit device (§7.2). Both hop IPs go
-  // into the endpoint guard so no rule can shadow either pin. Multi-hop is
-  // premium already, but the gate still re-checks the cached tier.
-  const split = splitForSession(tier, killSwitch, [hops.entry.ip, hops.exit.ip]);
-
-  const tunnelStatus = await tunnel.connectMultihop({
-    entryCountry: hops.entry.country,
-    exitCountry: hops.exit.country,
-    outer: cfg.outer,
-    inner: cfg.inner,
-    // The resolved entry endpoint (awg port :51821 for Stealth) — the native side
-    // allow-lists/routes on this, so the kill switch permits the obfuscated port.
-    entryEndpoint: cfg.entryEndpoint,
-    exitEndpoint: cfg.exitEndpoint,
-    innerMtu: cfg.innerMtu,
-    assignedIp: exitReply.assigned_ip,
-    killSwitch,
-    ...(split ? { split } : {}),
-  });
-
-  return {
-    entryGatewayIp: hops.entry.ip,
-    exitGatewayIp: hops.exit.ip,
-    exitSignPubKey: hops.exit.sign_pubkey,
-    entryEnroll: entryReply,
-    exitEnroll: exitReply,
-    tunnel: tunnelStatus,
-    splitApplied: split !== undefined,
+  // The exit hop's key: this session's alone, held in memory only.
+  const exitKeypair = generateKeypair();
+  // Entry replies are kept per gateway so an entry is enrolled once even when
+  // its first exit is replaced.
+  const entryReplies = new Map<string, Promise<EnrollResponse>>();
+  const enrollEntry = (gw: GatewayInfo): Promise<EnrollResponse> => {
+    let reply = entryReplies.get(gw.ip);
+    if (!reply) {
+      keyed.add(gw.ip);
+      reply = timedEnroll(gw, keypair.publicKey, 'entry', fetchImpl);
+      entryReplies.set(gw.ip, reply);
+    }
+    return reply;
   };
+
+  const unusablePairs: HopPairIps[] = [];
+  let entryUp = false;
+  try {
+    for (;;) {
+      let hops: ReturnType<typeof selectHops>;
+      try {
+        // Read on every pass: an entry enrolled on an earlier pass has seen K.
+        hops = selectHops(candidates, style, {
+          ...hopOpts,
+          unusablePairs,
+          excludeExitIps: keyed.list(),
+        });
+      } catch (err) {
+        if (unusablePairs.length === 0) {
+          throw err;
+        }
+        const pairs = unusablePairs.map((p) => `${p.entryIp} -> ${p.exitIp}`).join(', ');
+        const why = err instanceof Error ? err.message : String(err);
+        throw new Error(
+          `No multi-hop route left: ${pairs} assigned the same tunnel address at both ` +
+            `gateways, and ${why}. Try another location.`,
+          { cause: err },
+        );
+      }
+      const entry = hops.entry;
+      const exit = hops.exit;
+      if (!exit) {
+        throw new Error('multi-hop requires a distinct exit hop');
+      }
+
+      // Stealth obfuscates the ENTRY hop with AmneziaWG (the exit stays vanilla).
+      // wg-tls isn't wired for the multi-hop entry, so restrict to awg; if the entry
+      // gateway doesn't advertise awg, requireTransport THROWS rather than downgrade.
+      // Resolved BEFORE enrolling so a refusal doesn't spend an enrollment.
+      const entryTransport =
+        transportMode === 'stealth'
+          ? requireTransport(
+              entry.transports,
+              'stealth',
+              new Set(['awg']),
+              // Same rule as single-hop: the entry gateway enforces its own gate.
+              await resolveGatewayTier(
+                {
+                  gatewayIp: entry.ip,
+                  signPubKey: entry.sign_pubkey,
+                  ...(entry.transports ? { transports: entry.transports } : {}),
+                },
+                keypair.publicKey,
+                keyed,
+                tier,
+                fetchImpl,
+              ),
+            )
+          : undefined;
+
+      const entryReply = await enrollEntry(entry);
+      const outer = buildMultihopOuterConfig({
+        privateKey: keypair.privateKey,
+        entry: entryReply,
+        exitIp: exit.ip,
+        ...(entryTransport ? { entryTransport } : {}),
+      });
+      // Split tunneling: rules apply to the exit device (§7.2). Both hop IPs go
+      // into the endpoint guard so no rule can shadow either pin. Multi-hop is
+      // premium already, but the gate still re-checks the cached tier.
+      const split = splitForSession(tier, killSwitch, [entry.ip, exit.ip]);
+
+      tunnel.logLine(
+        `connect multihop ${style}: entry ${entry.country} ${entry.ip} ` +
+          `(assigned ${entryReply.assigned_ip}), exit ${exit.country} ${exit.ip} pinned through it`,
+      );
+      entryUp = true;
+      await tunnel.connectMultihopEntry({
+        entryCountry: entry.country,
+        outer: outer.outer,
+        // The resolved entry endpoint (awg port :51821 for Stealth) — the native side
+        // allow-lists/routes on this, so the kill switch permits the obfuscated port.
+        entryEndpoint: outer.entryEndpoint,
+        exitEndpoint: outer.exitEndpoint,
+        killSwitch,
+        ...(split ? { split } : {}),
+      });
+
+      // Through the entry hop: the exit gateway's IP is routed into it now.
+      const exitReply = await timedEnroll(exit, exitKeypair.publicKey, 'exit', fetchImpl);
+      const exitReplyIp = hostOf(exitReply.endpoint);
+      if (exitReplyIp !== exit.ip) {
+        // The inner device dials this endpoint; anything but the routed exit IP
+        // would leave the host directly.
+        throw new Error(
+          `exit gateway ${exit.ip} named a different WireGuard endpoint (${exitReply.endpoint})`,
+        );
+      }
+      if (exitReply.assigned_ip === entryReply.assigned_ip) {
+        tunnel.logLine(
+          `connect multihop ${style}: entry ${entry.ip} and exit ${exit.ip} both assigned ` +
+            `${entryReply.assigned_ip}; selecting another pair`,
+        );
+        unusablePairs.push({ entryIp: entry.ip, exitIp: exit.ip });
+        continue;
+      }
+
+      const inner = buildMultihopInnerConfig({
+        privateKey: exitKeypair.privateKey,
+        exit: exitReply,
+        // DNS rides the inner (exit) hop, so the choice resolves against the exit's
+        // advertised `dns` (see establish()).
+        dns: dnsServersFor(loadDnsChoice(), exitReply.dns),
+      });
+      tunnel.logLine(
+        `connect multihop ${style}: exit ${exit.country} ${exit.ip} (assigned ${exitReply.assigned_ip})`,
+      );
+      const tunnelStatus = await tunnel.connectMultihopExit({
+        exitCountry: exit.country,
+        inner: inner.inner,
+        entryEndpoint: outer.entryEndpoint,
+        exitEndpoint: outer.exitEndpoint,
+        innerMtu: inner.innerMtu,
+        assignedIp: exitReply.assigned_ip,
+        killSwitch,
+        ...(split ? { split } : {}),
+      });
+      tunnel.logLine(`connect multihop: tunnel ${tunnelStatus.state}`);
+
+      return {
+        entryGatewayIp: entry.ip,
+        exitGatewayIp: exit.ip,
+        entrySignPubKey: entry.sign_pubkey,
+        entryEnroll: entryReply,
+        exitEnroll: exitReply,
+        tunnel: tunnelStatus,
+        splitApplied: split !== undefined,
+      };
+    }
+  } catch (err) {
+    tunnel.logLine(`connect multihop failed: ${err instanceof Error ? err.message : String(err)}`);
+    if (entryUp) {
+      // The entry step left the kill switch engaged and the exit routed into a
+      // device with no exit behind it; nothing of that may outlive the attempt.
+      await tunnel.disconnect().catch(() => undefined);
+    }
+    throw err;
+  }
+}
+
+/** Enroll `publicKey` at `gw`, logging how long it took. */
+function timedEnroll(
+  gw: GatewayInfo,
+  publicKey: string,
+  hop: 'entry' | 'exit',
+  fetchImpl?: typeof fetch,
+): Promise<EnrollResponse> {
+  const started = performance.now();
+  return enrollOrMock(gw.ip, publicKey, enrollOptsForGateway(gw, fetchImpl)).then((r) => {
+    tunnel.logLine(
+      `connect multihop: enrolled at ${hop} ${gw.ip} in ${Math.round(performance.now() - started)} ms`,
+    );
+    return r;
+  });
+}
+
+/** The host of an `ip:port` endpoint. */
+function hostOf(endpoint: string): string {
+  const colon = endpoint.lastIndexOf(':');
+  return colon === -1 ? endpoint : endpoint.slice(0, colon);
 }
 
 /** Tear down the tunnel and remove kill-switch rules. */
@@ -698,10 +904,12 @@ export async function fetchEntitlement(
   gatewayIp: string,
   publicKeyB64: string,
   signPubKey: string,
+  keyed: KeyedGateways,
   fetchImpl?: typeof fetch,
 ): Promise<StatusResponse> {
+  keyed.add(gatewayIp);
   const opts = {
-    ...(fetchImpl ? { fetchImpl } : {}),
+    fetchImpl: gatewayFetch(fetchImpl),
     ...(signPubKey ? { signPubKey } : {}),
   };
   return entitlementStatus(gatewayIp, publicKeyB64, opts);

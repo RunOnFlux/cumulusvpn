@@ -128,7 +128,14 @@ button {
   overflow: hidden;
 }
 
-/* Everything between the title bar and the pinned footer scrolls. Without
+/* The connection status and its orb, under the title bar: never scrolled. */
+.shell-status {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Everything between the status and the pinned footer scrolls. Without
    this the window simply clipped its own content at 620px. */
 .shell-body {
   flex: 1;
@@ -312,6 +319,10 @@ button {
   margin-top: 12px;
   cursor: pointer;
   transition: border-color 0.2s;
+}
+/* First in the pinned footer, right under its divider. */
+.shell-foot .ks-row {
+  margin-top: 0;
 }
 .ks-row:hover:not(:disabled) {
   border-color: color-mix(in srgb, var(--cyan) 40%, var(--line));

@@ -44,8 +44,25 @@
                         Stop="both"
                         Remove="uninstall"
                         Wait="yes" />
+        <!-- The service's capped log and its previous part
+             (helper/src/logfile.rs), written at run time. -->
+        <RemoveFile Id="CumulusVpnHelperLog" Name="helper.log" On="uninstall" />
+        <RemoveFile Id="CumulusVpnHelperLogPrevious" Name="helper.log.1" On="uninstall" />
+        <!-- The route record (tunnel/src/win/net.rs); the cleanup action has
+             removed the routes it lists. -->
+        <RemoveFile Id="CumulusVpnRouteRecord" Name="routes.txt" On="uninstall" />
       </Component>
     </DirectoryRef>
+
+    <!-- Close the running app before files are replaced or removed (install,
+         upgrade, uninstall), as the NSIS installer does: asked to close first,
+         then ended. Windows Installer's own Restart Manager shutdown is
+         unavailable where policy disables it (DisableAutomaticApplicationShutdown). -->
+    <util:CloseApplication Id="CloseCumulusVpnApp"
+                           Target="cumulusvpn-desktop.exe"
+                           CloseMessage="yes"
+                           TerminateProcess="1"
+                           RebootPrompt="no" />
 
     <!-- After the service has stopped (and disconnected), before its files go:
          clean up after a session whose service had crashed. Runs as SYSTEM,

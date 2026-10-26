@@ -18,11 +18,13 @@ gateway sees your key (identity) *and* your destination. Multi-hop fixes it, as 
    outer for ENTRY        — NOT the destination     — NOT the client's identity
 ```
 
-The client runs **two stacked WireGuard interfaces** with the same key `K`:
-- **Outer (wg-entry):** peer = ENTRY, `AllowedIPs = <EXIT_ip>/32` only. Carries just the inner
-  tunnel's packets to the exit's public IP.
+The client runs **two stacked WireGuard interfaces**:
+- **Outer (wg-entry):** the client key `K`; peer = ENTRY, `AllowedIPs = <EXIT_ip>/32` only.
+  Carries everything the client sends to the exit gateway: the inner tunnel's packets and the
+  enroll at the exit.
 - **Inner (wg-exit):** peer = EXIT, `AllowedIPs = 0.0.0.0/0, ::/0`. Carries all real traffic; its
-  packets to `EXIT_ip` are routed *through* the outer interface.
+  packets to `EXIT_ip` are routed *through* the outer interface. Its key is the desktop client's
+  per-session exit key `X` (see below); mobile and web use `K` on both hops.
 
 Because the inner payload is encrypted to EXIT, the ENTRY gateway can decrypt only the outer layer
 — it sees ciphertext destined for a known gateway IP, never the user's real destination. The EXIT
@@ -37,25 +39,46 @@ client does all the nesting.
 | Party | Sees real IP? | Sees destination? | Sees identity (key)? |
 |---|---|---|---|
 | ENTRY gateway/operator | **yes** | no (double-encrypted) | yes (key K) |
-| EXIT gateway/operator | no (sees ENTRY's IP) | **yes** | yes (key K) |
+| EXIT gateway/operator | no (sees ENTRY's IP) | **yes** | desktop: only the session key X |
 | Network observer at entry | yes (you use a VPN) | no | no |
 | Any **single** operator | — | — | **never both IP+dest** ✅ |
 
-The invariant holds: no single node has `real IP ↔ destination`. Cross-jurisdiction hop selection
-means deanonymizing requires compelling **two operators in two countries**.
+The invariant holds only if the exit never links the session to the client. `K` is long-lived and
+every gateway the client talks to directly (single-hop sessions, the entitlement status check) sees
+it with the real IP, so any of them may later be picked as an exit. The desktop client therefore
+never presents `K` to the exit and never contacts the exit from the real IP:
+
+1. Choose the pair. The exit is never a gateway the app has sent `K` to since launch (an enroll,
+   an entitlement check, a single-hop session): such a gateway could tie the session to the
+   client by timing alone. Those gateways remain eligible as the entry.
+2. Enroll `K` at the ENTRY, directly (the entry sees the real IP by design).
+3. Bring the entry hop up with `<EXIT_ip>/32` routed into it (native `connect_multihop_entry`).
+4. Generate a key `X` for this session alone (memory only) and enroll it at the EXIT. The request
+   leaves inside the entry tunnel, so its source at the exit is the entry's IP.
+5. Bring the exit hop up with `X` (native `connect_multihop_exit`): default route, DNS.
+
+Entitlement is polled at the entry. Cross-jurisdiction hop selection means deanonymizing requires
+compelling **two operators in two countries**.
+
+Mobile (`wgnest`) and the web export enroll `K` at both gateways from the real IP; there the exit
+learns the real IP and `K` at enroll time.
 
 ## Entitlement & cost
 
-Multi-hop is a **premium feature**. Because entitlement follows the key on *every* gateway (chain
-scan, `docs/04`), **one $0.99 payment covers both hops** — the same key K is premium at entry and
-exit automatically. No double charge, no new gateway logic.
+Multi-hop is a **premium feature**. Entitlement follows the key on every gateway (chain scan,
+`docs/04`).
 
-- **v1 (this build): same key K on both hops.** Defeats any *single* operator. Caveat, stated
-  honestly in-app: an adversary controlling *both* your chosen hops could correlate via the shared
-  key K.
-- **v1.5: distinct key per hop** via payment-key indirection (`docs/04` §Privacy v1.5): one payment
-  authorizes a family of tunnel keys, so entry and exit see *different* keys → closes the
-  both-hops-collude gap. Multi-hop is the forcing function to build that.
+- **Desktop:** `K` is premium at the entry. The exit key `X` has no payment behind it, so the exit
+  hop runs at the exit gateway's **free tier**. Each session enrolls a new `X`, so the exit holds
+  one peer per session.
+- **Mobile and web:** the same key `K` on both hops, premium at both. An adversary controlling both
+  hops could correlate via `K`.
+- **Next: payment-key indirection** (`docs/04` §Privacy v1.5): one payment authorizes a family of
+  tunnel keys, so a per-session exit key is premium too. It needs gateway support.
+
+Every exit enroll from the desktop client arrives from the entry gateway's IP, so the exit's
+per-source-IP enroll limit (a burst of 8, then one per 2 s) is shared by all multi-hop users of
+that entry; a refused enroll fails the connect with the gateway's `rate_limited` error.
 
 ## UX (client)
 
@@ -94,12 +117,28 @@ export function selectHops(gateways: GatewayInfo[], style: RouteStyle, opts?: {
   entryCountry?: string; exitCountry?: string;
 }): { entry: GatewayInfo; exit?: GatewayInfo };
 
-// buildMultihopConfig: produce the two nested WireGuard interface configs for hops [entry, exit],
-// both using the same client private key. Returns { outer, inner } as .conf strings plus the
-// routing facts a programmatic client needs.
+// buildMultihopOuterConfig: the wg-entry .conf from the entry's enroll and the exit's IP alone,
+// so the entry hop can be up before the exit is enrolled.
+export function buildMultihopOuterConfig(args: {
+  privateKey: string;       // the entry hop's key (K)
+  entry: EnrollResponse;
+  exitIp: string;
+  entryTransport?: Transport;
+}): { outer: string; entryEndpoint: string; exitEndpoint: string };
+
+// buildMultihopInnerConfig: the wg-exit .conf.
+export function buildMultihopInnerConfig(args: {
+  privateKey: string;       // the exit hop's key (desktop: the session key X)
+  exit: EnrollResponse;
+  split?: CompiledSplit;
+  dns?: string;
+}): { inner: string; exitEndpoint: string; innerMtu: number };
+
+// buildMultihopConfig: both, with ONE key on both hops (mobile, web export).
 export interface MultihopConfig {
   outer: string;            // wg-entry .conf: AllowedIPs = <exitIp>/32, MTU 1420, no DNS
   inner: string;            // wg-exit .conf:  AllowedIPs = 0.0.0.0/0,::/0, MTU 1340, DNS = exit dns
+  entryEndpoint: string;    // "<entryIp>:<port>" — the only real UDP egress
   exitEndpoint: string;     // "<exitIp>:51820" — must route via the outer interface
   innerMtu: number;         // 1340
 }
@@ -110,13 +149,19 @@ export function buildMultihopConfig(args: {
 }): MultihopConfig;
 ```
 Single-hop `buildWgConfig` is unchanged. Tests: assert outer AllowedIPs pins the exit IP/32, inner
-routes 0.0.0.0/0, MTUs are 1420/1340, both interfaces use the same key, and `selectHops` rejects
-entry==exit and enforces cross-country when asked.
+routes 0.0.0.0/0, MTUs are 1420/1340, each half carries the key it is given, the combined builder
+equals the two halves for one key, and `selectHops` rejects entry==exit and enforces cross-country
+when asked.
 
 ## Client implementation notes
 
-- **Desktop (Tauri + wireguard-go):** run **two wireguard-go devices**; add a host route
-  `<exitIp>/32 → wg-entry` and default route `→ wg-exit`. Straightforward.
+- **Desktop (Tauri + wireguard-go):** **two wireguard-go devices**, brought up in two native
+  steps (see the threat model above). `connect_multihop_entry` starts wg-entry, pins the entry
+  endpoint to the physical gateway and `<exitIp>/32 → wg-entry`; the session stays `connecting`.
+  `connect_multihop_exit` refuses unless that entry step is pending for the same entry, exit and
+  kill-switch choice and the exit's tunnel address differs from the entry's, then starts wg-exit
+  and moves the default route and DNS to it. A failure in either step tears the whole session
+  down.
 - **Mobile:** the NEPacketTunnelProvider (iOS) / VpnService (Android) gives one tun. Inside the
   extension, chain two userspace wireguard-go instances: tun packet → encrypt to EXIT (inner) →
   the resulting UDP-to-EXIT packet → encrypt to ENTRY (outer) → real socket. **Implemented** in
@@ -135,14 +180,15 @@ entry==exit and enforces cross-country when asked.
 
 ## Egress note (gateway)
 
-The entry gateway must be allowed to forward premium traffic to another gateway's `:51820/udp`. The
-default egress policy (`CVPN_EGRESS_ALLOW_PORTS` empty = allow-all-minus-SMTP) already permits this.
-**If we later ship a restrictive allowlist, it must whitelist UDP 51820 to the gateway fleet IPs**,
-or multi-hop breaks. Noted in `config` and `docs/06`.
+The entry gateway must be allowed to forward traffic to another gateway's `:51820/udp` (the inner
+tunnel) and `:51821/tcp` (the desktop client's enroll at the exit). The default egress policy
+(`CVPN_EGRESS_ALLOW_PORTS` empty = allow-all-minus-SMTP) already permits both. **A restrictive
+allowlist must whitelist UDP 51820 and TCP 51821 to the gateway fleet IPs**, or multi-hop breaks. Noted in `config` and `docs/06`.
 
 ## Roadmap
 
 - **v1:** core-ts multihop + desktop UI/logic (two-device) + mobile UI + **native nesting**
   (`wgnest`: Android AAR + iOS xcframework, proven against the live fleet) + web export.
-- **v1.5:** distinct-key-per-hop (payment-key indirection) for both-hops-collude resistance.
+- **Payment-key indirection:** premium for the per-session exit key, and distinct keys per hop
+  on mobile and web.
 - **v2:** 3-hop for the truly paranoid (diminishing returns, more latency); auto route optimization.

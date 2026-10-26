@@ -70,6 +70,13 @@
     Pop $0
     nsExec::ExecToLog '"$SYSDIR\sc.exe" delete ${CVPN_SERVICE}'
     Pop $0
+    ; The service's capped log and its previous part (helper/src/logfile.rs);
+    ; kept across upgrades.
+    Delete "$INSTDIR\helper.log"
+    Delete "$INSTDIR\helper.log.1"
+    ; The route record (tunnel/src/win/net.rs); --cleanup above has removed
+    ; the routes it lists.
+    Delete "$INSTDIR\routes.txt"
   ${EndIf}
   ; Installed by the hook above, so not in Tauri's own file list.
   Delete "$INSTDIR\${CVPN_HELPER_EXE}"

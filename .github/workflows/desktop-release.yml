@@ -25,10 +25,11 @@ name: desktop-release
 #   cleanup. While Apple signing is off, the macOS build cannot register its
 #   helper; it works only when launched as root (sudo), which uses the
 #   in-process tunnel.
-# - Windows: routing.rs drives netsh/PowerShell and wggo.rs speaks UAPI over
-#   the named pipe, so the installer produces a working tunnel. wireguard-go
-#   needs wintun.dll next to the exe: the step below fetches the pinned
-#   official build (SHA256-verified) and tauri.windows.conf.json bundles it.
+# - Windows: the tunnel engine sets routes, adapter DNS and the WFP kill
+#   switch through native APIs (tunnel/src/win/) and runs only in the
+#   LocalSystem helper service. wireguard-go needs wintun.dll next to the exe:
+#   the step below fetches the pinned official build (SHA256-verified) and
+#   tauri.windows.conf.json bundles it.
 #   Artifacts are UNSIGNED — no Windows code-signing cert yet, so SmartScreen
 #   will warn on first run; tauri `targets: "all"` emits NSIS + MSI.
 # - The wireguard-go (AmneziaWG) sidecar is cross-built from source per target
@@ -37,7 +38,8 @@ name: desktop-release
 # Trigger: push a tag like `desktop-v1.2.3`, or run manually (manual runs only
 # BUILD — no release is created, useful to CI-validate a new matrix leg).
 #
-# Required secret: TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD) for the updater.
+# Updater secret, passed through: TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD). The
+# app does not include tauri-plugin-updater yet; see docs/14-releases.md.
 # Optional (Gatekeeper-clean .dmg): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
 # APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID. See docs/14-releases.md.
 

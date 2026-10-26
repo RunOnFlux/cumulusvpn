@@ -24,6 +24,24 @@ tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "sync", "
 rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12", "logging"] }
 
+# Windows: routes, addresses and adapter DNS (IP Helper), the kill switch and
+# DNS leak filters (Windows Filtering Platform), elevation and sidecar reaping,
+# called natively. The same windows-sys the helper uses, with the API families
+# the tunnel calls.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_NetworkManagement_Ndis",
+  "Win32_NetworkManagement_WindowsFilteringPlatform",
+  "Win32_Networking_WinSock",
+  "Win32_Security",
+  "Win32_System_Diagnostics_ToolHelp",
+  "Win32_System_Registry",
+  "Win32_System_Rpc",
+  "Win32_System_Threading",
+] }
+
 [dev-dependencies]
 # Self-signed cert generation for the wg-tls bridge loopback test (ring backend,
 # matching the runtime crypto provider — no aws-lc-rs/cmake).

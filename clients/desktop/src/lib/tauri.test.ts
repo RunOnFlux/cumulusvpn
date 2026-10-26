@@ -12,9 +12,9 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 describe('helper setup state', () => {
   // Connect is gated on this. The three ready states are the helper serving us
-  // and the two in-process fallbacks (macOS as root, Linux/Windows elevated);
-  // treating only `enabled` as ready would disable Connect for an elevated app
-  // that runs the tunnel itself.
+  // and the two in-process modes (macOS as root, Linux as root); treating only
+  // `enabled` as ready would disable Connect for a root app that runs the
+  // tunnel itself.
   it('treats enabled and the in-process states as ready, every setup step as not', () => {
     const cases: [HelperRegistration, boolean][] = [
       ['enabled', true],

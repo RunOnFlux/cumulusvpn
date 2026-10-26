@@ -69,16 +69,15 @@
 //! way `wg-quick` does it (exclusive: only our servers). Neither present: the
 //! session reports it — nothing is silently left leaking.
 //!
-//! **Windows — the adapter plus firewall rules.** The wintun adapter gets the
-//! DNS server, interface metric 1 (the DNS client prefers lower metrics) and an
-//! empty connection suffix. Windows' smart multi-homed name resolution still
-//! sends the same query out *every* adapter in parallel, so the
-//! `CumulusVPN-DNS` firewall group blocks 53/853 (UDP+TCP) to every address but
-//! the tunnel resolvers, and from every local address but the tunnel's. Block
-//! rules beat allow rules in Windows Firewall, so no LAN-allow can reopen it,
-//! and nothing touches the default outbound policy — quitting an app that
-//! never connected still leaves the firewall alone. The adapter's own settings
-//! die with the adapter.
+//! **Windows — the adapter plus WFP filters, all native.** The wintun adapter
+//! gets the DNS servers, interface metric 1 (the DNS client prefers lower
+//! metrics) and an empty connection suffix (`SetInterfaceDnsSettings`,
+//! `SetIpInterfaceEntry`). Windows' smart multi-homed name resolution still
+//! sends the same query out *every* adapter in parallel, so our own WFP
+//! sublayer blocks 53/853 (UDP+TCP) except to the tunnel resolvers through the
+//! tunnel adapter (`win::plan::dns_plan`). A block in any sublayer beats every
+//! permit, so a LAN-allow stays subject to it. Restore removes that sublayer.
+//! The adapter's own settings die with the adapter.
 //!
 //! **Split tunneling.** Tunnel DNS for everything, bypassed prefixes included:
 //! the desktop has no per-domain or per-app exclusions yet (docs/17 phases 3
@@ -98,6 +97,7 @@
 //! either family that is not the tunnel resolver through the tunnel.
 
 use std::net::IpAddr;
+#[cfg(unix)]
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -138,9 +138,6 @@ pub struct DnsTarget {
     pub interface: String,
     /// The tunnel resolvers, from the `.conf`.
     pub servers: Vec<IpAddr>,
-    /// The tunnel's own address on `interface`. Windows only lets DNS leave
-    /// from this address.
-    pub tunnel_address: Option<IpAddr>,
     /// WireGuard endpoint address(es). Never pinned into the tunnel (that would
     /// loop the tunnel's own packets) and never caught by the DNS block rules.
     pub endpoint_ips: Vec<IpAddr>,
@@ -321,30 +318,16 @@ fn is_safe_iface(name: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || b == b'-' || b == b'_' || b == b'.')
 }
 
-/// A `Command` that, on Windows, does not flash a console window (the app is a
-/// GUI process — see `super::CREATE_NO_WINDOW`).
-fn command(program: &str) -> Command {
-    #[allow(unused_mut)]
-    let mut cmd = Command::new(program);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(super::CREATE_NO_WINDOW);
-    }
-    cmd
-}
-
 /// Run `program`, feeding `stdin` if given, and return its stdout. A spawn
 /// failure or non-zero exit is an `Err` carrying a one-line reason (the first
-/// line of stderr) for the log and the UI warning.
-#[cfg_attr(
-    not(any(target_os = "macos", target_os = "linux", windows)),
-    allow(dead_code)
-)]
+/// line of stderr) for the log and the UI warning. macOS and Linux only:
+/// Windows sets DNS through the IP Helper API.
+#[cfg(unix)]
+#[cfg_attr(not(any(target_os = "macos", target_os = "linux")), allow(dead_code))]
 fn run_capture(program: &str, args: &[&str], stdin: Option<&str>) -> Result<String, String> {
     use std::io::Write;
 
-    let mut cmd = command(program);
+    let mut cmd = Command::new(program);
     cmd.args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -353,6 +336,7 @@ fn run_capture(program: &str, args: &[&str], stdin: Option<&str>) -> Result<Stri
         } else {
             Stdio::null()
         });
+    let started = std::time::Instant::now();
     let mut child = cmd
         .spawn()
         .map_err(|e| format!("{program} could not be started: {e}"))?;
@@ -367,6 +351,12 @@ fn run_capture(program: &str, args: &[&str], stdin: Option<&str>) -> Result<Stri
     let out = child
         .wait_with_output()
         .map_err(|e| format!("{program}: {e}"))?;
+    let short: String = args.join(" ").chars().take(120).collect();
+    eprintln!(
+        "cumulusvpn-tunnel: dns: `{program} {short}` {} in {} ms",
+        out.status,
+        started.elapsed().as_millis()
+    );
     if out.status.success() {
         return Ok(String::from_utf8_lossy(&out.stdout).into_owned());
     }
@@ -984,226 +974,60 @@ mod linux {
     }
 }
 
-// ---- Windows: adapter DNS + firewall rules ---------------------------------
+// ---- Windows: adapter DNS + WFP leak block ---------------------------------
 
-/// Pure script builders, compiled everywhere for the tests; also used by the
-/// kill switch, which carries the same DNS block in its own group.
-#[cfg_attr(not(windows), allow(dead_code))]
-pub(crate) mod windows {
-    use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
-
-    /// Firewall-rule group for the DNS rules. Separate from the kill switch's
-    /// `CumulusVPN` group so each side removes only its own rules.
-    pub(crate) const GROUP: &str = "CumulusVPN-DNS";
-
-    /// Every address *not* in `excluded`, as Windows Firewall address ranges,
-    /// IPv4 then IPv6. Windows Firewall has no "except" and block rules beat
-    /// allow rules, so "block DNS except to X" has to be spelled as "block DNS
-    /// to everything that is not X".
-    pub(crate) fn complement_ranges(excluded: &[IpAddr]) -> Vec<String> {
-        let mut v4: Vec<u128> = excluded
-            .iter()
-            .filter_map(|ip| match ip {
-                IpAddr::V4(a) => Some(u128::from(u32::from(*a))),
-                IpAddr::V6(_) => None,
-            })
-            .collect();
-        let mut v6: Vec<u128> = excluded
-            .iter()
-            .filter_map(|ip| match ip {
-                IpAddr::V6(a) => Some(u128::from(*a)),
-                IpAddr::V4(_) => None,
-            })
-            .collect();
-        v4.sort_unstable();
-        v4.dedup();
-        v6.sort_unstable();
-        v6.dedup();
-        let mut out = Vec::new();
-        push_gaps(
-            &v4,
-            u128::from(u32::MAX),
-            &|n| Ipv4Addr::from(n as u32).to_string(),
-            &mut out,
-        );
-        push_gaps(&v6, u128::MAX, &|n| Ipv6Addr::from(n).to_string(), &mut out);
-        out
-    }
-
-    fn push_gaps(sorted: &[u128], max: u128, fmt: &dyn Fn(u128) -> String, out: &mut Vec<String>) {
-        let range = |a: u128, b: u128| {
-            if a == b {
-                fmt(a)
-            } else {
-                format!("{}-{}", fmt(a), fmt(b))
-            }
-        };
-        // The first value not yet covered; None once past the top of the space.
-        let mut next = Some(0u128);
-        for &x in sorted {
-            let Some(start) = next else { break };
-            if x > start {
-                out.push(range(start, x - 1));
-            }
-            next = x.checked_add(1).filter(|n| *n <= max);
-        }
-        if let Some(start) = next {
-            out.push(range(start, max));
-        }
-    }
-
-    /// `'a','b'` — a PowerShell array of single-quoted strings. Only ever fed
-    /// formatted addresses and ranges.
-    pub(crate) fn ps_list(items: &[String]) -> String {
-        items
-            .iter()
-            .map(|s| format!("'{s}'"))
-            .collect::<Vec<_>>()
-            .join(",")
-    }
-
-    /// The DNS block as `New-NetFirewallRule` statements, for UDP and TCP on
-    /// 53 and 853:
-    ///   1. to every address but the tunnel resolvers (and the WireGuard
-    ///      endpoint, whose transport must never be caught by a DNS rule) —
-    ///      this is what stops smart multi-homed resolution asking the router;
-    ///   2. from every local address but the tunnel's — a query bound to the
-    ///      Wi-Fi adapter for the *same* public resolver still goes out in the
-    ///      clear otherwise.
-    ///
-    /// `group` and `label` are constants; everything else is a typed address.
-    pub(crate) fn dns_block_rules(
-        group: &str,
-        label: &str,
-        resolvers: &[IpAddr],
-        tunnel_address: Option<IpAddr>,
-        endpoints: &[IpAddr],
-    ) -> Vec<String> {
-        let mut allowed: Vec<IpAddr> = resolvers.to_vec();
-        allowed.extend_from_slice(endpoints);
-        let other_servers = ps_list(&complement_ranges(&allowed));
-        let not_endpoint = ps_list(&complement_ranges(endpoints));
-        let mut rules = Vec::new();
-        for proto in ["UDP", "TCP"] {
-            rules.push(format!(
-                "New-NetFirewallRule -DisplayName '{label} - DNS to other servers ({proto})' \
-                 -Group '{group}' -Direction Outbound -Action Block -Protocol {proto} \
-                 -RemotePort 53,853 -RemoteAddress {other_servers} | Out-Null"
-            ));
-        }
-        if let Some(tunnel) = tunnel_address {
-            let not_tunnel = ps_list(&complement_ranges(&[tunnel]));
-            for proto in ["UDP", "TCP"] {
-                rules.push(format!(
-                    "New-NetFirewallRule -DisplayName '{label} - DNS outside the tunnel ({proto})' \
-                     -Group '{group}' -Direction Outbound -Action Block -Protocol {proto} \
-                     -RemotePort 53,853 -LocalAddress {not_tunnel} -RemoteAddress {not_endpoint} \
-                     | Out-Null"
-                ));
-            }
-        }
-        rules
-    }
-
-    /// One PowerShell script (one process — each spawn costs ~0.3s): firewall
-    /// rules first, because they are the leak protection and must not depend on
-    /// the adapter steps succeeding; then the adapter's server, empty suffix
-    /// and metric 1; then a cache flush so no answer from the old resolver
-    /// lingers. `Stop` makes any failure a non-zero exit.
-    pub(crate) fn apply_script(
-        iface: &str,
-        servers: &[IpAddr],
-        tunnel_address: Option<IpAddr>,
-        endpoints: &[IpAddr],
-    ) -> String {
-        let server_list = ps_list(&servers.iter().map(IpAddr::to_string).collect::<Vec<_>>());
-        let mut steps = vec![
-            "$ErrorActionPreference = 'Stop'".to_string(),
-            format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
-        ];
-        steps.extend(dns_block_rules(
-            GROUP,
-            "CumulusVPN",
-            servers,
-            tunnel_address,
-            endpoints,
-        ));
-        steps.push(format!(
-            "Set-DnsClientServerAddress -InterfaceAlias '{iface}' -ServerAddresses {server_list}"
-        ));
-        steps.push(format!(
-            "Set-DnsClient -InterfaceAlias '{iface}' -ConnectionSpecificSuffix '' \
-             -RegisterThisConnectionsAddress $false"
-        ));
-        steps.push(format!(
-            "Set-NetIPInterface -InterfaceAlias '{iface}' -AddressFamily IPv4 -InterfaceMetric 1"
-        ));
-        steps.push("Clear-DnsClientCache".to_string());
-        steps.join("; ")
-    }
-
-    /// Remove our rules, and reset the adapter in case wintun reuses it. Each
-    /// step tolerates "nothing there" — the adapter is usually already gone.
-    pub(crate) fn restore_script(iface: &str) -> String {
-        [
-            format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
-            format!(
-                "Set-DnsClientServerAddress -InterfaceAlias '{iface}' -ResetServerAddresses \
-                 -ErrorAction SilentlyContinue"
-            ),
-            "Clear-DnsClientCache -ErrorAction SilentlyContinue".to_string(),
-        ]
-        .join("; ")
-    }
-
-    /// After a crash: only our own rule group. Left behind, it would block every
-    /// DNS query not sent from a tunnel address that no longer exists — no DNS
-    /// at all. Nothing else is touched (the default outbound policy belongs to
-    /// the kill switch and to the user).
-    pub(crate) fn recover_script() -> String {
-        format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue")
-    }
-
-    #[cfg(windows)]
+#[cfg(windows)]
+mod windows {
     pub(super) mod sys {
-        use super::super::{run_capture, DnsTarget};
-        use super::*;
+        use super::super::DnsTarget;
+        use crate::win::{net, plan, wfp};
 
         #[derive(Debug)]
-        pub(in super::super) struct Applied;
-
-        fn powershell(script: &str) -> Result<String, String> {
-            run_capture(
-                "powershell",
-                &["-NoProfile", "-NonInteractive", "-Command", script],
-                None,
-            )
+        pub(in super::super) struct Applied {
+            /// The tunnel adapter, to reset if it outlives the session.
+            luid: u64,
         }
 
+        /// The leak block first, as the protection that holds whatever the
+        /// adapter steps do; then the adapter's servers, suffix and metric 1
+        /// (the DNS client prefers lower metrics); then a cache flush, so
+        /// every lookup goes to the tunnel resolver.
         pub(in super::super) fn apply(target: &DnsTarget) -> Result<Applied, String> {
-            powershell(&apply_script(
-                &target.interface,
-                &target.servers,
-                target.tunnel_address,
-                &target.endpoint_ips,
-            ))?;
-            Ok(Applied)
+            let luid = net::luid_of(&target.interface)?;
+            wfp::replace(
+                wfp::Sublayer::Dns,
+                &plan::dns_plan(&target.servers, &target.endpoint_ips, luid),
+            )?;
+            net::set_dns_servers(luid, &target.servers)?;
+            net::set_ipv4_interface(luid, None, Some(1))?;
+            net::flush_dns_cache();
+            Ok(Applied { luid })
         }
 
-        /// The adapter keeps its settings across a roam and the rules are not
-        /// tied to an interface; nothing to re-take.
+        /// The adapter keeps its settings across a roam, and the filters name
+        /// the tunnel adapter, so both hold as they are.
         pub(in super::super) fn reassert(_: &Applied, _: &DnsTarget) -> Result<(), String> {
             Ok(())
         }
 
-        pub(in super::super) fn restore(_: Option<&Applied>, target: &DnsTarget) {
-            if let Err(e) = powershell(&restore_script(&target.interface)) {
+        /// Lift the block and reset the adapter, which is usually already
+        /// gone with its sidecar.
+        pub(in super::super) fn restore(applied: Option<&Applied>, _: &DnsTarget) {
+            if let Err(e) = wfp::clear(wfp::Sublayer::Dns) {
                 eprintln!("cumulusvpn: DNS restore failed: {e}");
             }
+            if let Some(applied) = applied {
+                let _ = net::set_dns_servers(applied.luid, &[]);
+            }
+            net::flush_dns_cache();
         }
 
+        /// At startup: remove a block a crashed session left, which would stop
+        /// every lookup.
         pub(in super::super) fn recover_stale(_: &[&str]) {
-            let _ = powershell(&recover_script());
+            if let Err(e) = wfp::clear(wfp::Sublayer::Dns) {
+                eprintln!("cumulusvpn: DNS recovery failed: {e}");
+            }
         }
     }
 }
@@ -1238,7 +1062,6 @@ mod sys {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::net::{Ipv4Addr, Ipv6Addr};
 
     fn ip(s: &str) -> IpAddr {
         s.parse().expect("test address")
@@ -1290,7 +1113,6 @@ mod tests {
         DnsTarget {
             interface: "cvpn0".into(),
             servers: servers.iter().map(|s| ip(s)).collect(),
-            tunnel_address: Some(ip("10.8.0.2")),
             endpoint_ips: endpoints.iter().map(|s| ip(s)).collect(),
             pin_route,
             kill_switch: true,
@@ -1351,7 +1173,6 @@ mod tests {
         let s = DnsSession::start(DnsTarget {
             interface: "cvpn0".into(),
             servers: vec![],
-            tunnel_address: None,
             endpoint_ips: vec![],
             pin_route: false,
             kill_switch: false,
@@ -1886,219 +1707,5 @@ mod tests {
             assert_eq!(resolvconf_iface_prefix(Some("lo\neth0\n")), "");
             assert_eq!(resolvconf_record("tun.", "cvpn0"), "tun.cvpn0");
         }
-    }
-
-    // ---- Windows ------------------------------------------------------------
-
-    mod windows_rules {
-        use super::super::windows::*;
-        use super::ip;
-
-        const ALL_V6: &str = "::-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff";
-
-        #[test]
-        fn complement_of_one_address_is_everything_else() {
-            assert_eq!(
-                complement_ranges(&[ip("1.1.1.1")]),
-                vec!["0.0.0.0-1.1.1.0", "1.1.1.2-255.255.255.255", ALL_V6]
-            );
-        }
-
-        #[test]
-        fn complement_of_nothing_is_everything() {
-            assert_eq!(
-                complement_ranges(&[]),
-                vec!["0.0.0.0-255.255.255.255", ALL_V6]
-            );
-        }
-
-        #[test]
-        fn complement_handles_edges_neighbours_and_duplicates() {
-            assert_eq!(
-                complement_ranges(&[
-                    ip("0.0.0.0"),
-                    ip("1.0.0.1"),
-                    ip("1.0.0.2"),
-                    ip("1.0.0.1"),
-                    ip("255.255.255.255"),
-                ]),
-                vec!["0.0.0.1-1.0.0.0", "1.0.0.3-255.255.255.254", ALL_V6]
-            );
-            assert_eq!(
-                complement_ranges(&[ip("0.0.0.1")]),
-                vec!["0.0.0.0", "0.0.0.2-255.255.255.255", ALL_V6]
-            );
-        }
-
-        #[test]
-        fn complement_covers_ipv6_too() {
-            assert_eq!(
-                complement_ranges(&[ip("::1")]),
-                vec![
-                    "0.0.0.0-255.255.255.255",
-                    "::",
-                    "::2-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff"
-                ]
-            );
-        }
-
-        fn rules() -> Vec<String> {
-            dns_block_rules(
-                GROUP,
-                "CumulusVPN",
-                &[ip("1.1.1.1")],
-                Some(ip("10.8.0.2")),
-                &[ip("203.0.113.7")],
-            )
-        }
-
-        /// Smart multi-homed resolution asks every adapter's server in
-        /// parallel. Rule 1 stops all of them but the tunnel resolver — and never
-        /// the WireGuard endpoint, whose transport a DNS rule must not catch.
-        #[test]
-        fn dns_to_any_other_server_is_blocked_on_both_protocols() {
-            let r = rules();
-            assert_eq!(r.len(), 4);
-            for (rule, proto) in r.iter().take(2).zip(["UDP", "TCP"]) {
-                assert!(rule.contains(&format!("-Protocol {proto} ")), "{rule}");
-                assert!(rule.contains("-Action Block"), "{rule}");
-                assert!(rule.contains("-Direction Outbound"), "{rule}");
-                assert!(rule.contains("-RemotePort 53,853"), "{rule}");
-                assert!(rule.contains(&format!("-Group '{GROUP}'")), "{rule}");
-                assert!(
-                    rule.contains(
-                        "-RemoteAddress '0.0.0.0-1.1.1.0','1.1.1.2-203.0.113.6',\
-                         '203.0.113.8-255.255.255.255','::-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'"
-                    ),
-                    "{rule}"
-                );
-            }
-        }
-
-        /// Rule 2: the same public resolver asked from the Wi-Fi address is
-        /// still a plaintext query on the LAN. Only the tunnel address may send.
-        #[test]
-        fn dns_from_any_address_but_the_tunnels_is_blocked() {
-            let r = rules();
-            for (rule, proto) in r.iter().skip(2).zip(["UDP", "TCP"]) {
-                assert!(rule.contains(&format!("-Protocol {proto} ")), "{rule}");
-                assert!(
-                    rule.contains(
-                        "-LocalAddress '0.0.0.0-10.8.0.1','10.8.0.3-255.255.255.255',\
-                         '::-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'"
-                    ),
-                    "{rule}"
-                );
-                assert!(
-                    rule.contains(
-                        "-RemoteAddress '0.0.0.0-203.0.113.6','203.0.113.8-255.255.255.255',"
-                    ),
-                    "{rule}"
-                );
-            }
-        }
-
-        #[test]
-        fn without_a_tunnel_address_only_the_server_rule_is_emitted() {
-            let r = dns_block_rules(GROUP, "x", &[ip("1.1.1.1")], None, &[]);
-            assert_eq!(r.len(), 2);
-            assert!(r.iter().all(|x| !x.contains("-LocalAddress")));
-        }
-
-        /// No resolver at all → every DNS server is "other": fail closed.
-        #[test]
-        fn without_a_resolver_all_dns_is_blocked() {
-            let r = dns_block_rules(GROUP, "x", &[], None, &[]);
-            assert!(
-                r[0].contains("-RemoteAddress '0.0.0.0-255.255.255.255','::-"),
-                "{}",
-                r[0]
-            );
-        }
-
-        #[test]
-        fn the_apply_script_sets_the_adapter_and_installs_the_rules_first() {
-            let s = apply_script(
-                "cvpn0",
-                &[ip("1.1.1.1")],
-                Some(ip("10.8.0.2")),
-                &[ip("203.0.113.7")],
-            );
-            let steps: Vec<&str> = s.split("; ").collect();
-            assert_eq!(steps[0], "$ErrorActionPreference = 'Stop'");
-            assert_eq!(
-                steps[1],
-                "Remove-NetFirewallRule -Group 'CumulusVPN-DNS' -ErrorAction SilentlyContinue"
-            );
-            let rule = steps
-                .iter()
-                .position(|x| x.starts_with("New-NetFirewallRule"))
-                .unwrap();
-            let server = steps
-                .iter()
-                .position(|x| x.starts_with("Set-DnsClientServerAddress"))
-                .unwrap();
-            assert!(
-                rule < server,
-                "leak rules must not depend on the adapter steps"
-            );
-            assert_eq!(
-                steps[server],
-                "Set-DnsClientServerAddress -InterfaceAlias 'cvpn0' -ServerAddresses '1.1.1.1'"
-            );
-            assert!(s.contains(
-                "Set-DnsClient -InterfaceAlias 'cvpn0' -ConnectionSpecificSuffix '' \
-                 -RegisterThisConnectionsAddress $false"
-            ));
-            assert!(s.contains(
-                "Set-NetIPInterface -InterfaceAlias 'cvpn0' -AddressFamily IPv4 -InterfaceMetric 1"
-            ));
-            assert_eq!(*steps.last().unwrap(), "Clear-DnsClientCache");
-        }
-
-        /// A two-address provider: the adapter gets both, in order, and both
-        /// are carved out of the "DNS to other servers" block — any other
-        /// resolver (1.1.1.1 included) stays blocked.
-        #[test]
-        fn a_two_server_provider_is_set_and_allowed_in_full() {
-            let quad9 = [ip("9.9.9.9"), ip("149.112.112.112")];
-            let s = apply_script("cvpn0", &quad9, Some(ip("10.8.0.2")), &[ip("203.0.113.7")]);
-            assert!(
-                s.contains(
-                    "Set-DnsClientServerAddress -InterfaceAlias 'cvpn0' \
-                     -ServerAddresses '9.9.9.9','149.112.112.112'"
-                ),
-                "{s}"
-            );
-            assert!(
-                s.contains(
-                    "-RemoteAddress '0.0.0.0-9.9.9.8','9.9.9.10-149.112.112.111',\
-                     '149.112.112.113-203.0.113.6','203.0.113.8-255.255.255.255',"
-                ),
-                "{s}"
-            );
-        }
-
-        /// Restore and crash recovery remove only our own group. They never touch
-        /// the default outbound policy, so a quit can never reset the firewall.
-        #[test]
-        fn restore_and_recovery_touch_only_our_group() {
-            for s in [restore_script("cvpn0"), recover_script()] {
-                assert!(
-                    s.contains("Remove-NetFirewallRule -Group 'CumulusVPN-DNS'"),
-                    "{s}"
-                );
-                assert!(!s.contains("DefaultOutboundAction"), "{s}");
-                assert!(!s.contains("Set-NetFirewallProfile"), "{s}");
-            }
-            assert!(restore_script("cvpn0").contains("-ResetServerAddresses"));
-        }
-    }
-
-    #[test]
-    fn ipv4_and_ipv6_are_both_typed() {
-        // Guard for the two `From` conversions complement_ranges relies on.
-        assert_eq!(u32::from(Ipv4Addr::new(1, 1, 1, 1)), 0x0101_0101);
-        assert_eq!(u128::from(Ipv6Addr::LOCALHOST), 1);
     }
 }

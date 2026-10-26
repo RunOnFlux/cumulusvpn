@@ -9,7 +9,14 @@
 //!                                  exit (the uninstallers run it, service stopped)
 //! cumulusvpn-helper.exe --ping     ask the running service for its version; prints
 //!                                  the refusal instead if it would not serve us
+//! cumulusvpn-helper.exe --filters  how many WFP filters the kill switch and the
+//!                                  DNS leak block hold (elevated)
 //! ```
+//!
+//! A tunnel needs the helper to run as LocalSystem: wireguard-go creates its
+//! UAPI pipe owned by SYSTEM, which only a SYSTEM process can do. `--console`
+//! runs as the elevated user, so it serves the pipe and its requests, and
+//! refuses a connect up front with that reason.
 //!
 //! The installers register the service (`windows/hooks.nsh` for NSIS,
 //! `windows/helper-service.wxs` for MSI): automatic start, restart on failure.
@@ -59,6 +66,7 @@ pub fn main() -> i32 {
         Some("--console") => console(),
         Some("--cleanup") => cleanup(),
         Some("--ping") => ping(),
+        Some("--filters") => filters(),
         Some("--version") => {
             println!("cumulusvpn-helper {}", env!("CARGO_PKG_VERSION"));
             0
@@ -66,7 +74,7 @@ pub fn main() -> i32 {
         Some(other) => {
             eprintln!(
                 "cumulusvpn-helper: unknown argument {other:?}\n\
-                 usage: cumulusvpn-helper [--console | --cleanup | --ping | --version]"
+                 usage: cumulusvpn-helper [--console | --cleanup | --ping | --filters | --version]"
             );
             2
         }
@@ -164,7 +172,30 @@ fn report(state: u32, win32_exit: u32, specific_exit: u32, wait_hint_ms: u32) {
     unsafe { SetServiceStatus(handle, &status) };
 }
 
+/// Point the service's stderr — everything the daemon and the tunnel engine
+/// report with `eprintln!` — at `helper.log` next to the executable: the install
+/// directory, writable only by Administrators and SYSTEM. Rust looks the handle
+/// up on every write, so this covers every later line. The log is capped
+/// (`crate::logfile`).
+fn log_to_install_dir() {
+    if let Some(path) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| Some(exe.parent()?.join("helper.log")))
+    {
+        crate::logfile::install(&path);
+    }
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    eprintln!(
+        "cumulusvpn-helper: service starting at {secs} (pid {})",
+        std::process::id()
+    );
+}
+
 unsafe extern "system" fn service_main(_argc: u32, _argv: *mut PWSTR) {
+    log_to_install_dir();
     let name = pipe::to_wide(proto::WINDOWS_SERVICE_NAME);
     // SAFETY: NUL-terminated name, a valid handler, no context.
     let handle =
@@ -277,6 +308,22 @@ fn cleanup() -> i32 {
     TunnelManager::new().recover_stale();
     println!("cumulusvpn-helper: stale tunnel state cleaned up");
     0
+}
+
+/// `--filters`: how many WFP filters the kill switch and the DNS leak block
+/// hold (elevated). Exit 0, or 1 when the filtering engine cannot be read.
+fn filters() -> i32 {
+    match cumulusvpn_tunnel::windows_filter_counts() {
+        Ok((kill_switch, dns)) => {
+            println!("kill switch: {kill_switch} filters");
+            println!("DNS leak block: {dns} filters");
+            0
+        }
+        Err(e) => {
+            println!("cannot read the filtering engine: {e}");
+            1
+        }
+    }
 }
 
 /// `--ping`: one `Ping` as this process. Exit 0 on a reply; otherwise print

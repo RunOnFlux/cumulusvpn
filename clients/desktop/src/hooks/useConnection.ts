@@ -14,8 +14,9 @@ import {
   fetchEntitlement,
   teardown,
 } from '../lib/session.js';
+import { KeyedGateways } from '../lib/session.js';
 import type { CountryOption } from '../lib/session.js';
-import { status as nativeStatus, helperRegistration, helperReady } from '../lib/tauri.js';
+import { status as nativeStatus, helperRegistration, helperReady, logLine } from '../lib/tauri.js';
 import type { TunnelStatus, HelperRegistration } from '../lib/tauri.js';
 
 export type Phase = 'loading' | 'idle' | 'connecting' | 'connected' | 'error';
@@ -39,8 +40,8 @@ export interface ConnectionModel {
   readonly phase: Phase;
   /**
    * Setup state of the tunnel engine. `enabled` (the privileged helper daemon
-   * serves this app), `notNeeded` (macOS run as root) and `elevated` (Linux /
-   * Windows run elevated without a daemon) are ready; anything else is a setup
+   * serves this app), `notNeeded` (macOS run as root) and `elevated` (Linux
+   * run as root without a daemon) are ready; anything else is a setup
    * step, and no tunnel is possible until it is done — the app itself holds no
    * privileges. See `helperReady` and `lib/setup.ts`.
    */
@@ -216,6 +217,12 @@ export function useConnection(): ConnectionModel {
   // Consecutive failed auto-reconnects, for the backoff below. Reset on every
   // successful connect.
   const reconnectAttemptsRef = useRef(0);
+  // Bumped by every connect and disconnect: a status poll applies its result
+  // only while the session it was started for is still the current one.
+  const sessionRef = useRef(0);
+  // Every gateway the client key has been sent to since launch; never a
+  // multi-hop exit (see establishMultihop).
+  const [keyed] = useState(() => new KeyedGateways());
   // Setup state of the tunnel engine (the helper daemon, or a ready state
   // where the tunnel runs in-process). Optimistic default: assume it is fine
   // until told otherwise, so the setup banner never flashes on a normal launch
@@ -223,6 +230,34 @@ export function useConnection(): ConnectionModel {
   const [helperState, setHelperState] = useState<HelperRegistration>('notNeeded');
   const [favorites, setFavorites] = useState<readonly string[]>(() =>
     (localStorage.getItem('cvpn.favorites') ?? '').split(',').filter(Boolean),
+  );
+
+  // The selected country's code, for updaters that must not read state.
+  const selectedCodeRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedCodeRef.current = selected?.code ?? null;
+  }, [selected]);
+
+  // Install a discovery result, complete or partial: the fleet hop selection
+  // reads, the picker rows, and the chosen entry and exit rows moved to the
+  // least-loaded gateway now known for their country. An exit still unset
+  // takes the first country other than the entry's once one has verified.
+  const applyFleet = useCallback(
+    (list: readonly CountryOption[], fleet: readonly GatewayInfo[]) => {
+      fleetRef.current = fleet;
+      setCountries(list);
+      const fresh = (prev: CountryOption | null): CountryOption | null =>
+        prev ? (list.find((c) => c.code === prev.code) ?? prev) : prev;
+      setSelected(fresh);
+      setExit((prev) => {
+        if (prev) {
+          return fresh(prev);
+        }
+        const entry = selectedCodeRef.current;
+        return entry ? (list.find((c) => c.code !== entry) ?? null) : null;
+      });
+    },
+    [],
   );
 
   // Bootstrap: reattach to a session that outlived the previous app instance,
@@ -256,28 +291,53 @@ export function useConnection(): ConnectionModel {
         }
         setPhase(to);
       };
-      try {
-        const { countries: list, fleet } = await discoverFleetAndCountries();
+      // The country to open on: a live tunnel's, else the remembered one. The
+      // picker fills in as gateways verify; the app is ready as soon as that
+      // country has a gateway, and otherwise when discovery has finished.
+      const remembered = loadSelectedCountry();
+      const wanted = live?.country ?? remembered;
+      const started = performance.now();
+      let ready = false;
+      const show = (
+        list: readonly CountryOption[],
+        fleet: readonly GatewayInfo[],
+        final: boolean,
+      ) => {
         if (!alive) {
           return;
         }
-        fleetRef.current = fleet;
-        setCountries(list);
-        const remembered = loadSelectedCountry();
+        applyFleet(list, fleet);
+        if (ready) {
+          return;
+        }
         const pick =
-          list.find((c) => c.code === live?.country) ??
-          list.find((c) => c.code === remembered) ??
-          list[0] ??
-          null;
+          list.find((c) => c.code === wanted) ??
+          (final ? (list.find((c) => c.code === remembered) ?? list[0] ?? null) : undefined);
+        if (pick === undefined) {
+          return;
+        }
+        ready = true;
+        logLine(
+          `ui: ready on ${pick?.code ?? 'no location'} after ` +
+            `${Math.round(performance.now() - started)} ms, ${fleet.length} gateway(s) verified` +
+            `${final ? ', discovery complete' : ''}`,
+        );
         setSelected(pick);
         // Default the exit to the first country different from the entry, so
-        // multi-hop has a sane cross-jurisdiction pair the moment it's toggled.
+        // multi-hop has a sane cross-jurisdiction pair the moment it's toggled
+        // (applyFleet fills it in if no other country has verified yet).
         setExit(list.find((c) => c.code !== pick?.code) ?? null);
         if (live) {
           reattach(live);
         } else {
           setPhase('idle');
         }
+      };
+      try {
+        const { countries: list, fleet } = await discoverFleetAndCountries(undefined, (d) =>
+          show(d.countries, d.fleet, false),
+        );
+        show(list, fleet, true);
       } catch (err) {
         if (!alive) {
           return;
@@ -293,19 +353,20 @@ export function useConnection(): ConnectionModel {
     return () => {
       alive = false;
     };
-  }, []);
+  }, [applyFleet]);
 
   // Re-discover the fleet on demand (re-tests each node's live load, updating
   // the quality ratings). Keeps the current selection.
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      const { countries: list, fleet } = await discoverFleetAndCountries();
-      fleetRef.current = fleet;
-      setCountries(list);
+      const { countries: list, fleet } = await discoverFleetAndCountries(undefined, (d) =>
+        applyFleet(d.countries, d.fleet),
+      );
+      applyFleet(list, fleet);
     } catch (err) {
       setError(messageOf(err));
     }
-  }, []);
+  }, [applyFleet]);
 
   const select = useCallback(
     (code: string) => {
@@ -358,7 +419,7 @@ export function useConnection(): ConnectionModel {
   const refreshEntitlement = useCallback(
     async (gatewayIp: string, signPubKey: string) => {
       try {
-        const ent = await fetchEntitlement(gatewayIp, keypair.publicKey, signPubKey);
+        const ent = await fetchEntitlement(gatewayIp, keypair.publicKey, signPubKey, keyed);
         setEntitlement({
           tier: ent.tier,
           paidUntil: ent.paid_until,
@@ -372,26 +433,35 @@ export function useConnection(): ConnectionModel {
         setEntitlement((prev) => prev);
       }
     },
-    [keypair],
+    [keypair, keyed],
   );
 
   // Populate the tier badge before the first connect — entitlement is otherwise
   // only fetched once a tunnel is up, so a fresh launch would always read
   // "free". This is a DISPLAY hint and a cheap hot cache; it is deliberately not
   // what decides a premium-gated transport, because it can't be relied on (it is
-  // fire-and-forget, so an auto-connect can race it, and it targets one node
-  // that may not be the one dialled). That decision is made in `establish`,
-  // against the gateway that actually enforces the gate.
+  // fire-and-forget, so an auto-connect can race it). That decision is made in
+  // `establish`, against the gateway that actually enforces the gate.
+  //
+  // Once per launch, when the app is ready, at the selected country's gateway:
+  // the one a connect would dial. Every request carries the client key, and
+  // each gateway it reaches is excluded as a multi-hop exit (`keyed`).
+  const tierCheckedRef = useRef(false);
   useEffect(() => {
-    const first = countries[0];
-    if (!first || !first.signPubKey) {
+    if (tierCheckedRef.current || phase === 'loading' || !selected?.signPubKey) {
       return;
     }
-    void refreshEntitlement(first.gatewayIp, first.signPubKey);
-  }, [countries, refreshEntitlement]);
+    tierCheckedRef.current = true;
+    void refreshEntitlement(selected.gatewayIp, selected.signPubKey);
+  }, [phase, selected, refreshEntitlement]);
 
   const connect = useCallback(() => {
     const entry = selected;
+    logLine(
+      `ui: connect ${multihop ? routeStyle : 'single-hop'} ${entry?.code ?? 'none'}` +
+        `${multihop && exit ? ` -> ${exit.code}` : ''}, kill switch ${killSwitch ? 'on' : 'off'}, ` +
+        `phase ${phase}`,
+    );
     if (!entry || phase === 'connecting') {
       return;
     }
@@ -401,6 +471,7 @@ export function useConnection(): ConnectionModel {
       setError('Pick an exit location for cross-jurisdiction multi-hop.');
       return;
     }
+    sessionRef.current += 1;
     setError(null);
     setPhase('connecting');
     // Abort any sweep still running (double-click, or a reconnect racing a
@@ -422,6 +493,7 @@ export function useConnection(): ConnectionModel {
             exitArg,
             routeStyle,
             keypair,
+            keyed,
             killSwitch,
             transportMode,
             tierRef.current,
@@ -429,14 +501,14 @@ export function useConnection(): ConnectionModel {
           setTunnel(result.tunnel);
           setSplitActive(result.splitApplied);
           setPhase('connected');
-          // Poll the ACTUAL exit gateway's key (same-country auto-picks the exit
-          // within the entry country, so exit.signPubKey — the picked row's key —
-          // would fail verification against the real exit gateway).
-          await refreshEntitlement(result.exitGatewayIp, result.exitSignPubKey);
+          // Entitlement follows the client key, which only the entry hop knows:
+          // the exit is never asked about it.
+          await refreshEntitlement(result.entryGatewayIp, result.entrySignPubKey);
         } else {
           const result = await establish(
             entry,
             keypair,
+            keyed,
             killSwitch,
             transportMode,
             tierRef.current,
@@ -468,6 +540,8 @@ export function useConnection(): ConnectionModel {
   ]);
 
   const disconnect = useCallback(() => {
+    logLine('ui: disconnect');
+    sessionRef.current += 1;
     // Cancel the sweep FIRST so it cannot misread this teardown as a failed
     // transport and immediately reconnect.
     sweepRef.current?.abort();
@@ -524,6 +598,7 @@ export function useConnection(): ConnectionModel {
     }
     reconnectAttemptsRef.current = attempt + 1;
     setConnectedSince(null);
+    logLine(`auto-reconnect attempt ${attempt + 1} in ${RECONNECT_DELAYS_MS[attempt]} ms`);
     const id = setTimeout(() => connect(), RECONNECT_DELAYS_MS[attempt]);
     return () => clearTimeout(id);
   }, [phase, connect]);
@@ -563,6 +638,7 @@ export function useConnection(): ConnectionModel {
   useEffect(() => {
     if (autoConnect && !autoConnectedRef.current && phase === 'idle' && selected) {
       autoConnectedRef.current = true;
+      logLine('auto-connect on launch');
       connect();
     }
   }, [autoConnect, phase, selected, connect]);
@@ -572,7 +648,7 @@ export function useConnection(): ConnectionModel {
   // This used to be the only thing calling `status()`, which made roam repair
   // and the dead-tunnel watchdog depend on a live foreground webview. Both now
   // run on a native thread (`spawn_repair_loop` in the tunnel crate): inside the
-  // helper daemon, or inside the app process in the elevated fallback (see
+  // helper daemon, or inside the app process in the macOS / Linux root mode (see
   // `src-tauri/src/backend.rs`). So this poll is purely cosmetic — it may be
   // throttled or stop entirely with the window hidden without affecting
   // whether the tunnel recovers.
@@ -580,14 +656,21 @@ export function useConnection(): ConnectionModel {
     if (phase !== 'connected') {
       return;
     }
+    const session = sessionRef.current;
     const id = setInterval(() => {
       void (async () => {
         try {
           const s = await nativeStatus();
+          // A disconnect or reconnect since: this reading belongs to a session
+          // that is being torn down, and a 'down' here is that teardown.
+          if (sessionRef.current !== session) {
+            return;
+          }
           setTunnel(s);
           // A drop shows up as an error or a 'down' state while we think we're
           // connected — surface it as an error so auto-reconnect can kick in.
           if (s.state === 'error' || s.state === 'down') {
+            logLine(`tunnel ${s.state} while connected: ${s.error ?? 'no error reported'}`);
             setError(s.error ?? 'connection lost');
             setPhase('error');
           }

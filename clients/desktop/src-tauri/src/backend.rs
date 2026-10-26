@@ -6,20 +6,23 @@
 //!   Settings), a systemd service on Linux and a LocalSystem service on Windows
 //!   (both installed and started by the packages). The daemon outlives the app,
 //!   owns the repair loop, and keeps the tunnel up if the app is killed.
-//! * **This process** (the elevated fallback), through the shared
-//!   `cumulusvpn-tunnel` crate:
+//! * **This process** (the in-process mode), through the shared
+//!   `cumulusvpn-tunnel` crate, on macOS and Linux:
 //!   * macOS, when launched as root. An unsigned or ad-hoc build cannot
 //!     register the helper (`SMAppService` validates it against the app's
-//!     signature), so `sudo` is the way to run one, as before the helper.
-//!   * Linux and Windows, when the app is elevated (root / Administrator) and
-//!     no helper answers at launch: an AppImage, which cannot install a system
-//!     service, or a build whose service is missing. That is how both platforms
-//!     worked before the daemon. An unelevated app never falls back; it shows
-//!     the setup banner instead, so a missing service is never a silent failure.
+//!     signature), so `sudo` is the way to run one.
+//!   * Linux, when the app runs as root and no helper answers at launch: an
+//!     AppImage, which cannot install a system service.
 //!
-//!   Root already has every privilege the helper would provide, so the fallback
+//!   Root already has every privilege the helper would provide, so the mode
 //!   grants nothing new. It runs the same repair loop on a thread here, and the
 //!   same startup recovery the daemon runs.
+//!
+//! Windows always uses the helper: the tunnel needs LocalSystem (wireguard-go
+//! creates its UAPI pipe owned by SYSTEM), which only the service has. With no
+//! helper answering, elevated or not, the app shows the setup banner, so a
+//! missing service is never a silent failure — on Linux likewise when the app
+//! is not root.
 //!
 //! The Tauri commands only see [`TunnelBackend`]. Both arms take the same
 //! `cumulusvpn-protocol` requests and return the same `TunnelStatus`.
@@ -58,7 +61,7 @@ pub enum SetupState {
     /// ad-hoc build. See `helper_install::HelperState::NotFound`.
     #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     NotFound,
-    /// Linux / Windows: no helper answered at launch and the app is elevated, so
+    /// Linux: no helper answered at launch and the app runs as root, so
     /// the tunnel runs in this process (and stops when the app quits).
     #[cfg_attr(target_os = "macos", allow(dead_code))]
     Elevated,
@@ -101,22 +104,23 @@ impl TunnelBackend {
         #[cfg(not(target_os = "macos"))]
         {
             let helper = HelperClient::new();
-            match helper.probe() {
-                // The normal case: the service answers and serves us.
-                Ok(()) => return TunnelBackend::Helper(helper),
-                // Elevated and no service: run it ourselves, as before the
-                // daemon existed.
-                Err(e) if crate::platform::running_elevated() => eprintln!(
-                    "CumulusVPN: the network helper is not available ({}), and the app \
-                     is running elevated, so the tunnel runs in-process. It stops when \
-                     the app quits.",
-                    match &e {
-                        ProbeError::Unreachable(m) | ProbeError::Denied(m) => m,
-                    }
-                ),
-                // Unelevated: keep the helper client. The UI shows the setup
+            let probe = helper.probe();
+            let place = choose(
+                probe.is_ok(),
+                crate::platform::running_elevated(),
+                IN_PROCESS_WITHOUT_HELPER,
+            );
+            if place == Place::Helper {
+                // The service answers and serves us, or the UI shows the setup
                 // banner (`setup_state`) and notices when the service comes up.
-                Err(_) => return TunnelBackend::Helper(helper),
+                return TunnelBackend::Helper(helper);
+            }
+            if let Err(ProbeError::Unreachable(m) | ProbeError::Denied(m)) = &probe {
+                eprintln!(
+                    "CumulusVPN: the network helper is not available ({m}), and the app \
+                     runs as root, so the tunnel runs in-process. It stops when the app \
+                     quits."
+                );
             }
         }
         let manager = Self::start_manager();
@@ -169,14 +173,26 @@ impl TunnelBackend {
         }
     }
 
-    pub fn connect_multihop(
+    pub fn connect_multihop_entry(
         &self,
-        req: proto::MultihopRequest,
+        req: proto::MultihopEntryRequest,
     ) -> Result<proto::TunnelStatus, String> {
         match self {
-            TunnelBackend::Helper(helper) => helper.connect_multihop(req),
+            TunnelBackend::Helper(helper) => helper.connect_multihop_entry(req),
             TunnelBackend::InProcess(manager) => manager
-                .connect_multihop_request(&req)
+                .connect_multihop_entry_request(&req)
+                .map_err(|e| e.to_string()),
+        }
+    }
+
+    pub fn connect_multihop_exit(
+        &self,
+        req: proto::MultihopExitRequest,
+    ) -> Result<proto::TunnelStatus, String> {
+        match self {
+            TunnelBackend::Helper(helper) => helper.connect_multihop_exit(req),
+            TunnelBackend::InProcess(manager) => manager
+                .connect_multihop_exit_request(&req)
                 .map_err(|e| e.to_string()),
         }
     }
@@ -190,13 +206,11 @@ impl TunnelBackend {
 
     /// Disconnect only if there is something to tear down. Used on quit.
     ///
-    /// `disconnect` is unconditional by design: it lifts the kill switch and
-    /// restores the platform firewall default whether or not we engaged
-    /// anything (on Windows, `DefaultOutboundAction Allow` on every profile; on
-    /// macOS, a reload of `/etc/pf.conf`). That is right for an explicit user
-    /// Disconnect, but wrong on every quit of an app that never connected,
-    /// where it would overwrite a firewall policy the user or an administrator
-    /// set. `Down` means nothing of ours is engaged: every failed connect
+    /// `disconnect` is unconditional by design: it lifts the kill switch
+    /// whether or not we engaged anything, which on macOS reloads
+    /// `/etc/pf.conf`. That is right for an explicit user Disconnect; an app
+    /// that quits without ever having connected leaves the firewall as it found
+    /// it. `Down` means nothing of ours is engaged: every failed connect
     /// unwinds to `Error`, and `disconnect` is the only way back to `Down`.
     pub fn disconnect_if_active(&self) {
         match self.status() {
@@ -258,6 +272,32 @@ impl TunnelBackend {
             #[cfg(not(target_os = "macos"))]
             TunnelBackend::InProcess(_) => Ok(SetupState::Elevated),
         }
+    }
+}
+
+/// Where the tunnel runs for one launch.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Place {
+    Helper,
+    InProcess,
+}
+
+/// Whether this platform runs the tunnel in-process for a root app when no
+/// helper answers: Linux (an AppImage). Windows needs LocalSystem, which only
+/// the helper service has.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+const IN_PROCESS_WITHOUT_HELPER: bool = cfg!(target_os = "linux");
+
+/// Linux / Windows: where the tunnel runs, from whether the helper answered
+/// and serves us, whether the app is elevated, and whether this platform can
+/// run it in-process.
+#[cfg_attr(target_os = "macos", allow(dead_code))]
+fn choose(helper_serves: bool, elevated: bool, in_process_supported: bool) -> Place {
+    if !helper_serves && elevated && in_process_supported {
+        Place::InProcess
+    } else {
+        Place::Helper
     }
 }
 
@@ -341,9 +381,28 @@ mod tests {
         );
     }
 
+    /// Linux runs the tunnel in-process for a root app with no helper; Windows
+    /// always uses the helper, elevated or not; a helper that serves us is used
+    /// everywhere. Both platforms' rules, asserted on every host.
+    #[test]
+    fn the_tunnel_runs_in_process_only_on_linux_as_root_without_a_helper() {
+        for linux in [true, false] {
+            for elevated in [true, false] {
+                assert_eq!(choose(true, elevated, linux), Place::Helper);
+            }
+            assert_eq!(choose(false, false, linux), Place::Helper);
+        }
+        assert_eq!(choose(false, true, true), Place::InProcess, "Linux as root");
+        assert_eq!(
+            choose(false, true, false),
+            Place::Helper,
+            "Windows as Administrator"
+        );
+        assert_eq!(IN_PROCESS_WITHOUT_HELPER, cfg!(target_os = "linux"));
+    }
+
     /// The in-process arm needs nothing set up, reports a down tunnel before
-    /// anything connects, and is always reachable. It is the elevated fallback
-    /// on every OS, so assert it on every platform.
+    /// anything connects, and is always reachable.
     #[test]
     fn the_in_process_backend_is_ready_and_down_at_launch() {
         let backend = TunnelBackend::in_process();

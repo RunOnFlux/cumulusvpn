@@ -28,8 +28,8 @@ use std::thread;
 use std::time::Duration;
 
 use windows_sys::Win32::Foundation::{
-    CloseHandle, GetLastError, LocalFree, ERROR_BROKEN_PIPE, ERROR_PIPE_CONNECTED, HANDLE,
-    INVALID_HANDLE_VALUE,
+    CloseHandle, GetLastError, LocalFree, ERROR_BROKEN_PIPE, ERROR_NO_DATA, ERROR_PIPE_CONNECTED,
+    HANDLE, INVALID_HANDLE_VALUE,
 };
 use windows_sys::Win32::Security::Authorization::{
     ConvertStringSecurityDescriptorToSecurityDescriptorW, SDDL_REVISION_1,
@@ -39,8 +39,8 @@ use windows_sys::Win32::Storage::FileSystem::{
     ReadFile, WriteFile, FILE_FLAG_FIRST_PIPE_INSTANCE, PIPE_ACCESS_DUPLEX,
 };
 use windows_sys::Win32::System::Pipes::{
-    ConnectNamedPipe, CreateNamedPipeW, PIPE_READMODE_BYTE, PIPE_REJECT_REMOTE_CLIENTS,
-    PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
+    ConnectNamedPipe, CreateNamedPipeW, DisconnectNamedPipe, PIPE_READMODE_BYTE,
+    PIPE_REJECT_REMOTE_CLIENTS, PIPE_TYPE_BYTE, PIPE_UNLIMITED_INSTANCES, PIPE_WAIT,
 };
 
 use cumulusvpn_tunnel::TunnelManager;
@@ -182,15 +182,30 @@ impl PipeListener {
             Some(p) => p,
             None => create_instance(&self.name, &self.sd, false)?,
         };
-        // SAFETY: valid pipe handle; synchronous, so no OVERLAPPED.
-        let ok = unsafe { ConnectNamedPipe(pipe.0, ptr::null_mut()) };
-        if ok == 0 {
+        loop {
+            // SAFETY: valid pipe handle; synchronous, so no OVERLAPPED.
+            let ok = unsafe { ConnectNamedPipe(pipe.0, ptr::null_mut()) };
+            if ok != 0 {
+                break;
+            }
             // SAFETY: plain read of the thread's last error.
             let err = unsafe { GetLastError() };
-            // A client that connected between CreateNamedPipe and
-            // ConnectNamedPipe is still a connected client.
-            if err != ERROR_PIPE_CONNECTED {
-                return Err(io::Error::from_raw_os_error(err as i32));
+            match err {
+                // A client that connected between CreateNamedPipe and
+                // ConnectNamedPipe is still a connected client.
+                ERROR_PIPE_CONNECTED => break,
+                // A client that connected and closed before we accepted it:
+                // reset this instance and wait on it again.
+                ERROR_NO_DATA => {
+                    // SAFETY: valid pipe handle whose client has gone.
+                    unsafe { DisconnectNamedPipe(pipe.0) };
+                }
+                // Keep the instance as the idle one, so the name stays ours
+                // while the caller backs off.
+                _ => {
+                    self.idle = Some(pipe);
+                    return Err(io::Error::from_raw_os_error(err as i32));
+                }
             }
         }
         // Open the next instance before handing this one off, so the name
@@ -344,5 +359,23 @@ mod tests {
         let name = unique_name();
         let _first = PipeListener::bind(&name, PIPE_SDDL).expect("first bind");
         assert!(PipeListener::bind(&name, PIPE_SDDL).is_err());
+    }
+
+    /// A client that connects and closes before the listener accepts it
+    /// (ERROR_NO_DATA) is skipped: the same instance waits again, and the
+    /// next client is accepted on it.
+    #[test]
+    fn a_client_gone_before_accept_does_not_cost_the_listener() {
+        let name = unique_name();
+        let mut listener = PipeListener::bind(&name, PIPE_SDDL).expect("bind");
+        drop(open(&name));
+        let late = name.clone();
+        let client = thread::spawn(move || {
+            thread::sleep(std::time::Duration::from_millis(200));
+            open(&late)
+        });
+        let accepted = listener.accept();
+        let _client = client.join().expect("client thread");
+        assert!(accepted.is_ok(), "{:?}", accepted.err());
     }
 }

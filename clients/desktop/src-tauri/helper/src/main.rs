@@ -28,6 +28,8 @@
 
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(any(windows, target_os = "macos"))]
+mod logfile;
 #[cfg(target_os = "macos")]
 mod peer;
 // Pure parts are compiled everywhere so the policy is tested on every CI host.
@@ -52,6 +54,21 @@ fn main() {
         eprintln!("cumulusvpn-helper must run as root (it is a LaunchDaemon, not a user agent)");
         std::process::exit(1);
     }
+
+    // launchd discards a daemon's stderr unless told otherwise; ours goes to a
+    // capped log in the system log directory, root-writable only.
+    let log_dir = std::path::Path::new(LOG_DIR);
+    if std::fs::create_dir_all(log_dir).is_ok() {
+        logfile::install(&log_dir.join("helper.log"));
+    }
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    eprintln!(
+        "cumulusvpn-helper: service starting at {secs} (pid {})",
+        std::process::id()
+    );
 
     let manager = Arc::new(TunnelManager::new());
     // A previous instance may have died with the system DNS still pointed at
@@ -88,6 +105,10 @@ fn main() {
     eprintln!("cumulusvpn-helper supports macOS, Linux and Windows only");
     std::process::exit(1);
 }
+
+/// The macOS daemon's log directory: the system log location, root-writable.
+#[cfg(target_os = "macos")]
+const LOG_DIR: &str = "/Library/Logs/CumulusVPN";
 
 #[cfg(target_os = "macos")]
 fn is_root() -> bool {

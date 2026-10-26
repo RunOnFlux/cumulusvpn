@@ -54,7 +54,12 @@ export { enroll, status } from './enroll.js';
 export { buildWgConfig } from './wgconfig.js';
 export { DEFAULT_DNS, DNS_OPTIONS, dnsOption, dnsServersFor, parseDnsChoice } from './dns.js';
 export type { DnsChoice, DnsOption } from './dns.js';
-export { selectHops, buildMultihopConfig } from './multihop.js';
+export {
+  selectHops,
+  buildMultihopConfig,
+  buildMultihopOuterConfig,
+  buildMultihopInnerConfig,
+} from './multihop.js';
 export { gatewayQuality } from './quality.js';
 export type { GatewayQuality, QualityTone } from './quality.js';
 export { pingGateway } from './probe.js';
@@ -65,8 +70,11 @@ export type {
   RouteStyle,
   Hop,
   SelectHopsOptions,
+  HopPairIps,
   SelectedHops,
   MultihopConfig,
+  MultihopOuterConfig,
+  MultihopInnerConfig,
 } from './multihop.js';
 export {
   EMPTY_POLICY,

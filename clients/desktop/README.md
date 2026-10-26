@@ -20,16 +20,21 @@ binary), so the app itself runs as a normal user on every desktop OS:
 | **Linux** | systemd service `cumulusvpn-helper` (root) | the .deb / .rpm (unit + maintainer scripts in `src-tauri/linux/`) | `/run/cumulusvpn/helper.sock`, `root:cumulusvpn` 0660 | root, or a `cumulusvpn` group member running `/usr/bin/cumulusvpn-desktop` (`SO_PEERCRED` + `/proc/<pid>/exe`, `helper/src/peer_linux.rs`) |
 | **Windows** | service `CumulusVPNHelper` (LocalSystem) | the NSIS / MSI installers, per-machine (`src-tauri/windows/`) | `\\.\pipe\CumulusVPN.Helper` (interactive users may connect, not create instances) | an elevated administrator, or `cumulusvpn-desktop.exe` next to the service in Program Files (`helper/src/peer_windows.rs`) |
 
-**Fallback.** An elevated app with no helper to talk to runs the tunnel
-in-process instead, which is how every platform worked before the daemon:
+**In-process mode (macOS, Linux).** A root app with no helper to talk to runs
+the tunnel in-process instead:
 
 | | When | What the UI shows |
 |---|---|---|
 | macOS | launched as root (`sudo`), e.g. an unsigned build, which cannot register its helper | nothing (`notNeeded`) |
 | Linux | run as root and no helper answers at launch — the **AppImage**, which cannot install a system service | a note: the VPN stops when the app quits (`elevated`) |
-| Windows | run as Administrator and the service is missing or stopped | the same note (`elevated`) |
 
-Unelevated with no usable helper, the app never fails silently: Connect is
+Windows runs the tunnel only in the LocalSystem service: wireguard-go creates
+its UAPI pipe owned by SYSTEM, which only a SYSTEM process can do. An app run as
+Administrator uses the helper like any other (`backend::choose`), and the tunnel
+engine refuses any host but LocalSystem up front (`ensure_privileged`).
+
+With no usable helper (on Windows elevated or not; elsewhere unprivileged), the
+app never fails silently: Connect is
 disabled and a banner says what is missing — `serviceNotInstalled` (install the
 package / reinstall), `serviceNotRunning` (`sudo systemctl enable --now
 cumulusvpn-helper`, or start "CumulusVPN Helper"), `serviceDenied` (Linux: log
@@ -55,10 +60,9 @@ depends on the webview polling.
   uninstall, shutdown; Linux/Windows): it disconnects before it exits.
 * **The daemon dies**: launchd / systemd / the SCM restarts it. On Linux and
   Windows the new instance cleans up after the old one before serving anyone —
-  DNS, orphaned `wireguard-go`, and the kill switch (on Windows its
-  `DefaultOutboundAction Block` would otherwise even survive a reboot) — and the
-  app sees the drop and reconnects. macOS keeps the fail-closed pf anchor until
-  then.
+  DNS, orphaned `wireguard-go`, and the kill switch (on Windows, its WFP
+  sublayer) — and the app sees the drop and reconnects. macOS keeps the
+  fail-closed pf anchor until then.
 
 ### The IPC endpoint is the privilege boundary
 
@@ -104,7 +108,7 @@ SYSTEM).
   `restart`. prerm / `%preun` on removal: stop (which disconnects), disable,
   `cumulusvpn-helper --cleanup`. postrm / `%postun`: `daemon-reload` (on rpm
   upgrade, `try-restart`). The group is left in place on removal. The AppImage
-  has no service (see the fallback above).
+  has no service (see the in-process mode above).
 * **Windows** (`tauri.windows.conf.json`): the NSIS hooks (`windows/hooks.nsh`)
   stop the service before files are replaced, install `cumulusvpn-helper.exe`
   next to the app, and register it (`sc create` / `sc config`, automatic start,
@@ -116,7 +120,10 @@ SYSTEM).
 `cumulusvpn-helper --ping` (Linux, Windows) asks the running daemon for its
 version as the calling process, or prints why it would not serve it.
 `--cleanup` undoes what a crashed session left behind (refused while a daemon
-answers). Windows also has `--console` for debugging (elevated, service stopped).
+answers). Windows also has `--filters` (elevated: how many WFP filters the kill
+switch and the DNS leak block hold) and `--console` (elevated, service stopped:
+the daemon in the foreground, serving the pipe and refusing a connect, which
+needs the LocalSystem service; see `helper/src/windows.rs`).
 
 ## DNS
 
@@ -127,18 +134,18 @@ the routes point into the tunnel; on the exit device for multi-hop), re-asserted
 by the repair loop, and restored first on disconnect. All of it lives in
 `src-tauri/tunnel/src/dns.rs` behind one small interface (`DnsSession::start` /
 `reassert` / `restore`, plus `recover_stale` at startup), shared by the helper
-daemon on every OS and the in-process fallback.
+daemon on every OS and the macOS / Linux in-process mode.
 
 | OS | How | Restore / crash |
 |---|---|---|
 | **macOS** | SystemConfiguration dynamic store via `scutil`: `ServerAddresses` overridden in every `State:/Network/Service/*/DNS` **and** `Setup:/…/DNS` key (manual servers in `Setup:` win over DHCP, so both are needed); nothing written to disk preferences. Each original is copied exactly to `State:/Network/CumulusVPN/Backup/…` first. The repair loop re-takes any key the OS republishes after a roam or DHCP renewal. | Backups are put back only over keys that still carry our `CumulusVPNOverride` marker. They live in the dynamic store, so a killed helper restores them when launchd restarts it, and a reboot leaves nothing stale. |
 | **Linux** | systemd-resolved when it is the system resolver: `resolvectl dns <if> <ip>`, `domain <if> '~.'`, `default-route <if> true`. Otherwise `resolvconf -a <if> -m 0 -x` (as `wg-quick`). Neither available → a DNS warning in the UI, never a silent leak. | resolved per-link config dies with the link. A stale resolvconf record is removed when the daemon (or the in-process app) next starts. |
-| **Windows** | The wintun adapter gets the server, interface metric 1 and an empty suffix; the `CumulusVPN-DNS` firewall group blocks DNS (53/853, UDP+TCP) to every server but the tunnel's and from every address but the tunnel's, which stops smart multi-homed resolution asking the other adapters. Applied whether or not the kill switch is on. | Only our rule group is removed; the default outbound policy is never touched, so quitting an app that never connected still leaves the firewall alone. Stale rules are removed when the service (or the in-process app) next starts. |
+| **Windows** | The wintun adapter gets the servers, interface metric 1 and an empty suffix (`SetInterfaceDnsSettings`, `SetIpInterfaceEntry`); WFP filters in our own sublayer block DNS (53/853, UDP+TCP) except to the tunnel resolvers through the tunnel adapter, which keeps smart multi-homed resolution off the other adapters. Applied whether or not the kill switch is on. | Restore removes our DNS sublayer. A sublayer left by a crash is removed when the service (or the in-process app) next starts; the filters also end at reboot. |
 
-**Kill switch on:** pf / nftables / Windows Firewall also drop all DNS except to
-the tunnel resolver through the tunnel, ordered (or, on Windows, expressed as
-block rules) so a LAN bypass cannot reopen DNS to the router. IPv6 resolvers on
-the physical link are covered too — the tunnel carries no IPv6.
+**Kill switch on:** pf / nftables / WFP also drop all DNS except to the tunnel
+resolver through the tunnel, ordered (on Windows, by filter weight) ahead of
+the LAN bypass, so DNS to the router stays blocked. IPv6 resolvers on the
+physical link are covered too — the tunnel carries no IPv6.
 
 **Split tunneling:** tunnel DNS for everything, bypassed prefixes included; with
 split routing active the resolver also gets a host route through the tunnel, so
@@ -148,6 +155,20 @@ neither an exclusion that covers it nor include mode sends it out in the clear.
 **When DNS cannot be set** the tunnel stays up and its status carries
 `dnsWarning`, shown as an amber banner under the orb — never a clean
 "protected". Hardware verification: `docs/16-validation.md`, Stage F-DNS.
+
+## Logs
+
+| Log | Where | Contents |
+|---|---|---|
+| App | `<app log dir>/desktop.log` (Windows `%LOCALAPPDATA%\com.cumulusvpn.desktop\logs`) | button presses, connect steps, every gateway request except discovery's successes, one discovery summary per launch |
+| Daemon, Windows | `helper.log` in the install directory | requests, and what the tunnel engine did for each |
+| Daemon, macOS | `/Library/Logs/CumulusVPN/helper.log` | as on Windows |
+| Daemon, Linux | `journalctl -u cumulusvpn-helper` | as on Windows |
+| wireguard-go | `cumulusvpn-wireguard-go-<device>.log` in the daemon's temp directory | the device's own output; replaced each time the device starts |
+
+`desktop.log` and both `helper.log` files are capped at 1 MiB
+(`tunnel/src/logfile.rs`): a full log becomes `<name>.1`, replacing the older
+one, and writing continues in a fresh file. journald caps the Linux journal.
 
 ## Layout
 
@@ -177,10 +198,13 @@ src-tauri/               Rust workspace
                          the repair/watchdog loop and startup recovery
     src/validate.rs      shape checks on every request (privilege boundary)
     src/wggo.rs          wireguard-go spawn + .conf → UAPI translation
-    src/routing.rs       routes / addresses (route, ip, netsh)
+    src/routing.rs       routes / addresses (route, ip; IP Helper on Windows)
     src/dns.rs           system resolver → tunnel resolver (scutil, resolvectl /
-                         resolvconf, PowerShell + firewall), restore, recovery
+                         resolvconf, IP Helper + WFP), restore, recovery
     src/killswitch.rs    pf / nftables / WFP leak protection (incl. DNS)
+    src/win/             Windows: IP Helper (net), WFP filters (wfp), the
+                         filter plans as plain data (plan), process checks,
+                         removal of the CumulusVPN firewall rule groups
     src/tlsbridge.rs     wg-tls UDP<->TLS bridge
   helper/                the privileged daemon (macOS, Linux, Windows)
     src/main.rs          entry point per OS + packaging guard tests
@@ -241,9 +265,13 @@ and it serves that app, since it accepts the app sitting next to it.
 * **Linux**: `sudo groupadd --system cumulusvpn; sudo usermod -aG cumulusvpn
   "$USER"` (log in again), then `sudo ./target/debug/cumulusvpn-helper` and
   `yarn tauri:dev`. Or skip the helper: run the app as root.
-* **Windows**: from an elevated prompt, with any installed `CumulusVPNHelper`
-  service stopped, `target\debug\cumulusvpn-helper.exe --console`; then
-  `yarn tauri:dev` from a normal prompt. Or run the app as Administrator.
+* **Windows**: a tunnel needs the helper running as the LocalSystem service,
+  and the installed service serves the installed app. Build and install the
+  NSIS package (`yarn tauri:build`, then
+  `src-tauri\target\release\bundle\nsis\CumulusVPN_*_x64-setup.exe`) and
+  run CumulusVPN from the Start menu. `--console` (elevated, service stopped)
+  with `yarn tauri:dev` exercises the app and the pipe; a connect through it is
+  refused with that reason.
 
 ### Signing (macOS)
 

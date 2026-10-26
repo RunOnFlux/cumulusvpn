@@ -63,7 +63,9 @@ the parts that must not be skipped.
 ## Adopted from the competitive-plan review (docs review, 2026-07-16)
 - **Multi-hop mode (`docs/11`) — BUILDING NOW** as an opt-in "ultimate privacy" feature: nested
   client-side onion (entry + exit), one payment covers both hops, no gateway protocol change.
-  v1 = same key both hops; v1.5 = distinct key per hop (rides payment-key indirection).
+  Desktop: the exit hop runs on a per-session key enrolled through the entry (free tier at the
+  exit); mobile and web: the same key on both hops. Payment-key indirection makes the exit key
+  premium and gives mobile and web distinct keys per hop.
 - **Obfuscation / DPI-resistance (borrow #4):** pluggable obfuscated transport (AmneziaWG /
   shadowsocks-style + the WebSocket fallback) for censored networks — a core VPN use case we had
   under-weighted. Target M5/M6 alongside clients.
