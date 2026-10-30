@@ -12,7 +12,7 @@
 # Matches the `toolchain` line in go.mod (go1.27.2). The image runs with
 # GOTOOLCHAIN=local, so it must also be >= the go directive (go 1.26.0), else the
 # build fails with "go.mod requires go >= …". Bump this and go.mod together.
-FROM golang:1.27.2-alpine@sha256:f92b6ef800e499660581efdabdf25d9d817a9d124eaf900924f0504e7e27e12d AS build
+FROM golang:1.27.3-alpine@sha256:d200d2dd76b03a99b52651fd1325aff7dcd35422c35c01bac56571b0507f3deb AS build
 
 # Reproducibility: fixed module cache + trimmed paths + no VCS stamping.
 ENV CGO_ENABLED=0 \
@@ -44,7 +44,7 @@ RUN GOARCH=${TARGETARCH} go build \
 # distroless/static gives us CA certs (for HTTPS to the explorer fallback) and
 # a nonroot user, staying ~2 MB over scratch. Swap for `FROM scratch` if you
 # vendor CA certs yourself and never hit the public explorer.
-FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+FROM gcr.io/distroless/static:nonroot@sha256:18f4cc26c9ffa7f20a359298be7deadac5c607c8e03a02b8119f1a5fc2f82c99
 
 COPY --from=build /out/gateway /gateway
 
