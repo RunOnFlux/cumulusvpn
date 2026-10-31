@@ -258,8 +258,8 @@ APPLE_SIGNING_IDENTITY="Developer ID Application: … (TEAMID)" \
 
 `TEAMID` must equal `APPLE_TEAM_ID` in `src-tauri/helper/src/peer.rs`, the one
 place it is defined (currently `276MY32G8B`, the US company's Apple team, which
-holds the Developer ID Application certificate; the iOS app is still signed by
-the UK team `URVD95GYQ7` until its transfer, and that is unrelated). If they
+holds the Developer ID Application certificate; the iOS app moved to the same
+team on 2026-11-01). If they
 differ, the app and its own daemon refuse to talk to each other, so
 `sign-macos.sh` checks this and refuses an identity from any other team. Debug
 builds of the helper skip the peer check so development works without a

@@ -33,7 +33,8 @@
    Policy URL + Support URL) at submission.
 3. ✅ **Organization enrollment — confirmed** (2026-07-22). The team is an existing Apple
    Developer **Organization** account with other shipped apps, satisfying 5.4 (and 3.1.5(i) for
-   crypto), which bar Individual accounts from VPN apps. `DEVELOPMENT_TEAM = URVD95GYQ7`.
+   crypto), which bar Individual accounts from VPN apps. `DEVELOPMENT_TEAM = 276MY32G8B` (US team; the app was transferred from the UK team
+   `URVD95GYQ7` on 2026-11-01).
 
 ---
 

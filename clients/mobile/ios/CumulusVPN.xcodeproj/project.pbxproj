@@ -435,7 +435,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = CumulusTunnelExtension/PacketTunnelExtension.entitlements;
 				CURRENT_PROJECT_VERSION = 17;
-				DEVELOPMENT_TEAM = URVD95GYQ7;
+				DEVELOPMENT_TEAM = 276MY32G8B;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
@@ -472,7 +472,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = CumulusVPN/CumulusVPN.entitlements;
 				CURRENT_PROJECT_VERSION = 17;
-				DEVELOPMENT_TEAM = URVD95GYQ7;
+				DEVELOPMENT_TEAM = 276MY32G8B;
 				ENABLE_BITCODE = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -509,7 +509,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = CumulusVPN/CumulusVPN.entitlements;
 				CURRENT_PROJECT_VERSION = 17;
-				DEVELOPMENT_TEAM = URVD95GYQ7;
+				DEVELOPMENT_TEAM = 276MY32G8B;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",
@@ -543,7 +543,7 @@
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = CumulusTunnelExtension/PacketTunnelExtension.entitlements;
 				CURRENT_PROJECT_VERSION = 17;
-				DEVELOPMENT_TEAM = URVD95GYQ7;
+				DEVELOPMENT_TEAM = 276MY32G8B;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(PROJECT_DIR)/Frameworks",

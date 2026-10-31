@@ -493,7 +493,7 @@ each one twice: once with the kill switch **on** and once **off**.
 | H7 | Kill switch on, roam, after recovery | Tunnel traffic flows again; plaintext still blocked on the new interface. Assert **both** halves — H6 passing because everything is blocked is not a pass. |
 | H8 | Roam with split-tunneling rules active | Bypass prefixes still egress directly on the new interface; everything else tunnels. Composes H2 with Stage G row V6. |
 | H9 | Multi-hop roam | Entry tunnel repairs; exit stays up. Only the outer device holds a socket on the physical network, so the inner one must not be touched. |
-| H10 | `wg-tls` roam | Reconnects rather than rebinds — a TCP connection to the relay cannot migrate. Expect a visible reconnect, not a seamless resume. |
+| H10 | `wg-tls` roam | Reconnects rather than rebinds — a TCP connection to the relay cannot migrate. Expect a visible reconnect, not a seamless resume. Mobile rebuilds the route **inside** the VPN session (iOS: in-extension swap; Android: new interface first), so with the kill switch on nothing egresses during it (Stage L, L3). |
 | H11 | Gateway dies while connected (kill the container) | Watchdog fires within ~200s; client surfaces the drop and auto-reconnects with backoff. Distinguishes "dead tunnel" from "idle tunnel". |
 | H12 | Roam with the window closed / app in tray (desktop) | Identical to H1. Repair runs on a native thread, not the webview: in the helper daemon on all three desktop OSes, or on a thread in the app in the elevated in-process fallback (`spawn_repair_loop`). If this fails but H1 passes, the poll has been moved back into the UI. Also roam with the app **killed** (after H14): the daemon still repairs. |
 | H13 | Quit the app while connected | Kill switch removed, routes cleared, sidecar reaped. Verify with `pfctl -a com.cumulusvpn -sr` (macOS), `nft list table inet cumulusvpn` (Linux), `Get-NetFirewallProfile` (Windows) — all must show no leftovers, and the machine must have working internet. |
@@ -623,6 +623,49 @@ team installs a Windows build; K3, K4 and K11 belong in the security review.
 
 ---
 
+## Stage L — Mobile kill switch
+
+**[NOT AUTOMATED — physical iPhone and Android phone; a second device or router
+to watch traffic.]** The rule under test, enforced in `useVpn`
+(`src/state/useVpn.killswitch.test.tsx` pins it in unit tests): once a session
+is up, **only Disconnect lowers the kill switch**. A failover, a failed
+transport, a dead node, a roam and a country / multi-hop / Stealth / DNS change
+all keep the VPN session up — the route is swapped inside it, or the session is
+HELD (engine stopped, interface kept, every packet dropped) while the app
+retries. iOS holds via the extension (`includeAllNetworks` + on-demand) and
+relays the app's enroll requests through the extension while held; Android
+replaces the VPN interface before stopping the old engine and holds with a
+blocking interface (`TunnelHold.kt`) that leaves only the app's own control
+requests out.
+
+**How to see a leak.** The phone's own counters cannot show one, so watch
+from outside it: run `tcpdump -ni <if> host <phone-ip> and not host <gateway-ip>`
+on the router / a laptop sharing a hotspot with the phone, and keep traffic
+flowing on the phone (a video, or a page that polls). Anything printed while a
+row says "blocked" is a leak. Watch `https://ifconfig.co` (or any IP checker)
+on the phone for the exit address.
+
+Run every row with the kill switch **on**, then L1/L4/L5 again **off** (they
+must still work, minus the blocking).
+
+| # | Scenario | Expected |
+|---|---|---|
+| L1 | Connected, switch country (single-hop) | Reconnects to the new country without a Disconnect. Exit IP changes. Kill switch on: **no packets** outside the gateways in tcpdump during the switch. |
+| L2 | Connected, switch Fast ↔ Multi-hop, and change a multi-hop entry or exit | As L1. Android: exactly one VPN key icon / notification afterwards (the replaced service stopped). |
+| L3 | Connected, Stealth on/off; DNS choice change; `wg-tls` roam (Wi-Fi → cellular) | As L1. |
+| L4 | Kill the gateway container (or firewall the phone off it) while connected | Within ~200 s the app fails over to another node in the same country. tcpdump silent between the drop and the new route. |
+| L5 | Make every node unreachable (airplane mode with Wi-Fi on but no internet, or block the gateway range at the router) | The app shows **"Internet blocked by the kill switch"**, keeps retrying (10 s, 20 s, … then every 60 s), and nothing leaks for as long as it lasts. Restore reachability: it reconnects by itself. |
+| L6 | In L5's blocked state, tap **Disconnect** | The VPN turns off and the internet works again immediately. |
+| L7 | In L5's blocked state, turn the kill switch **off** | The block lifts at once (internet works) and the app keeps trying to connect normally. |
+| L8 | Force-quit the app while connected; then while blocked (L5) | iOS: the session (and the block) survives; the relaunched app shows connected, or "blocked" and resumes retrying. Android: without the system setting the VPN may end with the process — expected; with **Always-on VPN + Block connections without VPN** on, nothing leaks. |
+| L9 | Reboot while connected | iOS: on-demand brings the VPN back before other traffic. Android: only the system lockdown setting protects this window — confirm it does. |
+| L10 | IPv6 network (carrier or dual-stack Wi-Fi), kill switch **off**, single-hop and multi-hop | `test-ipv6.com` / `ipleak.net` shows **no IPv6 address** (only the exit's IPv4); tcpdump `ip6` on the phone's uplink silent except link-local. Sites still load normally (no stall before falling back to v4). Both platforms: v6 is routed into the tun and dropped there. |
+
+**PASS** — L1–L7 leak-free on both platforms; L8/L9 as described. Until this
+stage passes on hardware, do not claim a working kill switch in store copy.
+
+---
+
 ## Known gaps
 
 - **`register.sh` is 2/5 steps** — sign/broadcast/pay are TODO echoes.
@@ -705,7 +748,6 @@ team installs a Windows build; K3, K4 and K11 belong in the security review.
   I4–I6 are the first real exercise of it. A real signed build needs a
   *Developer ID Application* certificate from the `APPLE_TEAM_ID` team
   (`276MY32G8B`, the US company's team — that certificate now exists; the iOS
-  app's `DEVELOPMENT_TEAM` is still the UK team `URVD95GYQ7` until its transfer,
-  which does not affect the desktop helper). Unit tests
+  app moved to the same team on 2026-11-01). Unit tests
   already check that the requirement string parses (`SecRequirementCreateWithString`)
   and that a refused peer never reaches dispatch (`helper/src/server.rs`).
