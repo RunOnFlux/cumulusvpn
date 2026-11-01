@@ -10,6 +10,13 @@
 // Fed a rendered wg-quick config through NETunnelProviderProtocol.providerConfiguration:
 //   - single-hop:  { "wgConfig": <conf> }
 //   - multi-hop:   { "mode": "multihop", "outerConfig": <conf>, "innerConfig": <conf> }
+//
+// Kill switch: the app never stops this session to change route. A country
+// switch, a failover or a transport fallback arrives as a SWAP app message and
+// is applied inside the running session; a dead tunnel is HELD (engine stopped,
+// utun kept). Either way the utun stays up, so with `includeAllNetworks` iOS
+// keeps every packet in it — nothing leaks between two routes. Only the app's
+// Disconnect (stopVPNTunnel) ends the session. See `handleAppMessage`.
 
 import Foundation
 import Network
@@ -44,6 +51,19 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     private let pathQueue = DispatchQueue(label: "com.cumulusvpn.tunnel.path")
     private var lastPathInterfaces: [NWInterface]?
 
+    // The route a swap installed, overriding the saved providerConfiguration
+    // (which only changes when the app starts a fresh session). nil = use the
+    // saved one. Read through `providerConfigValue(forKey:)`.
+    private var activeConfig: [String: String]?
+
+    // Swaps are serialized on the main queue: two engines on one utun would both
+    // read it. A swap arriving while one is running waits here; only the newest
+    // one is kept, and the superseded caller is told so.
+    private var swapInFlight = false
+    private var queuedSwap: (config: [String: String], reply: (String) -> Void)?
+    // A hold that arrived mid-swap: applied as soon as that swap finishes.
+    private var holdAfterSwap = false
+
     // Called by the OS when the user (or the app) starts the tunnel.
     override func startTunnel(
         options _: [String: NSObject]?,
@@ -77,13 +97,14 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         // Split tunneling (docs/17): a non-default AllowedIPs (core's compiled
         // split policy, the pre-computed complement / inclusion list) becomes the
         // includedRoutes set — only those prefixes enter the tun. The classic
-        // full-tunnel config keeps this path byte-identical. v4 only, matching
-        // the existing v4-only settings; the kill switch (`includeAllNetworks`)
+        // full-tunnel config keeps this path byte-identical. IPv6 is blackholed
+        // into the tun (`ipv6Settings`); the kill switch (`includeAllNetworks`)
         // disregards route carve-outs, so the app layer never combines the two.
         let settings = NEPacketTunnelNetworkSettings(tunnelRemoteAddress: serverIp)
         let ipv4 = NEIPv4Settings(addresses: [assigned], subnetMasks: ["255.255.255.255"])
         ipv4.includedRoutes = Self.includedV4Routes(allowedIps: conf.allowedIps, dnsServers: conf.dns)
         settings.ipv4Settings = ipv4
+        settings.ipv6Settings = Self.ipv6Settings(allowedIps: conf.allowedIps)
         settings.mtu = 1420
         if !conf.dns.isEmpty {
             settings.dnsSettings = Self.dnsSettings(servers: conf.dns)
@@ -210,6 +231,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         ipv4.includedRoutes = Self.includedV4Routes(allowedIps: inner.allowedIps, dnsServers: exitDns)
         ipv4.excludedRoutes = [NEIPv4Route(destinationAddress: entryIp, subnetMask: "255.255.255.255")]
         settings.ipv4Settings = ipv4
+        settings.ipv6Settings = Self.ipv6Settings(allowedIps: inner.allowedIps)
         settings.mtu = 1340
         settings.dnsSettings = Self.dnsSettings(servers: exitDns)
 
@@ -298,15 +320,18 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     ///
     /// **wg-tls** — rebinding is useless. That device points at 127.0.0.1 and
     /// the socket that actually died is the bridge's TCP connection to the
-    /// relay, which cannot migrate between networks. Tearing the tunnel down is
-    /// the honest response: iOS reports the disconnect, and the app's existing
-    /// auto-reconnect rebuilds the bridge exactly as it would after any other
-    /// unexpected drop.
+    /// relay, which cannot migrate between networks. The route is rebuilt in
+    /// place (a fresh bridge + engine on the same utun), so the session — and
+    /// with it the kill switch — never drops. If the rebuild fails the engine
+    /// stays stopped and the utun keeps blocking; the app's dead-tunnel check
+    /// then fails over to another node.
     private func handleRoam() {
         guard handle != 0 else { return }
         if tlsBridge != nil {
-            log.log("roam on wg-tls — cancelling so the app reconnects (the relay's TCP cannot follow)")
-            cancelTunnelWithError(nil)
+            log.log("roam on wg-tls — rebuilding the bridge in place (the relay's TCP cannot follow)")
+            DispatchQueue.main.async {
+                self.swap(to: self.currentConfig()) { _ in }
+            }
             return
         }
         #if canImport(Wgnest)
@@ -329,6 +354,15 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         with _: NEProviderStopReason,
         completionHandler: @escaping () -> Void
     ) {
+        stopEngine()
+        completionHandler()
+    }
+
+    /// Stop the WireGuard engine, its TLS bridge and the roam watcher, leaving
+    /// the utun (owned by the session, not by wgnest — it works on a dup) up.
+    /// With nothing reading the utun, every packet routed into it is dropped:
+    /// this is the HELD state.
+    private func stopEngine() {
         stopPathMonitor()
         #if canImport(Wgnest)
         if handle != 0 {
@@ -338,23 +372,126 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
         #endif
         tlsBridge?.stop()
         tlsBridge = nil
-        completionHandler()
     }
 
-    // Handle app→extension messages (a status/stats request forwarded from JS).
+    // MARK: - app messages
+
+    /// App → extension messages. The first byte is the command:
+    ///   0x01  stats   → "rxBytes,txBytes,lastHandshakeSec", or "held" when the
+    ///                   session is up with no engine running
+    ///   0x02  swap    + JSON providerConfiguration → "ok" | "err:<message>"
+    ///   0x03  hold    → "ok"
+    ///   0x04  fetch   + JSON {url, method, headers, body(base64)} →
+    ///                   JSON {status, headers, body(base64)} | {error}
+    ///
+    /// Swap and hold are how the kill switch survives a route change (see the
+    /// file header). Fetch exists for the HELD state: with `includeAllNetworks`
+    /// the app's own requests are blocked too, but the provider's sockets are
+    /// not, so the app sends its gateway enroll requests through here to find
+    /// its way back. An empty message is a stats request (older app builds).
     override func handleAppMessage(
-        _: Data,
+        _ messageData: Data,
         completionHandler: ((Data?) -> Void)?
     ) {
-        #if canImport(Wgnest)
-        if handle != 0 {
-            // "rxBytes,txBytes,lastHandshakeSec"
-            let csv = WgmobileGetStats(handle)
-            completionHandler?(csv.data(using: .utf8))
+        let command = messageData.first ?? 0x01
+        let payload = messageData.dropFirst()
+        let reply: (String) -> Void = { completionHandler?($0.data(using: .utf8)) }
+        switch command {
+        case 0x02:
+            guard let config = Self.decodeConfig(payload) else {
+                reply("err:invalid route")
+                return
+            }
+            DispatchQueue.main.async { self.swap(to: config, reply: reply) }
+        case 0x03:
+            DispatchQueue.main.async {
+                self.queuedSwap?.reply("err:superseded")
+                self.queuedSwap = nil
+                if self.swapInFlight {
+                    self.holdAfterSwap = true
+                } else {
+                    self.stopEngine()
+                }
+                self.log.log("held: engine stopped, utun kept")
+                reply("ok")
+            }
+        case 0x04:
+            GatewayFetch.perform(payload) { completionHandler?($0) }
+        default:
+            #if canImport(Wgnest)
+            if handle != 0 {
+                reply(WgmobileGetStats(handle))
+                return
+            }
+            #endif
+            reply("held")
+        }
+    }
+
+    /// Replace the running route with `config` inside this session. The old
+    /// engine stops first, then the new route's network settings and engine
+    /// come up on the same utun; in between, the utun drops traffic (held).
+    /// On failure the session stays HELD rather than ending — ending it is what
+    /// would let traffic out.
+    private func swap(to config: [String: String], reply: @escaping (String) -> Void) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        if swapInFlight {
+            queuedSwap?.reply("err:superseded")
+            queuedSwap = (config, reply)
+            holdAfterSwap = false
             return
         }
-        #endif
-        completionHandler?(nil)
+        swapInFlight = true
+        stopEngine()
+        activeConfig = config
+        reasserting = true
+        let finish: (Error?) -> Void = { [weak self] error in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.reasserting = false
+                self.swapInFlight = false
+                if let error {
+                    self.log.error("swap failed, holding: \(String(describing: error), privacy: .public)")
+                    reply("err:\(error.localizedDescription)")
+                } else {
+                    self.log.log("swap done")
+                    reply("ok")
+                }
+                if let next = self.queuedSwap {
+                    self.queuedSwap = nil
+                    self.swap(to: next.config, reply: next.reply)
+                } else if self.holdAfterSwap {
+                    self.holdAfterSwap = false
+                    self.stopEngine()
+                    self.log.log("held after swap: engine stopped, utun kept")
+                }
+            }
+        }
+        if config["mode"] == "multihop" {
+            startMultihop(completionHandler: finish)
+        } else {
+            startSingleHop(completionHandler: finish)
+        }
+    }
+
+    /// The route currently in force: the last swap's, else the saved one.
+    private func currentConfig() -> [String: String] {
+        if let activeConfig { return activeConfig }
+        let proto = protocolConfiguration as? NETunnelProviderProtocol
+        var out: [String: String] = [:]
+        for (key, value) in proto?.providerConfiguration ?? [:] {
+            if let value = value as? String { out[key] = value }
+        }
+        return out
+    }
+
+    private static func decodeConfig(_ data: Data.SubSequence) -> [String: String]? {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: Data(data)),
+            let dict = object as? [String: String],
+            dict["wgConfig"] != nil || dict["mode"] == "multihop"
+        else { return nil }
+        return dict
     }
 
     // MARK: - helpers
@@ -388,6 +525,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     }
 
     private func providerConfigValue(forKey key: String) -> String? {
+        if let activeConfig { return activeConfig[key] }
         let proto = protocolConfiguration as? NETunnelProviderProtocol
         return proto?.providerConfiguration?[key] as? String
     }
@@ -395,7 +533,7 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
     /// The tun's IPv4 includedRoutes for a config's AllowedIPs list: the classic
     /// default route when the list is the full tunnel (or empty/absent — fail
     /// toward MORE protection), otherwise one route per v4 prefix. v6 entries
-    /// are ignored (the extension programs v4-only settings today).
+    /// are handled by `ipv6Settings`.
     ///
     /// A split list also gains a host route for every resolver it doesn't
     /// already span: lookups go to the tunnel's resolver (docs/17 §6.5), and an
@@ -415,6 +553,43 @@ final class PacketTunnelProvider: NEPacketTunnelProvider {
             }
             .compactMap(ipv4Route(_:)) // a bare address is a /32
         return routes + dnsRoutes
+    }
+
+    /// The tun's IPv6 settings for a config's AllowedIPs list, mirroring Android
+    /// (CumulusObfsVpnService): the full tunnel takes the v6 default route so
+    /// IPv6 can't leave on the physical network with the real address — the
+    /// gateways don't route v6 yet, so it is dropped there and apps fall back
+    /// to v4. A split list keeps only its own v6 prefixes, as the policy says;
+    /// none → nil (v6 bypasses, matching Android's split path).
+    ///
+    /// The address is a ULA, so address selection (RFC 6724) still prefers v4
+    /// for global destinations instead of stalling on v6 first.
+    static func ipv6Settings(allowedIps: [String]) -> NEIPv6Settings? {
+        let v4 = allowedIps.filter { !$0.contains(":") }
+        let isFullTunnel = v4.isEmpty || v4.contains("0.0.0.0/0")
+        let routes: [NEIPv6Route]
+        if isFullTunnel {
+            routes = [NEIPv6Route.default()]
+        } else {
+            routes = allowedIps.filter { $0.contains(":") }.compactMap(ipv6Route(_:))
+            if routes.isEmpty { return nil }
+        }
+        let ipv6 = NEIPv6Settings(addresses: [tunnelV6Address], networkPrefixLengths: [128])
+        ipv6.includedRoutes = routes
+        return ipv6
+    }
+
+    /// The tun's own IPv6 address (ULA, same as Android's TunnelHold).
+    private static let tunnelV6Address = "fd00:6375:6d75::1"
+
+    /// "x::y/n" (or a bare address = /128) → NEIPv6Route, nil when malformed.
+    private static func ipv6Route(_ cidr: String) -> NEIPv6Route? {
+        let parts = cidr.split(separator: "/")
+        guard let addr = parts.first.map(String.init) else { return nil }
+        let prefix = parts.count > 1 ? Int(parts[1]) ?? -1 : 128
+        var buf = in6_addr()
+        guard (0...128).contains(prefix), inet_pton(AF_INET6, addr, &buf) == 1 else { return nil }
+        return NEIPv6Route(destinationAddress: addr, networkPrefixLength: NSNumber(value: prefix))
     }
 
     /// The tun's resolvers: every server of the config's `DNS =` list (the
@@ -553,5 +728,151 @@ private struct WgQuick {
         obfs = WgQuick.obfsKeys.compactMap { k in obfsVals[k].map { "\(k)=\($0)" } }
             .joined(separator: "\n")
             .appending(obfsVals.isEmpty ? "" : "\n")
+    }
+}
+
+/// The HELD state's way out (see `handleAppMessage` 0x04): one plain HTTP/1.1
+/// request to a gateway's control API, sent from the provider's own socket so
+/// it bypasses the blocking utun that `includeAllNetworks` holds the app to.
+///
+/// Raw `NWConnection` rather than URLSession: the control API is plain HTTP on
+/// a bare IP, exactly what the app already sends, and every response body is
+/// Ed25519-signed by the gateway and verified in the app (core `fetchSigned`),
+/// so this relays bytes without being trusted with them. Only `http://` is
+/// accepted.
+private enum GatewayFetch {
+    private static let queue = DispatchQueue(label: "com.cumulusvpn.tunnel.fetch")
+    private static let timeout: TimeInterval = 20
+    private static let maxResponse = 1 << 20
+
+    static func perform(_ payload: Data.SubSequence, reply: @escaping (Data?) -> Void) {
+        let fail: (String) -> Void = { message in
+            reply(try? JSONSerialization.data(withJSONObject: ["error": message]))
+        }
+        guard
+            let object = try? JSONSerialization.jsonObject(with: Data(payload)) as? [String: Any],
+            let urlString = object["url"] as? String,
+            let url = URL(string: urlString),
+            url.scheme == "http",
+            let host = url.host,
+            let port = NWEndpoint.Port(rawValue: UInt16(url.port ?? 80))
+        else {
+            fail("unsupported request")
+            return
+        }
+        let method = (object["method"] as? String ?? "GET").uppercased()
+        let headers = object["headers"] as? [String: String] ?? [:]
+        let body = (object["body"] as? String).flatMap { Data(base64Encoded: $0) } ?? Data()
+        var path = url.path.isEmpty ? "/" : url.path
+        if let query = url.query { path += "?\(query)" }
+
+        var head = "\(method) \(path) HTTP/1.1\r\nHost: \(host):\(port.rawValue)\r\nConnection: close\r\n"
+        for (name, value) in headers where !["host", "connection", "content-length"].contains(name.lowercased()) {
+            head += "\(name): \(value)\r\n"
+        }
+        if !body.isEmpty || method == "POST" || method == "PUT" {
+            head += "Content-Length: \(body.count)\r\n"
+        }
+        head += "\r\n"
+        var request = Data(head.utf8)
+        request.append(body)
+
+        let conn = NWConnection(host: NWEndpoint.Host(host), port: port, using: .tcp)
+        var done = false
+        let finish: (Data?) -> Void = { data in
+            queue.async {
+                guard !done else { return }
+                done = true
+                conn.cancel()
+                reply(data)
+            }
+        }
+        queue.asyncAfter(deadline: .now() + timeout) {
+            if !done { fail("timed out"); done = true; conn.cancel() }
+        }
+        conn.stateUpdateHandler = { state in
+            switch state {
+            case .ready:
+                conn.send(content: request, completion: .contentProcessed { error in
+                    if let error { finish(errorJSON(error.localizedDescription)) }
+                })
+                receive(conn, into: Data(), finish: finish)
+            case .failed(let error), .waiting(let error):
+                finish(errorJSON(error.localizedDescription))
+            default:
+                break
+            }
+        }
+        conn.start(queue: queue)
+    }
+
+    private static func receive(_ conn: NWConnection, into buffer: Data, finish: @escaping (Data?) -> Void) {
+        conn.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { chunk, _, isComplete, error in
+            var buffer = buffer
+            if let chunk { buffer.append(chunk) }
+            if buffer.count > maxResponse {
+                finish(errorJSON("response too large"))
+            } else if isComplete || error != nil {
+                finish(parse(buffer) ?? errorJSON(error?.localizedDescription ?? "malformed response"))
+            } else {
+                receive(conn, into: buffer, finish: finish)
+            }
+        }
+    }
+
+    /// Status line + headers + body (Content-Length, chunked, or to close).
+    static func parse(_ raw: Data) -> Data? {
+        let separator = Data("\r\n\r\n".utf8)
+        guard
+            let split = raw.range(of: separator),
+            let head = String(data: raw[..<split.lowerBound], encoding: .utf8)
+        else { return nil }
+        var lines = head.components(separatedBy: "\r\n")
+        let statusLine = lines.removeFirst().split(separator: " ")
+        guard statusLine.count >= 2, let status = Int(statusLine[1]) else { return nil }
+        var headers: [String: String] = [:]
+        for line in lines {
+            guard let colon = line.firstIndex(of: ":") else { continue }
+            let name = line[..<colon].trimmingCharacters(in: .whitespaces)
+            headers[name] = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+        }
+        var body = Data(raw[split.upperBound...])
+        let header: (String) -> String? = { name in
+            headers.first { $0.key.lowercased() == name }?.value
+        }
+        if header("transfer-encoding")?.lowercased().contains("chunked") == true {
+            guard let decoded = dechunk(body) else { return nil }
+            body = decoded
+        } else if let length = header("content-length").flatMap(Int.init), length <= body.count {
+            body = body.prefix(length)
+        }
+        return try? JSONSerialization.data(withJSONObject: [
+            "status": status,
+            "headers": headers,
+            "body": body.base64EncodedString(),
+        ])
+    }
+
+    private static func dechunk(_ data: Data) -> Data? {
+        var out = Data()
+        var rest = data[...]
+        let crlf = Data("\r\n".utf8)
+        while true {
+            guard
+                let lineEnd = rest.range(of: crlf),
+                let sizeLine = String(data: rest[..<lineEnd.lowerBound], encoding: .utf8),
+                let size = Int(sizeLine.split(separator: ";")[0].trimmingCharacters(in: .whitespaces), radix: 16)
+            else { return nil }
+            let start = lineEnd.upperBound
+            if size == 0 { return out }
+            guard rest.distance(from: start, to: rest.endIndex) >= size + 2 else { return nil }
+            let end = rest.index(start, offsetBy: size)
+            out.append(rest[start..<end])
+            rest = rest[rest.index(end, offsetBy: 2)...]
+        }
+    }
+
+    private static func errorJSON(_ message: String) -> Data? {
+        try? JSONSerialization.data(withJSONObject: ["error": message])
     }
 }

@@ -44,6 +44,9 @@ class CumulusObfsVpnService : VpnService() {
     /** Route text for the ongoing notification; blank = generic copy. */
     private var notifText: String = ""
 
+    /** The START that built the live route — rebuilt in place on a wg-tls roam. */
+    private var lastStart: Intent? = null
+
     /**
      * Watches for a roam. Started once the tunnel is up, stopped in teardown.
      * See [onNetworkChanged] for why the two transports react differently.
@@ -67,6 +70,10 @@ class CumulusObfsVpnService : VpnService() {
                 }.start()
                 return START_NOT_STICKY
             }
+            ACTION_HOLD -> {
+                Thread { holdOrTeardown("hold requested") }.start()
+                return START_NOT_STICKY
+            }
             else -> {
                 val startIntent = intent ?: return START_NOT_STICKY
                 stopRequested = false
@@ -74,41 +81,101 @@ class CumulusObfsVpnService : VpnService() {
                 startForegroundNotification()
                 // Bring the tunnel up OFF the main thread (JNI + device start must
                 // not block the looper).
-                Thread {
-                    try {
-                        // A reconnect (or a transport-chain fallback) arrives as
-                        // another START on the SAME live service instance —
-                        // Android does not recreate a started service. Without
-                        // this, connect() would start a second Go device while
-                        // the first still owns a tun fd and its sockets: the new
-                        // tunnel never completes a handshake, so the app sits on
-                        // "connecting" and gives up. Idempotent when idle, JNI
-                        // when live — hence inside this thread; stopDataPlane
-                        // (not teardown) keeps the notification just posted.
-                        if (handle != 0L || tun != null || tlsBridge != null) {
-                            Log.i(TAG, "replacing a live session before reconnect")
-                            stopDataPlane()
-                        }
-                        connect(startIntent)
-                        if (stopRequested) {
-                            teardown()
-                            CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_DISCONNECTED)
-                            stopSelf()
-                        } else {
-                            CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_CONNECTED)
-                        }
-                    } catch (t: Throwable) {
-                        Log.e(TAG, "obfs connect failed", t)
-                        teardown()
-                        CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_ERROR)
-                        stopSelf()
-                    }
-                }.start()
+                Thread { startRoute(startIntent) }.start()
                 return START_NOT_STICKY
             }
         }
     }
 
+    /**
+     * Bring [intent]'s route up — over the live one when there is one. A
+     * reconnect, a country switch or a transport-chain fallback arrives as
+     * another START on this SAME service instance (Android does not recreate a
+     * started service), and [connect] replaces the running route without ever
+     * closing the VPN, so no traffic escapes in between. A replacement that
+     * fails leaves the VPN HELD (see [TunnelHold]) for the app to retry or
+     * disconnect; a first start that fails tears down as before.
+     */
+    private fun startRoute(startIntent: Intent) {
+        val replacing = hasSession() ||
+            startIntent.getBooleanExtra(CumulusTunnelController.EXTRA_REPLACES_SESSION, false)
+        try {
+            connect(startIntent)
+            lastStart = startIntent
+            if (stopRequested) {
+                teardown()
+                CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_DISCONNECTED)
+                stopSelf()
+            } else {
+                CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_CONNECTED)
+            }
+        } catch (t: Throwable) {
+            Log.e(TAG, "obfs connect failed", t)
+            if (replacing && !stopRequested) {
+                holdOrTeardown("replacement failed")
+            } else {
+                teardown()
+                CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_ERROR)
+                stopSelf()
+            }
+        }
+    }
+
+    private fun hasSession(): Boolean = handle != 0L || tun != null || tlsBridge != null
+
+    /**
+     * Swap the VPN interface for a blocking one ([TunnelHold]) and stop the
+     * engine, keeping the VPN up with nothing getting through. Reported as an
+     * error the app treats as "held". If even that fails there is no safe state
+     * left to keep, so the session is torn down.
+     */
+    @Synchronized
+    private fun holdOrTeardown(reason: String) {
+        if (stopRequested) {
+            return
+        }
+        try {
+            val blocking = TunnelHold.establishBlocking(this)
+            retire(handle, tlsBridge, tun)
+            handle = 0
+            activeHandle = 0
+            tlsBridge = null
+            tun = blocking
+            Log.i(TAG, "held ($reason): VPN kept up, all traffic blocked")
+            CumulusTunnelController.onObfsHeld()
+        } catch (t: Throwable) {
+            Log.e(TAG, "could not hold ($reason) — tearing down", t)
+            teardown()
+            CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_ERROR)
+            stopSelf()
+        }
+    }
+
+    /**
+     * Stop a route that a newer interface has already replaced: its engine,
+     * its TLS bridge, and its tun fd if we still hold it (a held, blocking tun
+     * is never detached). Never touches the replacement.
+     */
+    private fun retire(oldHandle: Long, oldBridge: WgTlsBridge?, oldTun: ParcelFileDescriptor?) {
+        netWatcher.stop()
+        if (oldHandle != 0L) {
+            try {
+                Wgmobile.stop(oldHandle)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Wgmobile.stop failed", t)
+            }
+        }
+        try {
+            oldBridge?.stop()
+        } catch (_: Throwable) {
+        }
+        try {
+            oldTun?.close()
+        } catch (_: Throwable) {
+        }
+    }
+
+    @Synchronized
     private fun connect(intent: Intent) {
         val clientPriv = intent.req(EXTRA_CLIENT_PRIV)
         val serverPub = intent.req(EXTRA_SERVER_PUB)
@@ -177,8 +244,16 @@ class CumulusObfsVpnService : VpnService() {
             Log.w(TAG, "could not add IPv6 route(s)", t)
         }
 
+        // Make before break: the new interface replaces the old one in a single
+        // step, and only then does the old route's engine stop. Closing the
+        // old route first would leave the device with no VPN for as long as
+        // this start takes.
         val pfd = builder.establish()
             ?: throw IllegalStateException("VPN establish() returned null — consent revoked?")
+        retire(handle, tlsBridge, tun)
+        handle = 0
+        activeHandle = 0
+        tlsBridge = null
         tun = pfd
 
         // detachFd() moves ownership of the tun OUT of the ParcelFileDescriptor:
@@ -222,11 +297,10 @@ class CumulusObfsVpnService : VpnService() {
             Log.i(TAG, "wgnest single-hop up: server=$wgServerIp:$wgPort tls=${tlsSni != null} handle=$handle")
         } finally {
             if (!fdOwnedByGo) {
-                try {
-                    ParcelFileDescriptor.adoptFd(fd).close()
-                } catch (t: Throwable) {
-                    Log.e(TAG, "could not close orphaned tun fd", t)
-                }
+                // Keep the interface rather than close it: with nothing reading
+                // it, it blocks, which is what a failed replacement must do
+                // until the hold (or, for a first start, teardown) closes it.
+                tun = ParcelFileDescriptor.adoptFd(fd)
             }
         }
     }
@@ -245,10 +319,10 @@ class CumulusObfsVpnService : VpnService() {
      * **wg-tls** — rebinding is useless. That device points at 127.0.0.1 and
      * the socket that actually died is [WgTlsBridge]'s TCP connection to the
      * relay, which cannot migrate between networks and has no reconnect. The
-     * honest response is to report the drop and let the app's existing
-     * auto-reconnect rebuild the bridge, exactly as it would for any other
-     * unexpected drop. That costs a fresh TLS handshake, which is the price of
-     * carrying WireGuard over TCP.
+     * route is rebuilt in place from the START that made it — a fresh bridge
+     * and engine behind a fresh interface, the VPN never closing — which costs
+     * a TLS handshake, the price of carrying WireGuard over TCP. If that fails
+     * the VPN is held and the app's dead-tunnel check fails over.
      *
      * `setUnderlyingNetworks` is set in both cases: it tells the platform which
      * network the VPN actually runs over, which keeps system connectivity
@@ -262,13 +336,9 @@ class CumulusObfsVpnService : VpnService() {
             return // torn down while the callback was in flight
         }
         if (tlsBridge != null) {
-            Log.i(TAG, "roam on wg-tls — reconnecting (the relay's TCP cannot follow)")
-            stopRequested = true
-            Thread {
-                teardown()
-                CumulusTunnelController.onObfsState(CumulusTunnelController.STATE_DISCONNECTED)
-                stopSelf()
-            }.start()
+            val start = lastStart ?: return
+            Log.i(TAG, "roam on wg-tls — rebuilding in place (the relay's TCP cannot follow)")
+            Thread { startRoute(start) }.start()
             return
         }
         try {
@@ -387,6 +457,8 @@ class CumulusObfsVpnService : VpnService() {
 
         const val ACTION_START = "com.cumulusvpn.obfs.START"
         const val ACTION_STOP = "com.cumulusvpn.obfs.STOP"
+        /** Kill switch: keep the VPN up but blocking (see [TunnelHold]). */
+        const val ACTION_HOLD = "com.cumulusvpn.obfs.HOLD"
         const val EXTRA_CLIENT_PRIV = "clientPriv"
         const val EXTRA_SERVER_PUB = "serverPub"
         const val EXTRA_SERVER_IP = "serverIp"

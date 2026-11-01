@@ -59,6 +59,7 @@ class CumulusTunnelModule(
         reactContext.addActivityEventListener(activityListener)
         // Bridge controller state changes onto the JS event stream.
         CumulusTunnelController.setStateListener { state -> emitStatus(state) }
+        CumulusTunnelController.attach(reactContext)
     }
 
     override fun getName(): String = "CumulusTunnel"
@@ -66,11 +67,12 @@ class CumulusTunnelModule(
     /**
      * startTunnel(wgConfig, serverName, killSwitch): Promise<void>
      *
-     * `killSwitch` is accepted for cross-platform parity but is a native no-op on
-     * Android: a true always-on kill switch is the OS "Block connections without
-     * VPN" (lockdown) setting, which apps cannot toggle programmatically — the JS
-     * layer routes the user to it via [openVpnSettings]. While our VpnService
-     * holds the tun, traffic is already captured, so there is no in-session leak.
+     * `killSwitch` is accepted for cross-platform parity; Android needs nothing
+     * from it here. Over a live session this replaces the route without closing
+     * the VPN, and the app holds the VPN ([holdTunnel]) instead of stopping it
+     * whenever the kill switch is on — so while the app runs, nothing leaks
+     * between routes or after a drop. The OS "Block connections without VPN"
+     * setting ([openVpnSettings]) additionally covers the app being killed.
      */
     @ReactMethod
     fun startTunnel(wgConfig: String, serverName: String, killSwitch: Boolean, promise: Promise) {
@@ -116,6 +118,20 @@ class CumulusTunnelModule(
             promise.resolve(null)
         } catch (t: Throwable) {
             promise.reject("E_SETTINGS", t.message, t)
+        }
+    }
+
+    /**
+     * holdTunnel(): Promise<void> — kill switch: keep the VPN up but blocking,
+     * engine stopped, until the next start replaces it or stopTunnel ends it.
+     */
+    @ReactMethod
+    fun holdTunnel(promise: Promise) {
+        try {
+            CumulusTunnelController.holdTunnel(reactContext)
+            promise.resolve(null)
+        } catch (t: Throwable) {
+            promise.reject("E_HOLD", t.message, t)
         }
     }
 
@@ -301,6 +317,7 @@ class CumulusTunnelModule(
             putDouble("rxBytes", rxBytes)
             putDouble("txBytes", txBytes)
             putDouble("lastHandshake", lastHandshake)
+            putBoolean("held", CumulusTunnelController.held)
         }
 
     companion object {

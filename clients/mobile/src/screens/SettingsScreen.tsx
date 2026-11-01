@@ -76,11 +76,12 @@ export function SettingsScreen({
     }
   };
   const expiry = formatExpiry(vpn.paidUntil);
-  // Transport and routing choices are read when a tunnel is BUILT, so they
-  // cannot apply to one already up. Lock them while a session exists rather than
-  // letting a flipped switch imply an effect it won't have until reconnect.
-  const locked =
-    vpn.state === 'connected' || vpn.state === 'connecting' || vpn.state === 'disconnecting';
+  // Transport and routing choices are read when a tunnel is BUILT. Stealth
+  // re-routes a live session in place, so it is only paused mid-transition;
+  // node diversity applies from the next connect, so it stays locked while a
+  // session exists rather than imply an effect it won't have yet.
+  const busy = vpn.state === 'connecting' || vpn.state === 'disconnecting';
+  const locked = vpn.state === 'connected' || busy;
   return (
     <View style={styles.root}>
       <View style={styles.header}>
@@ -152,13 +153,9 @@ export function SettingsScreen({
             the same control in its own Settings panel. */}
         <ToggleRow
           title="Stealth mode"
-          sub={
-            locked
-              ? 'Disguise VPN traffic to get through blocking — disconnect to change'
-              : 'Disguise VPN traffic to get through blocking. Slower.'
-          }
+          sub="Disguise VPN traffic to get through blocking. Slower."
           value={vpn.transportMode === 'stealth'}
-          disabled={locked}
+          disabled={busy}
           onValueChange={(v) => void vpn.setTransportMode(v ? 'stealth' : 'auto')}
         />
         {/* Node diversity — force the two multi-hop legs onto different subnets

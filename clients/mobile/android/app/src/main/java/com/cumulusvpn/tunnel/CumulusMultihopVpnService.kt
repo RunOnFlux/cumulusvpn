@@ -69,6 +69,10 @@ class CumulusMultihopVpnService : VpnService() {
                 }.start()
                 return START_NOT_STICKY
             }
+            ACTION_HOLD -> {
+                Thread { holdOrTeardown("hold requested") }.start()
+                return START_NOT_STICKY
+            }
             else -> {
                 val startIntent = intent ?: return START_NOT_STICKY
                 stopRequested = false
@@ -82,17 +86,13 @@ class CumulusMultihopVpnService : VpnService() {
                 // fd and starts two wireguard-go devices via JNI, which must not
                 // block the main looper (ANR / process freeze).
                 Thread {
+                    // Another START on this live instance replaces the running
+                    // route without closing the VPN (see CumulusObfsVpnService
+                    // .startRoute — same rules, one nested pair instead of one
+                    // device).
+                    val replacing = handle != 0L || tun != null ||
+                        startIntent.getBooleanExtra(CumulusTunnelController.EXTRA_REPLACES_SESSION, false)
                     try {
-                        // Same reconnect guard as the single-hop service:
-                        // another START lands on this live instance, and
-                        // stacking a second nested pair on top of the first
-                        // leaves neither able to handshake. JNI when live —
-                        // hence inside this thread; stopDataPlane (not
-                        // teardown) keeps the notification just posted.
-                        if (handle != 0L || tun != null) {
-                            Log.i(TAG, "replacing a live session before reconnect")
-                            stopDataPlane()
-                        }
                         connect(startIntent)
                         if (stopRequested) {
                             // A stop raced in during connect — tear the just-started
@@ -105,9 +105,13 @@ class CumulusMultihopVpnService : VpnService() {
                         }
                     } catch (t: Throwable) {
                         Log.e(TAG, "multihop connect failed", t)
-                        teardown()
-                        CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_ERROR)
-                        stopSelf()
+                        if (replacing && !stopRequested) {
+                            holdOrTeardown("replacement failed")
+                        } else {
+                            teardown()
+                            CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_ERROR)
+                            stopSelf()
+                        }
                     }
                 }.start()
                 return START_NOT_STICKY
@@ -115,6 +119,49 @@ class CumulusMultihopVpnService : VpnService() {
         }
     }
 
+    /**
+     * Kill switch: swap the VPN interface for a blocking one ([TunnelHold]) and
+     * stop the nested pair, keeping the VPN up with nothing getting through.
+     * If even that fails there is no safe state left to keep, so tear down.
+     */
+    @Synchronized
+    private fun holdOrTeardown(reason: String) {
+        if (stopRequested) {
+            return
+        }
+        try {
+            val blocking = TunnelHold.establishBlocking(this)
+            retire(handle, tun)
+            handle = 0
+            activeHandle = 0
+            tun = blocking
+            Log.i(TAG, "held ($reason): VPN kept up, all traffic blocked")
+            CumulusTunnelController.onMultihopHeld()
+        } catch (t: Throwable) {
+            Log.e(TAG, "could not hold ($reason) — tearing down", t)
+            teardown()
+            CumulusTunnelController.onMultihopState(CumulusTunnelController.STATE_ERROR)
+            stopSelf()
+        }
+    }
+
+    /** Stop a route a newer interface has already replaced (never the replacement). */
+    private fun retire(oldHandle: Long, oldTun: ParcelFileDescriptor?) {
+        netWatcher.stop()
+        if (oldHandle != 0L) {
+            try {
+                Wgmobile.stop(oldHandle)
+            } catch (t: Throwable) {
+                Log.e(TAG, "Wgmobile.stop failed", t)
+            }
+        }
+        try {
+            oldTun?.close()
+        } catch (_: Throwable) {
+        }
+    }
+
+    @Synchronized
     private fun connect(intent: Intent) {
         val clientPriv = intent.req(EXTRA_CLIENT_PRIV)
         val entryPub = intent.req(EXTRA_ENTRY_PUB)
@@ -183,24 +230,37 @@ class CumulusMultihopVpnService : VpnService() {
             Log.w(TAG, "could not add IPv6 route(s)", t)
         }
 
+        // Make before break: the new interface replaces the old one in one step,
+        // and only then does the old route's pair stop.
         val pfd = builder.establish()
             ?: throw IllegalStateException("VPN establish() returned null — consent revoked?")
+        retire(handle, tun)
+        handle = 0
+        activeHandle = 0
         tun = pfd
 
         // detachFd: hand sole ownership of the fd to the Go tun, which closes it
         // on Wgmobile.stop. (Keeping the pfd too would double-close.)
         val fd = pfd.detachFd()
-        handle = Wgmobile.start(
-            clientPriv,
-            entryPub, entryIp, entryAssigned,
-            exitPub, exitIp, exitAssigned,
-            fd.toLong(),
-            // entryPort 0 => default 51820, obfs "" => vanilla entry (Auto); for
-            // Stealth these carry the entry's awg port + [Interface] obfs UAPI, so
-            // the entry hop is obfuscated (the exit hop stays vanilla).
-            entryPort.toLong(),
-            entryObfs,
-        )
+        try {
+            handle = Wgmobile.start(
+                clientPriv,
+                entryPub, entryIp, entryAssigned,
+                exitPub, exitIp, exitAssigned,
+                fd.toLong(),
+                // entryPort 0 => default 51820, obfs "" => vanilla entry (Auto); for
+                // Stealth these carry the entry's awg port + [Interface] obfs UAPI, so
+                // the entry hop is obfuscated (the exit hop stays vanilla).
+                entryPort.toLong(),
+                entryObfs,
+            )
+        } catch (t: Throwable) {
+            // Keep the interface: unread, it blocks until the hold (or, for a
+            // first start, teardown) closes it — closing it here would leave
+            // the device with no VPN at all in between.
+            tun = ParcelFileDescriptor.adoptFd(fd)
+            throw t
+        }
         activeHandle = handle
         netWatcher.start()
         Log.i(TAG, "nested tunnel up: entry=$entryIp:$entryPort exit=$exitIp obfs=${entryObfs.isNotEmpty()} handle=$handle")
@@ -328,6 +388,8 @@ class CumulusMultihopVpnService : VpnService() {
         private const val NOTIF_ID = 1001
 
         const val ACTION_START = "com.cumulusvpn.multihop.START"
+        /** Kill switch: keep the VPN up but blocking (see [TunnelHold]). */
+        const val ACTION_HOLD = "com.cumulusvpn.multihop.HOLD"
         const val ACTION_STOP = "com.cumulusvpn.multihop.STOP"
 
         // Handle of the live nested tunnel, so the controller can read its live

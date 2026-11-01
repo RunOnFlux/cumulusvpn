@@ -57,8 +57,39 @@ object CumulusTunnelController {
     @Volatile
     private var obfsActive: Boolean = false
 
+    /**
+     * True while the active service is HELD by the kill switch: the VPN is up
+     * but blocking, with no engine (see [TunnelHold]). Reported in getStatus.
+     */
+    @Volatile
+    var held: Boolean = false
+        private set
+
+    /**
+     * The other service, when a switch between single-hop and multi-hop is in
+     * flight. Its interface is replaced by the new service's; it is stopped
+     * only once the new one is up (or held), so the switch never leaves the
+     * device without a VPN.
+     */
+    @Volatile
+    private var retiring: Class<*>? = null
+
+    /** Application context, for stopping a replaced service from a callback. */
+    @Volatile
+    private var appContext: Context? = null
+
+    /**
+     * Intent extra: this START replaces a session another service is running,
+     * so a failure must hold (keep blocking) rather than close the VPN.
+     */
+    const val EXTRA_REPLACES_SESSION = "replacesSession"
+
     fun setStateListener(l: StateListener?) {
         listener = l
+    }
+
+    fun attach(context: Context) {
+        appContext = context.applicationContext
     }
 
     fun currentState(): String = currentStateValue
@@ -256,6 +287,10 @@ object CumulusTunnelController {
                 putExtra(CumulusObfsVpnService.EXTRA_APPS_EXCLUDED, appsExcluded)
             }
         }
+        if (multihopActive) {
+            retiring = CumulusMultihopVpnService::class.java
+            intent.putExtra(EXTRA_REPLACES_SESSION, true)
+        }
         obfsActive = true
         multihopActive = false // reciprocal: an obfs→multihop switch must not leave this stale
         context.startService(intent)
@@ -264,8 +299,17 @@ object CumulusTunnelController {
 
     /** Called by [CumulusObfsVpnService] as the obfuscated tunnel changes state. */
     fun onObfsState(state: String) {
+        // A service we already switched away from reports its own teardown;
+        // it says nothing about the tunnel that replaced it.
+        if (!obfsActive) {
+            return
+        }
         if (state == STATE_DISCONNECTED || state == STATE_ERROR) {
             obfsActive = false
+        }
+        held = false
+        if (state == STATE_CONNECTED) {
+            retireOther(CumulusMultihopVpnService::class.java)
         }
         setState(state)
     }
@@ -342,6 +386,10 @@ object CumulusTunnelController {
                     putExtra(CumulusMultihopVpnService.EXTRA_APPS_EXCLUDED, excluded)
                 }
             }
+            if (obfsActive) {
+                retiring = CumulusObfsVpnService::class.java
+                intent.putExtra(EXTRA_REPLACES_SESSION, true)
+            }
             multihopActive = true
             obfsActive = false // reciprocal: a multihop switch must not leave the obfs flag stale
             // Connect is always user-initiated (app in foreground), so a plain
@@ -358,15 +406,83 @@ object CumulusTunnelController {
 
     /** Called by [CumulusMultihopVpnService] as the nested tunnel changes state. */
     fun onMultihopState(state: String) {
+        // A service we already switched away from reports its own teardown;
+        // it says nothing about the tunnel that replaced it.
+        if (!multihopActive) {
+            return
+        }
         if (state == STATE_DISCONNECTED || state == STATE_ERROR) {
             multihopActive = false
         }
+        held = false
+        if (state == STATE_CONNECTED) {
+            retireOther(CumulusObfsVpnService::class.java)
+        }
         setState(state)
+    }
+
+    /** [CumulusMultihopVpnService] is HELD: up, blocking, no engine. */
+    fun onMultihopHeld() {
+        if (!multihopActive) {
+            return
+        }
+        held = true
+        retireOther(CumulusObfsVpnService::class.java)
+        setState(STATE_ERROR)
+    }
+
+    /** [CumulusObfsVpnService] is HELD: up, blocking, no engine. */
+    fun onObfsHeld() {
+        if (!obfsActive) {
+            return
+        }
+        held = true
+        retireOther(CumulusMultihopVpnService::class.java)
+        setState(STATE_ERROR)
+    }
+
+    /** Stop [service] if it is the one a switch left behind. */
+    private fun retireOther(service: Class<*>) {
+        if (retiring != service) {
+            return
+        }
+        retiring = null
+        val context = appContext ?: return
+        val stop = if (service == CumulusObfsVpnService::class.java) {
+            CumulusObfsVpnService.ACTION_STOP
+        } else {
+            CumulusMultihopVpnService.ACTION_STOP
+        }
+        try {
+            context.startService(Intent(context, service).apply { action = stop })
+        } catch (t: Throwable) {
+            Log.e(TAG, "could not stop the replaced service", t)
+        }
+    }
+
+    /**
+     * Kill switch: keep the active VPN up but blocking, with its engine
+     * stopped (see [TunnelHold]). A no-op when nothing is running — there is no
+     * session to hold.
+     */
+    fun holdTunnel(context: Context) {
+        val intent = when {
+            obfsActive -> Intent(context, CumulusObfsVpnService::class.java).apply {
+                action = CumulusObfsVpnService.ACTION_HOLD
+            }
+            multihopActive -> Intent(context, CumulusMultihopVpnService::class.java).apply {
+                action = CumulusMultihopVpnService.ACTION_HOLD
+            }
+            else -> return
+        }
+        context.startService(intent)
     }
 
     /** Tear the tunnel down. Idempotent. Routes to whichever backend is active. */
     fun stopTunnel(context: Context) {
         setState(STATE_DISCONNECTING)
+        held = false
+        retiring?.let { retireOther(it) }
         try {
             if (obfsActive) {
                 val intent = Intent(context, CumulusObfsVpnService::class.java).apply {

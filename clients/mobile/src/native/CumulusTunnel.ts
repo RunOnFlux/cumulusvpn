@@ -70,6 +70,20 @@ export interface TunnelStatus {
   readonly lastHandshake: number;
   /** Populated when `state === 'error'`. */
   readonly error?: string;
+  /**
+   * True while the kill switch HOLDS the session: the VPN is up and blocking
+   * everything, with no engine running (see {@link CumulusTunnelModule.holdTunnel}).
+   * Absent on older native builds.
+   */
+  readonly held?: boolean;
+}
+
+/** A gateway control-API response relayed by {@link CumulusTunnelModule.gatewayFetch}. */
+export interface GatewayFetchResponse {
+  readonly status: number;
+  readonly headers: Readonly<Record<string, string>>;
+  /** Response body, base64. */
+  readonly body: string;
 }
 
 /** The native module contract, implemented in Swift (iOS) and Kotlin (Android). */
@@ -113,8 +127,38 @@ export interface CumulusTunnelModule {
     killSwitch: boolean,
   ): Promise<void>;
 
-  /** Tear the tunnel down. Idempotent. */
+  /**
+   * Tear the tunnel down. Idempotent. The ONLY call that lowers the kill
+   * switch, so it is for the user's Disconnect; every automatic recovery holds
+   * instead.
+   *
+   * Calling {@link startTunnel} / {@link startMultihop} while a session is up
+   * replaces its route inside that session (iOS: an in-extension swap; Android:
+   * the new interface replaces the old before the old engine stops), so a
+   * route change never needs a stop first.
+   */
   stopTunnel(): Promise<void>;
+
+  /**
+   * Kill switch: stop the engine but keep the VPN session up, blocking every
+   * packet, until the next start replaces it or {@link stopTunnel} ends it.
+   * A no-op when no session is up.
+   */
+  holdTunnel(): Promise<void>;
+
+  /**
+   * One gateway control-API request (plain `http://`), sent by the tunnel
+   * extension outside the tunnel. **iOS only**: while a session is HELD,
+   * `includeAllNetworks` blocks the app's own requests too, so enrolling on the
+   * next node goes through here. Android leaves the app out of the blocking
+   * interface instead, so the method is absent there.
+   */
+  gatewayFetch?(
+    url: string,
+    method: string,
+    headers: Readonly<Record<string, string>>,
+    body: string | null,
+  ): Promise<GatewayFetchResponse>;
 
   /**
    * Open the OS VPN settings so the user can enable the system kill switch

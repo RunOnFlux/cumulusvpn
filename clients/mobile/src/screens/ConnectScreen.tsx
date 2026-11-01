@@ -186,7 +186,7 @@ export function ConnectScreen({
       {/* Fast / Multi-hop toggle — multi-hop is OFF by default (docs/11 §UX). */}
       <ModeToggle
         multihop={vpn.multihop}
-        disabled={connected || busy}
+        disabled={busy}
         onFast={() => void vpn.setRouteStyle('single')}
         onMultihop={() =>
           void vpn.setRouteStyle(
@@ -198,7 +198,7 @@ export function ConnectScreen({
       {vpn.multihop ? (
         <MultihopControls
           vpn={vpn}
-          disabled={connected || busy}
+          disabled={busy}
           onOpenEntry={onOpenEntry}
           onOpenExit={onOpenExit}
         />
@@ -265,11 +265,17 @@ export function ConnectScreen({
               : 'Connecting…'
             : connected
               ? 'Disconnect'
-              : 'Connect'}
+              : vpn.blocked
+                ? 'Reconnect'
+                : 'Connect'}
         </Text>
       </Pressable>
 
-      {vpn.error ? <Text style={styles.error}>{vpn.error}</Text> : null}
+      {vpn.blocked ? (
+        <BlockedNotice onDisconnect={() => void vpn.disconnect()} />
+      ) : vpn.error ? (
+        <Text style={styles.error}>{vpn.error}</Text>
+      ) : null}
     </ScrollView>
   );
 }
@@ -413,9 +419,10 @@ function HopButton({
 
 /**
  * Kill-switch row: a glass card with a shield, a plain-language explanation, and
- * a toggle. On iOS the toggle fully controls it (on-demand + includeAllNetworks
- * applied on the next connect); on Android — where apps can't force lockdown — it
- * additionally hands the user to the OS VPN settings.
+ * a toggle. The app enforces it on both platforms while it runs: a dropped or
+ * changing route is held, never released (useVpn). iOS also keeps it when the
+ * app is closed (on-demand + includeAllNetworks); on Android only the OS
+ * "Block connections without VPN" setting can, so the row links there.
  */
 function KillSwitchRow({
   enabled,
@@ -431,7 +438,7 @@ function KillSwitchRow({
   const isAndroid = Platform.OS === 'android';
   const sub = enabled
     ? isAndroid
-      ? 'On — finish setup in Android VPN settings'
+      ? 'On — blocks all traffic if the VPN drops. Also turn on “Block connections without VPN” to stay protected when the app is closed'
       : 'On — blocks all traffic if the VPN drops'
     : 'Blocks all traffic if the VPN ever drops';
   return (
@@ -447,6 +454,25 @@ function KillSwitchRow({
         ) : null}
       </View>
       <Toggle value={enabled} disabled={disabled} onValueChange={onToggle} />
+    </View>
+  );
+}
+
+/**
+ * The kill switch is holding the VPN: every packet is blocked while the app
+ * retries a route. Says so plainly, with the one way out that lifts the block.
+ */
+function BlockedNotice({ onDisconnect }: { readonly onDisconnect: () => void }): React.JSX.Element {
+  return (
+    <View style={styles.blocked} accessibilityRole="alert">
+      <Text style={styles.blockedTitle}>Internet blocked by the kill switch</Text>
+      <Text style={styles.blockedSub}>
+        The VPN connection was lost. Nothing is sent outside the VPN while CumulusVPN keeps trying
+        to reconnect.
+      </Text>
+      <Pressable onPress={onDisconnect} accessibilityRole="button" hitSlop={6}>
+        <Text style={styles.blockedLink}>Disconnect and turn the VPN off ›</Text>
+      </Pressable>
     </View>
   );
 }
@@ -702,4 +728,16 @@ const styles = StyleSheet.create({
   bigConnectLabel: { color: '#05201E' },
   bigDiscLabel: { color: color.ink },
   error: { color: color.red, fontSize: 12, textAlign: 'center', marginTop: space.md },
+  blocked: {
+    backgroundColor: color.glass,
+    borderColor: color.red,
+    borderWidth: 1,
+    borderRadius: radius.md,
+    padding: space.md,
+    marginTop: space.md,
+    gap: 6,
+  },
+  blockedTitle: { color: color.red, fontSize: 14, fontWeight: '700' },
+  blockedSub: { color: color.ink, fontSize: 12, lineHeight: 17 },
+  blockedLink: { color: color.ink, fontSize: 13, fontWeight: '600' },
 });

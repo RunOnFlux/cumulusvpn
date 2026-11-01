@@ -25,6 +25,16 @@ RCT_EXTERN_METHOD(startMultihop:(NSString *)outerConfig
 RCT_EXTERN_METHOD(stopTunnel:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(holdTunnel:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
+RCT_EXTERN_METHOD(gatewayFetch:(NSString *)url
+                  method:(NSString *)method
+                  headers:(NSDictionary *)headers
+                  body:(nullable NSString *)body
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject)
+
 RCT_EXTERN_METHOD(openVpnSettings:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 

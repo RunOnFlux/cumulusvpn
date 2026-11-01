@@ -77,6 +77,13 @@ final class CumulusTunnelModule: RCTEventEmitter {
     }
 
     // Shared save-manager + start-tunnel flow for single- and multi-hop.
+    //
+    // Over a session that is already up (a country switch, a failover, the
+    // next transport of a fallback, or the way back from HELD) the new route is
+    // swapped in INSIDE that session instead: stopping it would end the
+    // kill-switch block for as long as a restart takes. The swap keeps the
+    // session's saved label and kill-switch setting; both apply from the next
+    // fresh start (the app only lets the kill switch change while disconnected).
     private func startWithProviderConfig(
         _ providerConfiguration: [String: NSObject],
         label: String,
@@ -88,6 +95,11 @@ final class CumulusTunnelModule: RCTEventEmitter {
         loadOrCreateManager { [weak self] mgr, error in
             guard let self, let mgr else {
                 reject("E_MANAGER", "Failed to load tunnel manager", error)
+                return
+            }
+            if Self.isLive(mgr.connection.status), let session = mgr.connection as? NETunnelProviderSession {
+                self.observe(mgr.connection)
+                self.swapRoute(session, providerConfiguration, resolve: resolve, reject: reject)
                 return
             }
             let proto = NETunnelProviderProtocol()
@@ -125,6 +137,112 @@ final class CumulusTunnelModule: RCTEventEmitter {
                         reject("E_START", error.localizedDescription, error)
                     }
                 }
+            }
+        }
+    }
+
+    /// A session the extension is running: a route change goes to it as a swap
+    /// rather than a restart. Not `.connecting` — the extension may still be in
+    /// its own start, and a swap racing it could put two engines on one utun.
+    private static func isLive(_ status: NEVPNStatus) -> Bool {
+        status == .connected || status == .reasserting
+    }
+
+    private func swapRoute(
+        _ session: NETunnelProviderSession,
+        _ providerConfiguration: [String: NSObject],
+        resolve: @escaping RCTPromiseResolveBlock,
+        reject: @escaping RCTPromiseRejectBlock
+    ) {
+        var route: [String: String] = [:]
+        for (key, value) in providerConfiguration {
+            if let value = value as? String { route[key] = value }
+        }
+        guard let json = try? JSONSerialization.data(withJSONObject: route) else {
+            reject("E_START", "Could not encode the route", nil)
+            return
+        }
+        do {
+            try session.sendProviderMessage(Data([0x02]) + json) { reply in
+                let text = reply.flatMap { String(data: $0, encoding: .utf8) } ?? "err:no reply"
+                if text == "ok" {
+                    resolve(nil)
+                } else {
+                    reject("E_START", String(text.dropFirst(text.hasPrefix("err:") ? 4 : 0)), nil)
+                }
+            }
+        } catch {
+            reject("E_START", error.localizedDescription, error)
+        }
+    }
+
+    // holdTunnel(): Promise<void>
+    // Kill switch: stop the extension's engine but keep its session (and so the
+    // block on all other traffic) up. Resolves without doing anything when no
+    // session is up — there is nothing to hold.
+    @objc(holdTunnel:rejecter:)
+    func holdTunnel(
+        _ resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        ensureManager { mgr in
+            guard let mgr, Self.isLive(mgr.connection.status),
+                  let session = mgr.connection as? NETunnelProviderSession
+            else {
+                resolve(nil)
+                return
+            }
+            do {
+                try session.sendProviderMessage(Data([0x03])) { _ in resolve(nil) }
+            } catch {
+                reject("E_HOLD", error.localizedDescription, error)
+            }
+        }
+    }
+
+    // gatewayFetch(url, method, headers, bodyBase64): Promise<{status, headers, body} | {error}>
+    // One control-API request sent by the extension, outside the tunnel — the
+    // only way to reach a gateway while a HELD session blocks the app's own
+    // traffic (see PacketTunnelProvider.handleAppMessage 0x04).
+    @objc(gatewayFetch:method:headers:body:resolver:rejecter:)
+    func gatewayFetch(
+        _ url: String,
+        method: String,
+        headers: NSDictionary,
+        body: String?,
+        resolver resolve: @escaping RCTPromiseResolveBlock,
+        rejecter reject: @escaping RCTPromiseRejectBlock
+    ) {
+        ensureManager { mgr in
+            guard let mgr, Self.isLive(mgr.connection.status),
+                  let session = mgr.connection as? NETunnelProviderSession
+            else {
+                reject("E_FETCH", "No tunnel session to send through", nil)
+                return
+            }
+            var request: [String: Any] = ["url": url, "method": method, "headers": headers]
+            if let body { request["body"] = body }
+            guard let json = try? JSONSerialization.data(withJSONObject: request) else {
+                reject("E_FETCH", "Could not encode the request", nil)
+                return
+            }
+            do {
+                try session.sendProviderMessage(Data([0x04]) + json) { reply in
+                    guard
+                        let reply,
+                        let object = try? JSONSerialization.jsonObject(with: reply) as? [String: Any]
+                    else {
+                        reject("E_FETCH", "No reply from the tunnel", nil)
+                        return
+                    }
+                    if let message = object["error"] as? String {
+                        reject("E_FETCH", message, nil)
+                    } else {
+                        resolve(object)
+                    }
+                }
+            } catch {
+                reject("E_FETCH", error.localizedDescription, error)
             }
         }
     }
@@ -201,7 +319,14 @@ final class CumulusTunnelModule: RCTEventEmitter {
                     var rx: Int64 = 0
                     var tx: Int64 = 0
                     var hs: Int64 = 0
-                    if let reply, let csv = String(data: reply, encoding: .utf8) {
+                    let text = reply.flatMap { String(data: $0, encoding: .utf8) }
+                    if text == "held" {
+                        var payload = Self.statusPayload(from: .connected)
+                        payload["held"] = true
+                        resolve(payload)
+                        return
+                    }
+                    if let csv = text {
                         let p = csv.split(separator: ",")
                         if p.count == 3 {
                             rx = Int64(p[0]) ?? 0

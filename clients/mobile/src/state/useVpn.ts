@@ -33,6 +33,7 @@ import type {
   CompiledSplit,
   DnsChoice,
   EnrollResponse,
+  FetchImpl,
   GatewayInfo,
   Keypair,
   MultihopConfig,
@@ -48,6 +49,7 @@ import {
   type TunnelStatus,
 } from '../native/CumulusTunnel';
 import { IDENTITY_BACKUPS } from '../native/CumulusIdentity';
+import { relayFetch } from '../lib/gatewayFetch';
 import {
   BACKUP_OFF,
   readBackedUp,
@@ -134,6 +136,10 @@ async function splitForSession(
   });
   return compiled.isNoop ? undefined : compiled;
 }
+
+/** What a held session tells the user (see `blocked`). */
+export const BLOCKED_MESSAGE =
+  'Kill switch is on: all internet traffic is blocked until the VPN reconnects. Disconnect to turn it off.';
 
 /** True for any route style that stacks two hops (multi-hop is off by default). */
 export function isMultihop(style: RouteStyle): boolean {
@@ -256,6 +262,12 @@ export interface VpnModel {
   readonly exit: Country | null;
   /** Kill switch: block all non-tunnel traffic while connected (persisted). */
   readonly killSwitch: boolean;
+  /**
+   * The kill switch is HOLDING the VPN: the route failed or dropped, so every
+   * packet is being blocked while the app retries. Only Disconnect (which turns
+   * the VPN off) lifts it.
+   */
+  readonly blocked: boolean;
   /**
    * Multi-hop node diversity: require the entry and exit gateways to sit on
    * different subnets, so a route can't be built from two co-located nodes.
@@ -478,8 +490,22 @@ export function useVpn(): VpnModel & VpnActions {
   // distinguish an unexpected drop from a user disconnect, for auto-reconnect.
   const wantConnectedRef = useRef(false);
   const wasConnectedRef = useRef(false);
-  // Set by reconnect(): bring the tunnel back up once its teardown lands.
-  const reconnectRef = useRef(false);
+  // Kill switch (docs/05). Only the user's Disconnect may lower it, so while a
+  // native session is up every automatic stop HOLDS instead (the VPN stays up
+  // and blocks everything) and every route change is swapped in place.
+  // sessionUpRef: a native session exists (connected or held).
+  // heldRef: it is currently held — no engine, everything blocked.
+  const sessionUpRef = useRef(false);
+  const heldRef = useRef(false);
+  const killSwitchRef = useRef(false);
+  const [blocked, setBlocked] = useState(false);
+  const blockedRetriesRef = useRef(0);
+  // Bumped after a route setting has fully changed (see `routeChanged`); the
+  // switch effect applies it to a live session.
+  const [switchTick, setSwitchTick] = useState(0);
+  const handledTickRef = useRef(0);
+  // The latest connect, for effects that must not depend on its identity.
+  const connectRef = useRef<() => Promise<void>>(async () => undefined);
   // Guards the staleness backstop: one stop per connected session, never a loop.
   const staleRef = useRef(false);
   /** POST_NOTIFICATIONS asked this session (Android 13+); never re-prompt. */
@@ -760,6 +786,17 @@ export function useVpn(): VpnModel & VpnActions {
         return;
       }
       setState(s.state);
+      if (s.held) {
+        // The native side held on its own (a replacement or a roam rebuild
+        // failed): the VPN is up and blocking — say so, and retry.
+        sessionUpRef.current = true;
+        heldRef.current = true;
+        setBlocked(true);
+      } else if (s.state === 'disconnected') {
+        sessionUpRef.current = false;
+        heldRef.current = false;
+        setBlocked(false);
+      }
       if (s.state === 'connected') {
         setConnectedSince((prev) => prev ?? Date.now());
       } else if (s.state === 'disconnected' || s.state === 'error') {
@@ -782,7 +819,19 @@ export function useVpn(): VpnModel & VpnActions {
     void (async () => {
       try {
         const s = await CumulusTunnel.getStatus();
+        if (alive && s.held) {
+          // A held session outlived the app: everything is blocked. Say so;
+          // the blocked-retry effect below brings a route back.
+          sessionUpRef.current = true;
+          heldRef.current = true;
+          wantConnectedRef.current = true;
+          setBlocked(true);
+          setState((prev) => (prev === 'disconnected' ? 'error' : prev));
+          setError(BLOCKED_MESSAGE);
+          return;
+        }
         if (alive && s.state === 'connected') {
+          sessionUpRef.current = true;
           setStatus(s);
           setState((prev) => (prev === 'disconnected' ? 'connected' : prev));
           setConnectedSince((prev) => prev ?? Date.now());
@@ -841,6 +890,18 @@ export function useVpn(): VpnModel & VpnActions {
           // auto-reconnect effect below picks it up — including its
           // avoidGateway() call, which is what moves us off a dead node.
           staleRef.current = true;
+          if (killSwitchRef.current) {
+            // Kill switch: never drop the VPN to recover. Hold it (block
+            // everything) and fail over to another node in place.
+            avoidGateway(gatewayIpRef.current);
+            void CumulusTunnel.holdTunnel()
+              .catch(() => undefined)
+              .then(() => {
+                heldRef.current = true;
+                return connectRef.current();
+              });
+            return;
+          }
           void CumulusTunnel.stopTunnel().catch(() => undefined);
           return;
         }
@@ -945,6 +1006,13 @@ export function useVpn(): VpnModel & VpnActions {
       connectGenRef.current += 1;
       connectingRef.current = false;
       setState('error');
+      if (killSwitchRef.current && sessionUpRef.current) {
+        heldRef.current = true;
+        setBlocked(true);
+        setError(BLOCKED_MESSAGE);
+        void CumulusTunnel.holdTunnel().catch(() => undefined);
+        return;
+      }
       setError('Connection timed out. Try another location.');
       void CumulusTunnel.stopTunnel().catch(() => undefined);
     }, budget);
@@ -1049,8 +1117,6 @@ export function useVpn(): VpnModel & VpnActions {
     // Re-entrancy + cancellation: bumping the generation cancels any sweep still
     // in flight (a double-tap, or a reconnect racing a manual connect), so two
     // sweeps can never interleave start/teardown against the same tunnel.
-    // A connect supersedes any reconnect still waiting on its teardown.
-    reconnectRef.current = false;
     connectGenRef.current += 1;
     const myGen = connectGenRef.current;
     const cancelled = () => connectGenRef.current !== myGen;
@@ -1058,6 +1124,30 @@ export function useVpn(): VpnModel & VpnActions {
     wantConnectedRef.current = true;
     setError(null);
     setState('connecting');
+    // Kill switch: once a session is up, nothing here may take it down — a
+    // failed attempt HOLDS it (blocking) and the next attempt swaps in place.
+    const holding = (): boolean => killSwitch && sessionUpRef.current;
+    const releaseAttempt = async (): Promise<void> => {
+      if (holding()) {
+        heldRef.current = true;
+        await CumulusTunnel.holdTunnel().catch(() => undefined);
+      } else {
+        await teardownAttempt();
+        sessionUpRef.current = false;
+      }
+    };
+    const failHeld = (): void => {
+      connectingRef.current = false;
+      setState('error');
+      setBlocked(true);
+      setError(BLOCKED_MESSAGE);
+    };
+    // Held on iOS: the app's own requests are blocked with everything else, so
+    // gateway control calls go through the tunnel extension (lib/gatewayFetch).
+    const fetchImpl =
+      heldRef.current && CumulusTunnel.gatewayFetch
+        ? relayFetch(CumulusTunnel.gatewayFetch.bind(CumulusTunnel))
+        : undefined;
     // Suppress native status events for attempts this sweep tears down itself,
     // and make sure a prior session can't trigger auto-reconnect mid-connect.
     connectingRef.current = true;
@@ -1138,11 +1228,26 @@ export function useVpn(): VpnModel & VpnActions {
           killSwitch,
           requireDistinctSubnet: nodeDiversity,
           notifDetails,
+          fetchImpl,
         });
+        sessionUpRef.current = true;
+        heldRef.current = false;
+        setBlocked(false);
+        blockedRetriesRef.current = 0;
         // Multi-hop has a single entry transport, so there is no chain to walk —
         // it still reaches 'connected' via native status events, which means the
         // suppression gate must come off BEFORE those events arrive.
         connectingRef.current = false;
+        // A swap over a live session may have reported 'connected' while the
+        // gate was still on, and no further event follows — read it instead.
+        void CumulusTunnel.getStatus()
+          .then((now) => {
+            if (!cancelled() && now.state === 'connected' && !now.held) {
+              setState('connected');
+              setConnectedSince((prev) => prev ?? Date.now());
+            }
+          })
+          .catch(() => undefined);
         setSplitActive(hops.splitApplied);
         const entryEp = routeEndpoint(hops.entry);
         const exitEp = routeEndpoint(hops.exit);
@@ -1185,7 +1290,7 @@ export function useVpn(): VpnModel & VpnActions {
       // (TLS connects, the inner handshake never does). When THIS gateway gates
       // a transport, ask THIS gateway. One request, only on the gated path;
       // failure leaves the conservative cached value.
-      const gwTier = await resolveGatewayTier(gw, keypair.publicKey, tierRef.current);
+      const gwTier = await resolveGatewayTier(gw, keypair.publicKey, tierRef.current, fetchImpl);
       // Take the WHOLE ordered chain, not just the best entry: a tunnel coming up
       // is not the same as it working, so we may need the next one. The chain is
       // already filtered by mode, this build's capabilities and entitlement —
@@ -1212,6 +1317,7 @@ export function useVpn(): VpnModel & VpnActions {
         resp = await enroll(gw.ip, keypair.publicKey, {
           signPubKey: gw.sign_pubkey,
           powSolver: solvePowFast,
+          ...(fetchImpl ? { fetchImpl } : {}),
         });
       } catch (e) {
         avoidGateway(gw.ip);
@@ -1261,7 +1367,10 @@ export function useVpn(): VpnModel & VpnActions {
         } catch {
           // A native reject is a verdict on this transport, not the node — try
           // the next one rather than failing the whole connect.
-          await teardownAttempt();
+          if (cancelled()) {
+            return;
+          }
+          await releaseAttempt();
           continue;
         }
 
@@ -1271,15 +1380,18 @@ export function useVpn(): VpnModel & VpnActions {
         // Re-check AFTER the probe: a Disconnect landing mid-probe makes the
         // tunnel look dead, which is indistinguishable from a failed transport.
         if (cancelled()) {
-          // This attempt's tunnel is LIVE. disconnect() and the watchdog stop it
-          // themselves, but a newer connect() only bumps the generation and may
-          // die before its own startTunnel (its enroll now runs inside this
-          // tunnel and can be blackholed). Abandoning it would leave a live VPN
-          // holding the default route with no in-app way to disconnect.
-          await teardownAttempt();
+          // Superseded. disconnect() and the watchdog deal with this tunnel
+          // themselves, and a newer connect() replaces its route in place —
+          // or, if it fails before that, holds or stops it in its own error
+          // path — so this sweep must leave it alone.
+          sessionUpRef.current = true;
           return;
         }
         if (probe === 'up') {
+          sessionUpRef.current = true;
+          heldRef.current = false;
+          setBlocked(false);
+          blockedRetriesRef.current = 0;
           connectingRef.current = false;
           setState('connected');
           setSplitActive(split !== undefined);
@@ -1291,11 +1403,21 @@ export function useVpn(): VpnModel & VpnActions {
           void saveActiveRoute({ entry: entryEp, exit: null });
           return;
         }
-        await teardownAttempt();
+        // The attempt left a session up, failed or not — release it per the
+        // kill switch (hold) or tear it down.
+        sessionUpRef.current = true;
+        if (cancelled()) {
+          return;
+        }
+        await releaseAttempt();
       }
 
       // Every transport this node offers failed — now it IS the node.
       avoidGateway(gw.ip);
+      if (holding()) {
+        failHeld();
+        return;
+      }
       connectingRef.current = false;
       setState('error');
       setError(
@@ -1303,6 +1425,24 @@ export function useVpn(): VpnModel & VpnActions {
       );
       return;
     } catch (e) {
+      if (cancelled()) {
+        return;
+      }
+      if (holding()) {
+        // A route change failed before (or while) reaching the native side.
+        // The session may still be running the OLD route; hold it so the
+        // failure can't quietly leave the user on a route they moved away from.
+        heldRef.current = true;
+        await CumulusTunnel.holdTunnel().catch(() => undefined);
+        failHeld();
+        return;
+      }
+      if (sessionUpRef.current) {
+        // No kill switch, but a session from before this connect is still up:
+        // stop it, or the UI would say "error" over a live VPN.
+        await teardownAttempt();
+        sessionUpRef.current = false;
+      }
       connectingRef.current = false;
       setState('error');
       setError(e instanceof Error ? e.message : String(e));
@@ -1332,8 +1472,8 @@ export function useVpn(): VpnModel & VpnActions {
     availableGateways,
   ]);
 
-  // Tears the session down. disconnect() and reconnect() differ only in what
-  // happens once it is down.
+  // Tears the session down — the user's Disconnect, the only path that lowers
+  // the kill switch.
   const stopSession = useCallback(async (): Promise<void> => {
     // Screenshot builds: there is no native tunnel to stop, so just drop the
     // demo session. Lets a capture session toggle between the connected and
@@ -1363,6 +1503,10 @@ export function useVpn(): VpnModel & VpnActions {
     // fleet (not a node we're no longer on) instead of latching one address.
     avoidRef.current.clear();
     gatewayIpRef.current = null;
+    sessionUpRef.current = false;
+    heldRef.current = false;
+    blockedRetriesRef.current = 0;
+    setBlocked(false);
     try {
       await CumulusTunnel.stopTunnel();
     } catch (e) {
@@ -1371,31 +1515,56 @@ export function useVpn(): VpnModel & VpnActions {
   }, []);
 
   const disconnect = useCallback(async (): Promise<void> => {
-    reconnectRef.current = false;
     await stopSession();
   }, [stopSession]);
 
-  // A clean stop then a fresh connect, rather than swapping settings inside a
-  // live tunnel: connect is the one path that reads every setting, and it
-  // already handles transports, multi-hop and failover.
+  // Re-run connect over the live session: connect is the one path that reads
+  // every setting, and over a live session its start REPLACES the route in
+  // place, so the VPN (and the kill switch) never goes down for a settings
+  // change.
   const reconnect = useCallback(async (): Promise<void> => {
-    if (state !== 'connected' && state !== 'connecting') {
+    if (state !== 'connected' && state !== 'connecting' && !heldRef.current) {
       return;
     }
-    // Set before the stop: the 'disconnected' it leads to may land before
-    // stopTunnel() resolves.
-    reconnectRef.current = true;
-    await stopSession();
-  }, [state, stopSession]);
+    await connect();
+  }, [state, connect]);
 
+  // A route setting (location, route style, hops, Stealth) changed while
+  // connected: apply it now. `connect` from the same render already carries
+  // the new setting.
   useEffect(() => {
-    if (state === 'error') {
-      reconnectRef.current = false;
-    } else if (state === 'disconnected' && reconnectRef.current) {
-      reconnectRef.current = false;
+    if (switchTick === handledTickRef.current) {
+      return;
+    }
+    handledTickRef.current = switchTick;
+    if (state === 'connected' || state === 'connecting' || heldRef.current) {
       void connect();
     }
-  }, [state, connect]);
+  }, [switchTick, state, connect]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
+
+  useEffect(() => {
+    killSwitchRef.current = killSwitch;
+  }, [killSwitch]);
+
+  // Held and not connecting: keep trying to bring a route back (the user has no
+  // internet until then), backing off to once a minute. Disconnect ends it.
+  useEffect(() => {
+    if (!blocked || state !== 'error') {
+      return undefined;
+    }
+    const delay = Math.min(60_000, 10_000 * 2 ** blockedRetriesRef.current);
+    const id = setTimeout(() => {
+      blockedRetriesRef.current += 1;
+      // A held node may be what failed — let failover pick another.
+      avoidGateway(gatewayIpRef.current);
+      void connectRef.current();
+    }, delay);
+    return () => clearTimeout(id);
+  }, [blocked, state, avoidGateway]);
 
   // ---- auto-reconnect on an unexpected drop ------------------------------
   // If the tunnel drops while the user still wants it (they didn't tap
@@ -1435,10 +1604,17 @@ export function useVpn(): VpnModel & VpnActions {
     }
   }, [autoConnect, booting, keypair, state, countries, connect]);
 
-  const selectCountry = useCallback(async (code: string | null): Promise<void> => {
-    setSelectedCode(code);
-    await saveSelectedCountry(code);
-  }, []);
+  // Call last in a route setter, once every state update it makes is done.
+  const routeChanged = useCallback((): void => setSwitchTick((t) => t + 1), []);
+
+  const selectCountry = useCallback(
+    async (code: string | null): Promise<void> => {
+      setSelectedCode(code);
+      await saveSelectedCountry(code);
+      routeChanged();
+    },
+    [routeChanged],
+  );
 
   const setRouteStyle = useCallback(
     async (style: RouteStyle): Promise<void> => {
@@ -1451,14 +1627,19 @@ export function useVpn(): VpnModel & VpnActions {
         setExitCode(null);
         await saveExitCountry(null);
       }
+      routeChanged();
     },
-    [entryCode, exitCode],
+    [entryCode, exitCode, routeChanged],
   );
 
-  const setTransportMode = useCallback(async (mode: TransportMode): Promise<void> => {
-    setTransportModeState(mode);
-    await saveTransportMode(mode);
-  }, []);
+  const setTransportMode = useCallback(
+    async (mode: TransportMode): Promise<void> => {
+      setTransportModeState(mode);
+      await saveTransportMode(mode);
+      routeChanged();
+    },
+    [routeChanged],
+  );
 
   // Last pick wins: if the other end can no longer satisfy the style's
   // jurisdiction rule, reset it to Auto instead of letting connect fail later.
@@ -1470,8 +1651,9 @@ export function useVpn(): VpnModel & VpnActions {
         setExitCode(null);
         await saveExitCountry(null);
       }
+      routeChanged();
     },
-    [routeStyle, exitCode],
+    [routeStyle, exitCode, routeChanged],
   );
 
   const selectExitCountry = useCallback(
@@ -1482,14 +1664,26 @@ export function useVpn(): VpnModel & VpnActions {
         setEntryCode(null);
         await saveEntryCountry(null);
       }
+      routeChanged();
     },
-    [routeStyle, entryCode],
+    [routeStyle, entryCode, routeChanged],
   );
 
-  const setKillSwitch = useCallback(async (enabled: boolean): Promise<void> => {
-    setKillSwitchState(enabled);
-    await saveKillSwitch(enabled);
-  }, []);
+  const setKillSwitch = useCallback(
+    async (enabled: boolean): Promise<void> => {
+      setKillSwitchState(enabled);
+      killSwitchRef.current = enabled;
+      await saveKillSwitch(enabled);
+      // Turned off while it is blocking: lift the block now, then keep
+      // trying to connect the ordinary way.
+      if (!enabled && heldRef.current) {
+        await stopSession();
+        wantConnectedRef.current = true;
+        void connectRef.current();
+      }
+    },
+    [stopSession],
+  );
 
   const setNodeDiversity = useCallback(async (enabled: boolean): Promise<void> => {
     setNodeDiversityState(enabled);
@@ -1612,6 +1806,7 @@ export function useVpn(): VpnModel & VpnActions {
     entry,
     exit,
     killSwitch,
+    blocked,
     nodeDiversity,
     notifDetails,
     autoConnect,
@@ -1748,16 +1943,20 @@ async function teardownAttempt(): Promise<void> {
  * Returns `cached` unchanged when nothing here is gated, or when the probe fails
  * (conservative: a weaker-but-working transport beats a dead one).
  */
-async function resolveGatewayTier(gw: GatewayInfo, publicKey: string, cached: Tier): Promise<Tier> {
+async function resolveGatewayTier(
+  gw: GatewayInfo,
+  publicKey: string,
+  cached: Tier,
+  fetchImpl?: FetchImpl,
+): Promise<Tier> {
   if (!hasPremiumTransport(gw.transports)) {
     return cached;
   }
   try {
-    const s = await fetchStatus(
-      gw.ip,
-      publicKey,
-      gw.sign_pubkey ? { signPubKey: gw.sign_pubkey } : {},
-    );
+    const s = await fetchStatus(gw.ip, publicKey, {
+      ...(gw.sign_pubkey ? { signPubKey: gw.sign_pubkey } : {}),
+      ...(fetchImpl ? { fetchImpl } : {}),
+    });
     return s.tier;
   } catch {
     return cached;
@@ -1789,6 +1988,8 @@ async function connectMultihop(args: {
   killSwitch: boolean;
   requireDistinctSubnet: boolean;
   notifDetails: boolean;
+  /** Control-API fetch while the kill switch holds the session (iOS); else default. */
+  fetchImpl: FetchImpl | undefined;
 }): Promise<{ entry: GatewayInfo; exit: GatewayInfo; splitApplied: boolean }> {
   const {
     keypair,
@@ -1805,6 +2006,7 @@ async function connectMultihop(args: {
     killSwitch,
     requireDistinctSubnet,
     notifDetails,
+    fetchImpl,
   } = args;
 
   // core enforces entry !== exit and the per-style jurisdiction rule; a null
@@ -1857,7 +2059,7 @@ async function connectMultihop(args: {
           'stealth',
           new Set(['awg']),
           // Same rule as single-hop: the entry gateway enforces its own gate.
-          await resolveGatewayTier(hops.entry, keypair.publicKey, tier),
+          await resolveGatewayTier(hops.entry, keypair.publicKey, tier, fetchImpl),
         )
       : undefined;
 
@@ -1869,10 +2071,12 @@ async function connectMultihop(args: {
     enroll(hops.entry.ip, keypair.publicKey, {
       signPubKey: hops.entry.sign_pubkey,
       powSolver: solvePowFast,
+      ...(fetchImpl ? { fetchImpl } : {}),
     }),
     enroll(hops.exit.ip, keypair.publicKey, {
       signPubKey: hops.exit.sign_pubkey,
       powSolver: solvePowFast,
+      ...(fetchImpl ? { fetchImpl } : {}),
     }),
   ]);
 

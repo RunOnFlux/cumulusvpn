@@ -92,6 +92,16 @@ quiet power-user escape hatch.
   declaration form required.
 - RN gives us shared UI/state with near-identical screens to desktop (shared design system,
   shared TypeScript core for discovery/enrollment/status logic — publish as `clients/core-ts`).
+- **Kill switch (mobile):** once a session is up, only the user's Disconnect lowers it. A route
+  change (country, multi-hop, Stealth, DNS) or a failover is swapped inside the running VPN
+  session, and a dead or failed route is HELD — the VPN stays up with no engine, so every packet
+  is dropped — while the app retries with backoff and shows "Internet blocked by the kill
+  switch". iOS: an in-extension swap/hold under `includeAllNetworks` + on-demand; while held the
+  app's enroll requests go through the extension (`gatewayFetch`), whose sockets bypass the
+  tunnel. Android: the new VPN interface replaces the old one before the old engine stops, and
+  the hold is a blocking interface the app itself is left out of (`TunnelHold.kt`); the OS
+  "Block connections without VPN" setting is still needed to cover the app being killed or a
+  reboot. Validation: `docs/16-validation.md` Stage L.
 
 ## Store policy — can the pay-to-address screen live inside the iOS/Android apps?
 
