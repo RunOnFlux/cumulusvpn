@@ -27,7 +27,7 @@ func premiumFixture(t *testing.T) (*Server, *wg.Device, *wg.Device) {
 
 	srv := New(
 		&config.Config{MaxPeersTotal: 2000, CapacityMbps: 1000},
-		dev, nil, limiter.New(100, 50), Info{Country: "DE"}, "203.0.113.1",
+		dev, nil, limiter.New(100, 50, 200, 200), Info{Country: "DE"}, "203.0.113.1",
 		ExtraTransport{
 			Device:      gated,
 			PremiumOnly: true,
@@ -112,7 +112,7 @@ func TestUngatedExtraTransportStillTakesFreePeers(t *testing.T) {
 
 	srv := New(
 		&config.Config{MaxPeersTotal: 2000, CapacityMbps: 1000},
-		dev, nil, limiter.New(100, 50), Info{Country: "DE"}, "203.0.113.1",
+		dev, nil, limiter.New(100, 50, 200, 200), Info{Country: "DE"}, "203.0.113.1",
 		ExtraTransport{Device: open, Advertise: Transport{Type: "awg", Port: config.WGObfsPort}},
 	)
 

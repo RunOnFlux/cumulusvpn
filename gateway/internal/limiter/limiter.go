@@ -5,6 +5,14 @@
 // Tier flips are instant: the entitlement scanner calls SetTier and the
 // underlying rate.Limiter is retuned in place, affecting in-flight flows
 // without any reconnect (docs/03-gateway.md "Rate limiting").
+//
+// Premium is two buckets in series: a sustained one (the advertised per-peer
+// rate) with a large burst, and a peak one that caps how fast that burst can
+// drain. A peer that has been quiet can run at the peak rate until the
+// sustained bucket empties, then settles at the sustained rate; it refills
+// only while the peer stays below that rate. Speed tests, downloads and
+// page loads feel fast, while round-the-clock bulk traffic (seeding) gets the
+// sustained rate and no more.
 package limiter
 
 import (
@@ -18,9 +26,9 @@ import (
 const (
 	// freeBurst lets pages still feel snappy on the free tier (~1 MB).
 	freeBurst = 1 << 20
-	// premiumBurst caps how much a premium peer can burst above its steady
-	// rate (~4 MB), so the per-peer ceiling is enforced tightly.
-	premiumBurst = 4 << 20
+	// peakBurst is the peak bucket's burst (~4 MB), so the peak ceiling is
+	// enforced tightly. Also the sustained burst when peak bursting is off.
+	peakBurst = 4 << 20
 	// bytesPerMbit converts Mbit/s to bytes/s (base-10 networking units:
 	// 1 Mbit/s = 1e6 bits/s = 125_000 bytes/s).
 	bytesPerMbit = 125_000
@@ -28,15 +36,25 @@ const (
 
 // Peer is the per-pubkey limiter state shared by all of that peer's flows.
 type Peer struct {
-	lim     *rate.Limiter
+	lim     *rate.Limiter // free rate, or the premium sustained rate
+	peak    *rate.Limiter // premium peak rate; rate.Inf on the free tier
 	premium atomic.Bool
 	bytes   atomic.Uint64 // total bytes forwarded (both directions)
+
+	// TCPFlows and UDPFlows count this peer's live forwarded flows across
+	// every transport's forwarder, for the per-peer flow cap
+	// (wg.Forwarder.SetMaxPeerFlows).
+	TCPFlows atomic.Int64
+	UDPFlows atomic.Int64
 }
 
 // WaitN blocks until n bytes' worth of tokens are available (or ctx ends).
 // n must be <= the smallest configured burst (the forwarder's copy buffer is
 // 32 KiB, well under the 1 MiB free burst).
 func (p *Peer) WaitN(ctx context.Context, n int) error {
+	if err := p.peak.WaitN(ctx, n); err != nil {
+		return err
+	}
 	return p.lim.WaitN(ctx, n)
 }
 
@@ -58,24 +76,38 @@ func (p *Peer) Premium() bool {
 
 // Manager maps WireGuard pubkeys (base64) to their limiters.
 type Manager struct {
-	freeRate    rate.Limit
-	premiumRate rate.Limit
-	mu          sync.Mutex
-	peers       map[string]*Peer
-	freeCount   atomic.Int64
+	freeRate     rate.Limit
+	premiumRate  rate.Limit
+	premiumBurst int        // sustained bucket size in bytes
+	peakRate     rate.Limit // rate.Inf when peak bursting is off
+	mu           sync.Mutex
+	peers        map[string]*Peer
+	freeCount    atomic.Int64
 }
 
 // New creates a Manager with the free tier set to freeRateKBps kilobytes/s and
-// the premium per-peer ceiling set to premiumRateMbps megabits/s. The premium
-// cap exists because a Flux node's uplink is limited (~100 Mbit/s, shared with
-// other apps); capping each user well below the link (default 50 Mbit/s) means
-// no single peer can starve the node and several premium peers coexist.
-func New(freeRateKBps, premiumRateMbps int) *Manager {
-	return &Manager{
-		freeRate:    rate.Limit(freeRateKBps * 1024),
-		premiumRate: rate.Limit(premiumRateMbps * bytesPerMbit),
-		peers:       make(map[string]*Peer),
+// the premium per-peer sustained rate set to premiumRateMbps megabits/s. The
+// premium cap exists because a Flux node's uplink is shared with other apps
+// and other peers; capping each user's sustained rate (default 50 Mbit/s)
+// means no single peer can starve the node and several premium peers coexist.
+//
+// Premium peers may burst at up to premiumPeakMbps until burstMB megabytes
+// above the sustained rate are spent (see the package doc). premiumPeakMbps
+// <= premiumRateMbps or burstMB <= 0 turns bursting off: a flat
+// premiumRateMbps ceiling with a ~4 MB burst.
+func New(freeRateKBps, premiumRateMbps, premiumPeakMbps, burstMB int) *Manager {
+	m := &Manager{
+		freeRate:     rate.Limit(freeRateKBps * 1024),
+		premiumRate:  rate.Limit(premiumRateMbps * bytesPerMbit),
+		premiumBurst: peakBurst,
+		peakRate:     rate.Inf,
+		peers:        make(map[string]*Peer),
 	}
+	if premiumPeakMbps > premiumRateMbps && burstMB > 0 {
+		m.peakRate = rate.Limit(premiumPeakMbps * bytesPerMbit)
+		m.premiumBurst = burstMB << 20
+	}
+	return m
 }
 
 // Get returns the limiter for pubkey, creating it (free tier) if unknown.
@@ -84,7 +116,10 @@ func (m *Manager) Get(pubkey string) *Peer {
 	defer m.mu.Unlock()
 	p, ok := m.peers[pubkey]
 	if !ok {
-		p = &Peer{lim: rate.NewLimiter(m.freeRate, freeBurst)}
+		p = &Peer{
+			lim:  rate.NewLimiter(m.freeRate, freeBurst),
+			peak: rate.NewLimiter(rate.Inf, peakBurst),
+		}
 		m.peers[pubkey] = p
 		m.freeCount.Add(1)
 	}
@@ -114,11 +149,13 @@ func (m *Manager) SetTier(pubkey string, premium bool) {
 	}
 	if premium {
 		p.lim.SetLimit(m.premiumRate)
-		p.lim.SetBurst(premiumBurst)
+		p.lim.SetBurst(m.premiumBurst)
+		p.peak.SetLimit(m.peakRate)
 		m.freeCount.Add(-1)
 	} else {
 		p.lim.SetLimit(m.freeRate)
 		p.lim.SetBurst(freeBurst)
+		p.peak.SetLimit(rate.Inf)
 		m.freeCount.Add(1)
 	}
 }

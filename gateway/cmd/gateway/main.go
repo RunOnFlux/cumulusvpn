@@ -39,8 +39,9 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	log.Printf("gateway %s starting: app=%q price=%s FLUX free=%dKB/s premium=%dMbit/s",
-		api.Version, cfg.AppName, cfg.PriceSchedule, cfg.FreeRateKBps, cfg.PremiumRateMbps)
+	log.Printf("gateway %s starting: app=%q price=%s FLUX free=%dKB/s premium=%dMbit/s (peak %dMbit/s, burst %dMB)",
+		api.Version, cfg.AppName, cfg.PriceSchedule, cfg.FreeRateKBps, cfg.PremiumRateMbps,
+		cfg.PremiumPeakMbps, cfg.PremiumBurstMB)
 	if cfg.PriceWarning != "" {
 		log.Printf("gateway: WARNING: %s", cfg.PriceWarning)
 	}
@@ -102,7 +103,7 @@ func run() error {
 	log.Printf("gateway: WG up on :%d server_pubkey=%s", config.WGListenPort, dev.PublicKey())
 
 	// --- rate limiter ---
-	lim := limiter.New(cfg.FreeRateKBps, cfg.PremiumRateMbps)
+	lim := limiter.New(cfg.FreeRateKBps, cfg.PremiumRateMbps, cfg.PremiumPeakMbps, cfg.PremiumBurstMB)
 
 	// --- encrypted DNS: one proxy shared by every forwarder (docs/03 "DNS") ---
 	var dns *dnsproxy.Proxy
@@ -113,6 +114,7 @@ func run() error {
 	// --- exit forwarder (the crux) ---
 	fwd := wg.NewForwarder(dev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
 	fwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
+	fwd.SetMaxPeerFlows(cfg.MaxPeerFlows)
 	fwd.SetDNS(dns)
 	if err := fwd.Start(); err != nil {
 		return err
@@ -133,6 +135,7 @@ func run() error {
 		defer obfsDev.Close()
 		obfsFwd := wg.NewForwarder(obfsDev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
 		obfsFwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
+		obfsFwd.SetMaxPeerFlows(cfg.MaxPeerFlows)
 		obfsFwd.SetDNS(dns)
 		if err := obfsFwd.Start(); err != nil {
 			return err
@@ -184,6 +187,7 @@ func run() error {
 			// limiter so per-peer rate limits stay global across transports.
 			tlsFwd := wg.NewForwarder(tlsDev, lim, cfg.EgressAllowPorts, cfg.GatewayFleetAllow)
 			tlsFwd.SetAllowPrivateEgress(cfg.AllowPrivateEgress)
+			tlsFwd.SetMaxPeerFlows(cfg.MaxPeerFlows)
 			tlsFwd.SetDNS(dns)
 			if err := tlsFwd.Start(); err != nil {
 				return err

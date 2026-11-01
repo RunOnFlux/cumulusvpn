@@ -111,15 +111,24 @@ netstack PoC hits its gate, skip v0; if it slips, v0 buys time in market.
   rather than replacing a file it could not read with one derived from what little it recovered.
 - Capacity guards: `MAX_PEERS_FREE`, `MAX_PEERS_TOTAL`, aggregate free-tier bandwidth ceiling
   (e.g. free pool ≤ 30% of instance throughput) so freeloaders can't starve subscribers.
+- Flow caps: at most 1024 concurrent forwarded flows per protocol per gateway (a memory bound),
+  and `CVPN_MAX_PEER_FLOWS` (default 256) per peer within that, counted across transports. A
+  torrent client's hundreds of peers can't take the slots everyone else needs, and torrenting
+  through us gets slow; browsing, streaming, games and calls use tens of flows.
 
 ### Rate limiting (the free/paid mechanism)
 - Token bucket per peer applied on both directions at the netstack boundary:
   - **free = 100 KB/s** (`CVPN_FREE_RATE_KBPS`, burst ~1 MB so pages still feel snappy).
-  - **premium = 50 Mbit/s per peer** (`CVPN_PREMIUM_RATE_MBPS`, default 50, burst ~4 MB).
-    Sized at *half* the node's ~100 Mbit/s uplink so one premium peer can never monopolize the
-    link — at least two premium users run flat-out simultaneously, and the shared link degrades
-    fairly under load. 50 Mbit/s is plenty for 4K streaming (~25 Mbit/s) and everything lighter;
-    honest positioning is "fast enough + cheap + private," not "blazing fastest."
+  - **premium = 50 Mbit/s sustained per peer, bursting to 200 Mbit/s for about a minute.**
+    Two buckets in series: a sustained one (`CVPN_PREMIUM_RATE_MBPS`, default 50) holding a
+    burst allowance (`CVPN_PREMIUM_BURST_MB`, default 1125 MB), and a peak one
+    (`CVPN_PREMIUM_PEAK_MBPS`, default 200, burst ~4 MB) capping how fast that allowance drains.
+    Running at 200 drains the allowance at 150 Mbit/s net, so a rested peer gets ~60 s at full
+    peak, then settles at 50; the allowance refills only while the peer stays under 50 (fully
+    after ~3 min quiet). Speed tests, downloads and page loads feel fast; round-the-clock bulk
+    traffic (torrent seeding) gets 50 and no more, so one peer can't hog a node's shared link.
+    50 Mbit/s is plenty for 4K streaming (~25 Mbit/s) and everything lighter. Peak <= sustained
+    turns bursting off (a flat ceiling).
 - Tier lookup is just `entitlements[pubkey].paid_until > now` — flips instantly when the chain
   scanner sees a payment, no reconnect needed.
 - Both limits are config-driven (app-spec env), so we can raise the premium cap later if nodes with

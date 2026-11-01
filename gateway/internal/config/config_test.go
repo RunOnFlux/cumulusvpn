@@ -15,6 +15,9 @@ var allCVPNEnv = []string{
 	"CVPN_DIRECTORY_PUBKEY",
 	"CVPN_FREE_RATE_KBPS",
 	"CVPN_PREMIUM_RATE_MBPS",
+	"CVPN_PREMIUM_PEAK_MBPS",
+	"CVPN_PREMIUM_BURST_MB",
+	"CVPN_MAX_PEER_FLOWS",
 	"CVPN_MAX_PEERS_FREE",
 	"CVPN_MAX_PEERS_TOTAL",
 	"CVPN_EGRESS_ALLOW_PORTS",
@@ -63,6 +66,15 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.PremiumRateMbps != 50 {
 		t.Errorf("PremiumRateMbps = %d, want default 50", cfg.PremiumRateMbps)
 	}
+	if cfg.PremiumPeakMbps != 200 {
+		t.Errorf("PremiumPeakMbps = %d, want default 200", cfg.PremiumPeakMbps)
+	}
+	if cfg.PremiumBurstMB != 1125 {
+		t.Errorf("PremiumBurstMB = %d, want default 1125", cfg.PremiumBurstMB)
+	}
+	if cfg.MaxPeerFlows != 256 {
+		t.Errorf("MaxPeerFlows = %d, want default 256", cfg.MaxPeerFlows)
+	}
 	if cfg.MaxPeersFree != 500 {
 		t.Errorf("MaxPeersFree = %d, want default 500", cfg.MaxPeersFree)
 	}
@@ -87,6 +99,8 @@ func TestLoadEnvParsing(t *testing.T) {
 		"CVPN_DIRECTORY_PUBKEY":    "base64pubkey",
 		"CVPN_FREE_RATE_KBPS":      "250",
 		"CVPN_PREMIUM_RATE_MBPS":   "80",
+		"CVPN_PREMIUM_PEAK_MBPS":   "160",
+		"CVPN_PREMIUM_BURST_MB":    "64",
 		"CVPN_MAX_PEERS_FREE":      "10",
 		"CVPN_MAX_PEERS_TOTAL":     "100",
 		"CVPN_EGRESS_ALLOW_PORTS":  "80, 443 ,8080",
@@ -111,6 +125,9 @@ func TestLoadEnvParsing(t *testing.T) {
 	}
 	if cfg.PremiumRateMbps != 80 {
 		t.Errorf("PremiumRateMbps = %d, want 80", cfg.PremiumRateMbps)
+	}
+	if cfg.PremiumPeakMbps != 160 || cfg.PremiumBurstMB != 64 {
+		t.Errorf("PremiumPeakMbps, PremiumBurstMB = %d, %d, want 160, 64", cfg.PremiumPeakMbps, cfg.PremiumBurstMB)
 	}
 	if cfg.KeyFile != "/custom/key" {
 		t.Errorf("KeyFile = %q, want /custom/key", cfg.KeyFile)

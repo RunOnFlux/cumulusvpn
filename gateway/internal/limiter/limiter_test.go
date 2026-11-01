@@ -2,6 +2,7 @@ package limiter
 
 import (
 	"testing"
+	"time"
 
 	"golang.org/x/time/rate"
 )
@@ -9,7 +10,7 @@ import (
 func TestTierRatesAndCounts(t *testing.T) {
 	const freeKBps = 100   // 100 KB/s
 	const premiumMbps = 50 // 50 Mbit/s
-	m := New(freeKBps, premiumMbps)
+	m := New(freeKBps, premiumMbps, 200, 200)
 
 	wantFree := rate.Limit(freeKBps * 1024)
 	wantPremium := rate.Limit(premiumMbps * bytesPerMbit) // 50 * 125_000 = 6_250_000 B/s
@@ -35,17 +36,20 @@ func TestTierRatesAndCounts(t *testing.T) {
 		t.Fatalf("counts after promote = (%d,%d), want (0,1)", free, total)
 	}
 
-	// Premium cap must sit below a single node's ~100 Mbit/s uplink so one peer
-	// can't monopolize it (>=2 premium peers can run flat-out).
-	nodeUplinkBytesPerSec := rate.Limit(100 * bytesPerMbit)
-	if wantPremium*2 > nodeUplinkBytesPerSec {
-		t.Fatalf("premium cap %v too high: two peers exceed the ~100 Mbit/s node uplink", wantPremium)
+	if got, want := p.peak.Limit(), rate.Limit(200*bytesPerMbit); got != want {
+		t.Fatalf("premium peak = %v, want %v (200 Mbit/s)", got, want)
+	}
+	if got := p.lim.Burst(); got != 200<<20 {
+		t.Fatalf("premium burst = %d, want 200 MB", got)
 	}
 
 	// Demote back to free: rate returns, free count restored.
 	m.SetTier("peerA", false)
 	if got := p.lim.Limit(); got != wantFree {
 		t.Fatalf("demoted rate = %v, want free %v", got, wantFree)
+	}
+	if got := p.peak.Limit(); got != rate.Inf {
+		t.Fatalf("demoted peak = %v, want none", got)
 	}
 	if free, _ := m.Counts(); free != 1 {
 		t.Fatalf("free count after demote = %d, want 1", free)
@@ -59,7 +63,7 @@ func TestTierRatesAndCounts(t *testing.T) {
 }
 
 func TestTotalBytes(t *testing.T) {
-	m := New(100, 50)
+	m := New(100, 50, 200, 200)
 	if got := m.TotalBytes(); got != 0 {
 		t.Fatalf("TotalBytes on empty manager = %d, want 0", got)
 	}
@@ -72,5 +76,56 @@ func TestTotalBytes(t *testing.T) {
 	m.Remove("peerB")
 	if got := m.TotalBytes(); got != 1500 {
 		t.Fatalf("TotalBytes after removing peerB = %d, want 1500", got)
+	}
+}
+
+// A rested premium peer runs at the peak rate until its burst allowance is
+// spent, then settles at the sustained rate.
+func TestPremiumBurstThenSustained(t *testing.T) {
+	const mbit = bytesPerMbit
+	const allowance = 150 << 20 // 150 MB: ~8 s at 200 Mbit/s
+	m := New(100, 50, 200, allowance>>20)
+	m.SetTier("peerA", true)
+	p := m.Get("peerA")
+
+	// Start rested: wait (in virtual time) for a full sustained bucket.
+	now := time.Now()
+	for p.lim.TokensAt(now) < allowance {
+		now = now.Add(time.Second)
+	}
+
+	// Send 32 KiB chunks as fast as both buckets allow; return the rate.
+	const chunk = 32 << 10
+	send := func(bytes int) float64 {
+		start := now
+		for sent := 0; sent < bytes; sent += chunk {
+			at := now
+			at = at.Add(p.peak.ReserveN(at, chunk).DelayFrom(at))
+			at = at.Add(p.lim.ReserveN(at, chunk).DelayFrom(at))
+			now = at
+		}
+		return float64(bytes) / now.Sub(start).Seconds()
+	}
+
+	send(peakBurst) // spend the peak bucket's own initial burst first
+	if got := send(64 << 20); got < 190*mbit || got > 210*mbit {
+		t.Fatalf("burst rate = %.0f Mbit/s, want ~200", got/mbit)
+	}
+	send(allowance) // more than what's left of the allowance
+	if got := send(64 << 20); got < 48*mbit || got > 52*mbit {
+		t.Fatalf("sustained rate = %.0f Mbit/s, want ~50", got/mbit)
+	}
+}
+
+// Peak at or below the sustained rate turns bursting off: a flat ceiling.
+func TestPremiumBurstOff(t *testing.T) {
+	m := New(100, 50, 50, 200)
+	m.SetTier("peerA", true)
+	p := m.Get("peerA")
+	if got := p.peak.Limit(); got != rate.Inf {
+		t.Fatalf("peak = %v, want none when peak <= sustained", got)
+	}
+	if got := p.lim.Burst(); got != peakBurst {
+		t.Fatalf("burst = %d, want the flat %d", got, peakBurst)
 	}
 }

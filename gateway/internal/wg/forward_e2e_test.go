@@ -102,7 +102,7 @@ func startTunnel(t *testing.T, obfs *ObfsParams, setup func(*Forwarder)) *netsta
 	}
 	t.Cleanup(gw.Close)
 
-	fwd := NewForwarder(gw, limiter.New(100, 50), nil, true)
+	fwd := NewForwarder(gw, limiter.New(100, 50, 200, 200), nil, true)
 	fwd.SetAllowPrivateEgress(true) // e2e origin binds a LAN (private) IP
 	if setup != nil {
 		setup(fwd)
@@ -231,7 +231,7 @@ func TestTLSTunnelDataPlaneEndToEnd(t *testing.T) {
 		t.Fatalf("gateway New: %v", err)
 	}
 	t.Cleanup(gw.Close)
-	fwd := NewForwarder(gw, limiter.New(100, 50), nil, true)
+	fwd := NewForwarder(gw, limiter.New(100, 50, 200, 200), nil, true)
 	fwd.SetAllowPrivateEgress(true) // e2e origin binds a LAN (private) IP
 	if err := fwd.Start(); err != nil {
 		t.Fatalf("forwarder Start: %v", err)

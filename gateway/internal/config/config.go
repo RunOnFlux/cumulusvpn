@@ -56,10 +56,22 @@ type Config struct {
 	DirectoryPubKey string
 	// FreeRateKBps is the free-tier rate limit in kilobytes per second.
 	FreeRateKBps int
-	// PremiumRateMbps is the premium per-peer ceiling in megabits per second.
-	// Sized below a Flux node's ~100 Mbit/s uplink so one peer can't hog the
-	// link (default 50 Mbit/s).
+	// PremiumRateMbps is the premium per-peer sustained rate in megabits per
+	// second — what a peer gets under continuous load, so one peer can't hog
+	// the node's link (default 50 Mbit/s).
 	PremiumRateMbps int
+	// PremiumPeakMbps is how fast a premium peer may burst above
+	// PremiumRateMbps while its burst allowance lasts (default 200 Mbit/s).
+	// At or below PremiumRateMbps, bursting is off (a flat ceiling).
+	PremiumPeakMbps int
+	// PremiumBurstMB is the burst allowance in megabytes, refilled at
+	// PremiumRateMbps minus the peer's use. Running at PremiumPeakMbps drains
+	// it at (peak - rate), so the default 1125 MB is ~60 s at 200 Mbit/s
+	// before the peer settles at 50 Mbit/s; fully refilled after ~3 min idle.
+	PremiumBurstMB int
+	// MaxPeerFlows caps one peer's concurrent forwarded flows, per protocol
+	// (default wg.DefaultMaxPeerFlows; <= 0 leaves only the gateway-wide cap).
+	MaxPeerFlows int
 	// MaxPeersFree caps the number of enrolled free-tier peers.
 	MaxPeersFree int
 	// MaxPeersTotal caps total enrolled peers (free + premium).
@@ -170,6 +182,9 @@ func Load() (*Config, error) {
 		DirectoryPubKey:    os.Getenv("CVPN_DIRECTORY_PUBKEY"),
 		FreeRateKBps:       envInt("CVPN_FREE_RATE_KBPS", 100),
 		PremiumRateMbps:    envInt("CVPN_PREMIUM_RATE_MBPS", 50),
+		PremiumPeakMbps:    envInt("CVPN_PREMIUM_PEAK_MBPS", 200),
+		PremiumBurstMB:     envInt("CVPN_PREMIUM_BURST_MB", 1125),
+		MaxPeerFlows:       envInt("CVPN_MAX_PEER_FLOWS", 256),
 		MaxPeersFree:       envInt("CVPN_MAX_PEERS_FREE", 500),
 		MaxPeersTotal:      envInt("CVPN_MAX_PEERS_TOTAL", 2000),
 		CapacityMbps:       envInt("CVPN_CAPACITY_MBPS", 1000),

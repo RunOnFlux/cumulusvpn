@@ -116,11 +116,11 @@ func TestDestAllowed(t *testing.T) {
 func TestAcquireFlowCapsConcurrency(t *testing.T) {
 	var n atomic.Int64
 	for i := 0; i < maxFlows; i++ {
-		if !acquireFlow(&n) {
+		if !acquireFlow(&n, maxFlows) {
 			t.Fatalf("flow %d refused below the cap", i)
 		}
 	}
-	if acquireFlow(&n) {
+	if acquireFlow(&n, maxFlows) {
 		t.Fatal("a flow past the cap must be refused")
 	}
 	if got := n.Load(); got != maxFlows {
@@ -128,7 +128,40 @@ func TestAcquireFlowCapsConcurrency(t *testing.T) {
 	}
 	// Releasing frees capacity again — a burst must not permanently wedge the node.
 	releaseFlow(&n)
-	if !acquireFlow(&n) {
+	if !acquireFlow(&n, maxFlows) {
 		t.Error("a released slot must be reusable")
+	}
+}
+
+// One peer's flows are capped below the gateway-wide limit, so a torrent
+// client's hundreds of connections can't take the slots every other peer on
+// the gateway needs. Refusing one peer leaves the others' capacity intact.
+func TestPeerFlowCapLeavesRoomForOthers(t *testing.T) {
+	f := &Forwarder{}
+	f.SetMaxPeerFlows(3)
+	var global, hog, other atomic.Int64
+	for i := 0; i < 3; i++ {
+		if !f.acquirePeerFlow(&global, &hog) {
+			t.Fatalf("flow %d refused below the per-peer cap", i)
+		}
+	}
+	if f.acquirePeerFlow(&global, &hog) {
+		t.Fatal("a flow past the per-peer cap must be refused")
+	}
+	if got := global.Load(); got != 3 {
+		t.Errorf("a refused flow must not hold a gateway-wide slot: global=%d want=3", got)
+	}
+	if !f.acquirePeerFlow(&global, &other) {
+		t.Error("another peer must still get a flow")
+	}
+	releasePeerFlow(&global, &hog)
+	if !f.acquirePeerFlow(&global, &hog) {
+		t.Error("a released per-peer slot must be reusable")
+	}
+
+	// n <= 0 leaves only the gateway-wide cap.
+	f.SetMaxPeerFlows(0)
+	if f.maxPeerFlows != maxFlows {
+		t.Errorf("SetMaxPeerFlows(0) = %d, want maxFlows", f.maxPeerFlows)
 	}
 }

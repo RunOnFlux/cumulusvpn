@@ -30,7 +30,7 @@ func TestInfoAdvertisesSignedTransports(t *testing.T) {
 	defer dev.Close()
 
 	cfg := &config.Config{MaxPeersTotal: 2000, CapacityMbps: 1000}
-	lim := limiter.New(100, 50)
+	lim := limiter.New(100, 50, 200, 200)
 	srv := New(cfg, dev, nil, lim, Info{Country: "DE"}, "203.0.113.1")
 
 	ts := httptest.NewServer(srv.Handler())
@@ -96,7 +96,7 @@ func TestInfoAdvertisesObfsTransport(t *testing.T) {
 		Device:    obfsDev,
 		Advertise: Transport{Type: "awg", Port: config.WGObfsPort, Params: wg.DefaultObfsParams.Map()},
 	}
-	srv := New(cfg, dev, nil, limiter.New(100, 50), Info{Country: "DE"}, "203.0.113.1", extra)
+	srv := New(cfg, dev, nil, limiter.New(100, 50, 200, 200), Info{Country: "DE"}, "203.0.113.1", extra)
 
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
@@ -152,7 +152,7 @@ func TestInfoReportsDNSMode(t *testing.T) {
 		{"plain", nil, `"dns":{"mode":"plain"}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			srv := New(cfg, dev, nil, limiter.New(100, 50), Info{Country: "DE"}, "203.0.113.1")
+			srv := New(cfg, dev, nil, limiter.New(100, 50, 200, 200), Info{Country: "DE"}, "203.0.113.1")
 			srv.SetDNS(tc.proxy)
 			ts := httptest.NewServer(srv.Handler())
 			defer ts.Close()

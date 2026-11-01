@@ -67,6 +67,13 @@ const copyBufSize = 32 * 1024
 // untouched.
 const maxFlows = 1024
 
+// DefaultMaxPeerFlows is the per-peer share of maxFlows, per protocol (see
+// SetMaxPeerFlows). Browsing, streaming, games and calls use tens of flows;
+// a BitTorrent client wants hundreds of peers plus DHT, so this both keeps
+// one peer from taking the gateway-wide slots everyone else needs and makes
+// torrenting through us slow.
+const DefaultMaxPeerFlows = 256
+
 // dnsPort is where intercepted lookups arrive (see Forwarder.SetDNS).
 const dnsPort uint16 = 53
 
@@ -90,14 +97,15 @@ type Forwarder struct {
 	stk          *stack.Stack        // cached from dev.Stack() at Start
 	udpConn      sync.WaitGroup
 	// Live flow counts, bounding concurrent resource use (see maxFlows).
-	tcpFlows atomic.Int64
-	udpFlows atomic.Int64
+	tcpFlows     atomic.Int64
+	udpFlows     atomic.Int64
+	maxPeerFlows int64 // per peer, per protocol (see SetMaxPeerFlows)
 }
 
-// acquireFlow reserves a flow slot, or reports false when already at capacity.
-// The caller must call releaseFlow exactly once on teardown.
-func acquireFlow(n *atomic.Int64) bool {
-	if n.Add(1) > maxFlows {
+// acquireFlow reserves a slot under limit, or reports false when already at
+// capacity. The caller must call releaseFlow exactly once on teardown.
+func acquireFlow(n *atomic.Int64, limit int64) bool {
+	if n.Add(1) > limit {
 		n.Add(-1)
 		return false
 	}
@@ -106,16 +114,35 @@ func acquireFlow(n *atomic.Int64) bool {
 
 func releaseFlow(n *atomic.Int64) { n.Add(-1) }
 
+// acquirePeerFlow reserves both a gateway-wide slot (global) and one of the
+// peer's own (peer); on false neither is held. Release with releasePeerFlow.
+func (f *Forwarder) acquirePeerFlow(global, peer *atomic.Int64) bool {
+	if !acquireFlow(global, maxFlows) {
+		return false
+	}
+	if !acquireFlow(peer, f.maxPeerFlows) {
+		releaseFlow(global)
+		return false
+	}
+	return true
+}
+
+func releasePeerFlow(global, peer *atomic.Int64) {
+	releaseFlow(global)
+	releaseFlow(peer)
+}
+
 // NewForwarder builds a forwarder. allowPorts empty => allow-all (minus SMTP).
 // fleetAllow (default true, see config.GatewayFleetAllow) keeps UDP 51820
 // reachable even under a restrictive allowlist so multi-hop ENTRY->EXIT
 // forwarding works — see portAllowed.
 func NewForwarder(dev *Device, lim *limiter.Manager, allowPorts []uint16, fleetAllow bool) *Forwarder {
 	f := &Forwarder{
-		dev:        dev,
-		lim:        lim,
-		dialer:     net.Dialer{Timeout: 10 * time.Second},
-		fleetAllow: fleetAllow,
+		dev:          dev,
+		lim:          lim,
+		dialer:       net.Dialer{Timeout: 10 * time.Second},
+		fleetAllow:   fleetAllow,
+		maxPeerFlows: DefaultMaxPeerFlows,
 	}
 	if len(allowPorts) > 0 {
 		f.allow = make(map[uint16]struct{}, len(allowPorts))
@@ -130,6 +157,17 @@ func NewForwarder(dev *Device, lim *limiter.Manager, allowPorts []uint16, fleetA
 // destinations. Default OFF (the SSRF guard). Intended only for dev/test or a
 // deliberately private-network deployment (CVPN_ALLOW_PRIVATE_EGRESS).
 func (f *Forwarder) SetAllowPrivateEgress(v bool) { f.allowPrivate = v }
+
+// SetMaxPeerFlows caps one peer's concurrent forwarded flows per protocol,
+// counted across every forwarder sharing the limiter (CVPN_MAX_PEER_FLOWS).
+// Over it the peer's NEW flows are refused; its other flows and other peers
+// are untouched. n <= 0 leaves only the gateway-wide maxFlows.
+func (f *Forwarder) SetMaxPeerFlows(n int) {
+	if n <= 0 {
+		n = maxFlows
+	}
+	f.maxPeerFlows = int64(n)
+}
 
 // SetDNS makes the forwarder answer port-53 lookups addressed to a resolver p
 // knows (1.1.1.1, 9.9.9.9, ...) in-process and send them on encrypted, instead
@@ -192,7 +230,8 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 	// Reserve a flow slot before committing an endpoint, a host socket and two
 	// pump buffers — refusing here is what keeps a flow flood from exhausting
 	// memory (see maxFlows).
-	if !acquireFlow(&f.tcpFlows) {
+	lp := f.lim.Get(peer)
+	if !f.acquirePeerFlow(&f.tcpFlows, &lp.TCPFlows) {
 		r.Complete(true) // at capacity -> RST
 		return
 	}
@@ -201,17 +240,16 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 	var wq waiter.Queue
 	ep, tcpErr := r.CreateEndpoint(&wq)
 	if tcpErr != nil {
-		releaseFlow(&f.tcpFlows)
+		releasePeerFlow(&f.tcpFlows, &lp.TCPFlows)
 		r.Complete(true)
 		return
 	}
 	r.Complete(false)
 	clientConn := gonet.NewTCPConn(&wq, ep)
-	lp := f.lim.Get(peer)
 
 	if f.interceptDNS(dstIP, dstPort) {
 		go func() {
-			defer releaseFlow(&f.tcpFlows)
+			defer releasePeerFlow(&f.tcpFlows, &lp.TCPFlows)
 			f.serveDNSTCP(clientConn, dstIP, lp)
 		}()
 		return
@@ -221,13 +259,13 @@ func (f *Forwarder) handleTCP(r *tcp.ForwarderRequest) {
 	dst := net.JoinHostPort(dstIP.String(), fmt.Sprintf("%d", dstPort))
 	hostConn, err := f.dialer.Dial("tcp", dst)
 	if err != nil {
-		releaseFlow(&f.tcpFlows)
+		releasePeerFlow(&f.tcpFlows, &lp.TCPFlows)
 		clientConn.Close()
 		return
 	}
 
 	go func() {
-		defer releaseFlow(&f.tcpFlows)
+		defer releasePeerFlow(&f.tcpFlows, &lp.TCPFlows)
 		f.splice(clientConn, hostConn, lp)
 	}()
 }
@@ -294,24 +332,24 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 	// gVisor calls this handler INLINE for every datagram with no registered
 	// endpoint and applies no in-flight bound of its own, so this reservation is
 	// the only thing standing between a flood of distinct 5-tuples and OOM.
-	if !acquireFlow(&f.udpFlows) {
+	lp := f.lim.Get(peer)
+	if !f.acquirePeerFlow(&f.udpFlows, &lp.UDPFlows) {
 		return // at capacity -> drop
 	}
 
 	var wq waiter.Queue
 	ep, tcpErr := r.CreateEndpoint(&wq)
 	if tcpErr != nil {
-		releaseFlow(&f.udpFlows)
+		releasePeerFlow(&f.udpFlows, &lp.UDPFlows)
 		return
 	}
 	clientConn := gonet.NewUDPConn(f.stk, &wq, ep)
-	lp := f.lim.Get(peer)
 
 	if f.interceptDNS(dstIP, dstPort) {
 		f.udpConn.Add(1)
 		go func() {
 			defer f.udpConn.Done()
-			defer releaseFlow(&f.udpFlows)
+			defer releasePeerFlow(&f.udpFlows, &lp.UDPFlows)
 			f.serveDNSUDP(clientConn, dstIP, dstPort, lp)
 		}()
 		return
@@ -320,7 +358,7 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 	dst := net.JoinHostPort(dstIP.String(), fmt.Sprintf("%d", dstPort))
 	hostConn, err := f.dialer.Dial("udp", dst)
 	if err != nil {
-		releaseFlow(&f.udpFlows)
+		releasePeerFlow(&f.udpFlows, &lp.UDPFlows)
 		clientConn.Close()
 		return
 	}
@@ -328,7 +366,7 @@ func (f *Forwarder) handleUDP(r *udp.ForwarderRequest) {
 	f.udpConn.Add(1)
 	go func() {
 		defer f.udpConn.Done()
-		defer releaseFlow(&f.udpFlows)
+		defer releasePeerFlow(&f.udpFlows, &lp.UDPFlows)
 		f.relayUDP(clientConn, hostConn, lp)
 	}()
 }

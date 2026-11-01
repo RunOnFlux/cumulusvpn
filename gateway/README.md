@@ -76,7 +76,10 @@ chain-anchored source of truth all gateways share).
 | `CVPN_PAYMENT_ADDRESS` | yes | — | Transparent FLUX address payments go to |
 | `CVPN_DIRECTORY_PUBKEY` | no | — | ed25519 key that signs `directory.json` (republished) |
 | `CVPN_FREE_RATE_KBPS` | no | `100` | Free-tier rate limit (KB/s) |
-| `CVPN_PREMIUM_RATE_MBPS` | no | `50` | Premium per-peer ceiling (Mbit/s); < node ~100 Mbit/s uplink |
+| `CVPN_PREMIUM_RATE_MBPS` | no | `50` | Premium per-peer sustained rate (Mbit/s) |
+| `CVPN_PREMIUM_PEAK_MBPS` | no | `200` | Premium burst rate (Mbit/s) while the burst allowance lasts; <= the sustained rate turns bursting off |
+| `CVPN_PREMIUM_BURST_MB` | no | `1125` | Premium burst allowance (MB), refilled at the sustained rate — default ≈ 60 s at 200 Mbit/s, full again after ~3 min quiet |
+| `CVPN_MAX_PEER_FLOWS` | no | `256` | Max concurrent forwarded flows per peer, per protocol (TCP, UDP), across all transports; keeps one peer (e.g. a torrent client) from taking the gateway-wide 1024. `0` = gateway-wide cap only |
 | `CVPN_MAX_PEERS_FREE` | no | `500` | Max enrolled free peers |
 | `CVPN_MAX_PEERS_TOTAL` | no | `2000` | Max enrolled peers total |
 | `CVPN_EGRESS_ALLOW_PORTS` | no | (all) | Comma list; empty = allow-all minus SMTP |
