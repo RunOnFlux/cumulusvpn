@@ -306,6 +306,9 @@ function sortByNearest(rows: Country[]): Country[] {
   return rows;
 }
 
+/** Per-sample budget for the latency ping (see measureLatency). */
+const PING_TIMEOUT_MS = 10_000;
+
 /**
  * Measure a rough round-trip to a gateway's `/v1/info` (used for the dot).
  * POC: a single timed fetch, not a proper ICMP/UDP RTT; good enough to colour
@@ -321,7 +324,13 @@ export async function measureLatency(gw: GatewayInfo): Promise<number | null> {
   }
   // A 2-sample active ping (median RTT) — steadier than a single request, and
   // the same primitive the picker's on-demand re-test uses.
-  const { rttMs } = await pingGateway(gw.controlUrl, { samples: 2 });
+  // The core default (4 s per sample) is too tight on a phone: the pass runs
+  // right after discovery has opened ~100 connections, a lost SYN alone costs
+  // 1–3 s of retransmit, and while connected every ping detours through the
+  // tunnel. A gateway that just answered discovery then showed "Untested"
+  // (2026-11-01, most countries on both platforms). A slow answer is still an
+  // answer — rate it poor, don't hide it.
+  const { rttMs } = await pingGateway(gw.controlUrl, { samples: 2, timeoutMs: PING_TIMEOUT_MS });
   return rttMs;
 }
 
