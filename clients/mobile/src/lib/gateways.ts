@@ -185,14 +185,21 @@ export function latencyBand(ms: number | null): LatencyBand {
  * promise the connection keeps rather than a label.
  *
  * Ties fall back to list order (load-sorted), keeping selection deterministic.
+ *
+ * A node with a reading always beats one without. Only each row's best is
+ * pinged, and an unmeasured latency scores neutral (as if ~230 ms), so on a
+ * far-away phone the measured best of a distant country scored below its
+ * never-pinged siblings, one of them took the row, and the row said
+ * "Untested" — every multi-server country far from the user did.
  */
 function bestOf(
   list: readonly GatewayInfo[],
   latencyByIp: Readonly<Record<string, number>>,
 ): GatewayInfo | undefined {
+  const measured = list.filter((gw) => latencyByIp[gw.ip] !== undefined);
   let best: GatewayInfo | undefined;
   let bestScore = -1;
-  for (const gw of list) {
+  for (const gw of measured.length > 0 ? measured : list) {
     const { score } = gatewayQuality(latencyByIp[gw.ip] ?? null, gw.load);
     if (score > bestScore) {
       best = gw;

@@ -100,6 +100,28 @@ describe('groupByCountry', () => {
   });
 });
 
+describe('a far-away country keeps its measured best', () => {
+  // Only the row's best is pinged. 300 ms scores below an unmeasured node's
+  // neutral latency, which used to hand the row to a never-pinged sibling.
+  const far = [
+    gw({ ip: '10.0.0.1', country: 'DE', city: 'Berlin', load: 0.1 }),
+    gw({ ip: '10.0.0.2', country: 'DE', city: 'Berlin', load: 0.1 }),
+  ];
+  const latency = { '10.0.0.1': 300 };
+
+  it('groupByCountry', () => {
+    const [de] = groupByCountry(far, latency);
+    expect(de?.best.ip).toBe('10.0.0.1');
+    expect(de?.latencyMs).toBe(300);
+  });
+
+  it('groupByLocation', () => {
+    const [berlin] = groupByLocation(far, latency);
+    expect(berlin?.best.ip).toBe('10.0.0.1');
+    expect(berlin?.latencyMs).toBe(300);
+  });
+});
+
 describe('groupByLocation', () => {
   it('splits a country into one selectable row per city, each with a distinct id', () => {
     const gateways = [
