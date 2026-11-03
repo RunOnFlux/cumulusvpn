@@ -18,7 +18,7 @@
     "binding": "ASSETS",
     // Worker runs first so /api/fleet reaches it before asset routing.
     "run_worker_first": true,
-    "not_found_handling": "single-page-application"
+    "not_found_handling": "single-page-application",
   },
   // Feature-flag store (KV), read/written by worker.js and edited at /admin.
   // One-time setup (needs CF/wrangler access):
@@ -29,13 +29,12 @@
   //   wrangler kv key put --binding=FLAGS_KV flags "$(cat ../../flags.json)"  # seed
   "vars": {
     // Payments-bridge origin the /api/vouchers admin proxy forwards to.
-    "BRIDGE_URL": "https://pay.cumulusvpn.com"
+    "BRIDGE_URL": "https://pay.cumulusvpn.com",
   },
-  "kv_namespaces": [
-    { "binding": "FLAGS_KV", "id": "7ac10be1d3724e69b7d58bd3939ba5d6" }
-  ],
+  "kv_namespaces": [{ "binding": "FLAGS_KV", "id": "7ac10be1d3724e69b7d58bd3939ba5d6" }],
   // Custom domain — provisioned on deploy (Cloudflare manages the DNS record + cert).
-  "routes": [
-    { "pattern": "dashboard.cumulusvpn.com", "custom_domain": true }
-  ]
+  // The fleet sweep (worker.js sweepToKv) runs here, never on a viewer's
+  // request. Every 2 minutes = 720 KV writes/day.
+  "triggers": { "crons": ["*/2 * * * *"] },
+  "routes": [{ "pattern": "dashboard.cumulusvpn.com", "custom_domain": true }],
 }
