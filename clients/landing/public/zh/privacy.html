@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">架构层面的隐私</span>
     <h1>隐私政策</h1>
-    <p class="doc-meta">最近更新：2026年10月16日 · 生效日期：2026年8月14日</p>
+    <p class="doc-meta">最近更新：2026年11月4日 · 生效日期：2026年8月14日</p>
 
   <p class="doc-meta">本译文仅为方便阅读而提供；cumulusvpn.com/privacy 上的英文版本为准。</p>
   </div>
@@ -109,12 +109,12 @@
     </ul>
 
     <h2>2. 我们是谁</h2>
-    <p>CumulusVPN（“我们”）是由 InFlux Technologies LLC（651 N Broad St, Ste 205 #9147, Middletown, DE 19709, USA）运营的
+    <p>CumulusVPN（“我们”）是由 InFlux Technologies USA LLC（651 N Broad St, Ste 205 #9147, Middletown, DE 19709, USA）运营的
       VPN 服务，构建于 Flux 去中心化云网络之上（<a href="https://runonflux.io">runonflux.io</a>）。VPN 出口服务器
       （“网关”）以容器化应用的形式，运行在拥有静态 IP 地址的 Flux 节点上；这些节点由独立的第三方节点运营商
       拥有和运营，而非由我们运营。我们发布该服务；其底层算力是去中心化的。</p>
     <p>就欧盟/英国《通用数据保护条例》（GDPR）而言，在下列信息在极其有限的范围内可能构成
-      “个人数据”的情况下，InFlux Technologies LLC 即为数据控制者，你可以通过 info@cumulusvpn.com 联系我们。我们所依据的合法依据是我们在提供功能完善、
+      “个人数据”的情况下，InFlux Technologies USA LLC 即为数据控制者，你可以通过 info@cumulusvpn.com 联系我们。我们所依据的合法依据是我们在提供功能完善、
       抗滥用的 VPN 服务方面的正当利益（第 6(1)(f) 条）；就付款而言，则是为履行你所请求的服务
       （第 6(1)(b) 条）。由于该服务在设计上就是匿名的，在大多数情况下我们并不持有
       任何可与你关联的数据。</p>
@@ -164,7 +164,7 @@
       持久化存储中，也不会将其与你的浏览行为关联。当你的会话结束时，它不会被保留。</p>
     <h3>4.4 DNS</h3>
     <p>DNS 查询会通过加密隧道代你解析，使你的本地网络和 ISP
-      无法看到它们。随后网关会将每一次查询以加密方式（DNS over HTTPS）转发至 Cloudflare 的公共解析器（1.1.1.1）或你选择的解析器（Google Public DNS、Quad9、DNS4EU、AdGuard DNS 或 Cloudflare for Families）。发往 Mullvad DNS（194.242.2.2）的查询会改为转发至 Quad9，因为 Mullvad 将于 2026年11月2日前关闭该服务。解析器只能看到网关的 IP 地址，永远看不到你的地址。如果与它的加密连接失败，网关会改用普通 DNS 连接同一个解析器。我们不保留 DNS 查询日志。</p>
+      无法看到它们。随后网关会将每一次查询以加密方式（DNS over HTTPS）转发至 Cloudflare 的公共解析器（1.1.1.1）或你选择的解析器（Google Public DNS、Quad9、DNS4EU、AdGuard DNS 或 Cloudflare for Families）。发往 Mullvad DNS（194.242.2.2）的查询会改为转发至 Quad9，因为 Mullvad 已于 2026年11月2日关闭该服务。解析器只能看到网关的 IP 地址，永远看不到你的地址。如果与它的加密连接失败，网关会改用普通 DNS 连接同一个解析器。我们不保留 DNS 查询日志。</p>
     <h3>4.5 你的应用如何联系网关</h3>
     <p>你的应用会直接调用每个网关的控制 API，以发现网关并读取其状态。
       这些响应会<strong>使用网关的 ed25519 密钥签名，并由应用进行验证</strong>，

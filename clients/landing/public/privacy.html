@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy by architecture</span>
     <h1>Privacy Policy</h1>
-    <p class="doc-meta">Last updated: 16 October 2026 · Effective: 14 August 2026</p>
+    <p class="doc-meta">Last updated: 4 November 2026 · Effective: 14 August 2026</p>
 
   </div>
 
@@ -109,13 +109,13 @@
     </ul>
 
     <h2>2. Who we are</h2>
-    <p>CumulusVPN ("we", "us") is a VPN service operated by InFlux Technologies LLC, 651 N Broad St, Ste 205 #9147,
+    <p>CumulusVPN ("we", "us") is a VPN service operated by InFlux Technologies USA LLC, 651 N Broad St, Ste 205 #9147,
       Middletown, DE 19709, USA. It is built on the Flux decentralized cloud network
       (<a href="https://runonflux.io">runonflux.io</a>). VPN exit servers ("gateways") run as containerized apps
       on Flux nodes with static IP addresses, owned and operated by independent third-party node operators, not by
       us. We publish the service; the underlying compute is decentralized.</p>
     <p>For the purposes of the EU/UK General Data Protection Regulation (GDPR), to the very limited extent
-      any of the information below is "personal data", InFlux Technologies LLC is the data controller; you
+      any of the information below is "personal data", InFlux Technologies USA LLC is the data controller; you
       can reach us at info@cumulusvpn.com. The lawful basis we rely on is our legitimate interest (Article 6(1)(f)) in providing a
       functioning, abuse-resistant VPN, and — for payments — performance of the service you request
       (Article 6(1)(b)). Because the service is designed to be anonymous, in most cases we hold no data
@@ -168,7 +168,7 @@
       browsing. When your session ends, it is not retained.</p>
     <h3>4.4 DNS</h3>
     <p>DNS look-ups are resolved on your behalf through the encrypted tunnel so your local network and ISP
-      cannot see them. The gateway then sends each one on encrypted, as DNS over HTTPS, to Cloudflare's public resolver (1.1.1.1) or to the one you choose (Google Public DNS, Quad9, DNS4EU, AdGuard DNS or Cloudflare for Families). Look-ups addressed to Mullvad DNS (194.242.2.2), which Mullvad is shutting down by 2 November 2026, are sent to Quad9 instead. The resolver sees only the gateway's IP address, never yours. If the encrypted connection to it fails, the gateway falls back to ordinary DNS to the same resolver. We do not keep DNS query logs.</p>
+      cannot see them. The gateway then sends each one on encrypted, as DNS over HTTPS, to Cloudflare's public resolver (1.1.1.1) or to the one you choose (Google Public DNS, Quad9, DNS4EU, AdGuard DNS or Cloudflare for Families). Look-ups addressed to Mullvad DNS (194.242.2.2), which Mullvad shut down on 2 November 2026, are sent to Quad9 instead. The resolver sees only the gateway's IP address, never yours. If the encrypted connection to it fails, the gateway falls back to ordinary DNS to the same resolver. We do not keep DNS query logs.</p>
     <h3>4.5 How your app reaches the gateways</h3>
     <p>Your app discovers gateways and reads their status by calling each gateway's control API directly.
       Those responses are <strong>signed with the gateway's ed25519 key and verified by the app</strong>,
