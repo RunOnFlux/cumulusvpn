@@ -101,9 +101,31 @@ const FLEET_KEY = 'fleet:snapshot';
  */
 const KEEP_NONEMPTY_FOR_MS = 30 * 60_000;
 
-/** Sweep the fleet and store the result in KV. */
-async function sweepToKv(env) {
-  const data = await fleet();
+/**
+ * Sweep the fleet and store the result in KV. Logs one structured line per run
+ * (observability is on in wrangler.jsonc) so a run that ends without a write is
+ * visible in Workers Logs with the reason, instead of only as a stale page.
+ */
+async function sweepToKv(env, trigger) {
+  const started = Date.now();
+  const log = (outcome, extra = {}) =>
+    console.log(
+      JSON.stringify({
+        event: 'fleet-sweep',
+        trigger,
+        outcome,
+        ms: Date.now() - started,
+        ...extra,
+      }),
+    );
+  let data;
+  try {
+    data = await fleet();
+  } catch (e) {
+    log('sweep-error', { error: String(e && e.stack ? e.stack : e) });
+    throw e;
+  }
+  const up = data.instances.filter((i) => i.up).length;
   if (data.instances.length === 0) {
     const prev = await env.FLAGS_KV.get(FLEET_KEY, 'json').catch(() => null);
     if (
@@ -112,10 +134,17 @@ async function sweepToKv(env) {
       prev.instances.length > 0 &&
       Date.now() - prev.generatedAt < KEEP_NONEMPTY_FOR_MS
     ) {
+      log('kept-previous-empty-sweep');
       return prev;
     }
   }
-  await env.FLAGS_KV.put(FLEET_KEY, JSON.stringify(data));
+  try {
+    await env.FLAGS_KV.put(FLEET_KEY, JSON.stringify(data));
+  } catch (e) {
+    log('kv-put-error', { instances: data.instances.length, up, error: String(e) });
+    throw e;
+  }
+  log('written', { instances: data.instances.length, up });
   return data;
 }
 
@@ -598,7 +627,7 @@ export default {
       // No snapshot at all: only between the first deploy of this version and
       // its first cron run. Start one (it may be cut off; the cron will finish
       // the job) and tell the page to retry soon.
-      ctx.waitUntil(sweepToKv(env).catch(() => undefined));
+      ctx.waitUntil(sweepToKv(env, 'request').catch(() => undefined));
       return jsonResponse({ error: 'warming up', retry_after_s: 15 }, { 'retry-after': '15' }, 503);
     }
 
@@ -606,7 +635,11 @@ export default {
   },
 
   // Cron Trigger (wrangler.jsonc): the only place the fleet is swept.
-  async scheduled(_event, env, ctx) {
-    ctx.waitUntil(sweepToKv(env));
+  // Await the sweep (do NOT hand it to ctx.waitUntil): a sweep takes 40-80s,
+  // and work left to waitUntil after the handler returns is cut off ~30s
+  // later — the same limit that broke the request-triggered design. An
+  // awaited scheduled handler gets the Cron Trigger wall-time budget.
+  async scheduled(event, env) {
+    await sweepToKv(env, `cron ${event.cron}`);
   },
 };
