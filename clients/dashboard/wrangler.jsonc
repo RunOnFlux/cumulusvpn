@@ -35,6 +35,8 @@
   // Custom domain — provisioned on deploy (Cloudflare manages the DNS record + cert).
   // The fleet sweep (worker.js sweepToKv) runs here, never on a viewer's
   // request. Every 2 minutes = 720 KV writes/day.
+  // Workers Logs: each fleet sweep logs its outcome (worker.js sweepToKv).
+  "observability": { "enabled": true },
   "triggers": { "crons": ["*/2 * * * *"] },
   "routes": [{ "pattern": "dashboard.cumulusvpn.com", "custom_domain": true }],
 }
