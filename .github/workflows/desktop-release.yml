@@ -245,10 +245,13 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
-          # PowerShell 7 (pwsh) installs per-user modules where only pwsh looks,
-          # so the signCommand and build-helper.mjs run pwsh, never powershell.exe.
-          Install-Module -Name TrustedSigning -MinimumVersion 0.5.0 -Force -Repository PSGallery -Scope CurrentUser
+          # PSResourceGet ships with PowerShell 7.4+ (no NuGet provider bootstrap,
+          # which only exists in Windows PowerShell 5). It installs per-user
+          # modules where only pwsh looks, so the signCommand and
+          # build-helper.mjs run pwsh, never powershell.exe.
+          Install-PSResource -Name TrustedSigning -Version '[0.5.0,)' -Repository PSGallery -Scope CurrentUser -TrustRepository -Quiet
+          Import-Module TrustedSigning
+          Get-Command Invoke-TrustedSigning | Format-Table Name, Version, Source -AutoSize
           $script = (Resolve-Path clients/desktop/scripts/sign-windows.ps1).Path
           $overlay = Join-Path $env:RUNNER_TEMP 'tauri.windows-signing.conf.json'
           @{ bundle = @{ windows = @{ signCommand = @{
