@@ -116,6 +116,9 @@ export function useIap(enabled: boolean, code: string | null, tierPremium: boole
         const session = await startIapSession(code, {
           onVerified: () => {
             if (alive) {
+              // The plan card says "Renews automatically" straight away, not
+              // "Paid once" until the next reconcile.
+              applyHoldings('renewing');
               setPhase('activating');
             }
           },

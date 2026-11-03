@@ -208,7 +208,9 @@ function PremiumCard({
 }): React.JSX.Element {
   // A fuel gauge, not a timeline: full while 30+ days remain, then runs down.
   const fill = expiry ? Math.min(expiry.daysLeft, 30) / 30 : 1;
-  const low = expiry !== null && expiry.daysLeft <= 5;
+  // A renewing subscription isn't running out, however few days the current
+  // period has left (TestFlight renews daily).
+  const low = expiry !== null && expiry.daysLeft <= 5 && storeSub !== 'renewing';
   return (
     <View style={styles.premCard}>
       <View style={styles.premTop}>
@@ -296,7 +298,7 @@ function SubscribeSection({
 
   if (iap.phase === 'done') {
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, styles.subscribedCard]}>
         <Text style={styles.copy}>
           Subscribed — this device now gets full speed on every server. Manage or cancel any time in
           your store account.
@@ -771,6 +773,7 @@ const styles = StyleSheet.create({
     gap: space.md,
   },
   tierRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  subscribedCard: { marginTop: space.md },
   premCard: {
     backgroundColor: 'rgba(245,178,61,0.08)',
     borderColor: 'rgba(245,178,61,0.35)',
