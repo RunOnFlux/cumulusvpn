@@ -80,11 +80,44 @@ const PROBE_CONCURRENCY = 6;
 /** Same, for the Flux API placement lookups that feed the probe list. */
 const LOCATION_CONCURRENCY = 6;
 /**
- * How stale the fleet data may get before a request triggers a background
- * refresh. Matches the page's own poll interval, so a viewer watching the page
- * sees numbers that move about as often as they expect.
+ * KV key holding the latest fleet sweep (JSON, with its own generatedAt).
+ *
+ * The sweep runs on a Cron Trigger (wrangler.jsonc, every 2 minutes) and is
+ * the ONLY thing that probes gateways. /api/fleet just reads this key.
+ *
+ * Why not sweep on demand behind caches.default (the previous design): the
+ * Cache API is not reliably shared between machines even within one colo, so
+ * many viewers hit a cold cache and got a 503 "warming up"; and the refresh it
+ * kicked off ran under ctx.waitUntil, which is cut off ~30s after the response,
+ * while a sweep at PROBE_CONCURRENCY takes 30-50s. Often it never finished, so
+ * the next viewer was cold again — the page sat on "Couldn't reach the fleet
+ * API". A cron invocation has minutes of wall time and KV is global.
  */
-const REFRESH_AFTER_MS = 30_000;
+const FLEET_KEY = 'fleet:snapshot';
+/**
+ * Do not replace a snapshot that has instances with an empty sweep (Flux API
+ * outage, every placement lookup failing) unless the old one is older than
+ * this — an empty board would look like the whole fleet died.
+ */
+const KEEP_NONEMPTY_FOR_MS = 30 * 60_000;
+
+/** Sweep the fleet and store the result in KV. */
+async function sweepToKv(env) {
+  const data = await fleet();
+  if (data.instances.length === 0) {
+    const prev = await env.FLAGS_KV.get(FLEET_KEY, 'json').catch(() => null);
+    if (
+      prev &&
+      Array.isArray(prev.instances) &&
+      prev.instances.length > 0 &&
+      Date.now() - prev.generatedAt < KEEP_NONEMPTY_FOR_MS
+    ) {
+      return prev;
+    }
+  }
+  await env.FLAGS_KV.put(FLEET_KEY, JSON.stringify(data));
+  return data;
+}
 
 /** Public IPv4 literal only — hardens the probe against a poisoned Flux-API
  *  response steering us at private/reserved hosts. Rejects zero-padded (octal)
@@ -332,13 +365,7 @@ const FLAGS_KEY = 'flags';
 //   webPayLink    — "Pay on the website" button (web checkout, device code prefilled)
 //   transferNotice — one-time "save your recovery key" prompt for Premium devices
 //                   (not a payment option; on shortly before an App Store transfer)
-const FLAG_NAMES = [
-  'inAppUpgrade',
-  'iapPurchase',
-  'voucherRedeem',
-  'webPayLink',
-  'transferNotice',
-];
+const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase', 'voucherRedeem', 'webPayLink', 'transferNotice'];
 // Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
 const DEFAULT_FLAGS = Object.fromEntries(
   FLAG_NAMES.map((name) => [name, { android: false, ios: false }]),
@@ -455,7 +482,11 @@ export default {
       ]);
       const body = await res.json().catch(() => null);
       if (!res.ok || !body || body.status !== 'success') {
-        return jsonResponse(body ?? { error: `bridge HTTP ${res.status}` }, {}, res.ok ? 502 : res.status);
+        return jsonResponse(
+          body ?? { error: `bridge HTTP ${res.status}` },
+          {},
+          res.ok ? 502 : res.status,
+        );
       }
       const price = latestPrice(health?.data?.price_schedule);
       const balance = body.data.balance_flux;
@@ -464,7 +495,8 @@ export default {
         data: {
           ...body.data,
           price_flux: price,
-          settleable_months: price !== null && typeof balance === 'number' ? Math.floor(balance / price) : null,
+          settleable_months:
+            price !== null && typeof balance === 'number' ? Math.floor(balance / price) : null,
         },
       });
     }
@@ -523,7 +555,11 @@ export default {
       const valid = validateFlags(body);
       if (!valid) {
         return jsonResponse(
-          { error: 'expected { <flag>: { android: boolean, ios: boolean } } with at least one of: ' + FLAG_NAMES.join(', ') },
+          {
+            error:
+              'expected { <flag>: { android: boolean, ios: boolean } } with at least one of: ' +
+              FLAG_NAMES.join(', '),
+          },
           {},
           400,
         );
@@ -536,7 +572,10 @@ export default {
       const current = await readFlags(env);
       const merged = {};
       for (const name of FLAG_NAMES) {
-        merged[name] = body[name] !== undefined ? valid[name] : (current[name] ?? { android: false, ios: false });
+        merged[name] =
+          body[name] !== undefined
+            ? valid[name]
+            : (current[name] ?? { android: false, ios: false });
       }
       const record = { ...merged, updatedAt: new Date().toISOString() };
       await env.FLAGS_KV.put(FLAGS_KEY, JSON.stringify(record));
@@ -544,71 +583,30 @@ export default {
     }
 
     if (url.pathname === '/api/fleet') {
-      const cache = caches.default;
-      const key = new Request(new URL('/api/fleet', url.origin).toString(), { method: 'GET' });
-      const sweep = async () => {
-        const data = await fleet();
-        const fresh = new Response(JSON.stringify(data), {
+      // cacheTtl keeps a per-colo copy for 30s (the KV minimum), so a busy page
+      // costs one KV read per colo per 30s; the cron writes every 2 minutes.
+      const snapshot = await env.FLAGS_KV.get(FLEET_KEY, { cacheTtl: 30 });
+      if (snapshot) {
+        return new Response(snapshot, {
           headers: {
             'content-type': 'application/json; charset=utf-8',
-            // Long on purpose. This is how long a copy remains SERVABLE, not
-            // how long it is considered current — staleness is judged from the
-            // payload's own generatedAt below. A short max-age here defeats the
-            // whole design: cache.match misses on an expired entry, so there is
-            // no stale copy left to answer with and the request blocks on a
-            // sweep. That is exactly what the first version of this did, and it
-            // cost ~30s on every other request.
-            'cache-control': 'public, max-age=600',
+            'cache-control': 'no-store',
             'access-control-allow-origin': '*',
           },
         });
-        await cache.put(key, fresh.clone());
-        return fresh;
-      };
-
-      // Stale-while-revalidate. Probing the fleet is inherently slow — it is a
-      // hundred-odd round trips to gateways worldwide, deliberately run a few
-      // at a time so none of them are wrongly declared dead. Making a viewer
-      // wait for that is what pushed the old code into cranking concurrency up
-      // until the sweep started lying.
-      //
-      // A cached copy answers instantly and a refresh runs behind it, so how
-      // long a sweep takes stops being a constraint on the design. Worst case a
-      // viewer sees numbers one sweep old, on a page that already refreshes
-      // every 30s. Nothing waits for a sweep, cold cache included.
-      const cached = await cache.match(key);
-      if (!cached) {
-        // Cold cache. caches.default is per-DATACENTER, so this is not a rare
-        // one-off — it is paid at every edge location the page is opened from,
-        // and a full sweep at this concurrency took 48s and 31s on two colos
-        // when it blocked. Kick it off and answer immediately instead: the page
-        // already retries a failed fetch on its 30s poll, and by then the cache
-        // is populated. Better a brief "retrying" than a minute of blank tab.
-        //
-        // Safe to rely on waitUntil here because a sweep demonstrably outlives
-        // the response — the background refresh below has been observed
-        // completing and resetting the data age in production.
-        ctx.waitUntil(sweep().catch(() => undefined));
-        return jsonResponse({ error: 'warming up', retry_after_s: 15 }, { 'retry-after': '15' }, 503);
       }
-      {
-        // Refresh only once the data has actually aged, or every viewer's poll
-        // would launch its own sweep and they would stampede the gateways.
-        let age = Infinity;
-        try {
-          const { generatedAt } = await cached.clone().json();
-          if (typeof generatedAt === 'number') age = Date.now() - generatedAt;
-        } catch {
-          // Unparseable cache entry — treat as ancient and re-sweep.
-        }
-        if (age > REFRESH_AFTER_MS) {
-          ctx.waitUntil(sweep().catch(() => undefined));
-        }
-        return cached;
-      }
-      return sweep();
+      // No snapshot at all: only between the first deploy of this version and
+      // its first cron run. Start one (it may be cut off; the cron will finish
+      // the job) and tell the page to retry soon.
+      ctx.waitUntil(sweepToKv(env).catch(() => undefined));
+      return jsonResponse({ error: 'warming up', retry_after_s: 15 }, { 'retry-after': '15' }, 503);
     }
 
     return env.ASSETS.fetch(request);
+  },
+
+  // Cron Trigger (wrangler.jsonc): the only place the fleet is swept.
+  async scheduled(_event, env, ctx) {
+    ctx.waitUntil(sweepToKv(env));
   },
 };
