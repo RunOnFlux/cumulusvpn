@@ -22,24 +22,26 @@ name: desktop-release
 #                                       hooks / the MSI fragment (per-machine)
 #   The verify steps after the build install the packages on the runner and
 #   check the service, its permissions, peer authentication and uninstall
-#   cleanup. While Apple signing is off, the macOS build cannot register its
-#   helper; it works only when launched as root (sudo), which uses the
-#   in-process tunnel.
+#   cleanup. macOS tag builds are Developer ID signed + notarized (the helper
+#   must be, or SMAppService will not register it).
 # - Windows: routing.rs drives netsh/PowerShell and wggo.rs speaks UAPI over
 #   the named pipe, so the installer produces a working tunnel. wireguard-go
 #   needs wintun.dll next to the exe: the step below fetches the pinned
 #   official build (SHA256-verified) and tauri.windows.conf.json bundles it.
-#   Artifacts are UNSIGNED — no Windows code-signing cert yet, so SmartScreen
-#   will warn on first run; tauri `targets: "all"` emits NSIS + MSI.
+#   Signed with Azure Artifact Signing when the AZURE_* secrets/vars exist
+#   (see the "Prepare Windows code signing" step); unsigned otherwise, and
+#   SmartScreen warns. tauri `targets: "all"` emits NSIS + MSI.
 # - The wireguard-go (AmneziaWG) sidecar is cross-built from source per target
 #   by fetch-wireguard-go.sh (pure Go, CGO off) — no prebuilt downloads.
 #
 # Trigger: push a tag like `desktop-v1.2.3`, or run manually (manual runs only
 # BUILD — no release is created, useful to CI-validate a new matrix leg).
 #
-# Required secret: TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD) for the updater.
-# Optional (Gatekeeper-clean .dmg): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
-# APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID. See docs/14-releases.md.
+# Required secrets: TAURI_SIGNING_PRIVATE_KEY (+ _PASSWORD) for the updater, and
+# for macOS tag builds APPLE_CERTIFICATE (base64 .p12), APPLE_CERTIFICATE_PASSWORD,
+# APPLE_SIGNING_IDENTITY ("Developer ID Application: … (276MY32G8B)"),
+# APPLE_API_KEY (Key ID), APPLE_API_ISSUER (Issuer ID), APPLE_API_KEY_P8 (.p8
+# contents). See docs/14-releases.md.
 
 on:
   push:
@@ -48,6 +50,8 @@ on:
 
 permissions:
   contents: write
+  # GitHub OIDC → Azure (Windows signing): no Azure secret is stored anywhere.
+  id-token: write
 
 jobs:
   build:
@@ -62,6 +66,9 @@ jobs:
           - runner: windows-latest
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.runner }}
+    # The Azure app trusts tokens for exactly this environment
+    # (repo:RunOnFlux/cumulusvpn:environment:desktop-release).
+    environment: desktop-release
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
@@ -123,19 +130,149 @@ jobs:
           New-Item -ItemType Directory -Force -Path clients/desktop/src-tauri/wintun | Out-Null
           Copy-Item wintun-unzip/wintun/bin/amd64/wintun.dll clients/desktop/src-tauri/wintun/wintun.dll
 
+      # macOS signing + notarization (Developer ID, team 276MY32G8B — must match
+      # APPLE_TEAM_ID in src-tauri/helper/src/peer.rs). The certificate goes
+      # into a throwaway keychain HERE rather than via tauri-action's
+      # APPLE_CERTIFICATE, because scripts/build-helper.mjs signs the helper in
+      # beforeBuildCommand, which runs before Tauri would import it. Tauri then
+      # finds APPLE_SIGNING_IDENTITY in the keychain, signs the sidecar + app,
+      # notarizes with the App Store Connect API key and staples the ticket.
+      # Values reach later steps through $GITHUB_ENV, so nothing is passed
+      # empty. A tag build without the secrets FAILS: an unsigned .dmg is
+      # reported as "damaged" by Gatekeeper and must never be released again.
+      - name: Import Apple signing certificate + notarization key
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_SIGNING_IDENTITY" ] \
+             || [ -z "$APPLE_API_KEY" ] || [ -z "$APPLE_API_ISSUER" ] || [ -z "$APPLE_API_KEY_P8" ]; then
+            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              echo "::error::Apple signing secrets are missing; refusing to release an unsigned macOS build."
+              exit 1
+            fi
+            echo "::warning::Apple signing secrets not set; this manual build will be UNSIGNED (not for distribution)."
+            exit 0
+          fi
+          case "$APPLE_SIGNING_IDENTITY" in
+            *"(276MY32G8B)"*) ;;
+            *) echo "::error::APPLE_SIGNING_IDENTITY is not from team 276MY32G8B (see helper/src/peer.rs)"; exit 1 ;;
+          esac
+
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" \
+            -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN" >/dev/null
+          existing=()
+          while IFS= read -r k; do existing+=("$k"); done < <(security list-keychains -d user | tr -d '" ' )
+          security list-keychains -d user -s "$KEYCHAIN" "${existing[@]}"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security find-identity -v -p codesigning "$KEYCHAIN" | grep -F "$APPLE_SIGNING_IDENTITY"
+
+          KEY_PATH="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY}.p8"
+          printf '%s' "$APPLE_API_KEY_P8" > "$KEY_PATH"
+          {
+            echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
+            echo "APPLE_KEYCHAIN=$KEYCHAIN"
+            echo "APPLE_API_KEY=$APPLE_API_KEY"
+            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
+            echo "APPLE_API_KEY_PATH=$KEY_PATH"
+            echo "CVPN_MAC_SIGNED=1"
+          } >> "$GITHUB_ENV"
+
+      # Windows signing: Azure Artifact Signing, Public Trust profile
+      # zelcore-public-trust-us (InFlux Technologies USA LLC — same publisher as
+      # the Mac build) in account zelcoresigningus. GitHub signs in to the
+      # cumulusvpn-signing-ci Entra app via OIDC (federated credential for the
+      # desktop-release environment); that app holds only the "Artifact Signing
+      # Certificate Profile Signer" role on that one account. No client secret.
+      # Vars: AZURE_CLIENT_ID, AZURE_TENANT_ID, AZURE_SUBSCRIPTION_ID,
+      # AZURE_CODE_SIGNING_ENDPOINT, AZURE_CODE_SIGNING_ACCOUNT_NAME,
+      # AZURE_CERTIFICATE_PROFILE_NAME. When they exist, a Tauri config overlay
+      # makes signCommand run scripts/sign-windows.ps1 on every binary +
+      # installer, and build-helper.mjs signs the helper. Tag builds fail
+      # without them; manual builds go unsigned with a warning.
+      - name: Check Windows signing configuration
+        id: winsign
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          missing=()
+          for v in AZURE_CLIENT_ID AZURE_TENANT_ID AZURE_SUBSCRIPTION_ID AZURE_CODE_SIGNING_ENDPOINT \
+                   AZURE_CODE_SIGNING_ACCOUNT_NAME AZURE_CERTIFICATE_PROFILE_NAME; do
+            [ -n "${!v}" ] || missing+=("$v")
+          done
+          if [ ${#missing[@]} -gt 0 ]; then
+            if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+              echo "::error::Windows signing not configured (missing vars: ${missing[*]}); refusing to release unsigned installers."
+              exit 1
+            fi
+            echo "::warning::Windows signing not configured (missing vars: ${missing[*]}); this manual build is UNSIGNED."
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          AZURE_TENANT_ID: ${{ vars.AZURE_TENANT_ID }}
+          AZURE_SUBSCRIPTION_ID: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+          AZURE_CODE_SIGNING_ENDPOINT: ${{ vars.AZURE_CODE_SIGNING_ENDPOINT }}
+          AZURE_CODE_SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_CODE_SIGNING_ACCOUNT_NAME }}
+          AZURE_CERTIFICATE_PROFILE_NAME: ${{ vars.AZURE_CERTIFICATE_PROFILE_NAME }}
+
+      - name: Azure login (OIDC)
+        if: runner.os == 'Windows' && steps.winsign.outputs.enabled == 'true'
+        uses: azure/login@a641126d1b8aa4d1fa005f4f92df94a3a4c4c906 # v3.1.0
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Prepare Windows code signing (Azure Artifact Signing)
+        if: runner.os == 'Windows' && steps.winsign.outputs.enabled == 'true'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Force -Scope CurrentUser | Out-Null
+          # PowerShell 7 (pwsh) installs per-user modules where only pwsh looks,
+          # so the signCommand and build-helper.mjs run pwsh, never powershell.exe.
+          Install-Module -Name TrustedSigning -MinimumVersion 0.5.0 -Force -Repository PSGallery -Scope CurrentUser
+          $script = (Resolve-Path clients/desktop/scripts/sign-windows.ps1).Path
+          $overlay = Join-Path $env:RUNNER_TEMP 'tauri.windows-signing.conf.json'
+          @{ bundle = @{ windows = @{ signCommand = @{
+                cmd  = 'pwsh'
+                args = @('-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', $script, '%1')
+          } } } } | ConvertTo-Json -Depth 6 | Set-Content -Encoding utf8 $overlay
+          Get-Content $overlay
+          "CVPN_WIN_SIGN=1" >> $env:GITHUB_ENV
+          "CVPN_TAURI_SIGN_ARGS=--config $overlay" >> $env:GITHUB_ENV
+
       - name: Build + release (tauri-action)
         uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          # Apple code-signing / notarization is intentionally OFF for now: the
-          # APPLE_* secrets aren't set, and passing them EMPTY makes tauri-action
-          # try `security import` with an empty cert and fail. Result: an UNSIGNED
-          # .dmg (right-click → Open to bypass Gatekeeper). To enable notarized
-          # builds later, add the APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD /
-          # APPLE_SIGNING_IDENTITY / APPLE_ID / APPLE_PASSWORD / APPLE_TEAM_ID
-          # repository secrets and re-add them as env here (see docs/14-releases.md).
+          # Used by scripts/sign-windows.ps1 only when CVPN_WIN_SIGN=1
+          # (credentials come from the az CLI session of the OIDC login).
+          AZURE_CODE_SIGNING_ENDPOINT: ${{ vars.AZURE_CODE_SIGNING_ENDPOINT }}
+          AZURE_CODE_SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_CODE_SIGNING_ACCOUNT_NAME }}
+          AZURE_CERTIFICATE_PROFILE_NAME: ${{ vars.AZURE_CERTIFICATE_PROFILE_NAME }}
+          # macOS signing/notarization env (APPLE_SIGNING_IDENTITY, APPLE_API_*)
+          # comes from $GITHUB_ENV, set by the import step above only when the
+          # secrets exist — never passed empty.
         with:
           projectPath: clients/desktop
           # On a manual dispatch tagName is empty, so tauri-action only builds —
@@ -144,7 +281,7 @@ jobs:
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('CumulusVPN Desktop {0}', github.ref_name) || '' }}
           releaseDraft: true
           prerelease: false
-          args: --target ${{ matrix.target }}
+          args: --target ${{ matrix.target }} ${{ env.CVPN_TAURI_SIGN_ARGS }}
 
       # The helper must actually be in the bundle: without it the app can only
       # show its setup banner (or run as root).
@@ -156,6 +293,33 @@ jobs:
           set -euxo pipefail
           test -x CumulusVPN.app/Contents/MacOS/cumulusvpn-helper
           test -f CumulusVPN.app/Contents/Library/LaunchDaemons/com.cumulusvpn.helper.plist
+
+      # A signed build must pass Gatekeeper exactly as a downloaded copy will:
+      # every executable carries team 276MY32G8B, the seal is intact, and the
+      # notarization ticket is stapled. Checks the .dmg's own copy too.
+      - name: Verify the macOS signature + notarization
+        if: runner.os == 'macOS' && env.CVPN_MAC_SIGNED == '1'
+        shell: bash
+        working-directory: clients/desktop/src-tauri/target/${{ matrix.target }}/release/bundle
+        run: |
+          set -euxo pipefail
+          check_app() {
+            local app="$1"
+            codesign --verify --deep --strict --verbose=2 "$app"
+            for bin in cumulusvpn-desktop cumulusvpn-helper wireguard-go; do
+              codesign -dv --verbose=4 "$app/Contents/MacOS/$bin" 2>&1 | tee "$RUNNER_TEMP/cs.txt"
+              grep -q '^TeamIdentifier=276MY32G8B$' "$RUNNER_TEMP/cs.txt"
+              grep -q 'flags=.*runtime' "$RUNNER_TEMP/cs.txt"
+            done
+            spctl --assess --type execute --verbose=4 "$app"
+            xcrun stapler validate "$app"
+          }
+          check_app macos/CumulusVPN.app
+          dmg=$(ls dmg/*.dmg | head -n1)
+          mnt="$RUNNER_TEMP/dmg-mnt"
+          hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
+          trap 'hdiutil detach "$mnt" || true' EXIT
+          check_app "$mnt/CumulusVPN.app"
 
       # The runner has systemd, so install the .deb for real (docs/16 Stage J):
       # the service starts, its socket is root:cumulusvpn 0660, root is served,
@@ -254,6 +418,18 @@ jobs:
             & $helper --ping
             if ($LASTEXITCODE -ne 0) { throw 'an elevated --ping was not served' }
           }
+          # Signed builds: every installer and every installed binary must carry
+          # a Valid, timestamped Authenticode signature (wintun.dll is signed
+          # by WireGuard LLC upstream; it is checked too).
+          function Assert-Signed([string[]]$paths) {
+            if ($env:CVPN_WIN_SIGN -ne '1') { return }
+            foreach ($p in $paths) {
+              $sig = Get-AuthenticodeSignature -LiteralPath $p
+              Write-Host "$($sig.Status)  $p  $($sig.SignerCertificate.Subject)"
+              if ($sig.Status -ne 'Valid') { throw "not validly signed: $p ($($sig.Status))" }
+              if (-not $sig.TimeStamperCertificate) { throw "no timestamp: $p" }
+            }
+          }
           function Assert-Gone {
             # 1060: the service does not exist.
             for ($i = 0; $i -lt 50; $i++) {
@@ -267,8 +443,11 @@ jobs:
           }
 
           $nsis = Get-ChildItem nsis/*-setup.exe | Select-Object -First 1
+          $msiFile = Get-ChildItem msi/*.msi | Select-Object -First 1
+          Assert-Signed @($nsis.FullName, $msiFile.FullName)
           Start-Process -FilePath $nsis.FullName -ArgumentList '/S' -Wait
           Assert-Service
+          Assert-Signed ((Get-ChildItem $dir -Recurse -Include *.exe, *.dll).FullName)
           Start-Process -FilePath (Join-Path $dir 'uninstall.exe') -ArgumentList '/S', "_?=$dir" -Wait
           Assert-Gone
 

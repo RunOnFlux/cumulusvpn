@@ -42,6 +42,121 @@ base64 -i cumulusvpn-release.keystore | pbcopy   # macOS: now on your clipboard
 | `ANDROID_KEY_STORE_PASSWORD` | the keystore password       |
 | `ANDROID_KEY_PASSWORD`       | the key password            |
 
+**2b. Windows signing — Azure Artifact Signing** (formerly Trusted Signing).
+Publisher: **InFlux Technologies USA LLC**, same as the Mac build. Already set
+up: account `zelcoresigningus` (East US), Public Trust profile
+`zelcore-public-trust-us`, and the Entra app `cumulusvpn-signing-ci`, which has
+only the **Artifact Signing Certificate Profile Signer** role on that account.
+GitHub signs in to it with **OIDC** (federated credential for
+`repo:RunOnFlux@78997786/cumulusvpn@1303456879:environment:desktop-release`),
+so **no client secret exists**. The release job runs in the `desktop-release`
+environment for that reason.
+
+Repo variables (set): `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`,
+`AZURE_SUBSCRIPTION_ID`, `AZURE_CODE_SIGNING_ENDPOINT`,
+`AZURE_CODE_SIGNING_ACCOUNT_NAME`, `AZURE_CERTIFICATE_PROFILE_NAME`.
+
+Tauri's `signCommand` and `scripts/build-helper.mjs` run
+`scripts/sign-windows.ps1` on the app, sidecar, helper and both installers; the
+verify step requires a Valid, timestamped signature on every installer and every
+installed `.exe`/`.dll`. A tag build fails if the variables are missing.
+
+**2c. Linux — signed apt/dnf repository** at `https://pkg.cumulusvpn.com`,
+served by **GitHub Pages** from this repo (R2 can't be self-served on the
+InFlux Cloudflare account). DNS: `pkg` CNAME → `runonflux.github.io`, DNS only
+(not proxied), plus the Pages custom domain `pkg.cumulusvpn.com` with HTTPS
+enforced. Linux has no code-signing CA: trust is a CumulusVPN GPG key.
+`desktop-linux-repo.yml` runs when a `desktop-v*` release is **published** (not
+on the draft). It rebuilds the whole repo from the newest 3 published desktop
+releases (stateless), signs it with `scripts/linux-repo.sh`, deploys Pages,
+smoke-tests apt + dnf against the live site, and signs a `SHA256SUMS.asc` onto
+the release.
+
+Generate the key once and back it up in the password manager:
+
+```bash
+gpg --quick-gen-key "CumulusVPN Packages <info@cumulusvpn.com>" rsa4096 sign never
+FPR=$(gpg --list-secret-keys --with-colons "info@cumulusvpn.com" | awk -F: '/^fpr/{print $10; exit}')
+gh variable set LINUX_GPG_FINGERPRINT --body "$FPR"
+gpg --armor --export-secret-keys "$FPR" | gh secret set LINUX_GPG_PRIVATE_KEY
+gh secret set LINUX_GPG_PASSPHRASE   # paste the passphrase when prompted
+```
+
+The key deliberately **never expires**: users' apt keyrings and dnf key
+imports are static copies, so an expiring key would break `apt update`
+everywhere (EXPKEYSIG) on the expiry date. The protection is the revocation
+certificate gpg writes to `~/.gnupg/openpgp-revocs.d/<FPR>.rev` — store it,
+with an export of the secret key, in the password manager. If the key is ever
+compromised: import the revocation, publish the revoked key at
+`/cumulusvpn.asc`, and rotate to a new key.
+
+User install instructions:
+
+```bash
+# Debian / Ubuntu
+curl -fsSL https://pkg.cumulusvpn.com/cumulusvpn.asc | sudo gpg --dearmor -o /usr/share/keyrings/cumulusvpn.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cumulusvpn.gpg] https://pkg.cumulusvpn.com/deb stable main" \
+  | sudo tee /etc/apt/sources.list.d/cumulusvpn.list
+sudo apt update && sudo apt install cumulus-vpn
+
+# Fedora / RHEL
+sudo curl -fsSL -o /etc/yum.repos.d/cumulusvpn.repo https://pkg.cumulusvpn.com/rpm/cumulusvpn.repo
+sudo dnf install cumulus-vpn
+```
+
+**3. Release:** `git tag mobile-v1.0.0 && git push origin mobile-v1.0.0` → the
+workflow builds the signed APK + AAB and attaches both to a GitHub Release. Upload
+the **AAB** to the Play Console. Keep the keystore safe — with **Play App Signing**
+Google re-signs, but this upload key is still your identity to Play.
+
+_(Optional)_ auto-upload to Play: add a Play service-account JSON secret and a
+`r0adkll/upload-google-play` step — deferred; upload manually for the first release.
+
+## Desktop (Tauri)
+
+`desktop-release.yml` builds all platforms via `tauri-action`. The **updater** is
+enabled (`tauri.conf.json`), so it needs an updater signing key.
+
+**1. Generate the updater key:**
+
+```bash
+cd clients/desktop
+yarn tauri signer generate -w cumulusvpn-updater.key
+# prints a PUBLIC key and writes the private key to cumulusvpn-updater.key (gitignored)
+```
+
+- Put the **public key** into `clients/desktop/src-tauri/tauri.conf.json` under
+  `plugins.updater.pubkey` (and set `plugins.updater.endpoints` to your release
+  feed, e.g. the GitHub Releases `latest.json`).
+- Secrets: `TAURI_SIGNING_PRIVATE_KEY` = the contents of `cumulusvpn-updater.key`;
+  `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` = the password you set.
+
+**2. macOS sign + notarize** (REQUIRED for tag builds — an unsigned `.dmg` is
+reported as "damaged" by Gatekeeper, and the privileged helper cannot register
+without a Developer ID signature). Everything must come from the US team
+**276MY32G8B** (= `APPLE_TEAM_ID` in `src-tauri/helper/src/peer.rs`):
+
+- **Developer ID Application** certificate (only the Account Holder can create
+  it; G2 Sub-CA). Export cert + private key as `.p12`.
+- **App Store Connect API key** (Users and Access → Integrations → Team Keys,
+  role Developer) for notarization.
+
+| Secret                       | Value                                                   |
+| ---------------------------- | ------------------------------------------------------- |
+| `APPLE_CERTIFICATE`          | `base64 -i cert.p12 \| pbcopy`                          |
+| `APPLE_CERTIFICATE_PASSWORD` | the `.p12` export password                              |
+| `APPLE_SIGNING_IDENTITY`     | `Developer ID Application: <Company name> (276MY32G8B)` |
+| `APPLE_API_KEY`              | the Key ID                                              |
+| `APPLE_API_ISSUER`           | the Issuer ID                                           |
+| `APPLE_API_KEY_P8`           | the full contents of `AuthKey_<KeyID>.p8`               |
+
+The workflow imports the cert into a throwaway keychain, `scripts/build-helper.mjs`
+signs the helper (Tauri does not sign `bundle.macOS.files`), Tauri signs the
+sidecar + app, notarizes and staples, and a verify step checks the team ID,
+hardened runtime, `spctl` and the stapled ticket on both the `.app` and the `.dmg`.
+A tag build without these secrets fails on purpose. Manual (`workflow_dispatch`)
+builds without them still produce an unsigned, test-only build.
+
 **3. Release:** `git tag mobile-v1.0.0 && git push origin mobile-v1.0.0` → the
 workflow builds the signed APK + AAB and attaches both to a GitHub Release. Upload
 the **AAB** to the Play Console. Keep the keystore safe — with **Play App Signing**
