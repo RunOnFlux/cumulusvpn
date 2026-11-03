@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacy door architectuur</span>
     <h1>Privacybeleid</h1>
-    <p class="doc-meta">Laatst bijgewerkt: 16 oktober 2026 · Van kracht: 14 augustus 2026</p>
+    <p class="doc-meta">Laatst bijgewerkt: 4 november 2026 · Van kracht: 14 augustus 2026</p>
 
   <p class="doc-meta">Deze vertaling wordt aangeboden voor het gemak; de Engelse versie op cumulusvpn.com/privacy is leidend.</p>
   </div>
@@ -110,12 +110,12 @@
     </ul>
 
     <h2>2. Wie we zijn</h2>
-    <p>CumulusVPN (“we”, “ons”) is een VPN-dienst die wordt beheerd door InFlux Technologies LLC, 651 N Broad St, Ste 205 #9147,
+    <p>CumulusVPN (“we”, “ons”) is een VPN-dienst die wordt beheerd door InFlux Technologies USA LLC, 651 N Broad St, Ste 205 #9147,
       Middletown, DE 19709, USA. De dienst is gebouwd op het gedecentraliseerde cloudnetwerk van Flux
       (<a href="https://runonflux.io">runonflux.io</a>). VPN-exitservers (“gateways”) draaien als gecontaineriseerde apps
       op Flux-nodes met vaste IP-adressen, die eigendom zijn van en beheerd worden door onafhankelijke externe node-operators, niet door
       ons. Wij publiceren de dienst; de onderliggende rekenkracht is gedecentraliseerd.</p>
-    <p>Voor de toepassing van de EU-/VK-Algemene Verordening Gegevensbescherming (AVG) is InFlux Technologies LLC, voor zover
+    <p>Voor de toepassing van de EU-/VK-Algemene Verordening Gegevensbescherming (AVG) is InFlux Technologies USA LLC, voor zover
       onderstaande informatie in zeer beperkte mate “persoonsgegevens” is, de verwerkingsverantwoordelijke; je
       kunt ons bereiken via info@cumulusvpn.com.
       De rechtsgrond waarop we ons beroepen is ons gerechtvaardigd belang (artikel 6, lid 1, onder f) bij het leveren van een
@@ -170,7 +170,7 @@
       surfgedrag. Als je sessie eindigt, wordt het niet bewaard.</p>
     <h3>4.4 DNS</h3>
     <p>DNS-opzoekingen worden namens jou opgelost via de versleutelde tunnel, zodat je lokale netwerk en provider
-      ze niet kunnen zien. De gateway stuurt elke opzoeking vervolgens versleuteld, als DNS over HTTPS, door naar de openbare resolver van Cloudflare (1.1.1.1) of naar die van jouw keuze (Google Public DNS, Quad9, DNS4EU, AdGuard DNS of Cloudflare for Families). Opzoekingen gericht aan Mullvad DNS (194.242.2.2), dat Mullvad uiterlijk 2 november 2026 opheft, gaan in plaats daarvan naar Quad9. De resolver ziet alleen het IP-adres van de gateway, nooit het jouwe. Mislukt de versleutelde verbinding ermee, dan valt de gateway terug op gewone DNS naar dezelfde resolver. We houden geen logs van DNS-verzoeken bij.</p>
+      ze niet kunnen zien. De gateway stuurt elke opzoeking vervolgens versleuteld, als DNS over HTTPS, door naar de openbare resolver van Cloudflare (1.1.1.1) of naar die van jouw keuze (Google Public DNS, Quad9, DNS4EU, AdGuard DNS of Cloudflare for Families). Opzoekingen gericht aan Mullvad DNS (194.242.2.2), dat Mullvad op 2 november 2026 heeft opgeheven, gaan in plaats daarvan naar Quad9. De resolver ziet alleen het IP-adres van de gateway, nooit het jouwe. Mislukt de versleutelde verbinding ermee, dan valt de gateway terug op gewone DNS naar dezelfde resolver. We houden geen logs van DNS-verzoeken bij.</p>
     <h3>4.5 Hoe je app de gateways bereikt</h3>
     <p>Je app ontdekt gateways en leest hun status door rechtstreeks de control-API van elke gateway aan te roepen.
       Die antwoorden zijn <strong>ondertekend met de ed25519-sleutel van de gateway en worden geverifieerd door de app</strong>,

@@ -78,7 +78,7 @@
   <div class="doc-head">
     <span class="eyebrow">Privacidad por diseño</span>
     <h1>Política de privacidad</h1>
-    <p class="doc-meta">Última actualización: 16 de octubre de 2026 · Vigente desde: 14 de agosto de 2026</p>
+    <p class="doc-meta">Última actualización: 4 de noviembre de 2026 · Vigente desde: 14 de agosto de 2026</p>
 
   <p class="doc-meta">Esta traducción se ofrece por comodidad; la versión en inglés en cumulusvpn.com/privacy es la
       autoritativa.</p>
@@ -111,13 +111,13 @@
     </ul>
 
     <h2>2. Quiénes somos</h2>
-    <p>CumulusVPN ("nosotros") es un servicio VPN operado por InFlux Technologies LLC, 651 N Broad St, Ste 205 #9147,
+    <p>CumulusVPN ("nosotros") es un servicio VPN operado por InFlux Technologies USA LLC, 651 N Broad St, Ste 205 #9147,
       Middletown, DE 19709, USA. Está construido sobre la red de nube descentralizada de Flux
       (<a href="https://runonflux.io">runonflux.io</a>). Los servidores de salida VPN ("gateways") funcionan como apps en contenedores
       sobre nodos de Flux con direcciones IP estáticas, cuyos propietarios y operadores son terceros independientes, no
       nosotros. Nosotros publicamos el servicio; el cómputo subyacente está descentralizado.</p>
     <p>A los efectos del Reglamento General de Protección de Datos de la UE/Reino Unido (GDPR), en la medida muy limitada en que
-      cualquiera de la información de abajo sea "dato personal", InFlux Technologies LLC es el responsable del
+      cualquiera de la información de abajo sea "dato personal", InFlux Technologies USA LLC es el responsable del
       tratamiento; puedes contactarnos en info@cumulusvpn.com. La base legal en la que nos apoyamos es nuestro interés legítimo (artículo 6(1)(f)) en ofrecer
       una VPN funcional y resistente al abuso, y — para los pagos — la ejecución del servicio que solicitas
       (artículo 6(1)(b)). Como el servicio está diseñado para ser anónimo, en la mayoría de los casos no tenemos ningún dato
@@ -170,7 +170,7 @@
       navegación. Cuando tu sesión termina, no se conserva.</p>
     <h3>4.4 DNS</h3>
     <p>Las consultas DNS se resuelven en tu nombre a través del túnel cifrado, de modo que tu red local y tu ISP
-      no pueden verlas. Después, el gateway reenvía cada una cifrada, como DNS over HTTPS, al resolutor público de Cloudflare (1.1.1.1) o al que elijas (Google Public DNS, Quad9, DNS4EU, AdGuard DNS o Cloudflare for Families). Las consultas dirigidas a Mullvad DNS (194.242.2.2), que Mullvad cerrará a más tardar el 2 de noviembre de 2026, se envían a Quad9 en su lugar. El resolutor solo ve la dirección IP del gateway, nunca la tuya. Si la conexión cifrada con él falla, el gateway recurre al DNS ordinario con ese mismo resolutor. No guardamos registros de consultas DNS.</p>
+      no pueden verlas. Después, el gateway reenvía cada una cifrada, como DNS over HTTPS, al resolutor público de Cloudflare (1.1.1.1) o al que elijas (Google Public DNS, Quad9, DNS4EU, AdGuard DNS o Cloudflare for Families). Las consultas dirigidas a Mullvad DNS (194.242.2.2), que Mullvad cerró el 2 de noviembre de 2026, se envían a Quad9 en su lugar. El resolutor solo ve la dirección IP del gateway, nunca la tuya. Si la conexión cifrada con él falla, el gateway recurre al DNS ordinario con ese mismo resolutor. No guardamos registros de consultas DNS.</p>
     <h3>4.5 Cómo tu app llega a los gateways</h3>
     <p>Tu app descubre gateways y lee su estado llamando directamente a la API de control de cada gateway.
       Esas respuestas están <strong>firmadas con la clave ed25519 del gateway y verificadas por la app</strong>,

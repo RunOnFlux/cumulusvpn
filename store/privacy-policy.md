@@ -1,6 +1,6 @@
 # CumulusVPN Privacy Policy
 
-**Last updated: 16 October 2026**
+**Last updated: 4 November 2026**
 **Effective date: 16 July 2026**
 
 CumulusVPN is a decentralized VPN service. This policy explains, in plain language, exactly
@@ -36,14 +36,14 @@ Abuse reports: **info@cumulusvpn.com**
 
 ## 2. Who we are
 
-CumulusVPN ("we", "us") is a VPN service operated by InFlux Technologies LLC, 651 N Broad St,
+CumulusVPN ("we", "us") is a VPN service operated by InFlux Technologies USA LLC, 651 N Broad St,
 Ste 205 #9147, Middletown, DE 19709, USA. It is built on the Flux decentralized cloud network
 (https://runonflux.io). VPN exit servers ("gateways") run as containerized apps on Flux nodes
 with static IP addresses, owned and operated by independent third-party node operators, not by
 us. We publish the service; the underlying compute is decentralized.
 
 For the purposes of the EU/UK General Data Protection Regulation (GDPR), to the very limited
-extent any of the information below is "personal data", InFlux Technologies LLC is the data
+extent any of the information below is "personal data", InFlux Technologies USA LLC is the data
 controller; you can reach us at info@cumulusvpn.com. The lawful basis we rely on is our legitimate interest (Article 6(1)(f)) in
 providing a functioning, abuse-resistant VPN, and — for payments — performance of the service
 you request (Article 6(1)(b)). Because the service is designed to be anonymous, in most cases
@@ -110,7 +110,7 @@ DNS look-ups are resolved on your behalf through the encrypted tunnel so your lo
 ISP cannot see them. The gateway then sends each one on encrypted, as DNS over HTTPS, to
 Cloudflare's public resolver (1.1.1.1) or to the one you choose (Google Public DNS, Quad9, DNS4EU,
 AdGuard DNS or Cloudflare for Families). Look-ups addressed to Mullvad DNS (194.242.2.2), which
-Mullvad is shutting down by 2 November 2026, are sent to Quad9 instead. The resolver sees only the
+Mullvad shut down on 2 November 2026, are sent to Quad9 instead. The resolver sees only the
 gateway's IP address, never yours. If the encrypted connection to it fails, the gateway falls back
 to ordinary DNS to the same resolver. We do not keep DNS query logs.
 
