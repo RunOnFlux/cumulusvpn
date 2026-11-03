@@ -1,0 +1,161 @@
+name: desktop-linux-repo
+
+# The signed CumulusVPN Linux repositories (apt + dnf) at
+# https://pkg.cumulusvpn.com, served by GitHub Pages, plus a GPG-signed
+# SHA256SUMS on each desktop release.
+#
+# Stateless: every run rebuilds the whole repository from the newest published
+# (non-draft, non-prerelease) desktop-v* GitHub releases, so there is no bucket
+# to keep in sync and nothing to drift. scripts/linux-repo.sh adds the packages,
+# signs the metadata and verifies every signature before anything is deployed.
+#
+# Flow: publishing a desktop-v* draft release (the human "ship it" step) fires
+# `release: published`; that run only re-dispatches this workflow on main,
+# because the github-pages environment deploys from main only. The dispatched
+# run builds, deploys and smoke-tests. Run it by hand to rebuild at any time.
+#
+# Secrets: LINUX_GPG_PRIVATE_KEY (armored secret key), LINUX_GPG_PASSPHRASE.
+# Var:     LINUX_GPG_FINGERPRINT. See docs/14-releases.md.
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release whose SHA256SUMS to sign (default newest desktop release)
+        required: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-pkg-repo
+  cancel-in-progress: false
+
+env:
+  KEEP_RELEASES: 3
+  BASE_URL: https://pkg.cumulusvpn.com
+
+jobs:
+  redispatch:
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'desktop-v')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.event.release.tag_name }}
+        run: gh workflow run desktop-linux-repo.yml --repo "$GITHUB_REPOSITORY" --ref main -f tag="$TAG"
+
+  build:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload SHA256SUMS(.asc) to the release
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      KEY: ${{ vars.LINUX_GPG_FINGERPRINT }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-utils rpm createrepo-c
+
+      - name: Import the signing key
+        env:
+          LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          if [ -z "$KEY" ] || [ -z "$LINUX_GPG_PRIVATE_KEY" ]; then
+            echo "::error::LINUX_GPG_FINGERPRINT / LINUX_GPG_PRIVATE_KEY are not set"; exit 1
+          fi
+          install -d -m 700 ~/.gnupg
+          # rpmsign drives gpg itself, so the passphrase reaches it through
+          # gpg.conf (loopback + passphrase-file) rather than arguments.
+          printf '%s' "$LINUX_GPG_PASSPHRASE" > ~/.gnupg/passphrase
+          chmod 600 ~/.gnupg/passphrase
+          printf 'pinentry-mode loopback\npassphrase-file %s\n' ~/.gnupg/passphrase > ~/.gnupg/gpg.conf
+          echo "$LINUX_GPG_PRIVATE_KEY" | gpg --batch --import
+          gpg --list-secret-keys --with-colons | grep -q "fpr:::::::::$KEY:"
+
+      - name: Pick releases
+        id: releases
+        run: |
+          set -euo pipefail
+          gh release list --repo "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases \
+            --limit 100 --json tagName,publishedAt \
+            -q '[.[] | select(.tagName | startswith("desktop-v"))] | sort_by(.publishedAt) | reverse | .[].tagName' \
+            | head -n "$KEEP_RELEASES" > tags.txt
+          cat tags.txt
+          test -s tags.txt || { echo "::error::no published desktop-v* release"; exit 1; }
+          tag="${{ inputs.tag }}"
+          echo "sums_tag=${tag:-$(head -n1 tags.txt)}" >> "$GITHUB_OUTPUT"
+
+      - name: Sign SHA256SUMS for the release
+        env:
+          TAG: ${{ steps.releases.outputs.sums_tag }}
+        run: |
+          set -euo pipefail
+          mkdir assets && cd assets
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY"
+          rm -f SHA256SUMS SHA256SUMS.asc
+          sha256sum -- * > SHA256SUMS
+          gpg --batch --local-user "$KEY" --armor --detach-sign -o SHA256SUMS.asc SHA256SUMS
+          gpg --batch --verify SHA256SUMS.asc SHA256SUMS
+          gh release upload "$TAG" SHA256SUMS SHA256SUMS.asc --clobber --repo "$GITHUB_REPOSITORY"
+
+      - name: Build + sign the repository
+        run: |
+          set -euo pipefail
+          mkdir incoming
+          while read -r tag; do
+            gh release download "$tag" --repo "$GITHUB_REPOSITORY" -D incoming -p '*.deb' -p '*.rpm'
+          done < tags.txt
+          ls -l incoming
+          CVPN_PKG_BASE_URL="$BASE_URL" bash clients/desktop/scripts/linux-repo.sh site incoming "$KEY"
+          cp clients/desktop/linux/pkg-index.html site/index.html
+          touch site/.nojekyll
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1
+
+  smoke-test:
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      # Pages serves with a 10-minute cache; poll until the new metadata is live.
+      - name: Install from the live repository (Ubuntu + Fedora)
+        run: |
+          set -euo pipefail
+          docker run --rm ubuntu:24.04 bash -euxc "
+            apt-get update && apt-get install -y curl gpg ca-certificates
+            curl -fsSL $BASE_URL/cumulusvpn.asc | gpg --dearmor -o /usr/share/keyrings/cumulusvpn.gpg
+            echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/cumulusvpn.gpg] $BASE_URL/deb stable main' > /etc/apt/sources.list.d/cumulusvpn.list
+            for i in \$(seq 1 20); do apt-get update && apt-cache show cumulus-vpn >/dev/null && break; sleep 30; done
+            apt-cache policy cumulus-vpn
+            apt-get install -y --download-only cumulus-vpn"
+          docker run --rm fedora:latest bash -euxc "
+            curl -fsSL -o /etc/yum.repos.d/cumulusvpn.repo $BASE_URL/rpm/cumulusvpn.repo
+            for i in \$(seq 1 20); do dnf -y --refresh makecache --repo cumulusvpn && break; sleep 30; done
+            dnf -y download --repo cumulusvpn --destdir /tmp cumulus-vpn
+            rpm --import $BASE_URL/cumulusvpn.asc
+            rpm -K /tmp/*.rpm | tee /dev/stderr | grep -q 'signatures OK'"

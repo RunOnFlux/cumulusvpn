@@ -79,3 +79,57 @@ if (!windows) {
   chmodSync(staged, 0o755);
 }
 console.log(`staged helper: ${staged} (from ${output})`);
+
+// macOS: sign the helper here, before Tauri bundles it. Tauri signs the sidecar
+// (externalBin) and the .app, but not files copied in through
+// bundle.macOS.files. Sealing a bundle that contains unsigned code fails (or,
+// without a real identity, produces a seal Gatekeeper reports as "damaged"),
+// and notarization rejects it. SMAppService also refuses a daemon whose
+// signature is not from the app's team. Signing with the same Developer ID,
+// hardened runtime and a secure timestamp is what notarization requires.
+// Unset identity (local dev builds) → leave the linker's ad-hoc signature.
+const identity = process.env.APPLE_SIGNING_IDENTITY;
+const macos = triple ? triple.includes('-apple-darwin') : process.platform === 'darwin';
+if (macos && identity) {
+  const signArgs = [
+    '--force',
+    '--timestamp',
+    '--options',
+    'runtime',
+    '--identifier',
+    'com.cumulusvpn.helper',
+    '--sign',
+    identity,
+  ];
+  if (process.env.APPLE_KEYCHAIN) {
+    signArgs.push('--keychain', process.env.APPLE_KEYCHAIN);
+  }
+  signArgs.push(staged);
+  console.log(`signing helper with "${identity}"`);
+  const signed = spawnSync('codesign', signArgs, { stdio: 'inherit' });
+  if (signed.error || signed.status !== 0) {
+    console.error(
+      `codesign of the helper failed${signed.error ? `: ${signed.error.message}` : ''}`,
+    );
+    process.exit(signed.status || 1);
+  }
+}
+
+// Windows: same reason — Tauri signs the app, the sidecar and the installers,
+// but the helper is installed by our NSIS hook / WiX fragment straight from
+// helper/build, so it must be signed before bundling. A service binary that is
+// unsigned is also what SmartScreen and EDR products flag first.
+// desktop-release.yml sets CVPN_WIN_SIGN=1 only when the Azure secrets exist.
+if (windows && process.env.CVPN_WIN_SIGN === '1') {
+  const script = join(desktop, 'scripts', 'sign-windows.ps1');
+  console.log('signing helper with Azure Artifact Signing');
+  const signed = spawnSync(
+    'pwsh',
+    ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script, staged],
+    { stdio: 'inherit' },
+  );
+  if (signed.error || signed.status !== 0) {
+    console.error(`signing the helper failed${signed.error ? `: ${signed.error.message}` : ''}`);
+    process.exit(signed.status || 1);
+  }
+}

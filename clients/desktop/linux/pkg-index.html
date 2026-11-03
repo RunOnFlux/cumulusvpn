@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CumulusVPN for Linux — package repository</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        font:
+          16px/1.55 system-ui,
+          -apple-system,
+          'Segoe UI',
+          sans-serif;
+        background: linear-gradient(180deg, #0b1a33, #12305c);
+        color: #e8f1ff;
+        min-height: 100vh;
+      }
+      main {
+        max-width: 760px;
+        margin: 0 auto;
+        padding: 56px 24px;
+      }
+      h1 {
+        font-size: 28px;
+        margin: 0 0 8px;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 36px 0 8px;
+      }
+      p {
+        color: #b9cbe6;
+      }
+      pre {
+        background: rgba(0, 0, 0, 0.35);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        border-radius: 10px;
+        padding: 14px 16px;
+        overflow-x: auto;
+        font:
+          13px/1.6 ui-monospace,
+          Menlo,
+          monospace;
+        color: #d6e6ff;
+      }
+      a {
+        color: #67d4ff;
+      }
+      .kicker {
+        font:
+          12px ui-monospace,
+          Menlo,
+          monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #67d4ff;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="kicker">pkg.cumulusvpn.com</div>
+      <h1>CumulusVPN for Linux</h1>
+      <p>
+        Signed package repositories for the CumulusVPN desktop app (x86_64). Add the repository once
+        and your package manager keeps CumulusVPN up to date.
+      </p>
+
+      <h2>Debian, Ubuntu, Linux Mint, Pop!_OS</h2>
+      <pre>
+curl -fsSL https://pkg.cumulusvpn.com/cumulusvpn.asc | sudo gpg --dearmor -o /usr/share/keyrings/cumulusvpn.gpg
+echo "deb [arch=amd64 signed-by=/usr/share/keyrings/cumulusvpn.gpg] https://pkg.cumulusvpn.com/deb stable main" \
+  | sudo tee /etc/apt/sources.list.d/cumulusvpn.list
+sudo apt update &amp;&amp; sudo apt install cumulus-vpn</pre>
+
+      <h2>Fedora, RHEL, Rocky, AlmaLinux</h2>
+      <pre>
+sudo curl -fsSL -o /etc/yum.repos.d/cumulusvpn.repo https://pkg.cumulusvpn.com/rpm/cumulusvpn.repo
+sudo dnf install cumulus-vpn</pre>
+
+      <h2>Verify</h2>
+      <p>
+        Packages and repository metadata are signed with the key at
+        <a href="cumulusvpn.asc">cumulusvpn.asc</a>. Every
+        <a href="https://github.com/RunOnFlux/cumulusvpn/releases">GitHub release</a> also carries a
+        signed <code>SHA256SUMS.asc</code>.
+      </p>
+      <p><a href="https://cumulusvpn.com">cumulusvpn.com</a></p>
+    </main>
+  </body>
+</html>
