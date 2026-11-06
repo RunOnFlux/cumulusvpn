@@ -44,7 +44,7 @@ RUN GOARCH=${TARGETARCH} go build \
 # distroless/static gives us CA certs (for HTTPS to the explorer fallback) and
 # a nonroot user, staying ~2 MB over scratch. Swap for `FROM scratch` if you
 # vendor CA certs yourself and never hit the public explorer.
-FROM gcr.io/distroless/static:nonroot@sha256:e2e927ec666bae08560abb3c55d0659eceabb657f56b6782ab500a9fc7f555e3
+FROM gcr.io/distroless/static:nonroot@sha256:25ac8f0c3b2334a9eb05452266bd4697864a8c8ef0ef71e5e6480d7f92868329
 
 COPY --from=build /out/gateway /gateway
 
