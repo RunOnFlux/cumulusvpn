@@ -7,7 +7,7 @@ toolchain go1.27.2
 require (
 	github.com/amnezia-vpn/amneziawg-go v0.2.19
 	golang.org/x/crypto v0.58.0
-	golang.org/x/net v0.61.0
+	golang.org/x/net v0.62.0
 	golang.org/x/time v0.16.0
 	gvisor.dev/gvisor v0.0.0-20231202080848-1f7806d17489
 )
