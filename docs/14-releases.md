@@ -151,9 +151,14 @@ without a Developer ID signature). Everything must come from the US team
 | `APPLE_API_KEY_P8`           | the full contents of `AuthKey_<KeyID>.p8`               |
 
 The workflow imports the cert into a throwaway keychain, `scripts/build-helper.mjs`
-signs the helper (Tauri does not sign `bundle.macOS.files`), Tauri signs the
-sidecar + app, notarizes and staples, and a verify step checks the team ID,
-hardened runtime, `spctl` and the stapled ticket on both the `.app` and the `.dmg`.
+signs the helper (Tauri does not sign `bundle.macOS.files`), and Tauri signs the
+sidecar + app. Tauri does **not** notarize: `scripts/notarize-macos.sh` submits the
+`.dmg`, polls Apple with retries (a runner network drop mid-wait failed
+desktop-v1.4.2 twice under Tauri's single-shot poll), staples the ticket to the
+`.dmg` and `.app`, and replaces the draft release's `.dmg`. It waits up to 5 h,
+because a new team's first submissions can stay "In Progress" for hours. A
+verify step then checks the team ID, hardened runtime, `spctl` and the stapled
+tickets.
 A tag build without these secrets fails on purpose. Manual (`workflow_dispatch`)
 builds without them still produce an unsigned, test-only build.
 

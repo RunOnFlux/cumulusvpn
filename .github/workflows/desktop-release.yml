@@ -135,8 +135,11 @@ jobs:
       # into a throwaway keychain HERE rather than via tauri-action's
       # APPLE_CERTIFICATE, because scripts/build-helper.mjs signs the helper in
       # beforeBuildCommand, which runs before Tauri would import it. Tauri then
-      # finds APPLE_SIGNING_IDENTITY in the keychain, signs the sidecar + app,
-      # notarizes with the App Store Connect API key and staples the ticket.
+      # finds APPLE_SIGNING_IDENTITY in the keychain and signs the sidecar + app.
+      # Notarization is NOT left to Tauri (it polls Apple once, with no retry,
+      # and a runner network drop mid-wait failed desktop-v1.4.2 twice): the
+      # API key goes out as CVPN_NOTARY_* — names Tauri does not read — and
+      # scripts/notarize-macos.sh notarizes + staples after the build.
       # Values reach later steps through $GITHUB_ENV, so nothing is passed
       # empty. A tag build without the secrets FAILS: an unsigned .dmg is
       # reported as "damaged" by Gatekeeper and must never be released again.
@@ -186,9 +189,9 @@ jobs:
           {
             echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY"
             echo "APPLE_KEYCHAIN=$KEYCHAIN"
-            echo "APPLE_API_KEY=$APPLE_API_KEY"
-            echo "APPLE_API_ISSUER=$APPLE_API_ISSUER"
-            echo "APPLE_API_KEY_PATH=$KEY_PATH"
+            echo "CVPN_NOTARY_KEY_ID=$APPLE_API_KEY"
+            echo "CVPN_NOTARY_ISSUER=$APPLE_API_ISSUER"
+            echo "CVPN_NOTARY_KEY_PATH=$KEY_PATH"
             echo "CVPN_MAC_SIGNED=1"
           } >> "$GITHUB_ENV"
 
@@ -273,9 +276,10 @@ jobs:
           AZURE_CODE_SIGNING_ENDPOINT: ${{ vars.AZURE_CODE_SIGNING_ENDPOINT }}
           AZURE_CODE_SIGNING_ACCOUNT_NAME: ${{ vars.AZURE_CODE_SIGNING_ACCOUNT_NAME }}
           AZURE_CERTIFICATE_PROFILE_NAME: ${{ vars.AZURE_CERTIFICATE_PROFILE_NAME }}
-          # macOS signing/notarization env (APPLE_SIGNING_IDENTITY, APPLE_API_*)
-          # comes from $GITHUB_ENV, set by the import step above only when the
-          # secrets exist — never passed empty.
+          # macOS signing env (APPLE_SIGNING_IDENTITY, APPLE_KEYCHAIN) comes
+          # from $GITHUB_ENV, set by the import step above only when the
+          # secrets exist — never passed empty. No APPLE_API_*: Tauri must not
+          # notarize (see the import step).
         with:
           projectPath: clients/desktop
           # On a manual dispatch tagName is empty, so tauri-action only builds —
@@ -285,6 +289,24 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: --target ${{ matrix.target }} ${{ env.CVPN_TAURI_SIGN_ARGS }}
+
+      # Notarize the .dmg (Apple covers the app inside it), staple the ticket
+      # to the .dmg and the .app, and replace the unstapled .dmg tauri-action
+      # uploaded to the draft release. Retries through runner network drops;
+      # waits up to 5 h for a slow Apple queue (job limit is 6 h).
+      - name: Notarize + staple (macOS)
+        if: runner.os == 'macOS' && env.CVPN_MAC_SIGNED == '1'
+        shell: bash
+        working-directory: clients/desktop/src-tauri/target/${{ matrix.target }}/release/bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          dmg=$(ls dmg/*.dmg | head -n1)
+          bash "$GITHUB_WORKSPACE/clients/desktop/scripts/notarize-macos.sh" "$dmg" macos/CumulusVPN.app
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber --repo "$GITHUB_REPOSITORY"
+          fi
 
       # The helper must actually be in the bundle: without it the app can only
       # show its setup banner (or run as root).
@@ -299,7 +321,9 @@ jobs:
 
       # A signed build must pass Gatekeeper exactly as a downloaded copy will:
       # every executable carries team 276MY32G8B, the seal is intact, and the
-      # notarization ticket is stapled. Checks the .dmg's own copy too.
+      # notarization ticket is stapled to the .app and to the .dmg. The app
+      # inside the .dmg is checked too (notarized via the .dmg; Gatekeeper
+      # finds its ticket online, and the .dmg's stapled ticket covers it).
       - name: Verify the macOS signature + notarization
         if: runner.os == 'macOS' && env.CVPN_MAC_SIGNED == '1'
         shell: bash
@@ -315,10 +339,13 @@ jobs:
               grep -q 'flags=.*runtime' "$RUNNER_TEMP/cs.txt"
             done
             spctl --assess --type execute --verbose=4 "$app"
-            xcrun stapler validate "$app"
           }
           check_app macos/CumulusVPN.app
+          xcrun stapler validate macos/CumulusVPN.app
           dmg=$(ls dmg/*.dmg | head -n1)
+          codesign --verify --strict --verbose=2 "$dmg"
+          xcrun stapler validate "$dmg"
+          spctl --assess --type open --context context:primary-signature --verbose=4 "$dmg"
           mnt="$RUNNER_TEMP/dmg-mnt"
           hdiutil attach -nobrowse -readonly -mountpoint "$mnt" "$dmg"
           trap 'hdiutil detach "$mnt" || true' EXIT
