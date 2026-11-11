@@ -1,6 +1,5 @@
 import type { JSX } from 'react';
 import type { Entitlement } from '../hooks/useConnection.js';
-import { UPGRADE_URL } from '../lib/directory.js';
 
 interface Props {
   readonly entitlement: Entitlement | null;
@@ -25,9 +24,11 @@ export function TierBadge({ entitlement, onUpgrade }: Props): JSX.Element {
     <div className="tier-row">
       <span className={`tier-pill ${tier}`}>{tier}</span>
       {tier === 'premium' && entitlement ? (
-        <span className="paid">paid until {formatPaidUntil(entitlement.paidUntil)}</span>
+        <button className="paid" onClick={onUpgrade} title="Add more time">
+          paid until {formatPaidUntil(entitlement.paidUntil)} · add time →
+        </button>
       ) : (
-        <button className="upgrade" onClick={onUpgrade} title={UPGRADE_URL}>
+        <button className="upgrade" onClick={onUpgrade}>
           Upgrade — card or FLUX →
         </button>
       )}

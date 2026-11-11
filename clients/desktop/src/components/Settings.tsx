@@ -6,20 +6,40 @@ import { CVPN_DIRECTORY_PUBKEY } from '../lib/directory.js';
 import { codeOf, copyText } from '../lib/identity.js';
 import { loadOrCreateKeypair, loadSplitPolicy, saveSplitPolicy } from '../lib/storage.js';
 import { useEscape } from '../hooks/useEscape.js';
+import { ensureNotificationPermission } from '../hooks/useNotifications.js';
+import { openExternal } from '../lib/opener.js';
+import { formatExpiry } from '../lib/payment.js';
+import poweredByFlux from '../assets/powered_by_flux.png';
 import { DnsSection } from './DnsSection.js';
 import { IdentitySection } from './IdentitySection.js';
 
 /** App version — matches the release tag. */
-const APP_VERSION = '1.4.2';
+const APP_VERSION = '1.4.3';
+
+const SITE_URL = 'https://cumulusvpn.com';
+const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+const TERMS_URL = 'https://cumulusvpn.com/terms';
+const SUPPORT_URL = 'https://cumulusvpn.com/support';
+const FLUX_URL = 'https://runonflux.com';
 
 interface Props {
   readonly autoConnect: boolean;
   readonly killSwitch: boolean;
   readonly stealth: boolean;
   readonly tier: Tier;
+  /** Premium expiry (`paid_until`), when known. */
+  readonly paidUntil: string | null;
+  readonly nodeDiversity: boolean;
+  readonly notifications: boolean;
+  /** A tunnel is up or coming up: routing choices wait for the next connect. */
+  readonly sessionActive: boolean;
+  readonly onNodeDiversity: (v: boolean) => void;
+  readonly onNotifications: (v: boolean) => void;
   readonly onAutoConnect: (v: boolean) => void;
   readonly onKillSwitch: (v: boolean) => void;
   readonly onStealth: (v: boolean) => void;
+  /** Open the Upgrade sheet (plans, add time). */
+  readonly onOpenUpgrade: () => void;
   readonly onClose: () => void;
   /** Open with the recovery key showing (from the "save your key" nudge). */
   readonly revealRecoveryKey?: boolean;
@@ -31,9 +51,16 @@ export function Settings({
   killSwitch,
   stealth,
   tier,
+  paidUntil,
+  nodeDiversity,
+  notifications,
+  sessionActive,
+  onNodeDiversity,
+  onNotifications,
   onAutoConnect,
   onKillSwitch,
   onStealth,
+  onOpenUpgrade,
   onClose,
   revealRecoveryKey = false,
 }: Props): JSX.Element {
@@ -46,6 +73,9 @@ export function Settings({
         {/* The About block and the split-tunnel editor together overflow any
             reasonable window height — this region is what scrolls. */}
         <div className="sheet-body scroll-y">
+          <div className="setsec">Plan</div>
+          <PlanRow tier={tier} paidUntil={paidUntil} onOpen={onOpenUpgrade} />
+
           <div className="setsec">Connection</div>
           <SettingToggle
             label="Auto-connect on launch"
@@ -64,6 +94,34 @@ export function Settings({
             sub="Disguise VPN traffic to bypass blocking"
             value={stealth}
             onChange={onStealth}
+          />
+          {/* Node diversity — force the two multi-hop legs onto different
+              networks so they can't be the same rack (docs/11). Read when a
+              route is built, so it is locked while a session exists rather
+              than imply an effect it won't have yet. */}
+          <SettingToggle
+            label="Node diversity"
+            sub={
+              sessionActive
+                ? 'Force multi-hop entry and exit onto different networks — disconnect to change'
+                : 'Force multi-hop entry and exit onto different networks'
+            }
+            value={nodeDiversity}
+            disabled={sessionActive}
+            onChange={onNodeDiversity}
+          />
+          <SettingToggle
+            label="Notifications"
+            sub="Tell me when the VPN connects, drops or reconnects"
+            value={notifications}
+            onChange={(v) => {
+              onNotifications(v);
+              // Ask macOS / Windows now, while the user is looking — not at
+              // the first drop, when the prompt would be a surprise.
+              if (v) {
+                void ensureNotificationPermission();
+              }
+            }}
           />
 
           <div className="setsec">DNS</div>
@@ -85,15 +143,25 @@ export function Settings({
             <span>Directory trust key</span>
             <span className="lat">{CVPN_DIRECTORY_PUBKEY.slice(0, 16)}…</span>
           </div>
-          <a
-            className="setinfo setlink"
-            href="https://cumulusvpn.com"
-            target="_blank"
-            rel="noreferrer"
+          <LinkRow label="cumulusvpn.com" url={SITE_URL} />
+
+          <div className="setsec">Privacy &amp; support</div>
+          <LinkRow label="Privacy Policy" url={PRIVACY_URL} />
+          <LinkRow label="Terms of Service" url={TERMS_URL} />
+          <LinkRow label="Support" url={SUPPORT_URL} />
+
+          <p className="setfoot">
+            Decentralized WireGuard VPN on Flux Cloud. No logs; your key stays on this device and in
+            any recovery key you save.
+          </p>
+          <button
+            type="button"
+            className="poweredby"
+            aria-label="Powered by Flux — opens runonflux.com"
+            onClick={() => void openExternal(FLUX_URL)}
           >
-            <span>cumulusvpn.com</span>
-            <span className="chev">›</span>
-          </a>
+            <img src={poweredByFlux} alt="Powered by Flux" width={130} height={18} />
+          </button>
         </div>
 
         <button className="close" onClick={onClose}>
@@ -284,16 +352,60 @@ function DeviceCodeRow(): JSX.Element {
   );
 }
 
+/** Current plan and expiry, as on mobile; opens the Upgrade sheet. */
+function PlanRow({
+  tier,
+  paidUntil,
+  onOpen,
+}: {
+  readonly tier: Tier;
+  readonly paidUntil: string | null;
+  readonly onOpen: () => void;
+}): JSX.Element {
+  const premium = tier === 'premium';
+  const expiry = premium ? formatExpiry(paidUntil) : null;
+  const status = premium
+    ? expiry
+      ? `Active until ${expiry.date} · ${expiry.daysLeft} ${expiry.daysLeft === 1 ? 'day' : 'days'} left`
+      : 'Full speed on every server'
+    : 'Limited to 100 KB/s — upgrade for full speed';
+  return (
+    <button
+      type="button"
+      className="setrow planrow"
+      aria-label={premium ? 'Manage your Premium plan' : 'Upgrade to Premium'}
+      onClick={onOpen}
+    >
+      <span className="setmeta">
+        <span className={`tier-pill ${tier}`}>{tier}</span>
+        <span className="setsub">{status}</span>
+      </span>
+      <span className="chev">›</span>
+    </button>
+  );
+}
+
+function LinkRow({ label, url }: { readonly label: string; readonly url: string }): JSX.Element {
+  return (
+    <button type="button" className="setinfo setlink" onClick={() => void openExternal(url)}>
+      <span>{label}</span>
+      <span className="chev">›</span>
+    </button>
+  );
+}
+
 function SettingToggle({
   label,
   sub,
   value,
   onChange,
+  disabled = false,
 }: {
   readonly label: string;
   readonly sub: string;
   readonly value: boolean;
   readonly onChange: (v: boolean) => void;
+  readonly disabled?: boolean;
 }): JSX.Element {
   return (
     <button
@@ -301,6 +413,7 @@ function SettingToggle({
       className="setrow"
       role="switch"
       aria-checked={value}
+      disabled={disabled}
       onClick={() => onChange(!value)}
     >
       <span className="setmeta">

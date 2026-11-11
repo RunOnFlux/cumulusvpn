@@ -117,8 +117,8 @@ export function MultihopPanel({
             Slower, worse ping — but no single server sees both who you are and where you go.
           </p>
           <p className="mh-caveat">
-            v1: both hops use the same key. Defeats any single operator; an adversary controlling{' '}
-            <em>both</em> your hops could still correlate. Distinct-key-per-hop lands in v1.5.
+            Both hops see this device’s key, so no single server can link you to your traffic — but
+            someone running both of your hops could.
           </p>
         </div>
       )}

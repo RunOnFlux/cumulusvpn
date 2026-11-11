@@ -16,6 +16,7 @@ import {
   enroll,
   hasPremiumTransport,
   obfsForTransport,
+  pingGateway,
   requireTransport,
   selectHops,
   transportFallbackChain,
@@ -34,6 +35,7 @@ import type {
 } from '@cumulusvpn/core';
 import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
+import { toCityRows, toCountryRows } from './locations.js';
 import { loadDnsChoice, loadSplitPolicy } from './storage.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
@@ -74,6 +76,11 @@ async function enrollOrMock(
 
 /** A pickable location in the UI, backed by the least-loaded gateway there. */
 export interface CountryOption {
+  /**
+   * Picker row id: `DE` for a whole country, `DE:Frankfurt` for a city (see
+   * lib/locations.ts). Absent on older call sites = the bare `code`.
+   */
+  readonly id?: string;
   readonly code: string;
   readonly name: string;
   readonly flag: string;
@@ -88,6 +95,10 @@ export interface CountryOption {
   /** Transports this gateway advertises (DPI-resistance negotiation); absent for
    *  a 0.1.0 gateway or the offline seed fallback. */
   readonly transports?: readonly Transport[];
+  /** Gateways this row covers (a country or a city). */
+  readonly nodeCount?: number;
+  /** Measured RTT to this row's gateway in ms; null = unreachable / untested. */
+  readonly latencyMs?: number | null;
 }
 
 /** Result of bringing a tunnel up: the gateway's enroll reply + native status. */
@@ -126,36 +137,37 @@ export interface MultihopResult {
   readonly splitApplied: boolean;
 }
 
-/** Least-loaded gateway per country → a stable, de-duplicated country list. */
-function toCountryOptions(gateways: readonly GatewayInfo[]): CountryOption[] {
-  const best = new Map<string, GatewayInfo>();
-  for (const g of gateways) {
-    const current = best.get(g.country);
-    if (!current || g.load < current.load) {
-      best.set(g.country, g);
-    }
-  }
-  return [...best.values()]
-    .map((g): CountryOption => {
-      const meta = countryMeta(g.country);
-      return {
-        code: g.country,
-        name: meta.name,
-        flag: meta.flag,
-        gatewayIp: g.ip,
-        city: g.city,
-        load: g.load,
-        signPubKey: g.sign_pubkey,
-        ...(g.transports ? { transports: g.transports } : {}),
-      };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+/**
+ * Measure every gateway's control-plane RTT (two quick samples each, in
+ * parallel) so the picker and Automatic can rank by latency as well as load.
+ * An unreachable gateway is simply absent from the map.
+ */
+async function measureFleet(
+  gateways: readonly GatewayInfo[],
+  fetchImpl?: typeof fetch,
+): Promise<Record<string, number>> {
+  const out: Record<string, number> = {};
+  await Promise.all(
+    gateways.map(async (g) => {
+      const r = await pingGateway(`http://${g.ip}:51821`, {
+        samples: 2,
+        timeoutMs: 2500,
+        ...(fetchImpl ? { fetchImpl } : {}),
+      });
+      if (r.rttMs !== null) {
+        out[g.ip] = Math.round(r.rttMs);
+      }
+    }),
+  );
+  return out;
 }
 
 /** Discovery result: the collapsed picker rows plus the full underlying fleet. */
 export interface FleetDiscovery {
-  /** One least-loaded row per country, for the picker. */
+  /** One row per country (best gateway there), A–Z. */
   readonly countries: CountryOption[];
+  /** One row per city (best gateway there), for the picker's second level. */
+  readonly locations: CountryOption[];
   /**
    * Every discovered gateway (several per country). Multi-hop hop selection
    * needs this — the collapsed one-per-country `countries` can't supply a second
@@ -179,7 +191,12 @@ export async function discoverFleetAndCountries(fetchImpl?: typeof fetch): Promi
   const options = fetchImpl ? { fetchImpl } : {};
   const gateways = await discoverGateways(BUNDLED_DIRECTORY.specs, options);
   if (gateways.length > 0) {
-    return { countries: toCountryOptions(gateways), fleet: gateways };
+    const latency = await measureFleet(gateways, fetchImpl);
+    return {
+      countries: toCountryRows(gateways, latency),
+      locations: toCityRows(gateways, latency),
+      fleet: gateways,
+    };
   }
   // Browser demo (dev / Storybook / headless render): the Flux discovery API
   // isn't reachable from a plain browser, so synthesize the fleet's countries
@@ -202,7 +219,7 @@ export async function discoverFleetAndCountries(fetchImpl?: typeof fetch): Promi
         };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-    return { countries, fleet: [] };
+    return { countries, locations: [], fleet: [] };
   }
   // Offline cold-start: synthesize options from the signed seed list. Skip the
   // 0.0.0.0 placeholder seeds (live discovery resolves real IPs), matching the
@@ -222,7 +239,7 @@ export async function discoverFleetAndCountries(fetchImpl?: typeof fetch): Promi
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));
-  return { countries, fleet: [] };
+  return { countries, locations: [], fleet: [] };
 }
 
 /** Enumerate connectable countries (the collapsed picker rows). */
@@ -589,6 +606,8 @@ export async function establishMultihop(
   transportMode: TransportMode = 'auto',
   tier: Tier = 'free',
   fetchImpl?: typeof fetch,
+  /** Node diversity (Settings): entry and exit on different networks. */
+  requireDistinctSubnet = false,
 ): Promise<MultihopResult> {
   // Hop selection needs the FULL fleet (several gateways per country); the
   // collapsed one-per-country picker rows can't supply a distinct second gateway
@@ -599,11 +618,24 @@ export async function establishMultihop(
   // Same-country ("Balanced"): let selectHops choose the second hop WITHIN the
   // entry's country — don't pin the exit to a different picked country, which
   // would be unsatisfiable. Cross-jurisdiction: honor both country picks.
-  const hopOpts =
-    style === 'multihop-same-country'
+  const hopOpts = {
+    ...(style === 'multihop-same-country'
       ? { entryCountry: entryCountry.code }
-      : { entryCountry: entryCountry.code, exitCountry: exitCountry.code };
-  const hops = selectHops(candidates, style, hopOpts);
+      : { entryCountry: entryCountry.code, exitCountry: exitCountry.code }),
+    ...(requireDistinctSubnet ? { requireDistinctSubnet: true } : {}),
+  };
+  let hops: ReturnType<typeof selectHops>;
+  try {
+    hops = selectHops(candidates, style, hopOpts);
+  } catch (err) {
+    // Say which setting made the route impossible, as mobile does.
+    if (requireDistinctSubnet) {
+      throw new Error(
+        'No entry and exit on different networks for this route. Pick other locations, or turn off Node diversity in Settings.',
+      );
+    }
+    throw err;
+  }
   if (!hops.exit) {
     throw new Error('multi-hop requires a distinct exit hop');
   }
