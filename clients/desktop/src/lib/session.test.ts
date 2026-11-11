@@ -19,7 +19,15 @@ vi.mock('@cumulusvpn/core', async (importOriginal) => {
   // `status` is mocked too: establish() consults the gateway being dialled for
   // its authoritative tier whenever that gateway advertises a premium-gated
   // transport, and an unmocked call would hit the network.
-  return { ...actual, discoverGateways: vi.fn(), enroll: vi.fn(), status: vi.fn() };
+  // `pingGateway` too: discovery measures every gateway's latency, and these
+  // are documentation IPs that would only time out. Unmeasured = null latency.
+  return {
+    ...actual,
+    discoverGateways: vi.fn(),
+    enroll: vi.fn(),
+    status: vi.fn(),
+    pingGateway: vi.fn(async () => ({ rttMs: null, jitterMs: null, loss: 1 })),
+  };
 });
 
 // Drives the native side's handshake reporting. `establish` probes `status`

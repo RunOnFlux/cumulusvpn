@@ -90,6 +90,8 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         // The fleet's HTTP goes through Rust: no CORS/ATS (src/lib/nativeFetch.ts).
         .plugin(tauri_plugin_http::init())
+        // Connect / drop / reconnect notifications (Settings → Notifications).
+        .plugin(tauri_plugin_notification::init())
         .manage(TunnelBackend::new())
         .manage(tray::TrayUi::default())
         .invoke_handler(tauri::generate_handler![

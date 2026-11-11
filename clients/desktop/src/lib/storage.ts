@@ -66,14 +66,21 @@ export function saveKeypair(keypair: Keypair): void {
   safeSet(KEYPAIR_KEY, JSON.stringify(keypair));
 }
 
-/** Read the last-selected country code, if any. */
+/** Stored for an explicit "Automatic" pick (absent also means Automatic). */
+const AUTOMATIC = 'auto';
+
+/**
+ * The last-picked location id (`DE`, or `DE:Frankfurt` for a city), or `null`
+ * for Automatic — the default for a fresh install, as on mobile.
+ */
 export function loadSelectedCountry(): string | null {
-  return safeGet(COUNTRY_KEY);
+  const v = safeGet(COUNTRY_KEY);
+  return v === null || v === '' || v === AUTOMATIC ? null : v;
 }
 
-/** Persist the user's selected country code. */
-export function saveSelectedCountry(code: string): void {
-  safeSet(COUNTRY_KEY, code);
+/** Persist the picked location id; `null` = Automatic. */
+export function saveSelectedCountry(id: string | null): void {
+  safeSet(COUNTRY_KEY, id ?? AUTOMATIC);
 }
 
 /**

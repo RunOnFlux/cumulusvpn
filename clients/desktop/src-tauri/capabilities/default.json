@@ -11,6 +11,18 @@
     "core:window:allow-show",
     "core:window:allow-close",
     "opener:default",
+    {
+      "identifier": "opener:allow-open-url",
+      "allow": [
+        {
+          "url": "zel:*"
+        },
+        {
+          "url": "ssp:*"
+        }
+      ]
+    },
+    "notification:default",
     "shell:allow-execute",
     {
       "identifier": "shell:allow-spawn",
@@ -33,6 +45,9 @@
         },
         {
           "url": "https://api.runonflux.io/*"
+        },
+        {
+          "url": "https://pay.cumulusvpn.com/*"
         }
       ]
     }

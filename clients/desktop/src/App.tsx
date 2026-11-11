@@ -2,38 +2,43 @@ import { useState } from 'react';
 import type { JSX } from 'react';
 import { useConnection } from './hooks/useConnection.js';
 import { useTray } from './hooks/useTray.js';
+import { useNotifications } from './hooks/useNotifications.js';
 import { ConnectOrb } from './components/ConnectOrb.js';
 import { CountryPicker } from './components/CountryPicker.js';
 import { MultihopPanel } from './components/MultihopPanel.js';
 import { TierBadge } from './components/TierBadge.js';
+import { Upgrade } from './components/Upgrade.js';
 import { StatBar } from './components/StatBar.js';
 import { SessionTimer } from './components/SessionTimer.js';
 import { Settings } from './components/Settings.js';
 import { helperReady, openHelperSettings } from './lib/tauri.js';
 import { desktopOs, setupBanner } from './lib/setup.js';
-import { upgradeUrl } from './lib/directory.js';
-import { loadOrCreateKeypair } from './lib/storage.js';
-import { paymentCode } from '@cumulusvpn/core';
-import { openExternal } from './lib/opener.js';
 import { RecoveryNudge } from './components/RecoveryNudge.js';
 
 /** Which hop the country picker is currently editing, or closed. */
 type PickerTarget = 'entry' | 'exit' | null;
 
-/**
- * Open the upgrade/payment page in the system browser with THIS app's payment
- * code (`?code=`), so a payment made there — FLUX or card — credits the
- * desktop key rather than the browser's own keypair. Goes through the opener
- * plugin: the webview does not hand `window.open` to the system browser.
- */
-function openUpgrade(): void {
-  let code = '';
-  try {
-    code = paymentCode(loadOrCreateKeypair().publicKey);
-  } catch {
-    /* fall back to the un-prefilled page */
-  }
-  void openExternal(upgradeUrl(code));
+/** Settings gear: eight teeth around a ring, drawn in the text colour. */
+function GearIcon(): JSX.Element {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      <g fill="currentColor">
+        {[0, 45, 90, 135, 180, 225, 270, 315].map((deg) => (
+          <rect
+            key={deg}
+            x="10.4"
+            y="1.6"
+            width="3.2"
+            height="5"
+            rx="1"
+            transform={`rotate(${deg} 12 12)`}
+          />
+        ))}
+      </g>
+      <circle cx="12" cy="12" r="6.6" fill="none" stroke="currentColor" strokeWidth="2.6" />
+      <circle cx="12" cy="12" r="2.4" fill="currentColor" />
+    </svg>
+  );
 }
 
 function pingClass(load: number): string {
@@ -49,8 +54,10 @@ function pingClass(load: number): string {
 export function App(): JSX.Element {
   const conn = useConnection();
   useTray(conn);
+  useNotifications(conn);
   const [picker, setPicker] = useState<PickerTarget>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUpgrade, setShowUpgrade] = useState(false);
   // Settings opened from the "save your recovery key" nudge shows the key.
   const [revealKey, setRevealKey] = useState(false);
 
@@ -69,7 +76,7 @@ export function App(): JSX.Element {
           CumulusVPN
         </div>
         <button className="gear" onClick={() => setShowSettings(true)} aria-label="Settings">
-          ⚙
+          <GearIcon />
         </button>
       </div>
 
@@ -116,11 +123,27 @@ export function App(): JSX.Element {
           {conn.multihop && <span className="hop-tag entry">ENTRY</span>}
           <span className="flag">{selected?.flag ?? '🌐'}</span>
           <span className="meta">
-            <span className="n">{selected?.name ?? 'No locations'}</span>
+            <span className="n">
+              {selected
+                ? conn.automatic && !connected
+                  ? `Automatic · ${selected.name}`
+                  : selected.name
+                : conn.phase === 'loading'
+                  ? 'Finding servers…'
+                  : 'No locations'}
+            </span>
             <span className="s">
               {selected
-                ? `${selected.city || selected.code} · ${selected.gatewayIp}`
-                : 'discovering fleet…'}
+                ? [
+                    selected.city || selected.code,
+                    selected.latencyMs != null ? `${selected.latencyMs} ms` : null,
+                    selected.gatewayIp,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')
+                : conn.phase === 'loading'
+                  ? 'discovering fleet…'
+                  : 'Re-test from the location list'}
             </span>
           </span>
           {selected && <span className={pingClass(selected.load)} />}
@@ -172,7 +195,7 @@ export function App(): JSX.Element {
             setShowSettings(true);
           }}
         />
-        <TierBadge entitlement={conn.entitlement} onUpgrade={openUpgrade} />
+        <TierBadge entitlement={conn.entitlement} onUpgrade={() => setShowUpgrade(true)} />
 
         {connected || busy ? (
           <button className="btn-disc" onClick={conn.disconnect}>
@@ -201,8 +224,18 @@ export function App(): JSX.Element {
       {picker !== null && (
         <CountryPicker
           countries={conn.countries}
-          selectedCode={picker === 'exit' ? (conn.exit?.code ?? null) : (selected?.code ?? null)}
-          onPick={picker === 'exit' ? conn.selectExit : conn.select}
+          {...(picker === 'exit'
+            ? { selectedId: conn.exit?.code ?? null, onPick: conn.selectExit }
+            : {
+                locations: conn.locations,
+                selectedId: conn.automatic
+                  ? null
+                  : selected
+                    ? (selected.id ?? selected.code)
+                    : null,
+                onPick: conn.select,
+                onPickAutomatic: () => conn.select(null),
+              })}
           onClose={() => setPicker(null)}
           onRefresh={conn.refresh}
           favorites={conn.favorites}
@@ -216,14 +249,31 @@ export function App(): JSX.Element {
           killSwitch={conn.killSwitch}
           stealth={conn.transportMode === 'stealth'}
           tier={conn.entitlement?.tier ?? 'free'}
+          paidUntil={conn.entitlement?.paidUntil ?? null}
+          nodeDiversity={conn.nodeDiversity}
+          notifications={conn.notifications}
+          sessionActive={conn.phase === 'connected' || conn.phase === 'connecting'}
+          onNodeDiversity={conn.setNodeDiversity}
+          onNotifications={conn.setNotifications}
           onAutoConnect={conn.setAutoConnect}
           onKillSwitch={conn.setKillSwitch}
           onStealth={(v) => conn.setTransportMode(v ? 'stealth' : 'auto')}
+          onOpenUpgrade={() => setShowUpgrade(true)}
           revealRecoveryKey={revealKey}
           onClose={() => {
             setShowSettings(false);
             setRevealKey(false);
           }}
+        />
+      )}
+
+      {/* After Settings so it stacks on top: closing it returns to Settings. */}
+      {showUpgrade && (
+        <Upgrade
+          entitlement={conn.entitlement}
+          payment={conn.payment}
+          refreshTier={conn.refreshTier}
+          onClose={() => setShowUpgrade(false)}
         />
       )}
     </div>

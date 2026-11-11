@@ -342,6 +342,7 @@ __metadata:
     "@tauri-apps/api": "npm:2.12.3"
     "@tauri-apps/cli": "npm:2.12.2"
     "@tauri-apps/plugin-http": "npm:2.9.0"
+    "@tauri-apps/plugin-notification": "npm:2.8.1"
     "@tauri-apps/plugin-opener": "npm:2.7.1"
     "@testing-library/dom": "npm:10.4.2"
     "@testing-library/jest-dom": "npm:7.0.1"
@@ -352,6 +353,7 @@ __metadata:
     eslint: "npm:10.12.0"
     jsdom: "npm:30.1.2"
     prettier: "npm:3.9.10"
+    qrcode-generator: "npm:2.0.4"
     react: "npm:19.3.0"
     react-dom: "npm:19.3.0"
     typescript: "npm:6.0.3"
@@ -854,6 +856,15 @@ __metadata:
   dependencies:
     "@tauri-apps/api": "npm:^2.12.0"
   checksum: 10c0/1da2f2ec4602c071b18d3609b8963cdbfa34c3d4b6f1633501f51f9450fb4539871536f6af31022436488794899522970b570922cc6cd8bf2a8165b5801abd5a
+  languageName: node
+  linkType: hard
+
+"@tauri-apps/plugin-notification@npm:2.8.1":
+  version: 2.8.1
+  resolution: "@tauri-apps/plugin-notification@npm:2.8.1"
+  dependencies:
+    "@tauri-apps/api": "npm:^2.12.0"
+  checksum: 10c0/33fbc6917b51f4ee97186c2b70a9505e88b7abf85e847fcb1d59f461f642812f31db4871332da9b3f8b2213f363691a04da153e1891a9ff30dbf14ef7cb5f0d4
   languageName: node
   linkType: hard
 
@@ -2576,6 +2587,13 @@ __metadata:
   dependencies:
     hookified: "npm:^2.1.1"
   checksum: 10c0/4a39d45492c65a4b9795381acede1bd566028ce9764ead5b41d776b391a898bf0855dd2b59d724a6711fe253ba3cacf7c9a8832887cf9dc6d48a2c5e4997c82d
+  languageName: node
+  linkType: hard
+
+"qrcode-generator@npm:2.0.4":
+  version: 2.0.4
+  resolution: "qrcode-generator@npm:2.0.4"
+  checksum: 10c0/52dc3894bda6afecf09cb36aba9c181f3c4641fcbeac40c2af05d68da1383e3a1c7354bd3dc8c5e2a199d2e62314bbdec8cb4fbbd00bcfda40de56bb36bfdb17
   languageName: node
   linkType: hard
 

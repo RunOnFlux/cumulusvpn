@@ -3,7 +3,7 @@
  * keypair, the discovered country list, the connect/disconnect lifecycle, and
  * live polling of native tunnel status + chain entitlement.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GatewayInfo, Keypair, Tier, TransportMode } from '@cumulusvpn/core';
 // (Tier is used for both the displayed entitlement and transport gating.)
 import { loadOrCreateKeypair, loadSelectedCountry, saveSelectedCountry } from '../lib/storage.js';
@@ -15,6 +15,9 @@ import {
   teardown,
 } from '../lib/session.js';
 import type { CountryOption } from '../lib/session.js';
+import { resolveSelection } from '../lib/locations.js';
+import { fleetPriceFlux, paymentIdentity } from '../lib/payment.js';
+import type { PaymentIdentity } from '../lib/payment.js';
 import { status as nativeStatus, helperRegistration, helperReady } from '../lib/tauri.js';
 import type { TunnelStatus, HelperRegistration } from '../lib/tauri.js';
 
@@ -45,9 +48,18 @@ export interface ConnectionModel {
    * privileges. See `helperReady` and `lib/setup.ts`.
    */
   readonly helperState: HelperRegistration;
+  /** One row per country (best gateway there), A–Z. */
   readonly countries: readonly CountryOption[];
-  /** Single-hop location, or the ENTRY hop when multi-hop is on. */
+  /** One row per city, for the picker's second level (lib/locations.ts). */
+  readonly locations: readonly CountryOption[];
+  /**
+   * Single-hop location, or the ENTRY hop when multi-hop is on. On Automatic
+   * this is the best location right now; during a session it is the one
+   * actually connected, so a re-test can't relabel a live tunnel.
+   */
   readonly selected: CountryOption | null;
+  /** True when the user chose Automatic (best location, resolved at connect). */
+  readonly automatic: boolean;
   readonly tunnel: TunnelStatus;
   /**
    * Why DNS is not (fully) going through the tunnel, while connected; `null`
@@ -56,10 +68,15 @@ export interface ConnectionModel {
    */
   readonly dnsWarning: string | null;
   readonly entitlement: Entitlement | null;
+  /** Pay-to details for this device (Upgrade screen). */
+  readonly payment: PaymentIdentity;
+  /** Re-check the tier now (the Upgrade screen polls this to unlock itself). */
+  readonly refreshTier: () => Promise<void>;
   /** True when the live session has split-tunneling rules applied (docs/17 §8). */
   readonly splitActive: boolean;
   readonly error: string | null;
-  readonly select: (code: string) => void;
+  /** Pick a location id (`DE`, `DE:Frankfurt`), or `null` for Automatic. */
+  readonly select: (id: string | null) => void;
   readonly connect: () => void;
   readonly disconnect: () => void;
   // ---- multi-hop (opt-in; OFF by default) --------------------------------
@@ -88,6 +105,12 @@ export interface ConnectionModel {
   readonly autoConnect: boolean;
   /** Toggle auto-connect on launch. */
   readonly setAutoConnect: (on: boolean) => void;
+  /** Multi-hop entry and exit on different networks (persisted; default off). */
+  readonly nodeDiversity: boolean;
+  readonly setNodeDiversity: (on: boolean) => void;
+  /** Connect / drop / reconnect system notifications (persisted; default on). */
+  readonly notifications: boolean;
+  readonly setNotifications: (on: boolean) => void;
   /** Unix-ms when the active session connected, or null when not connected. */
   readonly connectedSince: number | null;
   /** Re-discover the fleet (re-test node load/quality); keeps the selection. */
@@ -176,7 +199,17 @@ export function useConnection(): ConnectionModel {
   // hop selection — the collapsed `countries` list can't supply a distinct
   // second in-country gateway for a same-country route.
   const fleetRef = useRef<readonly GatewayInfo[]>([]);
-  const [selected, setSelected] = useState<CountryOption | null>(null);
+  // The fleet's live FLUX quote (majority of signed /v1/info), for Upgrade.
+  const [fleetPrice, setFleetPrice] = useState<number | undefined>(undefined);
+  const [locations, setLocations] = useState<readonly CountryOption[]>([]);
+  // The stored pick: a location id, or null = Automatic.
+  const [selectedId, setSelectedId] = useState<string | null>(() => loadSelectedCountry());
+  // The location of the live (or reattached) session; null when idle.
+  const [sessionEntry, setSessionEntry] = useState<CountryOption | null>(null);
+  const selected = useMemo(
+    () => sessionEntry ?? resolveSelection(selectedId, countries, locations),
+    [sessionEntry, selectedId, countries, locations],
+  );
   const [tunnel, setTunnel] = useState<TunnelStatus>(DOWN);
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
   // Session truth for the split-tunneling indicator (docs/17 §8) — set from
@@ -209,6 +242,12 @@ export function useConnection(): ConnectionModel {
     () => localStorage.getItem('cvpn.autoConnect') === '1',
   );
   const autoConnectedRef = useRef(false);
+  const [nodeDiversity, setNodeDiversityState] = useState(
+    () => localStorage.getItem('cvpn.nodeDiversity') === '1',
+  );
+  const [notifications, setNotificationsState] = useState(
+    () => localStorage.getItem('cvpn.notifications') !== '0',
+  );
   // Unix-ms when the current session connected (for the session timer), and
   // whether we ever reached 'connected' this session (for auto-reconnect).
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
@@ -257,19 +296,20 @@ export function useConnection(): ConnectionModel {
         setPhase(to);
       };
       try {
-        const { countries: list, fleet } = await discoverFleetAndCountries();
+        const { countries: list, locations: locs, fleet } = await discoverFleetAndCountries();
         if (!alive) {
           return;
         }
         fleetRef.current = fleet;
+        setFleetPrice(fleetPriceFlux(fleet));
         setCountries(list);
-        const remembered = loadSelectedCountry();
-        const pick =
-          list.find((c) => c.code === live?.country) ??
-          list.find((c) => c.code === remembered) ??
-          list[0] ??
-          null;
-        setSelected(pick);
+        setLocations(locs);
+        // A reattached session shows where it actually is, whatever is picked.
+        const liveRow = live ? (list.find((c) => c.code === live.country) ?? null) : null;
+        if (liveRow) {
+          setSessionEntry(liveRow);
+        }
+        const pick = liveRow ?? resolveSelection(loadSelectedCountry(), list, locs);
         // Default the exit to the first country different from the entry, so
         // multi-hop has a sane cross-jurisdiction pair the moment it's toggled.
         setExit(list.find((c) => c.code !== pick?.code) ?? null);
@@ -299,24 +339,28 @@ export function useConnection(): ConnectionModel {
   // the quality ratings). Keeps the current selection.
   const refresh = useCallback(async (): Promise<void> => {
     try {
-      const { countries: list, fleet } = await discoverFleetAndCountries();
+      const { countries: list, locations: locs, fleet } = await discoverFleetAndCountries();
       fleetRef.current = fleet;
+      setFleetPrice(fleetPriceFlux(fleet));
       setCountries(list);
+      setLocations(locs);
     } catch (err) {
       setError(messageOf(err));
     }
   }, []);
 
-  const select = useCallback(
-    (code: string) => {
-      const next = countries.find((c) => c.code === code);
-      if (next) {
-        setSelected(next);
-        saveSelectedCountry(code);
-      }
-    },
-    [countries],
-  );
+  // Read by `select` without re-creating it on every phase change.
+  const phaseRef = useRef<Phase>('loading');
+  phaseRef.current = phase;
+  const select = useCallback((id: string | null) => {
+    setSelectedId(id);
+    saveSelectedCountry(id);
+    // Outside a live session (e.g. after a failed connect) the new pick is
+    // what Connect should use, not the location of the attempt that failed.
+    if (phaseRef.current !== 'connected' && phaseRef.current !== 'connecting') {
+      setSessionEntry(null);
+    }
+  }, []);
 
   const selectExit = useCallback(
     (code: string) => {
@@ -334,6 +378,15 @@ export function useConnection(): ConnectionModel {
   const setTransportMode = useCallback((mode: TransportMode) => {
     setTransportModeState(mode);
     localStorage.setItem('cvpn.transportMode', mode);
+  }, []);
+
+  const setNodeDiversity = useCallback((on: boolean) => {
+    setNodeDiversityState(on);
+    localStorage.setItem('cvpn.nodeDiversity', on ? '1' : '0');
+  }, []);
+  const setNotifications = useCallback((on: boolean) => {
+    setNotificationsState(on);
+    localStorage.setItem('cvpn.notifications', on ? '1' : '0');
   }, []);
 
   const setKillSwitch = useCallback((on: boolean) => {
@@ -375,6 +428,18 @@ export function useConnection(): ConnectionModel {
     [keypair],
   );
 
+  const payment = useMemo(
+    () => paymentIdentity(keypair.publicKey, fleetPrice),
+    [keypair, fleetPrice],
+  );
+
+  const refreshTier = useCallback(async (): Promise<void> => {
+    const target = selected ?? countries[0];
+    if (target?.signPubKey) {
+      await refreshEntitlement(target.gatewayIp, target.signPubKey);
+    }
+  }, [selected, countries, refreshEntitlement]);
+
   // Populate the tier badge before the first connect — entitlement is otherwise
   // only fetched once a tunnel is up, so a fresh launch would always read
   // "free". This is a DISPLAY hint and a cheap hot cache; it is deliberately not
@@ -409,6 +474,9 @@ export function useConnection(): ConnectionModel {
     const sweep = new AbortController();
     sweepRef.current = sweep;
     setTunnel((t) => ({ ...t, state: 'connecting', country: entry.code }));
+    // Pin the location for the session: Automatic re-resolves on every
+    // re-test, and the live tunnel must keep showing where it really goes.
+    setSessionEntry(entry);
     void (async () => {
       try {
         if (multihop) {
@@ -425,6 +493,8 @@ export function useConnection(): ConnectionModel {
             killSwitch,
             transportMode,
             tierRef.current,
+            undefined,
+            nodeDiversity,
           );
           setTunnel(result.tunnel);
           setSplitActive(result.splitApplied);
@@ -464,6 +534,7 @@ export function useConnection(): ConnectionModel {
     keypair,
     killSwitch,
     transportMode,
+    nodeDiversity,
     refreshEntitlement,
   ]);
 
@@ -495,6 +566,7 @@ export function useConnection(): ConnectionModel {
       setConnectedSince((prev) => prev ?? Date.now());
     } else if (phase === 'idle') {
       setConnectedSince(null);
+      setSessionEntry(null);
     }
   }, [phase]);
 
@@ -603,10 +675,14 @@ export function useConnection(): ConnectionModel {
     phase,
     helperState,
     countries,
+    locations,
     selected,
+    automatic: selectedId === null,
     tunnel,
     dnsWarning: dnsWarningOf(phase, tunnel),
     entitlement,
+    payment,
+    refreshTier,
     splitActive,
     error,
     select,
@@ -620,6 +696,10 @@ export function useConnection(): ConnectionModel {
     selectExit,
     killSwitch,
     setKillSwitch,
+    nodeDiversity,
+    setNodeDiversity,
+    notifications,
+    setNotifications,
     transportMode,
     setTransportMode,
     autoConnect,

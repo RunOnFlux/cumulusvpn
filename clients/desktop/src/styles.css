@@ -74,9 +74,16 @@ textarea {
   overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--line) transparent;
-  /* the scrollbar must not crowd the card borders it sits next to */
-  padding-right: 2px;
-  margin-right: -2px;
+  /* macOS draws an overlay scrollbar on top of the content, so keep a
+     lane clear for it: the padding holds the bar and the negative margin
+     moves that lane into the shell's 16px gutter, so cards keep the same
+     width as the rows outside the scroll area. */
+  padding-right: 12px;
+  margin-right: -12px;
+  scrollbar-gutter: stable;
+  /* room for a focused card's ring, which overflow would otherwise clip */
+  padding-left: 3px;
+  margin-left: -3px;
   /* flex children default to min-height:auto, which defeats overflow entirely */
   min-height: 0;
 }
@@ -175,7 +182,7 @@ button {
   flex-shrink: 0;
 }
 .orb {
-  width: clamp(112px, 25vh, 168px);
+  width: clamp(104px, 21vh, 164px);
   aspect-ratio: 1;
   border-radius: 50%;
   display: flex;
@@ -365,11 +372,12 @@ button {
 
 /* Settings — gear button + sheet rows */
 .titlebar .gear {
-  font-size: 15px;
-  color: var(--ink-3);
-  padding: 3px 7px;
-  border-radius: 8px;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--ink-2);
+  border-radius: 9px;
 }
 .titlebar .gear:hover {
   color: var(--ink);
@@ -915,6 +923,68 @@ button {
   flex: 1;
   font-size: 13.5px;
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+/* Second line under a location name: city / node counts, or what Automatic picks. */
+.crow .csub {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.crow .chev {
+  color: var(--ink-3);
+  font-size: 16px;
+  /* Reserved on every row, empty or not, so the columns never shift. */
+  width: 10px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.crow .star {
+  width: 16px;
+  text-align: center;
+}
+.crow .flag {
+  width: 24px;
+  flex-shrink: 0;
+  text-align: center;
+}
+/* Rating on top, latency under it, right-aligned in a fixed column. */
+.crow .qcol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex-shrink: 0;
+  min-width: 78px;
+}
+.crow .qtop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sheethead .backbtn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  color: var(--ink-2);
+  font-size: 20px;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+.sheethead .backbtn:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--cyan) 40%, var(--line));
 }
 .crow .lat {
   font-family: var(--mono);
@@ -1119,4 +1189,200 @@ button {
   color: var(--amber);
   font-size: 12px;
   line-height: 1.4;
+}
+/* City list header: back button, then the country name over "Choose a city". */
+.sheethead .headtext {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sheethead .headsub {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.sheethead:has(.backbtn) {
+  justify-content: flex-start;
+}
+
+/* ---- settings: parity additions ----------------------------------------- */
+.setinfo.setlink {
+  width: 100%;
+  text-align: left;
+}
+.setrow:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.setfoot {
+  margin: 14px 2px 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.poweredby {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  padding: 10px 0 4px;
+  opacity: 0.85;
+}
+.poweredby:hover {
+  opacity: 1;
+}
+
+/* ---- upgrade sheet ------------------------------------------------------- */
+.tier-row .paid:hover {
+  color: var(--ink-2);
+}
+.plan-card {
+  padding: 14px 15px;
+  background: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--amber) 35%, var(--line));
+  border-radius: 14px;
+  margin-bottom: 4px;
+}
+.plan-card.premium {
+  border-color: color-mix(in srgb, var(--cyan) 40%, var(--line));
+}
+.plan-title {
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.plan-price {
+  font-size: 13px;
+  color: var(--amber);
+}
+.plan-sub {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+.perks {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--ink);
+}
+.pay-btn {
+  width: 100%;
+  padding: 11px 14px;
+  border-radius: 12px;
+  background: var(--cyan);
+  color: var(--cyan-ink);
+  font-size: 13.5px;
+  font-weight: 700;
+}
+.pay-btn:hover:not(:disabled) {
+  filter: brightness(1.06);
+}
+.pay-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pay-note {
+  margin: 8px 2px 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--ink-3);
+}
+.flux-pay {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+.qr-wrap {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.qr {
+  width: 132px;
+  height: 132px;
+  padding: 6px;
+  background: #fff;
+  border-radius: 10px;
+}
+.qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.qr-cap {
+  font-size: 10.5px;
+  color: var(--ink-3);
+  text-align: center;
+  max-width: 132px;
+}
+.flux-fields {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.copy-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.copy-field:hover {
+  border-color: color-mix(in srgb, var(--cyan) 40%, var(--line));
+}
+.cf-label {
+  font-size: 10.5px;
+  color: var(--ink-3);
+}
+.cf-value {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--ink);
+  word-break: break-all;
+}
+.redeem {
+  display: flex;
+  gap: 8px;
+}
+.redeem .pay-btn {
+  width: auto;
+  flex-shrink: 0;
+}
+.pay-links {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.pay-links button {
+  color: var(--ink-2);
+}
+.pay-links button:hover {
+  color: var(--ink);
+}
+/* Plan row at the top of Settings: tier pill over the expiry, chevron right. */
+.planrow .setmeta {
+  align-items: flex-start;
+  gap: 6px;
+}
+.planrow .chev {
+  color: var(--ink-3);
+  font-size: 16px;
 }
