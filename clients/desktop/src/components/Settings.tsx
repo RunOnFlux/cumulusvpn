@@ -14,7 +14,7 @@ import { DnsSection } from './DnsSection.js';
 import { IdentitySection } from './IdentitySection.js';
 
 /** App version — matches the release tag. */
-const APP_VERSION = '1.4.4';
+const APP_VERSION = '1.4.5';
 
 const SITE_URL = 'https://cumulusvpn.com';
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';

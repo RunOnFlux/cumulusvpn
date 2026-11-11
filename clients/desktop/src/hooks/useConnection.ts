@@ -8,13 +8,14 @@ import type { GatewayInfo, Keypair, Tier, TransportMode } from '@cumulusvpn/core
 // (Tier is used for both the displayed entitlement and transport gating.)
 import { loadOrCreateKeypair, loadSelectedCountry, saveSelectedCountry } from '../lib/storage.js';
 import {
+  cachedFleet,
   discoverFleetAndCountries,
   establish,
   establishMultihop,
   fetchEntitlement,
   teardown,
 } from '../lib/session.js';
-import type { CountryOption } from '../lib/session.js';
+import type { CountryOption, FleetDiscovery } from '../lib/session.js';
 import { resolveSelection } from '../lib/locations.js';
 import { fleetPriceFlux, paymentIdentity } from '../lib/payment.js';
 import type { PaymentIdentity } from '../lib/payment.js';
@@ -133,11 +134,19 @@ const DOWN: TunnelStatus = {
   dnsWarning: null,
 };
 
-function messageOf(err: unknown): string {
-  if (err instanceof Error) {
-    return err.message;
-  }
-  return String(err);
+/**
+ * A macOS helper left over from desktop 1.4.3 or earlier keeps running after
+ * the app is updated (launchd doesn't restart it), and fails every connect
+ * with this. Helpers from 1.4.5 on restart themselves after an update; for the
+ * old ones, a restart is the fix.
+ */
+const STALE_HELPER = 'UAPI socket never appeared';
+export const STALE_HELPER_HINT =
+  'If you just updated CumulusVPN, restart your Mac to finish the update.';
+
+export function messageOf(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes(STALE_HELPER) ? `${message}. ${STALE_HELPER_HINT}` : message;
 }
 
 /**
@@ -295,11 +304,7 @@ export function useConnection(): ConnectionModel {
         }
         setPhase(to);
       };
-      try {
-        const { countries: list, locations: locs, fleet } = await discoverFleetAndCountries();
-        if (!alive) {
-          return;
-        }
+      const apply = ({ countries: list, locations: locs, fleet }: FleetDiscovery): void => {
         fleetRef.current = fleet;
         setFleetPrice(fleetPriceFlux(fleet));
         setCountries(list);
@@ -310,16 +315,47 @@ export function useConnection(): ConnectionModel {
           setSessionEntry(liveRow);
         }
         const pick = liveRow ?? resolveSelection(loadSelectedCountry(), list, locs);
-        // Default the exit to the first country different from the entry, so
-        // multi-hop has a sane cross-jurisdiction pair the moment it's toggled.
-        setExit(list.find((c) => c.code !== pick?.code) ?? null);
+        // Keep an exit already chosen (refreshed to this fleet's row); otherwise
+        // default to the first country different from the entry, so multi-hop
+        // has a sane cross-jurisdiction pair the moment it's toggled.
+        setExit(
+          (prev) =>
+            (prev && list.find((c) => c.code === prev.code)) ??
+            list.find((c) => c.code !== pick?.code) ??
+            null,
+        );
+      };
+      const ready = (): void => {
         if (live) {
           reattach(live);
         } else {
           setPhase('idle');
         }
-      } catch (err) {
+      };
+      // Paint the last good fleet at once (as mobile does), then refresh it
+      // live in the background. Live discovery probes every listed node and
+      // pings each gateway, which takes seconds; the cache makes launch instant.
+      const cached = cachedFleet();
+      if (cached) {
+        apply(cached);
+        ready();
+      }
+      try {
+        const fresh = await discoverFleetAndCountries();
         if (!alive) {
+          return;
+        }
+        // An empty fleet is the offline seed fallback: it must not replace a
+        // real (cached) fleet.
+        if (!cached || fresh.fleet.length > 0) {
+          apply(fresh);
+        }
+        if (!cached) {
+          ready();
+        }
+      } catch (err) {
+        if (!alive || cached) {
+          // With a cache on screen, a failed refresh just leaves it there.
           return;
         }
         if (live) {
@@ -340,6 +376,10 @@ export function useConnection(): ConnectionModel {
   const refresh = useCallback(async (): Promise<void> => {
     try {
       const { countries: list, locations: locs, fleet } = await discoverFleetAndCountries();
+      if (fleet.length === 0 && fleetRef.current.length > 0) {
+        // Offline seed fallback: keep the real fleet already on screen.
+        return;
+      }
       fleetRef.current = fleet;
       setFleetPrice(fleetPriceFlux(fleet));
       setCountries(list);

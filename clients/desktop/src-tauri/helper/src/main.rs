@@ -36,6 +36,7 @@ mod peer_windows;
 #[cfg(windows)]
 mod pipe;
 mod server;
+mod update_watch;
 #[cfg(windows)]
 mod windows;
 
@@ -59,6 +60,8 @@ fn main() {
     // dynamic store, so put them back before serving anyone.
     manager.recover_stale_dns();
     spawn_repair_loop(Arc::clone(&manager));
+    // Pick up a new helper after an app update (launchd keeps the old one).
+    update_watch::spawn(Arc::clone(&manager));
 
     // World-connectable on purpose; see `server::bind_socket` and `peer`.
     let listener = match server::bind_socket(proto::SOCKET_PATH, 0o666, None) {

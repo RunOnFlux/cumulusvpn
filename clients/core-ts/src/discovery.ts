@@ -46,10 +46,22 @@ function stripPort(ip: string): string {
   return trimmed;
 }
 
+/**
+ * A healthy gateway answers `/v1/info` in well under a second, even across
+ * continents; a node Flux still lists but that is down or firewalled never
+ * answers at all. Probes run in parallel, so this bounds discovery.
+ */
+export const DISCOVERY_PROBE_TIMEOUT_MS = 5_000;
+
+/** Bound on one Flux `/apps/location` listing. */
+const LOCATION_TIMEOUT_MS = 10_000;
+
 /** Fetch and normalise one `/apps/location/<spec>` index; never throws. */
 async function fetchLocation(url: string, fetchImpl: FetchImpl): Promise<string[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), LOCATION_TIMEOUT_MS);
   try {
-    const res = await fetchImpl(url);
+    const res = await fetchImpl(url, { signal: controller.signal });
     const body = (await res.json()) as { data?: readonly FluxLocationEntry[] };
     if (!body.data) {
       return [];
@@ -57,14 +69,26 @@ async function fetchLocation(url: string, fetchImpl: FetchImpl): Promise<string[
     return body.data.map((e) => stripPort(e.ip)).filter((ip) => ip.length > 0);
   } catch {
     return [];
+  } finally {
+    clearTimeout(timer);
   }
 }
 
 /** Probe a candidate's `/v1/info`, verifying its signed body; null if unusable. */
-async function probe(ip: string, fetchImpl: FetchImpl): Promise<GatewayInfo | null> {
+async function probe(
+  ip: string,
+  fetchImpl: FetchImpl,
+  timeoutMs: number,
+): Promise<GatewayInfo | null> {
   const controlUrl = `http://${ip}:${CONTROL_PORT}`;
   try {
-    const { data } = await fetchSigned<InfoResponse>(`${controlUrl}/v1/info`, fetchImpl);
+    const { data } = await fetchSigned<InfoResponse>(
+      `${controlUrl}/v1/info`,
+      fetchImpl,
+      undefined,
+      undefined,
+      timeoutMs,
+    );
     return { ...data, ip, controlUrl };
   } catch {
     return null;
@@ -118,7 +142,10 @@ export async function discoverGateways(
     }),
   );
 
-  const probed = await Promise.all([...ipCountry.keys()].map((ip) => probe(ip, fetchImpl)));
+  const timeoutMs = options.probeTimeoutMs ?? DISCOVERY_PROBE_TIMEOUT_MS;
+  const probed = await Promise.all(
+    [...ipCountry.keys()].map((ip) => probe(ip, fetchImpl, timeoutMs)),
+  );
   const gateways = probed
     .filter((g): g is GatewayInfo => g !== null)
     .map((g) => ({ ...g, country: reportedCountry(g.country) || ipCountry.get(g.ip) || '' }));

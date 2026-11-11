@@ -36,7 +36,7 @@ import type {
 import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
 import { toCityRows, toCountryRows } from './locations.js';
-import { loadDnsChoice, loadSplitPolicy } from './storage.js';
+import { loadDnsChoice, loadFleetCache, loadSplitPolicy, saveFleetCache } from './storage.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
 
@@ -178,20 +178,38 @@ export interface FleetDiscovery {
 }
 
 /**
+ * The last live discovery, rebuilt into picker rows — painted at launch while
+ * {@link discoverFleetAndCountries} refreshes it. Null on a first launch, or
+ * when the snapshot is missing, corrupt or too old.
+ */
+export function cachedFleet(): FleetDiscovery | null {
+  const cache = loadFleetCache();
+  if (!cache) {
+    return null;
+  }
+  return {
+    countries: toCountryRows(cache.gateways, cache.latencyByIp),
+    locations: toCityRows(cache.gateways, cache.latencyByIp),
+    fleet: cache.gateways,
+  };
+}
+
+/**
  * Discover the fleet: the full gateway list AND the collapsed per-country picker
  * rows, in a single discovery pass. Tries live Flux discovery across the bundled
  * spec names; if nothing is reachable, falls back to the bundled directory's
  * seed gateways so the picker is never empty offline.
  *
- * // POC: the offline fallback yields countries with no live `/v1/info` metrics
- * (load defaults to 0, city empty); a real client also reads a TTL disk cache
- * ahead of live discovery.
+ * A successful live discovery is saved as the launch cache ({@link cachedFleet}).
+ * The offline fallback yields countries with no live `/v1/info` metrics (load
+ * defaults to 0, city empty).
  */
 export async function discoverFleetAndCountries(fetchImpl?: typeof fetch): Promise<FleetDiscovery> {
   const options = fetchImpl ? { fetchImpl } : {};
   const gateways = await discoverGateways(BUNDLED_DIRECTORY.specs, options);
   if (gateways.length > 0) {
     const latency = await measureFleet(gateways, fetchImpl);
+    saveFleetCache(gateways, latency);
     return {
       countries: toCountryRows(gateways, latency),
       locations: toCityRows(gateways, latency),
