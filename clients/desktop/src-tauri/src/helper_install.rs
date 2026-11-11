@@ -157,12 +157,13 @@ mod imp {
         if state == HelperState::Enabled {
             return Ok(state);
         }
-        if state == HelperState::NotFound {
-            // Deliberately not an Err: this is a state the UI should render,
-            // not a failure to swallow. Returning Err here made the frontend
-            // fall back to "not registered", which describes the wrong problem.
-            return Ok(state);
-        }
+        // NotFound is NOT a reason to skip registering: a daemon that has never
+        // been registered reports NotFound too (not NotRegistered), so
+        // returning early here meant a correctly signed first install never
+        // registered at all and showed "could not verify" forever
+        // (desktop-v1.4.2 on a clean Mac). Register, then re-read: only a
+        // NotFound that survives a registration attempt means macOS really
+        // will not vouch for the helper (unsigned / ad-hoc / mismatched team).
         if !service.class().responds_to(sel!(registerAndReturnError:)) {
             return Err("SMAppService cannot register on this system".into());
         }
@@ -175,6 +176,13 @@ mod imp {
         // Re-read rather than inferring: registration succeeding and the daemon
         // actually running are different things.
         let state = status_of(&service)?;
+        if !ok && state == HelperState::NotFound {
+            // Still NotFound after trying: macOS really rejects the helper.
+            // Not an Err: the UI renders this state ("could not verify");
+            // an Err would fall back to "not registered", the wrong problem.
+            eprintln!("CumulusVPN: {}", describe_error(error));
+            return Ok(state);
+        }
         if !ok && state != HelperState::RequiresApproval {
             return Err(describe_error(error));
         }
