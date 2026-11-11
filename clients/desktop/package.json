@@ -1,6 +1,6 @@
 {
   "name": "@cumulusvpn/desktop",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "private": true,
   "description": "CumulusVPN desktop client — Tauri 2 (Rust shell) + React/TS. Tunnels via a bundled wireguard-go sidecar.",
   "type": "module",
