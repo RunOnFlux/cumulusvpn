@@ -4,7 +4,10 @@
 //! (`binaries/wireguard-go-<target-triple>`). It creates a TUN device
 //! (`wintun` on Windows, `utun` on macOS, `/dev/net/tun` on Linux) and exposes
 //! the WireGuard **UAPI** control socket — a Unix domain socket at
-//! `/var/run/wireguard/<iface>.sock` on Unix, or a named pipe on Windows.
+//! `/var/run/amneziawg/<iface>.sock` on Unix, or a named pipe on Windows.
+//! (The engine is AmneziaWG, which serves UAPI under its own `amneziawg` /
+//! `AmneziaWG` names, not upstream's `wireguard` ones — see
+//! [`uapi_socket_path`].)
 //!
 //! We drive it entirely over UAPI: after spawn we open the socket and write a
 //! `set=1` block translated from the `.conf` produced by `@cumulusvpn/core`'s
@@ -325,16 +328,23 @@ fn resolve_wireguard_go() -> Result<PathBuf, TunnelError> {
     Err(TunnelError::Sidecar("wireguard-go binary not found"))
 }
 
-/// Path of the wireguard-go UAPI control endpoint for a device name.
+/// Path of the UAPI control endpoint for a device name.
+///
+/// The bundled engine is AmneziaWG (`scripts/fetch-wireguard-go.sh`), which
+/// renamed upstream's endpoints: `/var/run/amneziawg/` instead of
+/// `/var/run/wireguard/`, and `…\AmneziaWG\` instead of `…\WireGuard\` for
+/// the Windows pipe (`ipc/uapi_unix.go`, `ipc/uapi_windows.go`). Waiting on
+/// upstream's path makes every connect time out with "UAPI socket never
+/// appeared" even though the engine is up.
 fn uapi_socket_path(iface: &str) -> PathBuf {
     #[cfg(unix)]
     {
-        PathBuf::from(format!("/var/run/wireguard/{iface}.sock"))
+        PathBuf::from(format!("/var/run/amneziawg/{iface}.sock"))
     }
     #[cfg(windows)]
     {
         PathBuf::from(format!(
-            r"\\.\pipe\ProtectedPrefix\Administrators\WireGuard\{iface}"
+            r"\\.\pipe\ProtectedPrefix\Administrators\AmneziaWG\{iface}"
         ))
     }
 }
@@ -676,7 +686,7 @@ impl Sidecar {
     }
 
     /// Windows UAPI client. wireguard-go serves UAPI on the byte-mode named
-    /// pipe `\\.\pipe\ProtectedPrefix\Administrators\WireGuard\<iface>`; for
+    /// pipe `\\.\pipe\ProtectedPrefix\Administrators\AmneziaWG\<iface>`; for
     /// our strictly request→response usage a plain synchronous `File` opened
     /// read+write IS a pipe client — no overlapped IO needed. Fresh connection
     /// per exchange, like the Unix client. There is no read timeout (`File`
@@ -965,5 +975,25 @@ mod obfs_tests {
         assert_eq!(parse_uapi_get("listen_port=0\nerrno=0\n").listen_port, None);
         assert_eq!(parse_uapi_get("errno=0\n").listen_port, None);
         assert_eq!(parse_uapi_get("listen_port=junk\n").listen_port, None);
+    }
+}
+
+#[cfg(test)]
+mod uapi_path_tests {
+    use super::uapi_socket_path;
+
+    /// The engine is AmneziaWG: its endpoints live under `amneziawg` /
+    /// `AmneziaWG`, not upstream's `wireguard` / `WireGuard`. Waiting on the
+    /// upstream path made every connect time out (desktop 1.1.0–1.4.3).
+    #[test]
+    fn uapi_path_is_amneziawgs() {
+        let p = uapi_socket_path("utun9");
+        #[cfg(unix)]
+        assert_eq!(p, std::path::PathBuf::from("/var/run/amneziawg/utun9.sock"));
+        #[cfg(windows)]
+        assert_eq!(
+            p,
+            std::path::PathBuf::from(r"\\.\pipe\ProtectedPrefix\Administrators\AmneziaWG\utun9")
+        );
     }
 }

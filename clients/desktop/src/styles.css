@@ -182,7 +182,7 @@ button {
   flex-shrink: 0;
 }
 .orb {
-  width: clamp(104px, 21vh, 164px);
+  width: clamp(116px, 22vh, 176px);
   aspect-ratio: 1;
   border-radius: 50%;
   display: flex;
@@ -232,8 +232,10 @@ button {
   }
 }
 .orb .core {
-  width: 71%;
+  width: 80%;
   aspect-ratio: 1;
+  padding: 0 8%;
+  box-sizing: border-box;
   border-radius: 50%;
   display: flex;
   flex-direction: column;
@@ -257,7 +259,8 @@ button {
 .orb .state {
   font-family: var(--mono);
   font-size: clamp(9px, 1.7vh, 11px);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
   text-transform: uppercase;
   color: var(--ink-2);
 }
