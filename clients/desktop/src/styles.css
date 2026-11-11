@@ -526,6 +526,9 @@ button {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  /* Room between the title row and the search field below it. */
+  margin-bottom: 14px;
 }
 .sheethead h2 {
   margin: 0;

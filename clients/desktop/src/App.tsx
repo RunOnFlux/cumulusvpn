@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { JSX } from 'react';
 import { useConnection } from './hooks/useConnection.js';
+import { useTray } from './hooks/useTray.js';
 import { ConnectOrb } from './components/ConnectOrb.js';
 import { CountryPicker } from './components/CountryPicker.js';
 import { MultihopPanel } from './components/MultihopPanel.js';
@@ -47,6 +48,7 @@ function pingClass(load: number): string {
 
 export function App(): JSX.Element {
   const conn = useConnection();
+  useTray(conn);
   const [picker, setPicker] = useState<PickerTarget>(null);
   const [showSettings, setShowSettings] = useState(false);
   // Settings opened from the "save your recovery key" nudge shows the key.

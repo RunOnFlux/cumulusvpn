@@ -24,9 +24,8 @@ mod helper_client;
 mod helper_install;
 #[cfg(not(target_os = "macos"))]
 mod platform;
+mod tray;
 
-use tauri::menu::{MenuBuilder, MenuItemBuilder};
-use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
 
 use backend::TunnelBackend;
@@ -89,7 +88,10 @@ pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
+        // The fleet's HTTP goes through Rust: no CORS/ATS (src/lib/nativeFetch.ts).
+        .plugin(tauri_plugin_http::init())
         .manage(TunnelBackend::new())
+        .manage(tray::TrayUi::default())
         .invoke_handler(tauri::generate_handler![
             commands::connect,
             commands::connect_multihop,
@@ -98,6 +100,7 @@ pub fn run() {
             commands::helper_status,
             commands::helper_registration,
             commands::open_helper_settings,
+            tray::set_tray,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -105,45 +108,7 @@ pub fn run() {
                 register_helper();
             }
 
-            let show = MenuItemBuilder::with_id("show", "Show CumulusVPN").build(app)?;
-            let disconnect = MenuItemBuilder::with_id("disconnect", "Disconnect").build(app)?;
-            let quit = MenuItemBuilder::with_id("quit", "Quit CumulusVPN").build(app)?;
-            let menu = MenuBuilder::new(app)
-                .items(&[&show, &disconnect, &quit])
-                .build()?;
-
-            let mut tray = TrayIconBuilder::with_id("main")
-                .tooltip("CumulusVPN")
-                .menu(&menu)
-                // Left click belongs to the window, not the menu — the menu is
-                // the right-click affordance users expect from a tray app.
-                .show_menu_on_left_click(false)
-                .on_menu_event(|app, event| match event.id().as_ref() {
-                    "show" => show_main_window(app),
-                    // Disconnecting from the tray is the whole point of having
-                    // one: the window may be hidden when the user wants out.
-                    "disconnect" => {
-                        let _ = app.state::<TunnelBackend>().disconnect();
-                    }
-                    // `exit` raises RunEvent::Exit, which tears the tunnel
-                    // down — no need to do it twice here.
-                    "quit" => app.exit(0),
-                    _ => {}
-                })
-                .on_tray_icon_event(|tray, event| {
-                    if let TrayIconEvent::Click {
-                        button: MouseButton::Left,
-                        button_state: MouseButtonState::Up,
-                        ..
-                    } = event
-                    {
-                        show_main_window(tray.app_handle());
-                    }
-                });
-            if let Some(icon) = app.default_window_icon().cloned() {
-                tray = tray.icon(icon);
-            }
-            tray.build(app)?;
+            tray::install(app, show_main_window)?;
             Ok(())
         })
         .on_window_event(|window, event| {
