@@ -16,7 +16,15 @@ jest.mock('../native/CumulusTunnel', () => ({
   onTunnelStatus: () => ({ remove: () => undefined }),
 }));
 
-import { isMultihop, isTunnelDead, multihopConfigs, singleHopConfig } from './useVpn';
+import {
+  confirmDead,
+  DEAD_WATCH_IDLE,
+  isMultihop,
+  isTunnelDead,
+  multihopConfigs,
+  singleHopConfig,
+} from './useVpn';
+import type { DeadWatch } from './useVpn';
 
 describe('isMultihop', () => {
   it('is false only for the default single-hop style', () => {
@@ -61,6 +69,63 @@ describe('isTunnelDead — the roam backstop', () => {
     for (const state of ['disconnected', 'connecting', 'disconnecting', 'error']) {
       expect(isTunnelDead({ state, lastHandshake: now() - 3600 })).toBe(false);
     }
+  });
+});
+
+describe('confirmDead — no teardown on wake from sleep', () => {
+  /** Poll every 1.5s from `start`, feeding `dead` each time; returns the first confirmed time. */
+  function run(
+    watch: DeadWatch,
+    start: number,
+    polls: number,
+    dead: boolean,
+  ): { watch: DeadWatch; at: number | null } {
+    let w = watch;
+    for (let i = 0; i < polls; i++) {
+      const now = start + i * 1500;
+      const r = confirmDead(w, dead, now);
+      w = r.watch;
+      if (r.confirmed) {
+        return { watch: w, at: now };
+      }
+    }
+    return { watch: w, at: null };
+  }
+
+  it('does not fire on the first stale poll after the phone wakes', () => {
+    // Awake and healthy, then 10 minutes asleep: the first poll on wake reads a
+    // 10-minute-old handshake. That alone must never tear the tunnel down.
+    const awake = run(DEAD_WATCH_IDLE, 0, 5, false);
+    const wake = 6000 + 600_000;
+    const r = confirmDead(awake.watch, true, wake);
+    expect(r.confirmed).toBe(false);
+    // WireGuard re-handshakes within ~15s of waking: the window resets.
+    const stale = run(r.watch, wake + 1500, 10, true);
+    expect(stale.at).toBeNull();
+    const healed = confirmDead(stale.watch, false, wake + 16_500);
+    expect(healed.watch.since).toBeNull();
+  });
+
+  it('confirms a tunnel that stays dead for the whole window while awake', () => {
+    const r = run(DEAD_WATCH_IDLE, 0, 40, true);
+    expect(r.at).not.toBeNull();
+    expect(r.at).toBeGreaterThanOrEqual(30_000);
+    expect(r.at).toBeLessThan(31_500);
+  });
+
+  it('restarts the window after every sleep gap', () => {
+    // Dead for 20s awake, sleep, dead for 20s awake: never 30s unbroken.
+    const first = run(DEAD_WATCH_IDLE, 0, 14, true);
+    expect(first.at).toBeNull();
+    const second = run(first.watch, 19_500 + 60_000, 14, true);
+    expect(second.at).toBeNull();
+  });
+
+  it('a single healthy poll resets the window', () => {
+    const a = run(DEAD_WATCH_IDLE, 0, 15, true);
+    const ok = confirmDead(a.watch, false, 22_500);
+    const b = run(ok.watch, 24_000, 15, true);
+    expect(b.at).toBeNull();
   });
 });
 
