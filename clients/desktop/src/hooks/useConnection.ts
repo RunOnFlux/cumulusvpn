@@ -21,6 +21,8 @@ import { fleetPriceFlux, paymentIdentity } from '../lib/payment.js';
 import type { PaymentIdentity } from '../lib/payment.js';
 import { status as nativeStatus, helperRegistration, helperReady } from '../lib/tauri.js';
 import type { TunnelStatus, HelperRegistration } from '../lib/tauri.js';
+import { probeLatency, speedBetween, ZERO_SPEED } from '../lib/liveStats.js';
+import type { Sample, Speed } from '../lib/liveStats.js';
 
 export type Phase = 'loading' | 'idle' | 'connecting' | 'connected' | 'error';
 
@@ -97,6 +99,12 @@ export interface ConnectionModel {
   // ---- kill switch (leak protection) -------------------------------------
   /** Whether to engage the kill switch when connecting (persisted; default on). */
   readonly killSwitch: boolean;
+  /**
+   * The tunnel dropped and the kill switch is holding traffic blocked while
+   * auto-reconnect runs (the helper keeps the firewall engaged — fail-closed).
+   * Disconnect lifts it.
+   */
+  readonly blocked: boolean;
   /** Transport mode: 'auto' (fastest) or 'stealth' (obfuscated); persisted. */
   readonly transportMode: TransportMode;
   readonly setTransportMode: (mode: TransportMode) => void;
@@ -114,6 +122,12 @@ export interface ConnectionModel {
   readonly setNotifications: (on: boolean) => void;
   /** Unix-ms when the active session connected, or null when not connected. */
   readonly connectedSince: number | null;
+  /** A live discovery is refreshing the (cached) server list on screen. */
+  readonly refreshing: boolean;
+  /** Live throughput while connected (bytes/s). */
+  readonly speed: Speed;
+  /** Latency through the tunnel while connected (ms), null until measured. */
+  readonly pingMs: number | null;
   /** Re-discover the fleet (re-test node load/quality); keeps the selection. */
   readonly refresh: () => Promise<void>;
   /** Favorited (pinned) country codes, surfaced first in the picker. */
@@ -133,6 +147,15 @@ const DOWN: TunnelStatus = {
   error: null,
   dnsWarning: null,
 };
+
+/**
+ * Traffic is blocked: our session dropped (phase `error`) while the native
+ * tunnel still exists in its error state — the helper keeps the kill switch
+ * engaged then — and the kill switch is on.
+ */
+export function isBlocked(phase: Phase, tunnel: TunnelStatus, killSwitch: boolean): boolean {
+  return killSwitch && phase === 'error' && tunnel.state === 'error';
+}
 
 /**
  * A macOS helper left over from desktop 1.4.3 or earlier keeps running after
@@ -260,6 +283,10 @@ export function useConnection(): ConnectionModel {
   // Unix-ms when the current session connected (for the session timer), and
   // whether we ever reached 'connected' this session (for auto-reconnect).
   const [connectedSince, setConnectedSince] = useState<number | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [speed, setSpeed] = useState<Speed>(ZERO_SPEED);
+  const [pingMs, setPingMs] = useState<number | null>(null);
+  const lastSampleRef = useRef<Sample | null>(null);
   const wasConnectedRef = useRef(false);
   // Consecutive failed auto-reconnects, for the backoff below. Reset on every
   // successful connect.
@@ -339,9 +366,11 @@ export function useConnection(): ConnectionModel {
       if (cached) {
         apply(cached);
         ready();
+        setRefreshing(true);
       }
       try {
         const fresh = await discoverFleetAndCountries();
+        setRefreshing(false);
         if (!alive) {
           return;
         }
@@ -354,6 +383,7 @@ export function useConnection(): ConnectionModel {
           ready();
         }
       } catch (err) {
+        setRefreshing(false);
         if (!alive || cached) {
           // With a cache on screen, a failed refresh just leaves it there.
           return;
@@ -374,6 +404,7 @@ export function useConnection(): ConnectionModel {
   // Re-discover the fleet on demand (re-tests each node's live load, updating
   // the quality ratings). Keeps the current selection.
   const refresh = useCallback(async (): Promise<void> => {
+    setRefreshing(true);
     try {
       const { countries: list, locations: locs, fleet } = await discoverFleetAndCountries();
       if (fleet.length === 0 && fleetRef.current.length > 0) {
@@ -386,6 +417,8 @@ export function useConnection(): ConnectionModel {
       setLocations(locs);
     } catch (err) {
       setError(messageOf(err));
+    } finally {
+      setRefreshing(false);
     }
   }, []);
 
@@ -588,6 +621,7 @@ export function useConnection(): ConnectionModel {
       try {
         const s = await teardown();
         setTunnel(s);
+        setError(null);
       } catch (err) {
         setError(messageOf(err));
       } finally {
@@ -697,6 +731,9 @@ export function useConnection(): ConnectionModel {
         try {
           const s = await nativeStatus();
           setTunnel(s);
+          const sample = { rx: s.rxBytes, tx: s.txBytes, at: Date.now() };
+          setSpeed(speedBetween(lastSampleRef.current, sample));
+          lastSampleRef.current = sample;
           // A drop shows up as an error or a 'down' state while we think we're
           // connected — surface it as an error so auto-reconnect can kick in.
           if (s.state === 'error' || s.state === 'down') {
@@ -708,7 +745,39 @@ export function useConnection(): ConnectionModel {
         }
       })();
     }, 1500);
-    return () => clearInterval(id);
+    return () => {
+      clearInterval(id);
+      lastSampleRef.current = null;
+      setSpeed(ZERO_SPEED);
+    };
+  }, [phase]);
+
+  // Live ping while connected: every 5 s, through the tunnel (lib/liveStats).
+  useEffect(() => {
+    if (phase !== 'connected') {
+      setPingMs(null);
+      return;
+    }
+    let alive = true;
+    let inFlight = false;
+    const tick = (): void => {
+      if (inFlight) {
+        return;
+      }
+      inFlight = true;
+      void probeLatency().then((ms) => {
+        inFlight = false;
+        if (alive) {
+          setPingMs(ms);
+        }
+      });
+    };
+    tick();
+    const id = setInterval(tick, 5000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
   }, [phase]);
 
   return {
@@ -735,6 +804,7 @@ export function useConnection(): ConnectionModel {
     setRouteStyle,
     selectExit,
     killSwitch,
+    blocked: isBlocked(phase, tunnel, killSwitch),
     setKillSwitch,
     nodeDiversity,
     setNodeDiversity,
@@ -745,6 +815,9 @@ export function useConnection(): ConnectionModel {
     autoConnect,
     setAutoConnect,
     connectedSince,
+    refreshing,
+    speed,
+    pingMs,
     refresh,
     favorites,
     toggleFavorite,

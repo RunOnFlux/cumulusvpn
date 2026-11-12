@@ -8,31 +8,12 @@
  */
 import { isTauri, invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { ConnectionModel } from './useConnection.js';
 import { trayStateOf } from '../lib/tray.js';
-import type { Speed, TrayAction } from '../lib/tray.js';
+import type { TrayAction } from '../lib/tray.js';
 
 export function useTray(conn: ConnectionModel): void {
-  // Throughput from successive tunnel samples (the status poll runs ~1.5 s).
-  const [speed, setSpeed] = useState<Speed | null>(null);
-  const sampleRef = useRef<{ rx: number; tx: number; t: number } | null>(null);
-  useEffect(() => {
-    if (conn.phase !== 'connected') {
-      sampleRef.current = null;
-      setSpeed(null);
-      return;
-    }
-    const now = Date.now();
-    const prev = sampleRef.current;
-    const { rxBytes: rx, txBytes: tx } = conn.tunnel;
-    if (prev && now > prev.t && rx >= prev.rx && tx >= prev.tx) {
-      const dt = (now - prev.t) / 1000;
-      setSpeed({ down: (rx - prev.rx) / dt, up: (tx - prev.tx) / dt });
-    }
-    sampleRef.current = { rx, tx, t: now };
-  }, [conn.phase, conn.tunnel]);
-
   const state = useMemo(
     () =>
       trayStateOf({
@@ -43,7 +24,9 @@ export function useTray(conn: ConnectionModel): void {
         countries: conn.countries,
         favorites: conn.favorites,
         killSwitch: conn.killSwitch,
-        speed,
+        blocked: conn.blocked,
+        speed: conn.phase === 'connected' ? conn.speed : null,
+        pingMs: conn.pingMs,
         connectedSince: conn.connectedSince,
         now: Date.now(),
       }),
@@ -59,7 +42,9 @@ export function useTray(conn: ConnectionModel): void {
       conn.killSwitch,
       conn.connectedSince,
       conn.tunnel,
-      speed,
+      conn.blocked,
+      conn.speed,
+      conn.pingMs,
     ],
   );
 

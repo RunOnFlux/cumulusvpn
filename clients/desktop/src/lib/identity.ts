@@ -18,6 +18,7 @@ import {
   paymentCode,
 } from '@cumulusvpn/core';
 import type { Keypair } from '@cumulusvpn/core';
+import { writeBackup } from './identityBackup.js';
 import { saveKeypair } from './storage.js';
 import { disconnect, status } from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
@@ -86,14 +87,19 @@ export function checkRestore(input: string, current: Keypair): RestoreCheck {
 export interface SwitchDeps {
   readonly status: () => Promise<TunnelStatus>;
   readonly disconnect: () => Promise<TunnelStatus>;
-  readonly save: (keypair: Keypair) => void;
+  readonly save: (keypair: Keypair) => void | Promise<void>;
   readonly reload: () => void;
 }
 
 const DEFAULT_DEPS: SwitchDeps = {
   status,
   disconnect,
-  save: saveKeypair,
+  // A deliberate switch also replaces the credential-store backup, so the next
+  // launch doesn't flag the old identity as "a different one".
+  save: async (keypair) => {
+    saveKeypair(keypair);
+    await writeBackup(keypair);
+  },
   reload: () => window.location.reload(),
 };
 
@@ -135,7 +141,7 @@ export async function switchIdentity(
       throw new Error(DISCONNECT_FAILED);
     }
   }
-  deps.save(next);
+  await deps.save(next);
   // Restoring proves the user holds this key: no need to nag them to save it.
   markRecoveryKeySaved(codeOf(next));
   try {

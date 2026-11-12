@@ -351,6 +351,23 @@ jobs:
           trap 'hdiutil detach "$mnt" || true' EXIT
           check_app "$mnt/CumulusVPN.app"
 
+      # Auto-update: the updater artifacts must be signed by the key whose
+      # PUBLIC half ships in tauri.conf.json (plugins.updater.pubkey), or every
+      # installed app silently refuses every update. Check the AppImage's
+      # signature against that pubkey with minisign (the format Tauri uses).
+      - name: Verify the updater signature matches the shipped public key
+        if: runner.os == 'Linux'
+        shell: bash
+        working-directory: clients/desktop/src-tauri
+        run: |
+          set -euo pipefail
+          sudo apt-get install -y minisign >/dev/null
+          img=$(ls target/${{ matrix.target }}/release/bundle/appimage/*.AppImage | head -n1)
+          test -s "$img.sig" || { echo "::error::no updater signature next to $img (createUpdaterArtifacts / TAURI_SIGNING_PRIVATE_KEY)"; exit 1; }
+          jq -r '.plugins.updater.pubkey' tauri.conf.json | base64 -d > "$RUNNER_TEMP/updater.pub"
+          base64 -d < "$img.sig" > "$RUNNER_TEMP/updater.minisig"
+          minisign -V -p "$RUNNER_TEMP/updater.pub" -m "$img" -x "$RUNNER_TEMP/updater.minisig"
+
       # The runner has systemd, so install the .deb for real (docs/16 Stage J):
       # the service starts, its socket is root:cumulusvpn 0660, root is served,
       # a non-member is refused by the kernel, a member running anything but

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { dnsWarningOf, messageOf, reattachPhase, STALE_HELPER_HINT } from './useConnection';
+import {
+  dnsWarningOf,
+  isBlocked,
+  messageOf,
+  reattachPhase,
+  STALE_HELPER_HINT,
+} from './useConnection';
 import type { Phase } from './useConnection';
 import type { TunnelStatus } from '../lib/tauri';
 
@@ -82,5 +88,18 @@ describe('messageOf', () => {
   });
   it('leaves other errors alone', () => {
     expect(messageOf('no gateways')).toBe('no gateways');
+  });
+});
+
+describe('isBlocked', () => {
+  const tunnel = (state: TunnelStatus['state']): TunnelStatus =>
+    ({ state }) as unknown as TunnelStatus;
+  it('is blocked only after a drop with the kill switch holding', () => {
+    expect(isBlocked('error', tunnel('error'), true)).toBe(true);
+  });
+  it('is not blocked without the kill switch, after a failed connect, or when connected', () => {
+    expect(isBlocked('error', tunnel('error'), false)).toBe(false);
+    expect(isBlocked('error', tunnel('down'), true)).toBe(false);
+    expect(isBlocked('connected', tunnel('up'), true)).toBe(false);
   });
 });

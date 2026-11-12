@@ -22,6 +22,8 @@ export interface TrayState {
   readonly stats: string | null;
   readonly selected: string | null;
   readonly killSwitch: boolean;
+  /** Kill switch holding traffic after a drop (useConnection `blocked`). */
+  readonly blocked: boolean;
   readonly countries: readonly TrayCountry[];
 }
 
@@ -46,7 +48,9 @@ export interface TrayInput {
   readonly countries: readonly CountryOption[];
   readonly favorites: readonly string[];
   readonly killSwitch: boolean;
+  readonly blocked?: boolean;
   readonly speed: Speed | null;
+  readonly pingMs?: number | null;
   readonly connectedSince: number | null;
   readonly now: number;
 }
@@ -103,7 +107,9 @@ export function trayStateOf(input: TrayInput): TrayState {
       headline = where ? `Connected — ${where}` : 'Connected';
       break;
     case 'error':
-      headline = 'Not connected — connection problem';
+      headline = input.blocked
+        ? 'Blocked — kill switch on, reconnecting…'
+        : 'Not connected — connection problem';
       break;
     default:
       headline = 'Not connected';
@@ -117,6 +123,9 @@ export function trayStateOf(input: TrayInput): TrayState {
     const parts: string[] = [];
     if (input.speed) {
       parts.push(`↓ ${formatRate(input.speed.down)}`, `↑ ${formatRate(input.speed.up)}`);
+    }
+    if (input.pingMs != null) {
+      parts.push(`${input.pingMs} ms`);
     }
     if (input.connectedSince) {
       parts.push(formatDuration(input.now - input.connectedSince));
@@ -146,6 +155,7 @@ export function trayStateOf(input: TrayInput): TrayState {
     stats,
     selected: selected?.code ?? null,
     killSwitch: input.killSwitch,
+    blocked: input.blocked === true,
     countries,
   };
 }

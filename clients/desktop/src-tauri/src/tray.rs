@@ -30,7 +30,7 @@ const TRAY_ID: &str = "main";
 const COUNTRY_PREFIX: &str = "country:";
 
 /// One selectable location in the "Connect to" submenu.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct TrayCountry {
     pub code: String,
     /// Display label, e.g. "🇩🇪 Germany".
@@ -39,7 +39,7 @@ pub struct TrayCountry {
 }
 
 /// What the menu shows, pushed by the frontend whenever it changes.
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrayState {
     /// `idle` | `connecting` | `connected` | `error` | `loading`.
@@ -53,6 +53,9 @@ pub struct TrayState {
     /// The currently selected country code.
     pub selected: Option<String>,
     pub kill_switch: bool,
+    /// The kill switch is holding traffic after a drop: offer Disconnect.
+    #[serde(default)]
+    pub blocked: bool,
     pub countries: Vec<TrayCountry>,
 }
 
@@ -79,6 +82,14 @@ pub struct TrayUi {
     inner: Mutex<TrayInner>,
 }
 
+impl TrayUi {
+    /// The state last pushed by the frontend (what the popover opens on).
+    pub fn last(&self) -> Option<TrayState> {
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
+        inner.last.clone()
+    }
+}
+
 #[derive(Default)]
 struct TrayInner {
     /// The state the current menu was built for (shape + text).
@@ -89,6 +100,7 @@ struct TrayInner {
 /// Whether two states need different menu *structure* (vs. only new text).
 fn same_shape(a: &TrayState, b: &TrayState) -> bool {
     a.phase == b.phase
+        && a.blocked == b.blocked
         && a.detail.is_some() == b.detail.is_some()
         && a.stats.is_some() == b.stats.is_some()
         && a.selected == b.selected
@@ -135,7 +147,7 @@ fn build_menu(app: &AppHandle, s: &TrayState) -> tauri::Result<(Menu<Wry>, Live)
     };
     menu = menu.separator();
 
-    let toggle = if connected || busy {
+    let toggle = if connected || busy || s.blocked {
         MenuItemBuilder::with_id("disconnect", if busy { "Cancel" } else { "Disconnect" })
             .accelerator("CmdOrCtrl+D")
             .build(app)?
@@ -239,6 +251,7 @@ fn apply(app: &AppHandle, ui: &TrayUi, s: TrayState) -> tauri::Result<()> {
         tray.set_icon_as_template(true)?;
     }
     tray.set_tooltip(Some(format!("CumulusVPN — {}", s.headline)))?;
+    crate::popover::push(app, &s);
     inner.last = Some(s);
     Ok(())
 }
@@ -265,6 +278,7 @@ pub fn install(app: &tauri::App, show_main_window: fn(&AppHandle)) -> tauri::Res
         stats: None,
         selected: None,
         kill_switch: false,
+        blocked: false,
         countries: Vec::new(),
     };
     let (menu, live) = build_menu(handle, &initial)?;
@@ -300,10 +314,21 @@ pub fn install(app: &tauri::App, show_main_window: fn(&AppHandle)) -> tauri::Res
             if let TrayIconEvent::Click {
                 button: MouseButton::Left,
                 button_state: MouseButtonState::Up,
+                rect,
                 ..
             } = event
             {
-                show_main_window(tray.app_handle());
+                // The popover where it can be placed under the icon; the main
+                // window otherwise.
+                if tray
+                    .app_handle()
+                    .get_webview_window(crate::popover::LABEL)
+                    .is_some()
+                {
+                    crate::popover::toggle(tray.app_handle(), &rect);
+                } else {
+                    show_main_window(tray.app_handle());
+                }
             }
         });
 
@@ -335,6 +360,7 @@ mod tests {
             stats: None,
             selected: Some("DE".into()),
             kill_switch: true,
+            blocked: false,
             countries: vec![TrayCountry {
                 code: "DE".into(),
                 label: "🇩🇪 Germany".into(),

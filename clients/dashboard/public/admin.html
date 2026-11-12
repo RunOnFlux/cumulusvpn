@@ -91,6 +91,7 @@
   .matrix th:not(:first-child), .matrix td:not(:first-child) { width:84px; text-align:center; }
   .matrix td { padding:14px 0; border-top:1px solid var(--line); vertical-align:middle; }
   .matrix td b { display:block; font-size:15px; font-weight:600; }
+  .matrix td.na { color:var(--ink-3, #8a94a6); }
   .matrix td small { display:block; color:var(--ink-3); font-size:12.5px; margin-top:2px; }
   .matrix .sw { display:inline-block; vertical-align:middle; }
   .note { color:var(--ink-3); font-size:12.5px; line-height:1.55; margin:8px 0 0; }
@@ -174,41 +175,49 @@
         <div class="card">
           <p class="hint">What the apps show, per platform. Changes reach an app the next time it opens.</p>
           <table class="matrix">
-            <thead><tr><th>Option</th><th>Android</th><th>iOS</th></tr></thead>
+            <thead><tr><th>Option</th><th>Android</th><th>iOS</th><th>Desktop</th></tr></thead>
             <tbody>
               <tr>
                 <td><b>Store subscriptions</b><small>Google Play / App Store billing</small></td>
                 <td><label class="sw"><input type="checkbox" id="iap-android" aria-label="Store subscriptions on Android" /><span class="track"></span><span class="knob"></span></label></td>
                 <td><label class="sw"><input type="checkbox" id="iap-ios" aria-label="Store subscriptions on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+                <td class="na" title="Not on desktop">—</td>
               </tr>
               <tr>
                 <td><b>FLUX checkout in the app</b><small>QR code and wallet hand-off</small></td>
                 <td><label class="sw"><input type="checkbox" id="t-android" aria-label="FLUX checkout on Android" /><span class="track"></span><span class="knob"></span></label></td>
                 <td><label class="sw"><input type="checkbox" id="t-ios" aria-label="FLUX checkout on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="t-desktop" aria-label="FLUX checkout on desktop" /><span class="track"></span><span class="knob"></span></label></td>
               </tr>
               <tr>
                 <td><b>“Pay on the website” button</b><small>opens the web checkout with the device already filled in</small></td>
                 <td><label class="sw"><input type="checkbox" id="wp-android" aria-label="Pay on the website on Android" /><span class="track"></span><span class="knob"></span></label></td>
                 <td><label class="sw"><input type="checkbox" id="wp-ios" aria-label="Pay on the website on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="wp-desktop" aria-label="Card checkout on desktop" /><span class="track"></span><span class="knob"></span></label></td>
               </tr>
               <tr>
                 <td><b>Code redemption</b><small>our voucher box, plus Google Play / App Store promo codes</small></td>
                 <td><label class="sw"><input type="checkbox" id="vr-android" aria-label="Voucher box on Android" /><span class="track"></span><span class="knob"></span></label></td>
                 <td><label class="sw"><input type="checkbox" id="vr-ios" aria-label="Voucher box on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+                <td><label class="sw"><input type="checkbox" id="vr-desktop" aria-label="Voucher box on desktop" /><span class="track"></span><span class="knob"></span></label></td>
               </tr>
             </tbody>
           </table>
           <p class="note">
             Store subscriptions are always within store rules. The other three can conflict with
             App&nbsp;Store / Google&nbsp;Play rules outside the US — your call per platform.
+            Desktop is in no store: its column is a kill switch, ON unless switched off here (the
+            desktop app also keeps it ON if it can’t reach this dashboard). Desktop’s
+            “Pay on the website” is its card checkout.
           </p>
           <table class="matrix">
-            <thead><tr><th>Notice</th><th>Android</th><th>iOS</th></tr></thead>
+            <thead><tr><th>Notice</th><th>Android</th><th>iOS</th><th>Desktop</th></tr></thead>
             <tbody>
               <tr>
                 <td><b>“Save your recovery key” prompt</b><small>shown once to devices with Premium; turn on a few weeks before moving the app to another store account</small></td>
                 <td><label class="sw"><input type="checkbox" id="tn-android" aria-label="Recovery key prompt on Android" /><span class="track"></span><span class="knob"></span></label></td>
                 <td><label class="sw"><input type="checkbox" id="tn-ios" aria-label="Recovery key prompt on iOS" /><span class="track"></span><span class="knob"></span></label></td>
+                <td class="na" title="Not on desktop">—</td>
               </tr>
             </tbody>
           </table>
@@ -337,15 +346,18 @@
       var u = (f && f.inAppUpgrade) || {};
       $('t-android').checked = u.android === true;
       $('t-ios').checked = u.ios === true;
+      $('t-desktop').checked = u.desktop !== false;
       var iap = (f && f.iapPurchase) || {};
       $('iap-android').checked = iap.android === true;
       $('iap-ios').checked = iap.ios === true;
       var vr = (f && f.voucherRedeem) || {};
       $('vr-android').checked = vr.android === true;
       $('vr-ios').checked = vr.ios === true;
+      $('vr-desktop').checked = vr.desktop !== false;
       var wp = (f && f.webPayLink) || {};
       $('wp-android').checked = wp.android === true;
       $('wp-ios').checked = wp.ios === true;
+      $('wp-desktop').checked = wp.desktop !== false;
       var tn = (f && f.transferNotice) || {};
       $('tn-android').checked = tn.android === true;
       $('tn-ios').checked = tn.ios === true;
@@ -527,10 +539,10 @@
   function save() {
     $('save-err').textContent = '';
     var body = {
-      inAppUpgrade: { android: $('t-android').checked, ios: $('t-ios').checked },
+      inAppUpgrade: { android: $('t-android').checked, ios: $('t-ios').checked, desktop: $('t-desktop').checked },
       iapPurchase: { android: $('iap-android').checked, ios: $('iap-ios').checked },
-      voucherRedeem: { android: $('vr-android').checked, ios: $('vr-ios').checked },
-      webPayLink: { android: $('wp-android').checked, ios: $('wp-ios').checked },
+      voucherRedeem: { android: $('vr-android').checked, ios: $('vr-ios').checked, desktop: $('vr-desktop').checked },
+      webPayLink: { android: $('wp-android').checked, ios: $('wp-ios').checked, desktop: $('wp-desktop').checked },
       transferNotice: { android: $('tn-android').checked, ios: $('tn-ios').checked },
     };
     fetch('/api/flags', {
@@ -687,7 +699,7 @@
   // Checks every payment option on both platforms (not the notice); nothing
   // changes until Save.
   $('all-on').addEventListener('click', function () {
-    ['iap-android', 'iap-ios', 't-android', 't-ios', 'wp-android', 'wp-ios', 'vr-android', 'vr-ios']
+    ['iap-android', 'iap-ios', 't-android', 't-ios', 't-desktop', 'wp-android', 'wp-ios', 'wp-desktop', 'vr-android', 'vr-ios', 'vr-desktop']
       .forEach(function (id) { $(id).checked = true; });
     toast('All on — press Save to apply', true);
   });
