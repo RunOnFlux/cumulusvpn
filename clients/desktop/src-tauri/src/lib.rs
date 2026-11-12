@@ -22,8 +22,11 @@ mod commands;
 mod helper_client;
 #[cfg(target_os = "macos")]
 mod helper_install;
+mod identity_backup;
+mod latency;
 #[cfg(not(target_os = "macos"))]
 mod platform;
+mod popover;
 mod tray;
 
 use tauri::{AppHandle, Manager, RunEvent, WindowEvent};
@@ -32,7 +35,7 @@ use backend::TunnelBackend;
 
 /// Bring the main window back to the front, recreating nothing — the window is
 /// hidden on close, never destroyed, so it always exists.
-fn show_main_window(handle: &AppHandle) {
+pub(crate) fn show_main_window(handle: &AppHandle) {
     if let Some(window) = handle.get_webview_window("main") {
         let _ = window.show();
         let _ = window.unminimize();
@@ -82,16 +85,50 @@ fn register_helper() {
     }
 }
 
+/// Passed by the login item (Settings → Open at login): start in the menu bar /
+/// tray without showing the window.
+const AUTOSTART_ARG: &str = "--autostart";
+
+fn launched_at_login() -> bool {
+    std::env::args().any(|a| a == AUTOSTART_ARG)
+}
+
+/// Whether this install can update itself. Tauri's updater replaces the macOS
+/// .app, the Windows installer's install and a Linux AppImage; a .deb / .rpm
+/// install updates through the package repository (pkg.cumulusvpn.com).
+fn self_updating() -> bool {
+    if cfg!(any(target_os = "macos", windows)) {
+        return true;
+    }
+    std::env::var_os("APPIMAGE").is_some()
+}
+
 /// Build and run the Tauri application. Called from `main.rs` (and reusable by
 /// integration harnesses / a future daemon front-end).
 pub fn run() {
-    let app = tauri::Builder::default()
+    // First, so a second launch exits before it sets anything else up: it
+    // just raises the running app (Windows / Linux; macOS sends Reopen).
+    let mut builder =
+        tauri::Builder::default().plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            show_main_window(app)
+        }));
+    if self_updating() {
+        // In-app updates (src/hooks/useUpdater.ts); off where the OS package
+        // manager owns updates.
+        builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+    }
+    let app = builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_opener::init())
         // The fleet's HTTP goes through Rust: no CORS/ATS (src/lib/nativeFetch.ts).
         .plugin(tauri_plugin_http::init())
         // Connect / drop / reconnect notifications (Settings → Notifications).
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec![AUTOSTART_ARG]),
+        ))
+        .plugin(tauri_plugin_process::init())
         .manage(TunnelBackend::new())
         .manage(tray::TrayUi::default())
         .invoke_handler(tauri::generate_handler![
@@ -103,6 +140,12 @@ pub fn run() {
             commands::helper_registration,
             commands::open_helper_settings,
             tray::set_tray,
+            identity_backup::identity_backup_get,
+            identity_backup::identity_backup_set,
+            latency::probe_latency,
+            popover::popover_state,
+            popover::popover_open_main,
+            popover::popover_quit,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]
@@ -111,6 +154,12 @@ pub fn run() {
             }
 
             tray::install(app, show_main_window)?;
+            popover::create(app.handle())?;
+            // The window starts hidden (tauri.conf.json) so a login launch
+            // doesn't flash it; an ordinary launch shows it right away.
+            if !launched_at_login() {
+                show_main_window(app.handle());
+            }
             Ok(())
         })
         .on_window_event(|window, event| {
@@ -127,9 +176,12 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while running the CumulusVPN tauri application");
 
-    app.run(|handle, event| {
-        if let RunEvent::Exit = event {
-            shutdown(handle);
-        }
+    app.run(|handle, event| match event {
+        RunEvent::Exit => shutdown(handle),
+        // macOS: clicking the app in the Dock / Finder / Launchpad while it
+        // runs hidden (closed to the menu bar, or started at login).
+        #[cfg(target_os = "macos")]
+        RunEvent::Reopen { .. } => show_main_window(handle),
+        _ => {}
     });
 }

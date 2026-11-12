@@ -267,6 +267,27 @@ button {
 .orb.on .state {
   color: var(--cyan);
 }
+.orb.blocked .ring {
+  border-color: color-mix(in srgb, var(--amber) 55%, transparent);
+  animation: pulse 2.4s ease-out infinite;
+}
+.orb.blocked .core {
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+}
+.orb.blocked .state {
+  color: var(--amber);
+}
+.blocked-note {
+  margin: 4px 0 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--amber) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--amber) 40%, transparent);
+}
 
 /* ---- location + stats ---------------------------------------------- */
 .loc-btn {
@@ -600,6 +621,12 @@ button {
   font-weight: 600;
   margin-top: 3px;
 }
+.stat .sub {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
 
 /* ---- primary actions ----------------------------------------------- */
 .btn-primary {
@@ -710,6 +737,24 @@ button {
 }
 .setup-btn:hover {
   filter: brightness(1.06);
+}
+.setup.update {
+  background: color-mix(in srgb, var(--cyan) 10%, transparent);
+  border-color: color-mix(in srgb, var(--cyan) 35%, transparent);
+}
+.setup.update .setup-btn {
+  color: #04211f;
+  background: var(--cyan);
+}
+.setup-x {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--ink-3);
+  padding: 4px 2px;
+}
+.setup-x:hover {
+  color: var(--ink);
 }
 
 .err {
@@ -1388,4 +1433,106 @@ button {
 .planrow .chev {
   color: var(--ink-3);
   font-size: 16px;
+}
+
+/* ---- menu-bar popover (components/Popover.tsx) ----------------------- */
+html.popover,
+html.popover body {
+  overflow: hidden;
+}
+.pop {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  height: 100vh;
+  box-sizing: border-box;
+}
+.pop-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+.pop-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.pop-dot.on {
+  background: var(--cyan);
+  box-shadow: 0 0 8px var(--cyan);
+}
+.pop-dot.busy {
+  background: var(--cyan);
+  opacity: 0.6;
+}
+.pop-dot.blocked {
+  background: var(--amber);
+  box-shadow: 0 0 8px var(--amber);
+}
+.pop-status {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-height: 52px;
+}
+.pop-headline {
+  font-size: 13px;
+  font-weight: 600;
+}
+.pop-detail,
+.pop-stats {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ink-2);
+}
+.pop-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.pop-switch {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+}
+.pop-select {
+  flex: 1;
+  max-width: 170px;
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 5px 6px;
+  font: inherit;
+  font-size: 12px;
+}
+.pop-foot {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 10px;
+}
+.pop-foot button {
+  background: none;
+  border: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+.pop-foot button:hover {
+  color: var(--ink);
 }

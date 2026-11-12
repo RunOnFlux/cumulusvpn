@@ -22,7 +22,8 @@
         "resizable": true,
         "decorations": true,
         "transparent": false,
-        "center": true
+        "center": true,
+        "visible": false
       }
     ],
     "security": {
@@ -32,6 +33,7 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -53,7 +55,7 @@
   },
   "plugins": {
     "updater": {
-      "//": "POC: staged rollout + signed manifests wired at release; the bundled directory snapshot rides along.",
+      "//": "In-app updates (src/hooks/useUpdater.ts). tauri-action publishes latest.json + .sig files on each release; /releases/latest/ only ever serves a PUBLISHED release, so a draft is never offered. The release workflow checks the signature against this pubkey.",
       "endpoints": [
         "https://github.com/RunOnFlux/cumulusvpn/releases/latest/download/latest.json"
       ],

@@ -4,6 +4,8 @@ import type { Phase } from '../hooks/useConnection.js';
 interface Props {
   readonly phase: Phase;
   readonly onToggle: () => void;
+  /** Kill switch holding traffic after a drop (see useConnection `blocked`). */
+  readonly blocked?: boolean;
 }
 
 const LABEL: Record<Phase, string> = {
@@ -15,21 +17,28 @@ const LABEL: Record<Phase, string> = {
 };
 
 /** The big central connect state — cyan glow + pulse ring when protected. */
-export function ConnectOrb({ phase, onToggle }: Props): JSX.Element {
-  const mode = phase === 'connected' ? 'on' : phase === 'connecting' ? 'connecting' : 'off';
-  const glyph = phase === 'connected' ? '🛡️' : phase === 'connecting' ? '⋯' : '⏻';
+export function ConnectOrb({ phase, onToggle, blocked = false }: Props): JSX.Element {
+  const mode = blocked
+    ? 'blocked'
+    : phase === 'connected'
+      ? 'on'
+      : phase === 'connecting'
+        ? 'connecting'
+        : 'off';
+  const glyph = blocked ? '⛔' : phase === 'connected' ? '🛡️' : phase === 'connecting' ? '⋯' : '⏻';
+  const label = blocked ? 'Blocked' : LABEL[phase];
   return (
     <div className="orb-wrap">
       <button
         className={`orb ${mode}`}
         onClick={onToggle}
         disabled={phase === 'loading' || phase === 'connecting'}
-        aria-label={LABEL[phase]}
+        aria-label={label}
       >
         <span className="ring" />
         <span className="core">
           <span className="glyph">{glyph}</span>
-          <span className="state">{LABEL[phase]}</span>
+          <span className="state">{label}</span>
         </span>
       </button>
     </div>

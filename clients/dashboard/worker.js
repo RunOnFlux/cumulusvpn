@@ -394,6 +394,10 @@ const FLAGS_KEY = 'flags';
 //   webPayLink    — "Pay on the website" button (web checkout, device code prefilled)
 //   transferNotice — one-time "save your recovery key" prompt for Premium devices
 //                   (not a payment option; on shortly before an App Store transfer)
+// Each flag may also carry an optional `desktop` boolean (the desktop app,
+// which is not in any store). Unlike android/ios it is a KILL SWITCH: the
+// desktop app treats an absent value — or a failed fetch — as ON, and only an
+// explicit `desktop: false` hides that surface there. Absent stays absent here.
 const FLAG_NAMES = ['inAppUpgrade', 'iapPurchase', 'voucherRedeem', 'webPayLink', 'transferNotice'];
 // Fail-safe fallback when KV is empty/unreadable: everything OFF (store-safe).
 const DEFAULT_FLAGS = Object.fromEntries(
@@ -457,7 +461,12 @@ function validateFlags(body) {
     }
     if (!u || typeof u !== 'object') return null;
     if (typeof u.android !== 'boolean' || typeof u.ios !== 'boolean') return null;
-    out[name] = { android: u.android, ios: u.ios };
+    if (u.desktop !== undefined && typeof u.desktop !== 'boolean') return null;
+    out[name] = {
+      android: u.android,
+      ios: u.ios,
+      ...(typeof u.desktop === 'boolean' ? { desktop: u.desktop } : {}),
+    };
     sawAny = true;
   }
   return sawAny ? out : null;
@@ -586,7 +595,7 @@ export default {
         return jsonResponse(
           {
             error:
-              'expected { <flag>: { android: boolean, ios: boolean } } with at least one of: ' +
+              'expected { <flag>: { android: boolean, ios: boolean, desktop?: boolean } } with at least one of: ' +
               FLAG_NAMES.join(', '),
           },
           {},
@@ -601,10 +610,17 @@ export default {
       const current = await readFlags(env);
       const merged = {};
       for (const name of FLAG_NAMES) {
+        const prev = current[name] ?? { android: false, ios: false };
+        if (body[name] === undefined) {
+          merged[name] = prev;
+          continue;
+        }
+        // Same reasoning for the desktop column: an admin page that predates
+        // it must not drop a desktop kill switch someone set.
         merged[name] =
-          body[name] !== undefined
-            ? valid[name]
-            : (current[name] ?? { android: false, ios: false });
+          valid[name].desktop === undefined && typeof prev.desktop === 'boolean'
+            ? { ...valid[name], desktop: prev.desktop }
+            : valid[name];
       }
       const record = { ...merged, updatedAt: new Date().toISOString() };
       await env.FLAGS_KV.put(FLAGS_KEY, JSON.stringify(record));

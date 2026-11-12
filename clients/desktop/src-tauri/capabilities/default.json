@@ -3,10 +3,14 @@
   "identifier": "default",
   "description": "Core capability set for the CumulusVPN tray window.",
   "windows": [
-    "main"
+    "main",
+    "popover"
   ],
   "permissions": [
     "core:default",
+    "autostart:default",
+    "updater:default",
+    "process:allow-restart",
     "core:window:allow-hide",
     "core:window:allow-show",
     "core:window:allow-close",
@@ -48,6 +52,9 @@
         },
         {
           "url": "https://pay.cumulusvpn.com/*"
+        },
+        {
+          "url": "https://dashboard.cumulusvpn.com/*"
         }
       ]
     }

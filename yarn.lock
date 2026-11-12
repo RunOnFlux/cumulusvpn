@@ -341,9 +341,12 @@ __metadata:
     "@cumulusvpn/core": "workspace:*"
     "@tauri-apps/api": "npm:2.12.3"
     "@tauri-apps/cli": "npm:2.12.2"
+    "@tauri-apps/plugin-autostart": "npm:2.7.0"
     "@tauri-apps/plugin-http": "npm:2.9.0"
     "@tauri-apps/plugin-notification": "npm:2.8.1"
     "@tauri-apps/plugin-opener": "npm:2.7.1"
+    "@tauri-apps/plugin-process": "npm:2.4.0"
+    "@tauri-apps/plugin-updater": "npm:2.14.1"
     "@testing-library/dom": "npm:10.4.2"
     "@testing-library/jest-dom": "npm:7.0.1"
     "@testing-library/react": "npm:16.3.3"
@@ -850,6 +853,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@tauri-apps/plugin-autostart@npm:2.7.0":
+  version: 2.7.0
+  resolution: "@tauri-apps/plugin-autostart@npm:2.7.0"
+  dependencies:
+    "@tauri-apps/api": "npm:^2.12.0"
+  checksum: 10c0/8b1b2a090aff1f69dd50ad6dd1ce73e8308a9d88a48561b70c6000d9b723e097abeb162547958205108481efc0f2619cbcb725787d8bea25702338dd7b18ea80
+  languageName: node
+  linkType: hard
+
 "@tauri-apps/plugin-http@npm:2.9.0":
   version: 2.9.0
   resolution: "@tauri-apps/plugin-http@npm:2.9.0"
@@ -874,6 +886,24 @@ __metadata:
   dependencies:
     "@tauri-apps/api": "npm:^2.12.0"
   checksum: 10c0/98dd27bcd52f31fd4d4ed29952e48e4f27a94c9c003b7b895ea551b918c56ed2f8f6299b08d88d34afb07057c03101d125fed4a517b0454a75a2e4188fe3dfaf
+  languageName: node
+  linkType: hard
+
+"@tauri-apps/plugin-process@npm:2.4.0":
+  version: 2.4.0
+  resolution: "@tauri-apps/plugin-process@npm:2.4.0"
+  dependencies:
+    "@tauri-apps/api": "npm:^2.12.0"
+  checksum: 10c0/b76f0918dd8f511083b511e27f26ac9d84bb0ec4db0013b9ebccbe20480ff9aa5ba725867781d334b0f7992349b4d266fecacf179991708d3cbf0eff9532bbb7
+  languageName: node
+  linkType: hard
+
+"@tauri-apps/plugin-updater@npm:2.14.1":
+  version: 2.14.1
+  resolution: "@tauri-apps/plugin-updater@npm:2.14.1"
+  dependencies:
+    "@tauri-apps/api": "npm:^2.12.0"
+  checksum: 10c0/8b498dbe72e94c6c1be35a5686c57ec2dff24e6b1b3ab12bf07ee053ce3b50ad32b0c58ff448f1cfd4d96188acc65adc883502df0354ef89593d2b27ac9a63f9
   languageName: node
   linkType: hard
 

@@ -24,6 +24,7 @@ import { useEscape } from '../hooks/useEscape.js';
 import { copyText } from '../lib/identity.js';
 import { upgradeUrl } from '../lib/directory.js';
 import { openExternal } from '../lib/opener.js';
+import { useDesktopFlags } from '../lib/flags.js';
 import { formatExpiry, voucherErrorText } from '../lib/payment.js';
 import type { PaymentIdentity } from '../lib/payment.js';
 
@@ -41,6 +42,9 @@ interface Props {
 
 export function Upgrade({ entitlement, payment, refreshTier, onClose }: Props): JSX.Element {
   useEscape(onClose);
+  // Remote kill switches per surface (lib/flags.ts) — ON unless turned off.
+  const flags = useDesktopFlags();
+  const anyWay = flags.cardCheckout || flags.fluxCheckout || flags.voucherRedeem;
   const premium = entitlement?.tier === 'premium';
   const expiry = premium ? formatExpiry(entitlement?.paidUntil) : null;
 
@@ -87,22 +91,35 @@ export function Upgrade({ entitlement, payment, refreshTier, onClose }: Props): 
             )}
           </div>
 
-          <div className="setsec">Pay by card</div>
-          <button
-            type="button"
-            className="pay-btn"
-            onClick={() => void openExternal(upgradeUrl(payment.code))}
-          >
-            Continue to secure checkout →
-          </button>
-          <p className="pay-note">
-            Opens cumulusvpn.com in your browser with this device’s code already filled in. Card
-            details never touch this app.
-          </p>
+          {flags.cardCheckout && (
+            <>
+              <div className="setsec">Pay by card</div>
+              <button
+                type="button"
+                className="pay-btn"
+                onClick={() => void openExternal(upgradeUrl(payment.code))}
+              >
+                Continue to secure checkout →
+              </button>
+              <p className="pay-note">
+                Opens cumulusvpn.com in your browser with this device’s code already filled in. Card
+                details never touch this app.
+              </p>
+            </>
+          )}
 
-          <FluxPay payment={payment} premium={premium} />
+          {flags.fluxCheckout && <FluxPay payment={payment} premium={premium} />}
 
-          <Redeem code={payment.code} onGranted={() => void refreshTier()} />
+          {flags.voucherRedeem && (
+            <Redeem code={payment.code} onGranted={() => void refreshTier()} />
+          )}
+
+          {!anyWay && (
+            <p className="pay-note">
+              Upgrading from the app is paused right now. You can still upgrade on cumulusvpn.com
+              with this device’s code from Settings.
+            </p>
+          )}
 
           <p className="pay-note">
             Payments are verified on the Flux blockchain and tied to this device’s key — we never

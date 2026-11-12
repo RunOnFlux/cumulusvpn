@@ -10,6 +10,7 @@ import {
   shortCode,
   switchIdentity,
 } from '../lib/identity.js';
+import { backupStatus, replaceBackupWithThisDevice, storeName } from '../lib/identityBackup.js';
 import { loadOrCreateKeypair } from '../lib/storage.js';
 
 interface Props {
@@ -45,7 +46,10 @@ export function IdentitySection({
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [backup, setBackup] = useState(backupStatus);
   const ref = useRef<HTMLDivElement>(null);
+  const store = storeName();
+  const otherCode = backup.other ? codeOf(backup.other) : '';
 
   useEffect(() => {
     if (revealKey) {
@@ -96,6 +100,52 @@ export function IdentitySection({
         on any phone, tablet or computer — it works best on one device at a time, or on devices
         connected to different countries.
       </div>
+
+      {(backup.state === 'saved' || backup.state === 'restored') && (
+        <div className="st-note id-backup">
+          {backup.state === 'restored'
+            ? `✓ Restored from ${store} — your identity survived the reinstall.`
+            : `✓ Also backed up in ${store}, so a reinstall keeps it.`}
+        </div>
+      )}
+      {backup.state === 'other' && backup.other && step.kind === 'idle' && (
+        <div className="id-confirm" role="alert">
+          <div className="setlabel">A different identity is saved on this computer</div>
+          <div className="st-warn">
+            {store} holds identity {shortCode(otherCode)}, not this one ({shortCode(code)}). It may
+            be the one with your Premium. Switch to it, or back up this one in its place — then{' '}
+            {shortCode(otherCode)} can only come back from its recovery key.
+          </div>
+          <div className="id-btns">
+            <button
+              type="button"
+              className="st-addbtn id-primary"
+              onClick={() => {
+                if (backup.other) {
+                  setStep({ kind: 'confirm', keypair: backup.other, code: otherCode });
+                }
+              }}
+            >
+              Switch to {shortCode(otherCode)}
+            </button>
+            <button
+              type="button"
+              className="st-addbtn"
+              onClick={() => {
+                void replaceBackupWithThisDevice().then((ok) => {
+                  if (ok) {
+                    setBackup(backupStatus());
+                  } else {
+                    setError(`Couldn’t write to ${store}.`);
+                  }
+                });
+              }}
+            >
+              Back up this one instead
+            </button>
+          </div>
+        </div>
+      )}
 
       {showKey && recoveryKey && (
         <>

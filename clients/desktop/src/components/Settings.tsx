@@ -7,6 +7,7 @@ import { codeOf, copyText } from '../lib/identity.js';
 import { loadOrCreateKeypair, loadSplitPolicy, saveSplitPolicy } from '../lib/storage.js';
 import { useEscape } from '../hooks/useEscape.js';
 import { ensureNotificationPermission } from '../hooks/useNotifications.js';
+import { useOpenAtLogin } from '../hooks/useOpenAtLogin.js';
 import { openExternal } from '../lib/opener.js';
 import { formatExpiry } from '../lib/payment.js';
 import poweredByFlux from '../assets/powered_by_flux.png';
@@ -65,6 +66,7 @@ export function Settings({
   revealRecoveryKey = false,
 }: Props): JSX.Element {
   useEscape(onClose);
+  const openAtLogin = useOpenAtLogin();
   return (
     <div className="sheet">
       <div className="sheet-inner">
@@ -77,6 +79,14 @@ export function Settings({
           <PlanRow tier={tier} paidUntil={paidUntil} onOpen={onOpenUpgrade} />
 
           <div className="setsec">Connection</div>
+          {openAtLogin.enabled !== null && (
+            <SettingToggle
+              label="Open at login"
+              sub="Start quietly in the background when you log in"
+              value={openAtLogin.enabled}
+              onChange={openAtLogin.set}
+            />
+          )}
           <SettingToggle
             label="Auto-connect on launch"
             sub="Connect automatically when the app opens"

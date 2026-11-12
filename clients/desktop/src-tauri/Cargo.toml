@@ -43,6 +43,15 @@ cumulusvpn-protocol = { path = "protocol" }
 # Administrator and no helper daemon answers (macOS: whenever it runs as root).
 # Normally the app talks to the helper daemon instead. See src/backend.rs.
 cumulusvpn-tunnel = { path = "tunnel" }
+# The identity's backup copy in the OS credential store (src/identity_backup.rs).
+keyring = "4.2.0"
+# Settings → Open at login (starts hidden in the menu bar / tray).
+tauri-plugin-autostart = "2.7.0"
+# Signed auto-updates from the GitHub release feed, and the relaunch after one.
+tauri-plugin-updater = "2.14.1"
+tauri-plugin-process = "2.4.0"
+# Launching a second copy just brings the running one's window forward.
+tauri-plugin-single-instance = "2.5.5"
 
 # SMAppService (helper registration) and the euid check that picks the root
 # fallback. objc2 and libc are already in the tree via Tauri.

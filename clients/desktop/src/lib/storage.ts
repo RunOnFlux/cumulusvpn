@@ -39,23 +39,33 @@ function safeSet(key: string, value: string): void {
   }
 }
 
+/** The persisted device keypair, or null when there is none (or it's corrupt). */
+export function loadStoredKeypair(): Keypair | null {
+  const raw = safeGet(KEYPAIR_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<Keypair>;
+    if (
+      typeof parsed.publicKey === 'string' &&
+      typeof parsed.privateKey === 'string' &&
+      parsed.publicKey.length > 0 &&
+      parsed.privateKey.length > 0
+    ) {
+      return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
+    }
+  } catch {
+    /* corrupt */
+  }
+  return null;
+}
+
 /** Load the persisted device keypair, generating and storing one on first run. */
 export function loadOrCreateKeypair(): Keypair {
-  const raw = safeGet(KEYPAIR_KEY);
-  if (raw) {
-    try {
-      const parsed = JSON.parse(raw) as Partial<Keypair>;
-      if (
-        typeof parsed.publicKey === 'string' &&
-        typeof parsed.privateKey === 'string' &&
-        parsed.publicKey.length > 0 &&
-        parsed.privateKey.length > 0
-      ) {
-        return { publicKey: parsed.publicKey, privateKey: parsed.privateKey };
-      }
-    } catch {
-      /* fall through and regenerate */
-    }
+  const stored = loadStoredKeypair();
+  if (stored) {
+    return stored;
   }
   const fresh = generateKeypair();
   saveKeypair(fresh);

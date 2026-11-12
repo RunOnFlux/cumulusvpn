@@ -9,6 +9,7 @@ import { MultihopPanel } from './components/MultihopPanel.js';
 import { TierBadge } from './components/TierBadge.js';
 import { Upgrade } from './components/Upgrade.js';
 import { StatBar } from './components/StatBar.js';
+import { useUpdater } from './hooks/useUpdater.js';
 import { SessionTimer } from './components/SessionTimer.js';
 import { Settings } from './components/Settings.js';
 import { helperReady, openHelperSettings } from './lib/tauri.js';
@@ -53,6 +54,7 @@ function pingClass(load: number): string {
 
 export function App(): JSX.Element {
   const conn = useConnection();
+  const update = useUpdater();
   useTray(conn);
   useNotifications(conn);
   const [picker, setPicker] = useState<PickerTarget>(null);
@@ -86,6 +88,33 @@ export function App(): JSX.Element {
           the fix attached, rather than letting the user press Connect and meet
           a transport error. An elevated app running the tunnel itself gets a
           non-blocking note instead (lib/setup.ts). */}
+      {update.phase !== 'none' && (
+        <div className="setup update" role="status">
+          <div className="setup-text">
+            {update.phase === 'installing'
+              ? `Installing CumulusVPN ${update.version ?? ''}… the app restarts by itself.`
+              : update.phase === 'failed'
+                ? 'The update couldn’t be installed. Try again later, or download it from cumulusvpn.com.'
+                : `CumulusVPN ${update.version ?? ''} is ready.${connected ? ' Restarting disconnects the VPN for a moment.' : ''}`}
+          </div>
+          {update.phase === 'available' && (
+            <>
+              <button className="setup-btn" onClick={update.install}>
+                Restart to update
+              </button>
+              <button className="setup-x" aria-label="Later" onClick={update.dismiss}>
+                ×
+              </button>
+            </>
+          )}
+          {update.phase === 'failed' && (
+            <button className="setup-x" aria-label="Dismiss" onClick={update.dismiss}>
+              ×
+            </button>
+          )}
+        </div>
+      )}
+
       {banner && (
         <div className={banner.blocking ? 'setup' : 'setup info'} role="status">
           <div className="setup-text">{banner.text}</div>
@@ -100,8 +129,16 @@ export function App(): JSX.Element {
       <div className="shell-body scroll-y">
         <ConnectOrb
           phase={conn.phase}
-          onToggle={connected || busy ? conn.disconnect : conn.connect}
+          blocked={conn.blocked}
+          onToggle={connected || busy || conn.blocked ? conn.disconnect : conn.connect}
         />
+        {/* Never leave "why is my internet gone?" unanswered (mobile's HOLD). */}
+        {conn.blocked && (
+          <div className="blocked-note" role="alert">
+            Connection lost — the kill switch is blocking all traffic so nothing leaks while
+            CumulusVPN reconnects. Disconnect to use the internet without the VPN.
+          </div>
+        )}
 
         {connected && conn.connectedSince && <SessionTimer since={conn.connectedSince} />}
         {/* docs/17 §8: with split rules active, the user must never be unsure
@@ -138,6 +175,7 @@ export function App(): JSX.Element {
                     selected.city || selected.code,
                     selected.latencyMs != null ? `${selected.latencyMs} ms` : null,
                     selected.gatewayIp,
+                    conn.refreshing && !connected ? 'refreshing…' : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')
@@ -182,9 +220,9 @@ export function App(): JSX.Element {
           </span>
         </button>
 
-        {connected && <StatBar tunnel={conn.tunnel} />}
+        {connected && <StatBar tunnel={conn.tunnel} speed={conn.speed} pingMs={conn.pingMs} />}
 
-        {conn.error && <div className="err">{conn.error}</div>}
+        {conn.error && !conn.blocked && <div className="err">{conn.error}</div>}
       </div>
 
       <div className="shell-foot">
@@ -197,7 +235,7 @@ export function App(): JSX.Element {
         />
         <TierBadge entitlement={conn.entitlement} onUpgrade={() => setShowUpgrade(true)} />
 
-        {connected || busy ? (
+        {connected || busy || conn.blocked ? (
           <button className="btn-disc" onClick={conn.disconnect}>
             Disconnect
           </button>

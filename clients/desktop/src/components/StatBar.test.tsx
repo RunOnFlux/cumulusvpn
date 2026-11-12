@@ -20,18 +20,29 @@ function status(overrides: Partial<TunnelStatus>): TunnelStatus {
 
 describe('<StatBar />', () => {
   it('renders the three stat labels', () => {
-    render(<StatBar tunnel={status({})} />);
-    expect(screen.getByText('Downloaded')).toBeInTheDocument();
-    expect(screen.getByText('Uploaded')).toBeInTheDocument();
-    expect(screen.getByText('Handshake')).toBeInTheDocument();
+    render(<StatBar tunnel={status({})} speed={{ down: 0, up: 0 }} pingMs={null} />);
+    expect(screen.getByText('Download')).toBeInTheDocument();
+    expect(screen.getByText('Upload')).toBeInTheDocument();
+    expect(screen.getByText('Ping')).toBeInTheDocument();
   });
 
-  it('humanises byte counters and a missing handshake', () => {
+  it('shows live speed, session totals and ping', () => {
     render(
-      <StatBar tunnel={status({ rxBytes: 5 * 1024 * 1024, txBytes: 512, lastHandshake: null })} />,
+      <StatBar
+        tunnel={status({ rxBytes: 5 * 1024 * 1024, txBytes: 512 })}
+        speed={{ down: 2.5 * 1024 * 1024, up: 300 }}
+        pingMs={42}
+      />,
     );
-    expect(screen.getByText('5.0 MB')).toBeInTheDocument();
-    expect(screen.getByText('512 B')).toBeInTheDocument();
+    expect(screen.getByText('2.5 MB/s')).toBeInTheDocument();
+    expect(screen.getByText('300 B/s')).toBeInTheDocument();
+    expect(screen.getByText('5.0 MB total')).toBeInTheDocument();
+    expect(screen.getByText('512 B total')).toBeInTheDocument();
+    expect(screen.getByText('42 ms')).toBeInTheDocument();
+  });
+
+  it('shows a dash until the first ping lands', () => {
+    render(<StatBar tunnel={status({})} speed={{ down: 0, up: 0 }} pingMs={null} />);
     expect(screen.getByText('—')).toBeInTheDocument();
   });
 });
