@@ -141,6 +141,26 @@ describe('discoverGateways', () => {
     expect(gateways[0]!.ip).toBe('1.1.1.1');
   });
 
+  it('does not let a listed-but-silent node hold discovery past the probe timeout', async () => {
+    const fetchImpl: FetchImpl = async (input, init) => {
+      const url = String(input);
+      if (url.endsWith('/apps/location/cumulusvpnus')) {
+        return jsonResponse({ status: 'success', data: [{ ip: '1.1.1.1' }, { ip: '2.2.2.2' }] });
+      }
+      if (url === 'http://1.1.1.1:51821/v1/info') {
+        return signedResponse(info({ country: 'US' }), signer);
+      }
+      // 2.2.2.2 never answers; only the abort signal ends the request.
+      return new Promise<Response>((_, reject) => {
+        init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+      });
+    };
+    const started = Date.now();
+    const gateways = await discoverGateways(['cumulusvpnus'], { fetchImpl, probeTimeoutMs: 50 });
+    expect(Date.now() - started).toBeLessThan(2_000);
+    expect(gateways.map((g) => g.ip)).toEqual(['1.1.1.1']);
+  });
+
   it('rejects a gateway whose /v1/info signature is invalid', async () => {
     const otherSigner = makeSignKeypair();
     const fetchImpl: FetchImpl = async (input) => {

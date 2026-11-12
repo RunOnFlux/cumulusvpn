@@ -152,6 +152,13 @@ export interface DiscoverOptions {
   readonly nodes?: readonly string[];
   /** Override the fetch implementation. */
   readonly fetchImpl?: FetchImpl;
+  /**
+   * Per-gateway `/v1/info` timeout, in ms (default
+   * {@link DISCOVERY_PROBE_TIMEOUT_MS}). The probes run in parallel, so
+   * discovery takes as long as its slowest probe: one listed-but-dead node
+   * would otherwise hold every launch for the full request timeout.
+   */
+  readonly probeTimeoutMs?: number;
 }
 
 /** Options for {@link enroll} and {@link status}. */

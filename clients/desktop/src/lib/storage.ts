@@ -15,12 +15,13 @@ import {
   parseDnsChoice,
   sanitizeSplitPolicy,
 } from '@cumulusvpn/core';
-import type { DnsChoice, Keypair, SplitPolicy } from '@cumulusvpn/core';
+import type { DnsChoice, GatewayInfo, Keypair, SplitPolicy } from '@cumulusvpn/core';
 
 const KEYPAIR_KEY = 'cvpn.keypair.v1';
 const COUNTRY_KEY = 'cvpn.country.v1';
 const SPLIT_KEY = 'cvpn.split.v1';
 const DNS_KEY = 'cvpn.dns.v1';
+const FLEET_KEY = 'cvpn.fleet.v1';
 
 function safeGet(key: string): string | null {
   try {
@@ -118,4 +119,52 @@ export function loadDnsChoice(): DnsChoice {
 /** Persist the DNS choice; it takes effect on the next connect. */
 export function saveDnsChoice(choice: DnsChoice): void {
   safeSet(DNS_KEY, choice);
+}
+
+/**
+ * The last good discovery, painted at launch so the picker is usable at once
+ * while a live discovery refreshes it in the background — as on mobile
+ * (`clients/mobile/src/state/storage.ts` `loadFleet`). Every gateway in it
+ * passed signature verification when it was discovered, and connecting still
+ * talks to the gateway itself, so a stale entry fails like a dead node would.
+ */
+export interface FleetCache {
+  readonly gateways: readonly GatewayInfo[];
+  readonly latencyByIp: Readonly<Record<string, number>>;
+  readonly savedAt: number;
+}
+
+/** Older than this, a snapshot is more misleading than useful: skip it. */
+export const FLEET_CACHE_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+export function loadFleetCache(now: number = Date.now()): FleetCache | null {
+  const raw = safeGet(FLEET_KEY);
+  if (!raw) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<FleetCache>;
+    if (
+      !Array.isArray(parsed.gateways) ||
+      parsed.gateways.length === 0 ||
+      typeof parsed.savedAt !== 'number' ||
+      now - parsed.savedAt > FLEET_CACHE_MAX_AGE_MS ||
+      typeof parsed.latencyByIp !== 'object' ||
+      parsed.latencyByIp === null
+    ) {
+      return null;
+    }
+    return parsed as FleetCache;
+  } catch {
+    return null;
+  }
+}
+
+export function saveFleetCache(
+  gateways: readonly GatewayInfo[],
+  latencyByIp: Readonly<Record<string, number>>,
+  savedAt: number = Date.now(),
+): void {
+  const blob: FleetCache = { gateways, latencyByIp, savedAt };
+  safeSet(FLEET_KEY, JSON.stringify(blob));
 }

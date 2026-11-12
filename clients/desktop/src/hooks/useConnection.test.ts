@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dnsWarningOf, reattachPhase } from './useConnection';
+import { dnsWarningOf, messageOf, reattachPhase, STALE_HELPER_HINT } from './useConnection';
 import type { Phase } from './useConnection';
 import type { TunnelStatus } from '../lib/tauri';
 
@@ -67,5 +67,20 @@ describe('reattaching at launch', () => {
 
   it('has nothing to reattach to when the tunnel is down', () => {
     expect(reattachPhase(status({ state: 'down', endpoint: null, country: null }))).toBeNull();
+  });
+});
+
+describe('messageOf', () => {
+  it('adds the restart hint for a pre-1.4.5 helper still running after an update', () => {
+    expect(
+      messageOf(
+        new Error('sidecar error: wireguard-go started but its UAPI socket never appeared'),
+      ),
+    ).toBe(
+      `sidecar error: wireguard-go started but its UAPI socket never appeared. ${STALE_HELPER_HINT}`,
+    );
+  });
+  it('leaves other errors alone', () => {
+    expect(messageOf('no gateways')).toBe('no gateways');
   });
 });
