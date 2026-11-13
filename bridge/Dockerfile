@@ -11,7 +11,7 @@
 # setup-node in .github/workflows/bridge-image.yml.
 
 # ---- build stage ------------------------------------------------------------
-FROM node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS build
+FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9 AS build
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ COPY src ./src
 RUN yarn build
 
 # ---- runtime stage ----------------------------------------------------------
-FROM node:24.21.0-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
+FROM node:24.22.2-bookworm-slim@sha256:01d566e8d94d8c619591d78652babfccd3c6992a3dffa9ed5ab39e11cf6c70e9
 
 ENV NODE_ENV=production
 WORKDIR /app
