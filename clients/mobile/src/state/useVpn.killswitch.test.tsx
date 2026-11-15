@@ -87,7 +87,7 @@ jest.mock('@cumulusvpn/core', () => {
   };
 });
 
-import { useVpn, BLOCKED_MESSAGE } from './useVpn';
+import { useVpn, BLOCKED_MESSAGE, DEAD_TIMING } from './useVpn';
 import { saveKeypair, saveKillSwitch, saveSelectedCountry } from './storage';
 
 type Vpn = ReturnType<typeof useVpn>;
@@ -139,6 +139,13 @@ async function connectHealthy(): Promise<void> {
   });
   expect({ state: vpn.state, error: vpn.error }).toEqual({ state: 'connected', error: null });
 }
+
+// These tests are about what happens once a tunnel is confirmed dead, not the
+// wake-from-sleep confirmation window (useVpn.test.ts covers that): confirm on
+// the second dead poll instead of after 30 s of real time.
+beforeAll(() => {
+  DEAD_TIMING.confirmMs = 0;
+});
 
 beforeEach(async () => {
   jest.clearAllMocks();

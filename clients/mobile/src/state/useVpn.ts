@@ -427,6 +427,69 @@ export function isTunnelDead(s: { state: string; lastHandshake: number }): boole
   return Math.floor(Date.now() / 1000) - s.lastHandshake > HANDSHAKE_DEAD_SEC;
 }
 
+/**
+ * How long a tunnel must keep reading dead, across ticks the device was awake
+ * for, before the backstop tears it down.
+ *
+ * Why a confirmation window at all: `lastHandshake` is WALL-clock, but
+ * WireGuard's timers (keepalive, rekey, "no reply → re-handshake") run on the
+ * monotonic clock, which stops while the phone sleeps. Wake a phone after five
+ * idle minutes and the first poll sees a handshake five minutes old on a tunnel
+ * that is fine: WireGuard has not had a chance to notice the sleep and
+ * re-handshake yet (its next keepalive is ≤15s away, and an unanswered send
+ * re-handshakes within REKEY_TIMEOUT+KEEPALIVE_TIMEOUT = 15s). Without this
+ * window, every screen-off longer than ~3 minutes ended in the backstop killing
+ * a healthy tunnel and the auto-reconnect blacklisting a healthy node. 30s
+ * covers WireGuard's 15s recovery twice over; a genuinely dead tunnel costs
+ * 30s more to detect, which the native roam rebind makes the rare case.
+ *
+ * Mutable only so hook-level tests can shorten it; the app never changes it.
+ */
+export const DEAD_TIMING = {
+  confirmMs: 30_000,
+  /**
+   * A gap between two polls longer than this means the device (or the JS
+   * thread) was asleep in between. The poll runs every 1.5s, so this is far
+   * outside ordinary jitter. A gap restarts the confirmation window.
+   */
+  sleepGapMs: 10_000,
+};
+
+/** State carried between polls by {@link confirmDead}. */
+export interface DeadWatch {
+  /** Wall time the current unbroken run of "dead" polls began; null = alive. */
+  readonly since: number | null;
+  /** Wall time of the previous poll; null before the first. */
+  readonly lastPoll: number | null;
+}
+
+export const DEAD_WATCH_IDLE: DeadWatch = { since: null, lastPoll: null };
+
+/**
+ * Feed one poll's {@link isTunnelDead} verdict; returns the next watch state
+ * and whether the tunnel is now confirmed dead. "Confirmed" needs the tunnel to
+ * read dead on every poll for `DEAD_TIMING.confirmMs` with no sleep gap in
+ * between — so a wake from sleep, which always reads dead at first, gets the
+ * full window for WireGuard to re-handshake.
+ */
+export function confirmDead(
+  watch: DeadWatch,
+  dead: boolean,
+  now: number,
+): { watch: DeadWatch; confirmed: boolean } {
+  if (!dead) {
+    return { watch: { since: null, lastPoll: now }, confirmed: false };
+  }
+  const slept = watch.lastPoll !== null && now - watch.lastPoll > DEAD_TIMING.sleepGapMs;
+  if (watch.since === null || slept) {
+    return { watch: { since: now, lastPoll: now }, confirmed: false };
+  }
+  return {
+    watch: { since: watch.since, lastPoll: now },
+    confirmed: now - watch.since >= DEAD_TIMING.confirmMs,
+  };
+}
+
 export function useVpn(): VpnModel & VpnActions {
   const [keypair, setKeypair] = useState<Keypair | null>(null);
   const [identityBackup, setIdentityBackupModel] = useState<IdentityBackupModel>({
@@ -508,6 +571,8 @@ export function useVpn(): VpnModel & VpnActions {
   const connectRef = useRef<() => Promise<void>>(async () => undefined);
   // Guards the staleness backstop: one stop per connected session, never a loop.
   const staleRef = useRef(false);
+  // Confirmation window for that backstop (see confirmDead).
+  const deadWatchRef = useRef<DeadWatch>(DEAD_WATCH_IDLE);
   /** POST_NOTIFICATIONS asked this session (Android 13+); never re-prompt. */
   const notifPermAskedRef = useRef(false);
 
@@ -865,6 +930,7 @@ export function useVpn(): VpnModel & VpnActions {
     if (state !== 'connected') {
       lastSampleRef.current = null;
       staleRef.current = false;
+      deadWatchRef.current = DEAD_WATCH_IDLE;
       setSpeed({ down: 0, up: 0 });
       return undefined;
     }
@@ -876,7 +942,9 @@ export function useVpn(): VpnModel & VpnActions {
           return;
         }
         setStatus(s);
-        if (!staleRef.current && isTunnelDead(s)) {
+        const verdict = confirmDead(deadWatchRef.current, isTunnelDead(s), Date.now());
+        deadWatchRef.current = verdict.watch;
+        if (!staleRef.current && verdict.confirmed) {
           // Backstop for a roam the native layer could not repair. The tunnel
           // services rebind their socket on a network change, which fixes the
           // common case in under a second — but a rebind can fail (the new
