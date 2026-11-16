@@ -413,6 +413,11 @@ function LinkRow({ label, url }: { readonly label: string; readonly url: string 
 }
 
 function checkLabel(u: Updater): string {
+  if (u.phase === 'downloading') {
+    return u.progress != null
+      ? `Downloading ${u.version ?? ''} ${Math.round(u.progress * 100)}%`
+      : `Downloading ${u.version ?? ''}…`;
+  }
   if (u.phase === 'ready' || u.phase === 'available') {
     return `${u.version ?? 'Update'} available`;
   }
@@ -457,7 +462,11 @@ function UpdatesSection({ updater }: { readonly updater: Updater }): JSX.Element
       <button
         type="button"
         className="setinfo setlink"
-        disabled={updater.checkState === 'checking' || updater.phase === 'installing'}
+        disabled={
+          updater.checkState === 'checking' ||
+          updater.phase === 'installing' ||
+          updater.phase === 'downloading'
+        }
         onClick={offered ? updater.install : updater.checkNow}
       >
         <span>{offered ? 'Restart to update' : 'Check for updates'}</span>

@@ -315,15 +315,29 @@ button {
   flex: 1;
   min-width: 0;
 }
+/* Both lines stay one line: a longer server or latency readout is cut
+   with an ellipsis instead of wrapping and changing the row's height. */
+.loc-btn .meta .n,
+.loc-btn .meta .s {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .loc-btn .meta .n {
   font-weight: 600;
   font-size: 14px;
+  line-height: 20px;
 }
 .loc-btn .meta .s {
   font-family: var(--mono);
   font-size: 10.5px;
+  line-height: 15px;
+  font-variant-numeric: tabular-nums;
   color: var(--ink-3);
   margin-top: 2px;
+}
+.loc-btn .ping {
+  flex-shrink: 0;
 }
 .loc-btn .chev {
   color: var(--ink-3);
@@ -596,6 +610,15 @@ button {
   background: var(--red);
   box-shadow: 0 0 8px var(--red);
 }
+/* The server list is re-testing (useConnection `refreshing`). */
+.ping.refreshing {
+  animation: ping-pulse 1s ease-in-out infinite;
+}
+@keyframes ping-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
 
 .stats {
   display: flex;
@@ -741,6 +764,30 @@ button {
 .setup.update {
   background: color-mix(in srgb, var(--cyan) 10%, transparent);
   border-color: color-mix(in srgb, var(--cyan) 35%, transparent);
+}
+.update-bar {
+  height: 3px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--cyan) 18%, transparent);
+  overflow: hidden;
+}
+.update-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--cyan);
+  transition: width 0.3s ease;
+}
+.update-fill.indeterminate {
+  animation: update-slide 1.2s ease-in-out infinite;
+}
+@keyframes update-slide {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
 }
 .setup.update .setup-btn {
   color: #04211f;
