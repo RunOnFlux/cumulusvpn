@@ -10,6 +10,7 @@ import { TierBadge } from './components/TierBadge.js';
 import { Upgrade } from './components/Upgrade.js';
 import { StatBar } from './components/StatBar.js';
 import { useUpdater } from './hooks/useUpdater.js';
+import type { Updater } from './hooks/useUpdater.js';
 import { SessionTimer } from './components/SessionTimer.js';
 import { Settings } from './components/Settings.js';
 import { helperReady, openHelperSettings } from './lib/tauri.js';
@@ -42,6 +43,28 @@ function GearIcon(): JSX.Element {
   );
 }
 
+/** The update banner's sentence for each phase (hooks/useUpdater). */
+function updateText(u: Updater, connected: boolean): string {
+  const v = u.version ? `CumulusVPN ${u.version}` : 'The update';
+  const drop = connected ? ' Restarting disconnects the VPN for a moment.' : '';
+  switch (u.phase) {
+    case 'downloading':
+      return u.progress != null
+        ? `Downloading ${v}… ${Math.round(u.progress * 100)}%`
+        : `Downloading ${v}…`;
+    case 'ready':
+      return `${v} is ready to install.${drop}`;
+    case 'available':
+      return `${v} is available.${drop}`;
+    case 'installing':
+      return `Installing ${v}… the app restarts by itself.`;
+    case 'failed':
+      return 'The update couldn’t be installed. Try again later, or download it from cumulusvpn.com.';
+    default:
+      return '';
+  }
+}
+
 function pingClass(load: number): string {
   if (load < 0.4) {
     return 'ping';
@@ -54,7 +77,7 @@ function pingClass(load: number): string {
 
 export function App(): JSX.Element {
   const conn = useConnection();
-  const update = useUpdater();
+  const update = useUpdater(conn.notifications);
   useTray(conn);
   useNotifications(conn);
   const [picker, setPicker] = useState<PickerTarget>(null);
@@ -91,26 +114,23 @@ export function App(): JSX.Element {
       {update.phase !== 'none' && (
         <div className="setup update" role="status">
           <div className="setup-text">
-            {update.phase === 'installing'
-              ? `Installing CumulusVPN ${update.version ?? ''}… the app restarts by itself.`
-              : update.phase === 'failed'
-                ? 'The update couldn’t be installed. Try again later, or download it from cumulusvpn.com.'
-                : update.phase === 'ready'
-                  ? `CumulusVPN ${update.version ?? ''} is downloaded.${connected ? ' Restarting disconnects the VPN for a moment.' : ''}`
-                  : `CumulusVPN ${update.version ?? ''} is available.${connected ? ' Restarting disconnects the VPN for a moment.' : ''}`}
+            {updateText(update, connected)}
+            {update.phase === 'downloading' && (
+              <div className="update-bar" aria-hidden="true">
+                <div
+                  className={`update-fill ${update.progress == null ? 'indeterminate' : ''}`}
+                  style={{ width: `${Math.round((update.progress ?? 0.3) * 100)}%` }}
+                />
+              </div>
+            )}
           </div>
           {(update.phase === 'available' || update.phase === 'ready') && (
-            <>
-              <button className="setup-btn" onClick={update.install}>
-                Restart to update
-              </button>
-              <button className="setup-x" aria-label="Later" onClick={update.dismiss}>
-                ×
-              </button>
-            </>
+            <button className="setup-btn" onClick={update.install}>
+              {update.phase === 'ready' ? 'Restart to update' : 'Update now'}
+            </button>
           )}
-          {update.phase === 'failed' && (
-            <button className="setup-x" aria-label="Dismiss" onClick={update.dismiss}>
+          {update.phase !== 'installing' && (
+            <button className="setup-x" aria-label="Hide" onClick={update.dismiss}>
               ×
             </button>
           )}
@@ -177,7 +197,6 @@ export function App(): JSX.Element {
                     selected.city || selected.code,
                     selected.latencyMs != null ? `${selected.latencyMs} ms` : null,
                     selected.gatewayIp,
-                    conn.refreshing && !connected ? 'refreshing…' : null,
                   ]
                     .filter(Boolean)
                     .join(' · ')
@@ -186,7 +205,12 @@ export function App(): JSX.Element {
                   : 'Re-test from the location list'}
             </span>
           </span>
-          {selected && <span className={pingClass(selected.load)} />}
+          {selected && (
+            <span
+              className={`${pingClass(selected.load)} ${conn.refreshing && !connected ? 'refreshing' : ''}`}
+              title={conn.refreshing && !connected ? 'Refreshing servers…' : undefined}
+            />
+          )}
           <span className="chev">›</span>
         </button>
 
