@@ -17,7 +17,7 @@ use crate::tray::{TrayState, TrayUi};
 
 pub const LABEL: &str = "popover";
 const WIDTH: f64 = 300.0;
-const HEIGHT: f64 = 340.0;
+const HEIGHT: f64 = 360.0;
 /// Gap between the icon and the popover, in logical px.
 const GAP: f64 = 6.0;
 

@@ -36,12 +36,11 @@ function input(over: Partial<TrayInput> = {}): TrayInput {
 }
 
 describe('formatRate', () => {
-  it('reports bits per second with a sensible unit', () => {
-    expect(formatRate(0)).toBe('0 kbit/s');
-    expect(formatRate(1250)).toBe('10 kbit/s');
-    expect(formatRate(1_562_500)).toBe('12.5 Mbit/s');
-    expect(formatRate(156_250_000)).toBe('1.25 Gbit/s');
-    expect(formatRate(-5)).toBe('0 kbit/s');
+  it("uses the main window's byte units", () => {
+    expect(formatRate(0)).toBe('0 B/s');
+    expect(formatRate(1126)).toBe('1.1 KB/s');
+    expect(formatRate(1_572_864)).toBe('1.5 MB/s');
+    expect(formatRate(-5)).toBe('0 B/s');
   });
 });
 
@@ -58,13 +57,15 @@ describe('trayStateOf', () => {
     const s = trayStateOf(
       input({
         phase: 'connected',
-        speed: { down: 1_562_500, up: 125_000 },
+        speed: { down: 1_572_864, up: 1126 },
+        pingMs: 40,
         connectedSince: 1_000_000 - 65_000,
       }),
     );
     expect(s.headline).toBe('Connected — 🇩🇪 Germany');
     expect(s.detail).toBe(`Frankfurt · Server ${DE.gatewayIp}`);
-    expect(s.stats).toBe('↓ 12.5 Mbit/s  ·  ↑ 1.0 Mbit/s  ·  1:05');
+    expect(s.stats).toBe('↓ 1.5 MB/s  ·  ↑ 1.1 KB/s  ·  40 ms  ·  1:05');
+    expect(s.meters).toEqual({ down: '1.5 MB/s', up: '1.1 KB/s', ping: '40 ms', elapsed: '1:05' });
   });
 
   it('shows the multi-hop route', () => {
@@ -76,6 +77,7 @@ describe('trayStateOf', () => {
     expect(trayStateOf(input()).headline).toBe('Not connected');
     expect(trayStateOf(input()).detail).toBe('Ready: 🇩🇪 Germany');
     expect(trayStateOf(input()).stats).toBeNull();
+    expect(trayStateOf(input()).meters).toBeNull();
     expect(trayStateOf(input({ phase: 'loading', selected: null })).headline).toBe(
       'Finding servers…',
     );

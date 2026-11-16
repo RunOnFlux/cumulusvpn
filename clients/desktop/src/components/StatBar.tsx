@@ -1,25 +1,14 @@
 import type { JSX } from 'react';
+import { humanBytes } from '../lib/liveStats.js';
 import type { Speed } from '../lib/liveStats.js';
 import type { TunnelStatus } from '../lib/tauri.js';
+
+export { humanBytes };
 
 interface Props {
   readonly tunnel: TunnelStatus;
   readonly speed: Speed;
   readonly pingMs: number | null;
-}
-
-export function humanBytes(n: number): string {
-  if (n < 1024) {
-    return `${Math.round(n)} B`;
-  }
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = n / 1024;
-  let i = 0;
-  while (value >= 1024 && i < units.length - 1) {
-    value /= 1024;
-    i += 1;
-  }
-  return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[i]}`;
 }
 
 /**

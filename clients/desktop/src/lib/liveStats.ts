@@ -19,6 +19,30 @@ export interface Speed {
 
 export const ZERO_SPEED: Speed = { down: 0, up: 0 };
 
+/** Bytes with a binary unit, as the main window's stat cards show them. */
+export function humanBytes(n: number): string {
+  const v0 = Math.max(0, n);
+  if (v0 < 1024) {
+    return `${Math.round(v0)} B`;
+  }
+  const units = ['KB', 'MB', 'GB', 'TB'];
+  let value = v0 / 1024;
+  let i = 0;
+  while (value >= 1024 && i < units.length - 1) {
+    value /= 1024;
+    i += 1;
+  }
+  return `${value.toFixed(value >= 100 ? 0 : 1)} ${units[i]}`;
+}
+
+/**
+ * A throughput readout. The same unit everywhere — main window, menu and
+ * popover — so the numbers never disagree between two views of one tunnel.
+ */
+export function formatRate(bytesPerSec: number): string {
+  return `${humanBytes(bytesPerSec)}/s`;
+}
+
 /**
  * Bytes/s between two samples. A counter that went backwards (the tunnel was
  * rebuilt, so the counters restarted) or a zero interval reads as zero, never
