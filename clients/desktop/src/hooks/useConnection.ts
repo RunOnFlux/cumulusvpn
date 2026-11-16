@@ -425,6 +425,20 @@ export function useConnection(): ConnectionModel {
   // Read by `select` without re-creating it on every phase change.
   const phaseRef = useRef<Phase>('loading');
   phaseRef.current = phase;
+
+  // A setting the live session was built with changed (kill switch, Stealth,
+  // node diversity on a multi-hop route): bring the session up again so the
+  // change takes effect now, not silently at the next connect. The tunnel
+  // swaps in place (TunnelManager::connect replaces the running session), so
+  // this is a short blip, and turning the kill switch off while it is holding
+  // traffic lifts the block at once. See the effect after `connect`.
+  const reapplyRef = useRef(false);
+  const markReapply = useCallback(() => {
+    const p = phaseRef.current;
+    if (p === 'connected' || p === 'connecting' || p === 'error') {
+      reapplyRef.current = true;
+    }
+  }, []);
   const select = useCallback((id: string | null) => {
     setSelectedId(id);
     saveSelectedCountry(id);
@@ -448,24 +462,39 @@ export function useConnection(): ConnectionModel {
   const setMultihop = useCallback((on: boolean) => setMultihopState(on), []);
   const setRouteStyle = useCallback((style: MultihopStyle) => setRouteStyleState(style), []);
 
-  const setTransportMode = useCallback((mode: TransportMode) => {
-    setTransportModeState(mode);
-    localStorage.setItem('cvpn.transportMode', mode);
-  }, []);
+  const setTransportMode = useCallback(
+    (mode: TransportMode) => {
+      setTransportModeState(mode);
+      localStorage.setItem('cvpn.transportMode', mode);
+      markReapply();
+    },
+    [markReapply],
+  );
 
-  const setNodeDiversity = useCallback((on: boolean) => {
-    setNodeDiversityState(on);
-    localStorage.setItem('cvpn.nodeDiversity', on ? '1' : '0');
-  }, []);
+  const setNodeDiversity = useCallback(
+    (on: boolean) => {
+      setNodeDiversityState(on);
+      localStorage.setItem('cvpn.nodeDiversity', on ? '1' : '0');
+      // Only a multi-hop route is built from it.
+      if (multihop) {
+        markReapply();
+      }
+    },
+    [multihop, markReapply],
+  );
   const setNotifications = useCallback((on: boolean) => {
     setNotificationsState(on);
     localStorage.setItem('cvpn.notifications', on ? '1' : '0');
   }, []);
 
-  const setKillSwitch = useCallback((on: boolean) => {
-    setKillSwitchState(on);
-    localStorage.setItem('cvpn.killSwitch', on ? '1' : '0');
-  }, []);
+  const setKillSwitch = useCallback(
+    (on: boolean) => {
+      setKillSwitchState(on);
+      localStorage.setItem('cvpn.killSwitch', on ? '1' : '0');
+      markReapply();
+    },
+    [markReapply],
+  );
 
   const setAutoConnect = useCallback((on: boolean) => {
     setAutoConnectState(on);
@@ -703,6 +732,26 @@ export function useConnection(): ConnectionModel {
       clearInterval(id);
     };
   }, [helperState]);
+
+  // Apply a changed session setting (see `reapplyRef`). Waits out a connect
+  // in flight, then re-runs it with the new settings. In `error` only for a
+  // session that was up (a drop / the kill switch holding), never for a first
+  // connect that failed. A user disconnect drops the request.
+  useEffect(() => {
+    if (!reapplyRef.current) {
+      return;
+    }
+    if (phase === 'idle' || phase === 'loading') {
+      reapplyRef.current = false;
+      return;
+    }
+    if (phase === 'connected' || (phase === 'error' && wasConnectedRef.current)) {
+      reapplyRef.current = false;
+      connect();
+    } else if (phase === 'error') {
+      reapplyRef.current = false;
+    }
+  }, [phase, killSwitch, transportMode, nodeDiversity, connect]);
 
   // Auto-connect on launch (opt-in): once discovery settles and a location is
   // selected, bring the tunnel up automatically.

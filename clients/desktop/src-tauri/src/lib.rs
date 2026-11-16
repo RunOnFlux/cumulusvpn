@@ -96,6 +96,13 @@ fn launched_at_login() -> bool {
 /// Whether this install can update itself. Tauri's updater replaces the macOS
 /// .app, the Windows installer's install and a Linux AppImage; a .deb / .rpm
 /// install updates through the package repository (pkg.cumulusvpn.com).
+/// Whether this install updates itself (Settings shows the controls) or
+/// through a package manager.
+#[tauri::command]
+fn updates_supported() -> bool {
+    self_updating()
+}
+
 fn self_updating() -> bool {
     if cfg!(any(target_os = "macos", windows)) {
         return true;
@@ -146,6 +153,7 @@ pub fn run() {
             popover::popover_state,
             popover::popover_open_main,
             popover::popover_quit,
+            updates_supported,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

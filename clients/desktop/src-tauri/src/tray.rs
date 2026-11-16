@@ -38,6 +38,16 @@ pub struct TrayCountry {
     pub favorite: bool,
 }
 
+/// The popover's live readouts, pre-formatted by the frontend. Passed through
+/// untouched; the menu itself shows `TrayState::stats`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TrayMeters {
+    pub down: String,
+    pub up: String,
+    pub ping: Option<String>,
+    pub elapsed: Option<String>,
+}
+
 /// What the menu shows, pushed by the frontend whenever it changes.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -50,6 +60,9 @@ pub struct TrayState {
     pub detail: Option<String>,
     /// Third line (speed · session time), when connected.
     pub stats: Option<String>,
+    /// The same readouts split into cells, for the popover (menu ignores it).
+    #[serde(default)]
+    pub meters: Option<TrayMeters>,
     /// The currently selected country code.
     pub selected: Option<String>,
     pub kill_switch: bool,
@@ -276,6 +289,7 @@ pub fn install(app: &tauri::App, show_main_window: fn(&AppHandle)) -> tauri::Res
         headline: "Starting…".into(),
         detail: None,
         stats: None,
+        meters: None,
         selected: None,
         kill_switch: false,
         blocked: false,
@@ -358,6 +372,7 @@ mod tests {
             headline: "Not connected".into(),
             detail: None,
             stats: None,
+            meters: None,
             selected: Some("DE".into()),
             kill_switch: true,
             blocked: false,

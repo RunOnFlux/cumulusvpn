@@ -8,6 +8,7 @@ import { loadOrCreateKeypair, loadSplitPolicy, saveSplitPolicy } from '../lib/st
 import { useEscape } from '../hooks/useEscape.js';
 import { ensureNotificationPermission } from '../hooks/useNotifications.js';
 import { useOpenAtLogin } from '../hooks/useOpenAtLogin.js';
+import type { Updater } from '../hooks/useUpdater.js';
 import { openExternal } from '../lib/opener.js';
 import { formatExpiry } from '../lib/payment.js';
 import poweredByFlux from '../assets/powered_by_flux.png';
@@ -42,6 +43,8 @@ interface Props {
   /** Open the Upgrade sheet (plans, add time). */
   readonly onOpenUpgrade: () => void;
   readonly onClose: () => void;
+  /** In-app updates (hooks/useUpdater); absent in tests. */
+  readonly updater?: Updater;
   /** Open with the recovery key showing (from the "save your key" nudge). */
   readonly revealRecoveryKey?: boolean;
 }
@@ -64,6 +67,7 @@ export function Settings({
   onOpenUpgrade,
   onClose,
   revealRecoveryKey = false,
+  updater,
 }: Props): JSX.Element {
   useEscape(onClose);
   const openAtLogin = useOpenAtLogin();
@@ -107,17 +111,12 @@ export function Settings({
           />
           {/* Node diversity — force the two multi-hop legs onto different
               networks so they can't be the same rack (docs/11). Read when a
-              route is built, so it is locked while a session exists rather
-              than imply an effect it won't have yet. */}
+              route is built; a live multi-hop session is rebuilt to apply it
+              (useConnection `reapplyRef`). */}
           <SettingToggle
             label="Node diversity"
-            sub={
-              sessionActive
-                ? 'Force multi-hop entry and exit onto different networks — disconnect to change'
-                : 'Force multi-hop entry and exit onto different networks'
-            }
+            sub="Force multi-hop entry and exit onto different networks"
             value={nodeDiversity}
-            disabled={sessionActive}
             onChange={onNodeDiversity}
           />
           <SettingToggle
@@ -134,6 +133,13 @@ export function Settings({
             }}
           />
 
+          {sessionActive && (
+            <p className="setnote">
+              Kill switch, Stealth and node diversity apply right away — the VPN reconnects for a
+              moment.
+            </p>
+          )}
+
           <div className="setsec">DNS</div>
           <DnsSection />
 
@@ -142,6 +148,8 @@ export function Settings({
 
           <div className="setsec">Split tunneling · Premium</div>
           <SplitTunneling tier={tier} killSwitch={killSwitch} />
+
+          {updater && <UpdatesSection updater={updater} />}
 
           <div className="setsec">About</div>
           <div className="setinfo">
@@ -401,6 +409,61 @@ function LinkRow({ label, url }: { readonly label: string; readonly url: string 
       <span>{label}</span>
       <span className="chev">›</span>
     </button>
+  );
+}
+
+function checkLabel(u: Updater): string {
+  if (u.phase === 'ready' || u.phase === 'available') {
+    return `${u.version ?? 'Update'} available`;
+  }
+  switch (u.checkState) {
+    case 'checking':
+      return 'Checking…';
+    case 'current':
+      return 'Up to date';
+    case 'error':
+      return 'Couldn’t check — try again';
+    default:
+      return '';
+  }
+}
+
+/** Settings → Updates: check now, and whether new versions download by themselves. */
+function UpdatesSection({ updater }: { readonly updater: Updater }): JSX.Element | null {
+  if (updater.supported === null) {
+    return null;
+  }
+  if (!updater.supported) {
+    return (
+      <>
+        <div className="setsec">Updates</div>
+        <div className="setinfo">
+          <span>Updates</span>
+          <span className="lat">through your package manager</span>
+        </div>
+      </>
+    );
+  }
+  const offered = updater.phase === 'ready' || updater.phase === 'available';
+  return (
+    <>
+      <div className="setsec">Updates</div>
+      <SettingToggle
+        label="Download updates automatically"
+        sub="New versions download in the background — restart the app to install"
+        value={updater.autoDownload}
+        onChange={updater.setAutoDownload}
+      />
+      <button
+        type="button"
+        className="setinfo setlink"
+        disabled={updater.checkState === 'checking' || updater.phase === 'installing'}
+        onClick={offered ? updater.install : updater.checkNow}
+      >
+        <span>{offered ? 'Restart to update' : 'Check for updates'}</span>
+        <span className="lat">{checkLabel(updater)}</span>
+      </button>
+    </>
   );
 }
 

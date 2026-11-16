@@ -1263,6 +1263,16 @@ button {
   cursor: default;
   opacity: 0.55;
 }
+.setnote {
+  margin: 0 2px 10px;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+.setinfo.setlink:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
 .setfoot {
   margin: 14px 2px 4px;
   font-size: 11.5px;
@@ -1477,17 +1487,50 @@ html.popover body {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  min-height: 52px;
 }
 .pop-headline {
   font-size: 13px;
   font-weight: 600;
 }
-.pop-detail,
-.pop-stats {
+.pop-detail {
   font-family: var(--mono);
   font-size: 11px;
   color: var(--ink-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* Fixed cells with tabular digits: a changing number never reflows the row. */
+.pop-meters {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.pop-meters > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 6px 7px;
+  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+.pop-meters .k {
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.pop-meters .v {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .pop-row {
   display: flex;
@@ -1497,25 +1540,94 @@ html.popover body {
   font-size: 13px;
   color: var(--ink-2);
 }
-.pop-switch {
+.pop-switch,
+.pop-loc {
+  width: 100%;
   background: none;
   border: none;
   padding: 0;
   font: inherit;
   font-size: 13px;
+  color: var(--ink-2);
   cursor: pointer;
   text-align: left;
 }
-.pop-select {
-  flex: 1;
-  max-width: 170px;
-  background: var(--surface);
-  color: var(--ink);
-  border: 1px solid var(--line);
+.pop-switch:disabled,
+.pop-loc:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.pop-loc-value {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  max-width: 190px;
+  padding: 6px 10px;
   border-radius: 8px;
-  padding: 5px 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.pop-loc:not(:disabled):hover .pop-loc-value {
+  border-color: var(--ink-3);
+}
+.pop-loc-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pop-loc-value .chev {
+  margin-left: auto;
+  color: var(--ink-3);
+}
+.pop-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+.pop-places {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0 -8px;
+}
+.pop-group {
+  padding: 8px 8px 4px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.pop-place {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  font: inherit;
+  font-size: 13px;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+}
+.pop-place:hover {
+  background: var(--surface-2);
+}
+.pop-place.on {
+  background: var(--surface);
+}
+.pop-check {
+  color: var(--cyan);
 }
 .pop-foot {
   margin-top: auto;

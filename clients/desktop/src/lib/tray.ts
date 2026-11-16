@@ -6,6 +6,7 @@
  * it — all the wording lives here.
  */
 import type { Phase } from '../hooks/useConnection.js';
+import { formatRate } from './liveStats.js';
 import type { CountryOption } from './session.js';
 
 export interface TrayCountry {
@@ -14,12 +15,22 @@ export interface TrayCountry {
   readonly favorite: boolean;
 }
 
+/** The popover's live readouts, each pre-formatted (connected only). */
+export interface TrayMeters {
+  readonly down: string;
+  readonly up: string;
+  readonly ping: string | null;
+  readonly elapsed: string | null;
+}
+
 /** Mirrors `TrayState` in src-tauri/src/tray.rs (camelCase over the wire). */
 export interface TrayState {
   readonly phase: Phase;
   readonly headline: string;
   readonly detail: string | null;
   readonly stats: string | null;
+  /** The same readouts as `stats`, split into cells for the popover's grid. */
+  readonly meters: TrayMeters | null;
   readonly selected: string | null;
   readonly killSwitch: boolean;
   /** Kill switch holding traffic after a drop (useConnection `blocked`). */
@@ -55,17 +66,7 @@ export interface TrayInput {
   readonly now: number;
 }
 
-/** Bits per second, the unit people compare against their plan. */
-export function formatRate(bytesPerSec: number): string {
-  const bits = Math.max(0, bytesPerSec) * 8;
-  if (bits >= 1e9) {
-    return `${(bits / 1e9).toFixed(2)} Gbit/s`;
-  }
-  if (bits >= 1e6) {
-    return `${(bits / 1e6).toFixed(1)} Mbit/s`;
-  }
-  return `${Math.round(bits / 1e3)} kbit/s`;
-}
+export { formatRate };
 
 /** `m:ss` under an hour, `h:mm:ss` after. */
 export function formatDuration(ms: number): string {
@@ -117,18 +118,24 @@ export function trayStateOf(input: TrayInput): TrayState {
 
   let detail: string | null = null;
   let stats: string | null = null;
+  let meters: TrayMeters | null = null;
   if (phase === 'connected' && selected) {
     const city = selected.city && selected.city !== selected.code ? selected.city : null;
     detail = [city, `Server ${selected.gatewayIp}`].filter(Boolean).join(' · ');
+    const down = formatRate(input.speed?.down ?? 0);
+    const up = formatRate(input.speed?.up ?? 0);
+    const ping = input.pingMs != null ? `${input.pingMs} ms` : null;
+    const elapsed = input.connectedSince ? formatDuration(input.now - input.connectedSince) : null;
+    meters = { down, up, ping, elapsed };
     const parts: string[] = [];
     if (input.speed) {
-      parts.push(`↓ ${formatRate(input.speed.down)}`, `↑ ${formatRate(input.speed.up)}`);
+      parts.push(`↓ ${down}`, `↑ ${up}`);
     }
-    if (input.pingMs != null) {
-      parts.push(`${input.pingMs} ms`);
+    if (ping) {
+      parts.push(ping);
     }
-    if (input.connectedSince) {
-      parts.push(formatDuration(input.now - input.connectedSince));
+    if (elapsed) {
+      parts.push(elapsed);
     }
     stats = parts.length > 0 ? parts.join('  ·  ') : null;
   } else if (phase === 'idle' && selected) {
@@ -153,6 +160,7 @@ export function trayStateOf(input: TrayInput): TrayState {
     headline,
     detail,
     stats,
+    meters,
     selected: selected?.code ?? null,
     killSwitch: input.killSwitch,
     blocked: input.blocked === true,

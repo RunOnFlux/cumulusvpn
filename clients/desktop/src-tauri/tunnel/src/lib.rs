@@ -204,6 +204,10 @@ struct Inner {
     /// When the last roam repair succeeded, so the watchdog can give it a moment
     /// to prove itself. See `is_dead`.
     repaired_at: Option<Instant>,
+    /// The watchdog's confirmation window: a stale handshake must persist
+    /// across awake polls before the tunnel is declared dead. See
+    /// [`confirm_dead`].
+    dead_watch: DeadWatch,
 }
 
 impl Inner {
@@ -355,6 +359,75 @@ const HANDSHAKE_DEAD_SEC: i64 = 200;
 /// How long a successful roam repair is shielded from the watchdog — one
 /// WireGuard keepalive interval (25s) plus margin for the handshake to complete.
 const REPAIR_GRACE: Duration = Duration::from_secs(40);
+
+/// How long a stale handshake must persist, across awake polls, before the
+/// watchdog declares the tunnel dead.
+///
+/// `last_handshake` is wall-clock time, but WireGuard's timers run on a clock
+/// that stops while the machine sleeps. After any sleep longer than
+/// [`HANDSHAKE_DEAD_SEC`] the first poll on wake reads a stale handshake on a
+/// perfectly healthy tunnel, which re-handshakes within ~15s of waking
+/// (REKEY_TIMEOUT + KEEPALIVE_TIMEOUT). Judging that single poll used to flip
+/// the tunnel to Error — and with the kill switch on, the firewall then held
+/// the Mac offline until a reconnect landed. 30s covers WireGuard's recovery
+/// twice over; a genuinely dead tunnel is caught 30s later than before. Same
+/// value as the mobile client's `DEAD_TIMING`.
+const DEAD_CONFIRM_MS: i64 = 30_000;
+
+/// A gap between two polls longer than this means the machine slept in
+/// between (the helper polls every [`REPAIR_POLL_INTERVAL`]). A gap restarts
+/// the confirmation window, so a wake always gets the full window.
+const SLEEP_GAP_MS: i64 = 10_000;
+
+/// State carried between polls by [`confirm_dead`]. Wall-clock milliseconds:
+/// the monotonic clock pauses during sleep on macOS, so only the wall clock
+/// shows the gap a sleep leaves between two polls.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct DeadWatch {
+    /// When the current unbroken run of stale polls began; `None` = alive.
+    since: Option<i64>,
+    /// The previous poll; `None` before the first.
+    last_poll: Option<i64>,
+}
+
+impl DeadWatch {
+    const IDLE: DeadWatch = DeadWatch {
+        since: None,
+        last_poll: None,
+    };
+}
+
+/// Feed one poll's staleness verdict; true once the tunnel has read stale on
+/// every poll for [`DEAD_CONFIRM_MS`] with no sleep gap in between. Mirrors
+/// `confirmDead` in the mobile client (`useVpn.ts`).
+fn confirm_dead(watch: &mut DeadWatch, stale: bool, now_ms: i64) -> bool {
+    if !stale {
+        *watch = DeadWatch {
+            since: None,
+            last_poll: Some(now_ms),
+        };
+        return false;
+    }
+    let slept = watch
+        .last_poll
+        .is_some_and(|last| now_ms - last > SLEEP_GAP_MS);
+    let since = match watch.since {
+        Some(since) if !slept => since,
+        _ => now_ms,
+    };
+    *watch = DeadWatch {
+        since: Some(since),
+        last_poll: Some(now_ms),
+    };
+    now_ms - since >= DEAD_CONFIRM_MS
+}
+
+fn wall_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
 
 /// Whether the kill switch needs the phase-2 re-engage once the kernel tun
 /// names are known. Only macOS does: pf cannot name `utunN` up front, so phase 1
@@ -529,6 +602,7 @@ impl TunnelManager {
                 tx_bytes: 0,
                 last_handshake: None,
                 repaired_at: None,
+                dead_watch: DeadWatch::IDLE,
             }),
         }
     }
@@ -749,6 +823,7 @@ impl TunnelManager {
         // never be cleared. Leaving it None makes `lastHandshake != null` an
         // authoritative "the peer answered" signal for the frontend.
         inner.last_handshake = None;
+        inner.dead_watch = DeadWatch::IDLE;
         inner.rx_bytes = 0;
         inner.tx_bytes = 0;
 
@@ -1008,6 +1083,7 @@ impl TunnelManager {
         inner.assigned_ip = Some(params.assigned_ip.to_string());
         inner.state = TunnelState::Up;
         inner.last_handshake = None; // see connect(): only a real UAPI value counts
+        inner.dead_watch = DeadWatch::IDLE;
         inner.rx_bytes = 0;
         inner.tx_bytes = 0;
 
@@ -1047,7 +1123,8 @@ impl TunnelManager {
             // handshake rather than the previous poll's. Flipping to Error is
             // what the frontend's auto-reconnect watches for; the kill switch
             // stays engaged throughout, so a dead tunnel fails closed.
-            if inner.is_dead() {
+            let stale = inner.is_dead();
+            if confirm_dead(&mut inner.dead_watch, stale, wall_ms()) {
                 inner.state = TunnelState::Error;
                 inner.error = Some("connection lost — no handshake".into());
             }
@@ -1173,6 +1250,7 @@ impl TunnelManager {
             tx_bytes: 0,
             last_handshake: None,
             repaired_at: None,
+            dead_watch: DeadWatch::IDLE,
         };
         Ok(inner.snapshot())
     }
@@ -1282,6 +1360,68 @@ mod roam_tests {
             inner.state = state;
             assert!(!inner.is_dead(), "{state:?} must not be judged dead");
         }
+    }
+
+    /// The wake case: the Mac slept 10 minutes with the tunnel up. The first
+    /// poll on wake reads a stale handshake — that must not be a verdict.
+    #[test]
+    fn a_wake_from_sleep_is_not_judged_on_one_poll() {
+        let mut w = DeadWatch::IDLE;
+        let t0 = 1_000_000;
+        assert!(!confirm_dead(&mut w, false, t0));
+        let wake = t0 + 10 * 60 * 1000;
+        assert!(!confirm_dead(&mut w, true, wake), "first poll after sleep");
+        // WireGuard re-handshakes ~15s later; polls in between stay unconfirmed.
+        let mut t = wake;
+        while t < wake + 15_000 {
+            t += 1_500;
+            assert!(!confirm_dead(&mut w, true, t));
+        }
+        assert!(!confirm_dead(&mut w, false, t + 1_500), "handshake landed");
+        assert_eq!(w.since, None);
+    }
+
+    /// A tunnel that really is dead is still caught, 30s of awake polls later.
+    #[test]
+    fn a_sustained_stale_handshake_is_confirmed_after_the_window() {
+        let mut w = DeadWatch::IDLE;
+        let start = 5_000_000;
+        let mut t = start;
+        assert!(!confirm_dead(&mut w, true, t));
+        while t - start < DEAD_CONFIRM_MS - 1_500 {
+            t += 1_500;
+            assert!(!confirm_dead(&mut w, true, t), "at {}ms", t - start);
+        }
+        t += 1_500;
+        assert!(confirm_dead(&mut w, true, t));
+    }
+
+    /// Repeated short naps (lid closed, opened, closed again) each restart the
+    /// window instead of adding up to a verdict.
+    #[test]
+    fn every_sleep_gap_restarts_the_window() {
+        let mut w = DeadWatch::IDLE;
+        let mut t = 0;
+        for _ in 0..5 {
+            assert!(!confirm_dead(&mut w, true, t));
+            t += 20_000; // 20s each, but every gap is a sleep
+            assert!(!confirm_dead(&mut w, true, t));
+            t += SLEEP_GAP_MS + 1;
+        }
+    }
+
+    /// One healthy poll resets the window.
+    #[test]
+    fn a_healthy_poll_resets_the_window() {
+        let mut w = DeadWatch::IDLE;
+        let mut t = 0;
+        for _ in 0..15 {
+            confirm_dead(&mut w, true, t);
+            t += 1_500;
+        }
+        assert!(!confirm_dead(&mut w, false, t));
+        t += 1_500;
+        assert!(!confirm_dead(&mut w, true, t), "a new run starts from zero");
     }
 }
 

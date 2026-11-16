@@ -95,9 +95,11 @@ export function App(): JSX.Element {
               ? `Installing CumulusVPN ${update.version ?? ''}… the app restarts by itself.`
               : update.phase === 'failed'
                 ? 'The update couldn’t be installed. Try again later, or download it from cumulusvpn.com.'
-                : `CumulusVPN ${update.version ?? ''} is ready.${connected ? ' Restarting disconnects the VPN for a moment.' : ''}`}
+                : update.phase === 'ready'
+                  ? `CumulusVPN ${update.version ?? ''} is downloaded.${connected ? ' Restarting disconnects the VPN for a moment.' : ''}`
+                  : `CumulusVPN ${update.version ?? ''} is available.${connected ? ' Restarting disconnects the VPN for a moment.' : ''}`}
           </div>
-          {update.phase === 'available' && (
+          {(update.phase === 'available' || update.phase === 'ready') && (
             <>
               <button className="setup-btn" onClick={update.install}>
                 Restart to update
@@ -203,8 +205,8 @@ export function App(): JSX.Element {
           className="ks-row"
           role="switch"
           aria-checked={conn.killSwitch}
-          onClick={() => !locked && conn.setKillSwitch(!conn.killSwitch)}
-          disabled={locked}
+          onClick={() => !busy && conn.setKillSwitch(!conn.killSwitch)}
+          disabled={busy}
         >
           <span className="ks-icon">🛡️</span>
           <span className="ks-meta">
@@ -298,6 +300,7 @@ export function App(): JSX.Element {
           onStealth={(v) => conn.setTransportMode(v ? 'stealth' : 'auto')}
           onOpenUpgrade={() => setShowUpgrade(true)}
           revealRecoveryKey={revealKey}
+          updater={update}
           onClose={() => {
             setShowSettings(false);
             setRevealKey(false);
