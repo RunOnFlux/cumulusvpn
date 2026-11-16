@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -569,7 +570,7 @@
     <div class="sec-head">
       <span class="eyebrow">获取应用</span>
       <h2>一个连接按钮，覆盖你拥有的每一块屏幕。</h2>
-      <p>同一个精美客户端，覆盖网页和移动端，桌面版即将推出——每块屏幕都是同一套
+      <p>同一个精美客户端，覆盖网页、移动端和 Mac，Windows 与 Linux 版即将推出——每块屏幕都是同一套
         设计语言。在网页端用手机的设备码付款，手机会在一分钟内通过区块链自动解锁。</p>
     </div>
     <div class="apps">
@@ -587,11 +588,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>桌面端</h3>
-        <p>适用于 macOS、Windows 和 Linux 的简洁菜单栏应用。终止开关、自动重连和网关
-          故障切换在托盘中静默运行。已签名安装包，约 ~10&nbsp;MB。</p>
+        <p>适用于 Mac 的简洁菜单栏应用。终止开关、自动重连和网关故障切换在后台静默运行，应用还会自动更新。经 Apple 签名和公证，约 6&nbsp;MB。</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">即将推出</span></span>
+          <a class="applink" href="/download/mac"><span>下载 Mac 版</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">即将推出</span></span>
         </div>
+        <p class="appnote">Apple 芯片（M1 或更新）· macOS 13 或更高</p>
       </div>
 
       <div class="appcard">

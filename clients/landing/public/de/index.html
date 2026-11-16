@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -567,7 +568,7 @@
     <div class="sec-head">
       <span class="eyebrow">App holen</span>
       <h2>Ein Verbinden-Button, auf jedem Bildschirm, den du besitzt.</h2>
-      <p>Derselbe durchdachte Client im Web und auf dem Handy, Desktop folgt in Kürze — mit einer gemeinsamen Designsprache auf
+      <p>Derselbe durchdachte Client im Web, auf dem Handy und auf dem Mac, Windows und Linux folgen in Kürze — mit einer gemeinsamen Designsprache auf
         jedem Bildschirm. Bezahle im Web mit dem Gerätecode deines Handys, und es schaltet sich automatisch über die Chain frei, innerhalb einer Minute.</p>
     </div>
     <div class="apps">
@@ -585,10 +586,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Eine ruhige Menüleisten-App für macOS, Windows und Linux. Kill Switch, automatisches Neuverbinden und Gateway-Failover laufen leise im Tray. Signierte ~10&nbsp;MB-Installer.</p>
+        <p>Eine ruhige Menüleisten-App für den Mac. Kill Switch, automatisches Neuverbinden und Gateway-Failover laufen leise im Hintergrund, und die App hält sich selbst aktuell. Von Apple signiert und notarisiert, rund 6&nbsp;MB.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Bald</span></span>
+          <a class="applink" href="/download/mac"><span>Für Mac laden</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">Bald</span></span>
         </div>
+        <p class="appnote">Apple Silicon (M1 oder neuer) · macOS 13+</p>
       </div>
 
       <div class="appcard">

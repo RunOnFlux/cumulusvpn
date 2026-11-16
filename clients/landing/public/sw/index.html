@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -564,7 +565,7 @@
     <div class="sec-head">
       <span class="eyebrow">Pata programu</span>
       <h2>Kitufe kimoja cha kuunganisha, kwenye kila skrini unayomiliki.</h2>
-      <p>Mteja huyo huyo mzuri kwenye wavuti na simu, na toleo la kompyuta linakuja hivi karibuni — lugha moja ya muundo kwenye kila skrini. Lipa kwenye wavuti kwa msimbo wa kifaa wa simu yako, nayo itafunguka kiotomatiki kupitia mnyororo ndani ya dakika moja.</p>
+      <p>Mteja huyo huyo mzuri kwenye wavuti, simu na Mac, na matoleo ya Windows na Linux yanakuja hivi karibuni — lugha moja ya muundo kwenye kila skrini. Lipa kwenye wavuti kwa msimbo wa kifaa wa simu yako, nayo itafunguka kiotomatiki kupitia mnyororo ndani ya dakika moja.</p>
     </div>
     <div class="apps">
 
@@ -580,10 +581,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Kompyuta</h3>
-        <p>Programu tulivu ya upau wa menyu kwa macOS, Windows na Linux. Kill switch, kuunganisha upya kiotomatiki na kubadilisha lango wakati wa hitilafu hufanya kazi kimya kimya kwenye tray. Visakinishi vilivyotiwa sahihi vya ~10&nbsp;MB.</p>
+        <p>Programu tulivu ya upau wa menyu kwa Mac. Kill switch, kuunganisha upya kiotomatiki na kubadilisha lango wakati wa hitilafu hufanya kazi kimya kimya chinichini, na programu hujisasisha yenyewe. Imetiwa sahihi na kuthibitishwa na Apple, takriban 6&nbsp;MB.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Hivi Karibuni</span></span>
+          <a class="applink" href="/download/mac"><span>Pakua kwa Mac</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">Hivi Karibuni</span></span>
         </div>
+        <p class="appnote">Apple silicon (M1 au mpya zaidi) · macOS 13+</p>
       </div>
 
       <div class="appcard">

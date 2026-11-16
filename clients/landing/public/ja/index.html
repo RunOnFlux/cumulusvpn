@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -569,7 +570,7 @@
     <div class="sec-head">
       <span class="eyebrow">アプリを入手</span>
       <h2>接続ボタンひとつで、あなたの持つすべての画面に。</h2>
-      <p>ウェブとモバイルで同じ、洗練されたクライアント（デスクトップ版は近日公開）——どの画面でもひとつの
+      <p>ウェブ、モバイル、Mac で同じ、洗練されたクライアント（Windows 版と Linux 版は近日公開）——どの画面でもひとつの
         デザイン言語です。スマートフォンの端末コードを使ってウェブで支払えば、スマートフォンはチェーンを通じて 1 分以内に自動でロック解除されます。</p>
     </div>
     <div class="apps">
@@ -587,11 +588,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>デスクトップ</h3>
-        <p>macOS、Windows、Linux 向けの控えめなメニューバーアプリ。キルスイッチ、自動再接続、ゲートウェイの
-          フェイルオーバーがトレイで静かに動作します。署名済みインストーラーは約 ~10&nbsp;MB。</p>
+        <p>Mac 向けの控えめなメニューバーアプリ。キルスイッチ、自動再接続、ゲートウェイのフェイルオーバーがバックグラウンドで静かに動作し、アプリは自動でアップデートされます。Apple による署名・公証済み、約 6&nbsp;MB。</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">近日公開</span></span>
+          <a class="applink" href="/download/mac"><span>Mac 版をダウンロード</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">近日公開</span></span>
         </div>
+        <p class="appnote">Apple シリコン（M1 以降）· macOS 13 以降</p>
       </div>
 
       <div class="appcard">

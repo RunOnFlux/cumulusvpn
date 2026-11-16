@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -569,7 +570,7 @@
     <div class="sec-head">
       <span class="eyebrow">Scarica l'app</span>
       <h2>Un solo pulsante di connessione, su ogni schermo che possiedi.</h2>
-      <p>Lo stesso client curato su web e mobile, con il desktop in arrivo — un unico linguaggio di design su
+      <p>Lo stesso client curato su web, mobile e Mac, con Windows e Linux in arrivo — un unico linguaggio di design su
         ogni schermo. Paga sul web con il codice dispositivo del tuo telefono e si sblocca automaticamente tramite la chain in meno di un minuto.</p>
     </div>
     <div class="apps">
@@ -587,11 +588,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Un'app discreta nella barra dei menu per macOS, Windows e Linux. Kill switch, riconnessione automatica e cambio
-          gateway funzionano silenziosamente nel tray. Installer firmati di circa 10&nbsp;MB.</p>
+        <p>Un'app discreta nella barra dei menu del Mac. Kill switch, riconnessione automatica e cambio gateway funzionano silenziosamente in background, e l'app si aggiorna da sola. Firmata e autenticata (notarized) da Apple, circa 6&nbsp;MB.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Presto</span></span>
+          <a class="applink" href="/download/mac"><span>Scarica per Mac</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">Presto</span></span>
         </div>
+        <p class="appnote">Apple silicon (M1 o successivo) · macOS 13+</p>
       </div>
 
       <div class="appcard">

@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -569,7 +570,7 @@
     <div class="sec-head">
       <span class="eyebrow">Απόκτησε την εφαρμογή</span>
       <h2>Ένα κουμπί σύνδεσης, σε κάθε οθόνη που έχεις.</h2>
-      <p>Ο ίδιος όμορφος client σε web και κινητό, με το desktop να έρχεται σύντομα — μία γλώσσα σχεδίασης σε
+      <p>Ο ίδιος όμορφος client σε web, κινητό και Mac, με Windows και Linux να έρχονται σύντομα — μία γλώσσα σχεδίασης σε
         κάθε οθόνη. Πλήρωσε στο web με τον κωδικό συσκευής του κινητού σου και αυτό ξεκλειδώνει αυτόματα μέσω του chain μέσα σε ένα λεπτό.</p>
     </div>
     <div class="apps">
@@ -587,11 +588,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Μια ήσυχη εφαρμογή menu-bar για macOS, Windows και Linux. Kill switch, αυτόματη επανασύνδεση και εναλλαγή
-          πύλης λειτουργούν αθόρυβα στο tray. Υπογεγραμμένα προγράμματα εγκατάστασης ~10&nbsp;MB.</p>
+        <p>Μια ήσυχη εφαρμογή menu-bar για Mac. Kill switch, αυτόματη επανασύνδεση και εναλλαγή πύλης λειτουργούν αθόρυβα στο παρασκήνιο, και η εφαρμογή ενημερώνεται μόνη της. Υπογεγραμμένη και επικυρωμένη (notarized) από την Apple, περίπου 6&nbsp;MB.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Σύντομα</span></span>
+          <a class="applink" href="/download/mac"><span>Λήψη για Mac</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">Σύντομα</span></span>
         </div>
+        <p class="appnote">Apple silicon (M1 ή νεότερο) · macOS 13+</p>
       </div>
 
       <div class="appcard">

@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -569,7 +570,7 @@
     <div class="sec-head">
       <span class="eyebrow">Obtén la app</span>
       <h2>Un botón para conectar, en cada pantalla que tienes.</h2>
-      <p>El mismo cliente cuidado en web y móvil, con escritorio muy pronto — un mismo lenguaje de diseño en
+      <p>El mismo cliente cuidado en web, móvil y Mac, con Windows y Linux muy pronto — un mismo lenguaje de diseño en
         todas las pantallas. Paga en la web con el código de dispositivo de tu teléfono y este se desbloquea automáticamente a través de la cadena en menos de un minuto.</p>
     </div>
     <div class="apps">
@@ -587,11 +588,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Escritorio</h3>
-        <p>Una app tranquila en la barra de menú para macOS, Windows y Linux. Kill switch, reconexión automática y cambio
-          de gateway funcionan en silencio en la bandeja. Instaladores firmados de ~10&nbsp;MB.</p>
+        <p>Una app tranquila en la barra de menú para Mac. Kill switch, reconexión automática y cambio de gateway funcionan en silencio en segundo plano, y la app se actualiza sola. Firmada y notarizada por Apple, unos 6&nbsp;MB.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Próximamente</span></span>
+          <a class="applink" href="/download/mac"><span>Descargar para Mac</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">Próximamente</span></span>
         </div>
+        <p class="appnote">Apple silicon (M1 o posterior) · macOS 13+</p>
       </div>
 
       <div class="appcard">

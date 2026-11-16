@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -564,7 +565,7 @@
     <div class="sec-head">
       <span class="eyebrow">احصل على التطبيق</span>
       <h2>زر اتصال واحد، على كل شاشة تملكها.</h2>
-      <p>العميل الأنيق نفسه على الويب والجوال، وتطبيق سطح المكتب قادم قريبًا — بلغة تصميم واحدة على كل شاشة. ادفع على الويب باستخدام رمز الجهاز الخاص بهاتفك، فيُفتح تلقائيًا عبر السلسلة خلال دقيقة.</p>
+      <p>العميل الأنيق نفسه على الويب والجوال وMac، مع Windows وLinux قريبًا — بلغة تصميم واحدة على كل شاشة. ادفع على الويب باستخدام رمز الجهاز الخاص بهاتفك، فيُفتح تلقائيًا عبر السلسلة خلال دقيقة.</p>
     </div>
     <div class="apps">
 
@@ -580,10 +581,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>سطح المكتب</h3>
-        <p>تطبيق هادئ في شريط القوائم لأنظمة macOS وWindows وLinux. مفتاح الإيقاف الفوري وإعادة الاتصال التلقائي والتبديل بين البوابات تعمل بهدوء في الخلفية. مثبِّتات موقَّعة بحجم ~10&nbsp;MB.</p>
+        <p>تطبيق هادئ في شريط القوائم لنظام Mac. مفتاح الإيقاف الفوري وإعادة الاتصال التلقائي والتبديل بين البوابات تعمل بهدوء في الخلفية، ويحدّث التطبيق نفسه تلقائيًا. موقَّع وموثَّق من Apple، بحجم 6&nbsp;MB تقريبًا.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">قريبًا</span></span>
+          <a class="applink" href="/download/mac"><span>تنزيل لنظام Mac</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">قريبًا</span></span>
         </div>
+        <p class="appnote">شرائح Apple ‏(M1 أو أحدث) · macOS 13 أو أحدث</p>
       </div>
 
       <div class="appcard">

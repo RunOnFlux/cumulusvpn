@@ -1,0 +1,6 @@
+# Stable download links (Workers static assets). The DMG name carries no
+# version, so "latest" always serves the newest published desktop release.
+# Only desktop releases may be marked "latest" (android-release.yml sets
+# make_latest: false), or a mobile release would break this link and the
+# desktop app's update feed.
+/download/mac  https://github.com/RunOnFlux/cumulusvpn/releases/latest/download/CumulusVPN_macOS.dmg  302
