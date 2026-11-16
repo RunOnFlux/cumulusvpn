@@ -1,4 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { isTauri } from '@tauri-apps/api/core';
+import { getVersion } from '@tauri-apps/api/app';
 import type { JSX } from 'react';
 import { normalizeSplitRule } from '@cumulusvpn/core';
 import type { SplitMode, SplitPolicy, Tier } from '@cumulusvpn/core';
@@ -15,8 +17,23 @@ import poweredByFlux from '../assets/powered_by_flux.png';
 import { DnsSection } from './DnsSection.js';
 import { IdentitySection } from './IdentitySection.js';
 
-/** App version — matches the release tag. */
-const APP_VERSION = '1.4.5';
+/**
+ * The installed app's version, read from the bundle itself (tauri.conf.json's
+ * `version`, the same value macOS shows in About). It used to be a constant
+ * here that nobody bumped, so Settings said 1.4.5 on 1.4.7.
+ */
+function useAppVersion(): string | null {
+  const [v, setV] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isTauri()) {
+      return;
+    }
+    void getVersion()
+      .then(setV)
+      .catch(() => undefined);
+  }, []);
+  return v;
+}
 
 const SITE_URL = 'https://cumulusvpn.com';
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
@@ -71,6 +88,7 @@ export function Settings({
 }: Props): JSX.Element {
   useEscape(onClose);
   const openAtLogin = useOpenAtLogin();
+  const appVersion = useAppVersion();
   return (
     <div className="sheet">
       <div className="sheet-inner">
@@ -154,7 +172,7 @@ export function Settings({
           <div className="setsec">About</div>
           <div className="setinfo">
             <span>Version</span>
-            <span className="lat">CumulusVPN {APP_VERSION}</span>
+            <span className="lat">CumulusVPN {appVersion ?? '—'}</span>
           </div>
           <DeviceCodeRow />
           <div className="setinfo">
