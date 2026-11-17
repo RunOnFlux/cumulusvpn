@@ -112,6 +112,9 @@
   .top nav a { text-decoration: none; }
   .top nav a:hover { color: var(--ink); }
   .top .right { display: flex; align-items: center; gap: 14px; }
+  .gh { display: inline-flex; color: var(--ink-2); line-height: 0; }
+  .gh:hover { color: var(--ink); }
+  .gh svg { width: 20px; height: 20px; }
   .badge-flux { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line);
     padding: 4px 9px; border-radius: 20px; white-space: nowrap; }
   /* Official "Powered by Flux" lockup — two art variants swapped by theme. */
@@ -151,6 +154,11 @@
   .hero h1 .glow { color: var(--cyan); }
   .hero p.lede { font-size: 19px; color: var(--ink-2); max-width: 46ch; margin: 22px 0 0; }
   .hero .cta { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+  .oss { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 20px; padding: 6px 12px;
+    border: 1px solid var(--line); border-radius: 20px; font-size: 13px; color: var(--ink-2); text-decoration: none; }
+  .oss:hover { border-color: var(--ink-3); color: var(--ink); }
+  .oss svg { width: 16px; height: 16px; color: var(--cyan); flex-shrink: 0; }
+  .oss-url { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
   .kpis { display: flex; gap: 26px; margin-top: 40px; flex-wrap: wrap; }
   .kpi .n { font-family: var(--mono); font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
   .kpi .l { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
@@ -271,6 +279,9 @@
   .trust p { color: var(--ink-2); font-size: 14px; margin: 0; }
   .trust p a { color: var(--cyan); text-decoration: none; }
   .trust p a:hover { text-decoration: underline; }
+  .trust-link { display: inline-block; margin-top: 12px; font-family: var(--mono); font-size: 12.5px; color: var(--cyan);
+    text-decoration: none; word-break: break-all; }
+  .trust-link:hover { text-decoration: underline; }
 
   /* cta band */
   .band { background: linear-gradient(135deg, color-mix(in srgb, var(--cyan) 14%, var(--surface)), var(--surface));
@@ -432,6 +443,7 @@
     <a href="#apps">获取应用</a><a href="#trust">隐私</a><a href="/network">网络</a>
   </nav>
   <div class="right">
+    <a class="gh" href="https://github.com/RunOnFlux/cumulusvpn" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux — 打开 runonflux.com">
       <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
       <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
@@ -453,6 +465,7 @@
         <a class="btn primary" href="#apps">获取应用</a>
         <a class="btn ghost" href="#how">使用方法</a>
       </div>
+      <a class="oss" href="https://github.com/RunOnFlux/cumulusvpn" target="_blank" rel="noreferrer"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>开源 · MIT</span><span class="oss-url">github.com/RunOnFlux/cumulusvpn</span></a>
       <div class="kpis">
         <div class="kpi"><div class="n">6,500+</div><div class="l">全球 Flux 节点</div></div>
         <div class="kpi"><div class="n">30+</div><div class="l">个国家（发布时）</div></div>
@@ -578,10 +591,9 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 18v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>网页设置</h3>
-        <p>在浏览器中生成你的密钥，并提供可导入 WireGuard 应用的配置文件
-          和 QR 码。这里也承载着使用 FLUX 付款升级的页面。无需安装即可完成设置或付款。</p>
+        <p>适用于 Windows、Linux、路由器——任何装有官方 WireGuard 应用的设备。密钥在浏览器中生成；导入配置或扫描二维码即可。这里也是升级的地方，可用银行卡或 FLUX。</p>
         <div class="actions">
-          <a class="applink" href="https://vpn.cumulusvpn.com"><span>在浏览器中设置</span><span class="tag">Beta 测试版</span></a>
+          <a class="applink" href="https://vpn.cumulusvpn.com"><span>在浏览器中设置</span><span class="tag os">WireGuard</span></a>
         </div>
       </div>
 
@@ -635,6 +647,7 @@
         <h3>开源</h3>
         <p>应用和网关都是公开的。你可以阅读源码、自行构建，或运行自己的网关——
           付款与权益协议都有完整的文档记录。</p>
+        <a class="trust-link" href="https://github.com/RunOnFlux/cumulusvpn" target="_blank" rel="noreferrer">github.com/RunOnFlux/cumulusvpn →</a>
       </div>
       <div class="trust">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M7 7h.01M7 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -679,6 +692,7 @@
       <a href="#pricing">定价</a>
       <a href="#apps">获取应用</a>
       <a href="https://vpn.cumulusvpn.com">网页应用</a>
+      <a href="https://github.com/RunOnFlux/cumulusvpn">GitHub</a>
     </div>
     <div class="col">
       <h4>了解更多</h4>

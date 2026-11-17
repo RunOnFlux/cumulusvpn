@@ -18,7 +18,7 @@ export const en = {
   header_language_label: 'Language',
 
   footer_tagline: 'CumulusVPN — Decentralized VPN on Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Beta rail · no account · no logs',
+  footer_credit: 'Open source · no account · no logs',
   footer_terms: 'Terms of Service',
   footer_privacy: 'Privacy Policy',
 
@@ -38,10 +38,12 @@ export const en = {
   countries_no_match: 'No countries match “{query}”.',
   countries_nodes: { one: '{n} node', other: '{n} nodes' },
 
-  connect_eyebrow: 'Beta rail · WireGuard config',
+  connect_eyebrow: 'WireGuard config · any device',
+  connect_purpose:
+    "For any device with the official WireGuard app — Windows, Linux, a router, or anything our apps don't cover yet. On Mac, iPhone and Android, our apps add automatic failover, a kill switch and Stealth.",
   connect_title: 'One key, <glow>every gateway.</glow>',
   connect_lede:
-    'Your WireGuard keypair is generated here, in your browser — the private key never leaves this tab. Pick a country, enroll at the nearest Flux gateway, and export a ready-to-import<mono> .conf</mono> and QR. Free forever at 100 KB/s; <upgrade>upgrade with FLUX</upgrade> for full speed.',
+    'Your WireGuard keypair is generated here, in your browser — the private key never leaves this tab. Pick a country, enroll at the nearest Flux gateway, and export a ready-to-import<mono> .conf</mono> and QR. Free forever at 100 KB/s; <upgrade>upgrade by card or FLUX</upgrade> for full speed.',
   connect_verify_warn:
     'Directory signature could not be verified — endpoints are shown for information only.',
   connect_notice_no_live_gateway:

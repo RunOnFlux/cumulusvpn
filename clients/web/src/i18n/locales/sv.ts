@@ -12,7 +12,7 @@ export const sv: Catalog = {
   header_language_label: 'Språk',
 
   footer_tagline: 'CumulusVPN — Decentraliserat VPN på Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Betaspår · inget konto · inga loggar',
+  footer_credit: 'Öppen källkod · inget konto · inga loggar',
   footer_terms: 'Användarvillkor',
   footer_privacy: 'Integritetspolicy',
 
@@ -32,10 +32,12 @@ export const sv: Catalog = {
   countries_no_match: 'Inga länder matchar ”{query}”.',
   countries_nodes: { one: '{n} nod', other: '{n} noder' },
 
-  connect_eyebrow: 'Betaspår · WireGuard-konfiguration',
+  connect_eyebrow: 'WireGuard-konfiguration · alla enheter',
+  connect_purpose:
+    'För alla enheter med den officiella WireGuard-appen — Windows, Linux, en router eller allt som våra appar ännu inte täcker. På Mac, iPhone och Android lägger våra appar till automatisk failover, kill switch och Stealth.',
   connect_title: 'En nyckel, <glow>varje gateway.</glow>',
   connect_lede:
-    'Ditt WireGuard-nyckelpar genereras här, i din webbläsare — den privata nyckeln lämnar aldrig fliken. Välj ett land, registrera dig hos närmaste Flux-gateway och exportera en importfärdig<mono> .conf</mono> och QR-kod. Gratis för alltid vid 100 KB/s; <upgrade>uppgradera med FLUX</upgrade> för full hastighet.',
+    'Ditt WireGuard-nyckelpar genereras här, i din webbläsare — den privata nyckeln lämnar aldrig fliken. Välj ett land, registrera dig hos närmaste Flux-gateway och exportera en importfärdig<mono> .conf</mono> och QR-kod. Gratis för alltid vid 100 KB/s; <upgrade>uppgradera med kort eller FLUX</upgrade> för full hastighet.',
   connect_verify_warn:
     'Katalogens signatur kunde inte verifieras — endpoints visas endast i informationssyfte.',
   connect_notice_no_live_gateway:

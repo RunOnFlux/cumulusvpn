@@ -384,6 +384,11 @@ header.top {
   max-width: 60ch;
   text-wrap: pretty;
 }
+.lede.purpose {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--ink-3);
+}
 .page-head.center .lede {
   margin-inline: auto;
 }

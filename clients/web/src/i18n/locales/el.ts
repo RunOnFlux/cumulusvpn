@@ -12,7 +12,7 @@ export const el: Catalog = {
   header_language_label: 'Γλώσσα',
 
   footer_tagline: 'CumulusVPN — Αποκεντρωμένο VPN πάνω σε Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Δίαυλος beta · χωρίς λογαριασμό · χωρίς logs',
+  footer_credit: 'Ανοιχτός κώδικας · χωρίς λογαριασμό · χωρίς logs',
   footer_terms: 'Όροι Χρήσης',
   footer_privacy: 'Πολιτική Απορρήτου',
 
@@ -32,10 +32,12 @@ export const el: Catalog = {
   countries_no_match: 'Καμία χώρα δεν ταιριάζει με «{query}».',
   countries_nodes: { one: '{n} κόμβος', other: '{n} κόμβοι' },
 
-  connect_eyebrow: 'Δίαυλος beta · ρύθμιση WireGuard',
+  connect_eyebrow: 'Ρύθμιση WireGuard · κάθε συσκευή',
+  connect_purpose:
+    'Για κάθε συσκευή με την επίσημη εφαρμογή WireGuard — Windows, Linux, router ή ό,τι δεν καλύπτουν ακόμα οι εφαρμογές μας. Σε Mac, iPhone και Android οι εφαρμογές μας προσθέτουν αυτόματο failover, kill switch και Stealth.',
   connect_title: 'Ένα κλειδί, <glow>κάθε πύλη.</glow>',
   connect_lede:
-    'Το ζεύγος κλειδιών WireGuard δημιουργείται εδώ, στο πρόγραμμα περιήγησής σου — το ιδιωτικό κλειδί δεν φεύγει ποτέ από αυτή την καρτέλα. Επίλεξε μια χώρα, εγγράψου στην κοντινότερη πύλη Flux και εξήγαγε ένα έτοιμο για εισαγωγή<mono> .conf</mono> μαζί με το QR του. Δωρεάν για πάντα στα 100 KB/s· <upgrade>αναβάθμισε με FLUX</upgrade> για πλήρη ταχύτητα.',
+    'Το ζεύγος κλειδιών WireGuard δημιουργείται εδώ, στο πρόγραμμα περιήγησής σου — το ιδιωτικό κλειδί δεν φεύγει ποτέ από αυτή την καρτέλα. Επίλεξε μια χώρα, εγγράψου στην κοντινότερη πύλη Flux και εξήγαγε ένα έτοιμο για εισαγωγή<mono> .conf</mono> μαζί με το QR του. Δωρεάν για πάντα στα 100 KB/s· <upgrade>αναβάθμισε με κάρτα ή FLUX</upgrade> για πλήρη ταχύτητα.',
   connect_verify_warn:
     'Δεν ήταν δυνατή η επαλήθευση της υπογραφής του καταλόγου — τα endpoints εμφανίζονται μόνο ενημερωτικά.',
   connect_notice_no_live_gateway:

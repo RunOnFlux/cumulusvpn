@@ -23,6 +23,8 @@ const discovery: DiscoveryState = {
   options: [],
   gateways: [],
   notice: null,
+  nearest: null,
+  refreshing: false,
 };
 
 // Two live countries, one gateway each, so a cross-jurisdiction route resolves.

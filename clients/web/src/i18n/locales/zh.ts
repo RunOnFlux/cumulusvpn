@@ -12,7 +12,7 @@ export const zh: Catalog = {
   header_language_label: '语言',
 
   footer_tagline: 'CumulusVPN — Flux Cloud 上的去中心化 VPN · vpn.cumulusvpn.com',
-  footer_credit: 'Beta 通道 · 无账号 · 无日志',
+  footer_credit: '开源 · 无账号 · 无日志',
   footer_terms: '服务条款',
   footer_privacy: '隐私政策',
 
@@ -32,10 +32,12 @@ export const zh: Catalog = {
   countries_no_match: '没有国家匹配“{query}”。',
   countries_nodes: { other: '{n} 个节点' },
 
-  connect_eyebrow: 'Beta 通道 · WireGuard 配置',
+  connect_eyebrow: 'WireGuard 配置 · 任意设备',
+  connect_purpose:
+    '适用于任何装有官方 WireGuard 应用的设备——Windows、Linux、路由器，或我们的应用尚未覆盖的设备。在 Mac、iPhone 和 Android 上，我们的应用还提供自动故障切换、终止开关和 Stealth。',
   connect_title: '一把密钥，<glow>覆盖每个网关。</glow>',
   connect_lede:
-    '你的 WireGuard 密钥对在此生成，就在你的浏览器里——私钥永远不会离开此标签页。选择一个国家，在最近的 Flux 网关注册，然后导出可直接导入的<mono> .conf</mono> 和 QR 码。永久免费，速度 100 KB/s；<upgrade>使用 FLUX 升级</upgrade>即可获得全速。',
+    '你的 WireGuard 密钥对在此生成，就在你的浏览器里——私钥永远不会离开此标签页。选择一个国家，在最近的 Flux 网关注册，然后导出可直接导入的<mono> .conf</mono> 和 QR 码。永久免费，速度 100 KB/s；<upgrade>使用银行卡或 FLUX 升级</upgrade>即可获得全速。',
   connect_verify_warn: '无法验证目录签名——所显示的端点仅供参考。',
   connect_notice_no_live_gateway:
     '暂时无法连接到任何网关。目前显示的是已签名目录中的国家——请一分钟后刷新页面重试。',

@@ -3,9 +3,10 @@ import { discoverGateways } from '@cumulusvpn/core';
 import type { Directory, GatewayInfo } from '@cumulusvpn/core';
 import { resolveDirectory } from '../lib/directory';
 import type { DirectorySource } from '../lib/directory';
-import { buildCountryOptions } from '../lib/gateways';
+import { buildCountryOptions, nearestOption } from '../lib/gateways';
 import type { CountryOption } from '../lib/gateways';
-import { proxiedFetch } from '../lib/gatewayFetch';
+import { probeTimes, timedProxiedFetch } from '../lib/gatewayFetch';
+import { loadFleetCache, saveFleetCache } from '../lib/fleetCache';
 import type { Locale } from '../i18n';
 
 /** Stable notice codes; the UI maps them to catalog messages. */
@@ -18,6 +19,13 @@ export interface DiscoveryState {
   readonly verified: boolean;
   readonly options: CountryOption[];
   readonly gateways: GatewayInfo[];
+  /** The live location nearest the visitor (fastest probe), or null. */
+  readonly nearest: CountryOption | null;
+  /**
+   * Showing the list from this browser's last visit while the network is
+   * re-checked; false once live discovery has answered.
+   */
+  readonly refreshing: boolean;
   /** Non-null when no live gateway could be probed (browser sandbox / cold net). */
   readonly notice: DiscoveryNotice | null;
 }
@@ -29,6 +37,9 @@ interface RawDiscovery {
   readonly verified: boolean;
   readonly gateways: GatewayInfo[];
   readonly notice: DiscoveryNotice | null;
+  readonly refreshing: boolean;
+  /** Probe time by gateway IP (ms), live or from the cache. */
+  readonly times: ReadonlyMap<string, number>;
 }
 
 const INITIAL: RawDiscovery = {
@@ -38,6 +49,8 @@ const INITIAL: RawDiscovery = {
   verified: false,
   gateways: [],
   notice: null,
+  refreshing: false,
+  times: new Map(),
 };
 
 /**
@@ -62,9 +75,25 @@ export function useDiscovery(locale: Locale): DiscoveryState {
         return;
       }
 
+      // A returning visitor sees the list from their last visit at once;
+      // discovering the whole fleet takes several seconds.
+      const cached = loadFleetCache(Date.now());
+      if (cached) {
+        setRaw({
+          loading: false,
+          directory,
+          source,
+          verified,
+          gateways: [...cached.gateways],
+          notice: null,
+          refreshing: true,
+          times: new Map(Object.entries(cached.times)),
+        });
+      }
+
       let gateways: GatewayInfo[] = [];
       try {
-        gateways = await discoverGateways(directory.specs, { fetchImpl: proxiedFetch });
+        gateways = await discoverGateways(directory.specs, { fetchImpl: timedProxiedFetch });
       } catch {
         gateways = [];
       }
@@ -72,6 +101,14 @@ export function useDiscovery(locale: Locale): DiscoveryState {
         return;
       }
 
+      const times = new Map(probeTimes);
+      if (gateways.length > 0) {
+        saveFleetCache({ at: Date.now(), gateways, times: Object.fromEntries(times) });
+      } else if (cached) {
+        // Offline right now: keep showing the last good list.
+        setRaw((r) => ({ ...r, refreshing: false }));
+        return;
+      }
       setRaw({
         loading: false,
         directory,
@@ -79,6 +116,8 @@ export function useDiscovery(locale: Locale): DiscoveryState {
         verified,
         gateways,
         notice: gateways.length === 0 ? 'no-live-gateway' : null,
+        refreshing: false,
+        times,
       });
     })();
 
@@ -92,5 +131,17 @@ export function useDiscovery(locale: Locale): DiscoveryState {
     [raw.directory, raw.gateways, locale],
   );
 
-  return { ...raw, options };
+  const nearest = useMemo(() => nearestOption(options, raw.times), [options, raw.times]);
+
+  return {
+    loading: raw.loading,
+    directory: raw.directory,
+    source: raw.source,
+    verified: raw.verified,
+    gateways: raw.gateways,
+    notice: raw.notice,
+    refreshing: raw.refreshing,
+    options,
+    nearest,
+  };
 }

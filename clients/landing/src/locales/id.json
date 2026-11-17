@@ -92,7 +92,7 @@
     "apps_h2": "Satu tombol hubungkan, di setiap layar yang Anda miliki.",
     "apps_lede": "Klien yang sama indahnya di web, mobile, dan Mac, dengan Windows dan Linux segera hadir — satu bahasa desain di setiap layar. Bayar di web dengan kode perangkat ponsel Anda, dan ponsel itu terbuka otomatis lewat chain dalam waktu kurang dari semenit.",
     "app_web_h": "Setup web",
-    "app_web_p": "Membuat kunci Anda di browser dan memberi Anda config WireGuard + QR untuk diimpor ke aplikasi WireGuard. Juga menghosting halaman upgrade dengan pembayaran FLUX. Tidak perlu instalasi untuk setup atau membayar.",
+    "app_web_p": "Untuk Windows, Linux, router — perangkat apa pun dengan aplikasi WireGuard resmi. Kunci Anda dibuat di browser; impor konfigurasinya atau pindai QR. Di sini juga Anda upgrade, dengan kartu atau FLUX.",
     "app_web_link": "Setup di browser",
     "tag_beta": "Beta",
     "app_desktop_h": "Desktop",

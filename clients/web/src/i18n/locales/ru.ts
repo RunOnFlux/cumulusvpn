@@ -12,7 +12,7 @@ export const ru: Catalog = {
   header_language_label: 'Язык',
 
   footer_tagline: 'CumulusVPN — Децентрализованный VPN на Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Бета-канал · без аккаунта · без логов',
+  footer_credit: 'Открытый код · без аккаунта · без логов',
   footer_terms: 'Условия использования',
   footer_privacy: 'Политика конфиденциальности',
 
@@ -32,10 +32,12 @@ export const ru: Catalog = {
   countries_no_match: 'Ни одна страна не соответствует запросу «{query}».',
   countries_nodes: { one: '{n} узел', few: '{n} узла', many: '{n} узлов', other: '{n} узла' },
 
-  connect_eyebrow: 'Бета-канал · конфигурация WireGuard',
+  connect_eyebrow: 'Конфигурация WireGuard · любое устройство',
+  connect_purpose:
+    'Для любого устройства с официальным приложением WireGuard — Windows, Linux, роутер или всё, что наши приложения пока не поддерживают. На Mac, iPhone и Android наши приложения добавляют автоматическое переключение серверов, kill switch и Stealth.',
   connect_title: 'Один ключ, <glow>каждый шлюз.</glow>',
   connect_lede:
-    'Твоя пара ключей WireGuard генерируется здесь, в браузере — приватный ключ никогда не покидает эту вкладку. Выбери страну, зарегистрируйся на ближайшем шлюзе Flux и экспортируй готовый к импорту<mono> .conf</mono> вместе с QR-кодом. Бесплатно навсегда на скорости 100 KB/s; <upgrade>апгрейд за FLUX</upgrade> для полной скорости.',
+    'Твоя пара ключей WireGuard генерируется здесь, в браузере — приватный ключ никогда не покидает эту вкладку. Выбери страну, зарегистрируйся на ближайшем шлюзе Flux и экспортируй готовый к импорту<mono> .conf</mono> вместе с QR-кодом. Бесплатно навсегда на скорости 100 KB/s; <upgrade>апгрейд картой или за FLUX</upgrade> для полной скорости.',
   connect_verify_warn:
     'Не удалось проверить подпись каталога — конечные точки показаны исключительно в информационных целях.',
   connect_notice_no_live_gateway:

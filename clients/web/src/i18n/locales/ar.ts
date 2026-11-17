@@ -12,7 +12,7 @@ export const ar: Catalog = {
   header_language_label: 'اللغة',
 
   footer_tagline: 'CumulusVPN — VPN لامركزية على Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'مسار تجريبي · بلا حساب · بلا سجلات',
+  footer_credit: 'مفتوح المصدر · بلا حساب · بلا سجلات',
   footer_terms: 'شروط الخدمة',
   footer_privacy: 'سياسة الخصوصية',
 
@@ -39,10 +39,12 @@ export const ar: Catalog = {
     other: '{n} عقدة',
   },
 
-  connect_eyebrow: 'مسار تجريبي · إعداد WireGuard',
+  connect_eyebrow: 'إعداد WireGuard · لأي جهاز',
+  connect_purpose:
+    'لأي جهاز فيه تطبيق WireGuard الرسمي — Windows أو Linux أو جهاز توجيه، أو أي شيء لا تغطيه تطبيقاتنا بعد. على Mac وiPhone وAndroid تضيف تطبيقاتنا التبديل التلقائي بين الخوادم ومفتاح الإيقاف الفوري ووضع Stealth.',
   connect_title: 'مفتاح واحد، <glow>كل بوابة.</glow>',
   connect_lede:
-    'يُنشأ زوج مفاتيح WireGuard الخاص بك هنا، في متصفحك — المفتاح الخاص لا يغادر هذا التبويب أبدًا. اختر دولة، سجّل في أقرب بوابة Flux، ثم صدّر ملف<mono> .conf</mono> جاهزًا للاستيراد مع رمز QR. مجاني للأبد بسرعة 100 KB/s؛ <upgrade>رقِّ مع FLUX</upgrade> للحصول على السرعة الكاملة.',
+    'يُنشأ زوج مفاتيح WireGuard الخاص بك هنا، في متصفحك — المفتاح الخاص لا يغادر هذا التبويب أبدًا. اختر دولة، سجّل في أقرب بوابة Flux، ثم صدّر ملف<mono> .conf</mono> جاهزًا للاستيراد مع رمز QR. مجاني للأبد بسرعة 100 KB/s؛ <upgrade>رقِّ بالبطاقة أو FLUX</upgrade> للحصول على السرعة الكاملة.',
   connect_verify_warn: 'تعذّر التحقق من توقيع الدليل — تُعرض نقاط النهاية للعِلم فقط.',
   connect_notice_no_live_gateway:
     'تعذّر الوصول إلى أي بوابة الآن. تُعرض دول الدليل الموقَّع — أعد تحميل الصفحة بعد دقيقة للمحاولة مجددًا.',

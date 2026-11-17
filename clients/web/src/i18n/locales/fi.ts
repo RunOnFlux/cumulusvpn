@@ -12,7 +12,7 @@ export const fi: Catalog = {
   header_language_label: 'Kieli',
 
   footer_tagline: 'CumulusVPN — Hajautettu VPN Flux Cloudissa · vpn.cumulusvpn.com',
-  footer_credit: 'Beta-kaista · ei tiliä · ei lokeja',
+  footer_credit: 'Avoin lähdekoodi · ei tiliä · ei lokeja',
   footer_terms: 'Käyttöehdot',
   footer_privacy: 'Tietosuojaseloste',
 
@@ -32,10 +32,12 @@ export const fi: Catalog = {
   countries_no_match: 'Yksikään maa ei vastaa hakua ”{query}”.',
   countries_nodes: { one: '{n} solmu', other: '{n} solmua' },
 
-  connect_eyebrow: 'Beta-kaista · WireGuard-asetukset',
+  connect_eyebrow: 'WireGuard-asetukset · mille tahansa laitteelle',
+  connect_purpose:
+    'Mille tahansa laitteelle, jossa on virallinen WireGuard-sovellus — Windows, Linux, reititin tai mikä tahansa, jota sovelluksemme eivät vielä kata. Macilla, iPhonella ja Androidilla sovelluksemme lisäävät automaattisen failoverin, kill switchin ja Stealthin.',
   connect_title: 'Yksi avain, <glow>jokainen yhdyskäytävä.</glow>',
   connect_lede:
-    'WireGuard-avainparisi luodaan täällä, selaimessasi — yksityinen avain ei koskaan poistu tältä välilehdeltä. Valitse maa, rekisteröidy lähimpään Flux-yhdyskäytävään ja vie tuontivalmis<mono> .conf</mono> ja QR-koodi. Ilmainen ikuisesti nopeudella 100 KB/s; <upgrade>päivitä FLUXilla</upgrade> täyteen nopeuteen.',
+    'WireGuard-avainparisi luodaan täällä, selaimessasi — yksityinen avain ei koskaan poistu tältä välilehdeltä. Valitse maa, rekisteröidy lähimpään Flux-yhdyskäytävään ja vie tuontivalmis<mono> .conf</mono> ja QR-koodi. Ilmainen ikuisesti nopeudella 100 KB/s; <upgrade>päivitä kortilla tai FLUXilla</upgrade> täyteen nopeuteen.',
   connect_verify_warn:
     'Hakemiston allekirjoitusta ei voitu vahvistaa — päätepisteet näytetään vain tiedoksi.',
   connect_notice_no_live_gateway:

@@ -92,7 +92,7 @@
     "apps_h2": "Um botão de conectar, em cada tela que você usa.",
     "apps_lede": "O mesmo cliente cuidadoso na web, no mobile e no Mac, com Windows e Linux em breve — uma só linguagem de design em\n        todas as telas. Pague na web com o código do dispositivo do seu celular e ele desbloqueia sozinho pela chain em menos de um minuto.",
     "app_web_h": "Configuração web",
-    "app_web_p": "Gera sua chave no navegador e entrega uma configuração WireGuard + QR para importar no\n          app WireGuard. Também hospeda a página de upgrade com pagamento em FLUX. Sem instalação para configurar ou pagar.",
+    "app_web_p": "Para Windows, Linux, roteadores — qualquer dispositivo com o app oficial do WireGuard. Sua chave é criada no navegador; importe a configuração ou escaneie o QR. É também onde você faz upgrade, com cartão ou FLUX.",
     "app_web_link": "Configurar no navegador",
     "tag_beta": "Beta",
     "app_desktop_h": "Desktop",

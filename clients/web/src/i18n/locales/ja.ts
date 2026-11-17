@@ -12,7 +12,7 @@ export const ja: Catalog = {
   header_language_label: '言語',
 
   footer_tagline: 'CumulusVPN — Flux Cloud 上の分散型 VPN · vpn.cumulusvpn.com',
-  footer_credit: 'ベータ版 · アカウント不要 · ログなし',
+  footer_credit: 'オープンソース · アカウント不要 · ログなし',
   footer_terms: '利用規約',
   footer_privacy: 'プライバシーポリシー',
 
@@ -32,10 +32,12 @@ export const ja: Catalog = {
   countries_no_match: '「{query}」に一致する国はありません。',
   countries_nodes: { other: '{n} 件のノード' },
 
-  connect_eyebrow: 'ベータ版 · WireGuard 設定',
+  connect_eyebrow: 'WireGuard 設定 · あらゆるデバイスに',
+  connect_purpose:
+    '公式 WireGuard アプリが使えるあらゆるデバイスに — Windows、Linux、ルーター、そして私たちのアプリがまだ対応していないものにも。Mac、iPhone、Android では、私たちのアプリが自動フェイルオーバー、キルスイッチ、Stealth を追加します。',
   connect_title: '鍵ひとつで<glow>すべてのゲートウェイへ。</glow>',
   connect_lede:
-    'WireGuard の鍵ペアはここ、あなたのブラウザ内で生成されます — 秘密鍵がこのタブから出ることはありません。国を選び、最寄りの Flux ゲートウェイに登録すると、すぐにインポートできる<mono> .conf</mono>と QR コードを書き出せます。100 KB/s でずっと無料。フルスピードにするには <upgrade>FLUX でアップグレード</upgrade>してください。',
+    'WireGuard の鍵ペアはここ、あなたのブラウザ内で生成されます — 秘密鍵がこのタブから出ることはありません。国を選び、最寄りの Flux ゲートウェイに登録すると、すぐにインポートできる<mono> .conf</mono>と QR コードを書き出せます。100 KB/s でずっと無料。フルスピードにするには <upgrade>カードまたは FLUX でアップグレード</upgrade>してください。',
   connect_verify_warn:
     'ディレクトリの署名を検証できませんでした — エンドポイントは参考情報として表示しています。',
   connect_notice_no_live_gateway:

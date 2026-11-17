@@ -92,7 +92,7 @@
     "apps_h2": "En anslutningsknapp, på varenda skärm du äger.",
     "apps_lede": "Samma smidiga klient på webb, mobil och Mac, med Windows och Linux på väg — ett designspråk på\n        varje skärm. Betala på webben med telefonens enhetskod så låses den upp automatiskt via kedjan inom en minut.",
     "app_web_h": "Webbinstallation",
-    "app_web_p": "Genererar din nyckel i webbläsaren och ger dig en WireGuard-konfiguration + QR-kod att importera till\n          WireGuard-appen. Är även värd för uppgraderingssidan för att betala i FLUX. Ingen installation krävs för att ställa in eller betala.",
+    "app_web_p": "För Windows, Linux och routrar — alla enheter med den officiella WireGuard-appen. Din nyckel skapas i webbläsaren; importera konfigurationen eller skanna QR-koden. Det är också här du uppgraderar, med kort eller FLUX.",
     "app_web_link": "Ställ in i webbläsaren",
     "tag_beta": "Beta",
     "app_desktop_h": "Dator",

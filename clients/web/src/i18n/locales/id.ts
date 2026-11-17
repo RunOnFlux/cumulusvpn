@@ -12,7 +12,7 @@ export const id: Catalog = {
   header_language_label: 'Bahasa',
 
   footer_tagline: 'CumulusVPN — VPN terdesentralisasi di Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Jalur beta · tanpa akun · tanpa log',
+  footer_credit: 'Sumber terbuka · tanpa akun · tanpa log',
   footer_terms: 'Ketentuan Layanan',
   footer_privacy: 'Kebijakan Privasi',
 
@@ -32,10 +32,12 @@ export const id: Catalog = {
   countries_no_match: 'Tidak ada negara yang cocok dengan “{query}”.',
   countries_nodes: { other: '{n} node' },
 
-  connect_eyebrow: 'Jalur beta · config WireGuard',
+  connect_eyebrow: 'Config WireGuard · perangkat apa pun',
+  connect_purpose:
+    'Untuk perangkat apa pun dengan aplikasi WireGuard resmi — Windows, Linux, router, atau apa saja yang belum dicakup aplikasi kami. Di Mac, iPhone, dan Android, aplikasi kami menambahkan failover otomatis, kill switch, dan Stealth.',
   connect_title: 'Satu kunci, <glow>semua gateway.</glow>',
   connect_lede:
-    'Pasangan kunci WireGuard Anda dibuat di sini, di browser Anda — kunci privat tidak pernah keluar dari tab ini. Pilih negara, daftar di gateway Flux terdekat, lalu ekspor<mono> .conf</mono> siap-impor beserta QR-nya. Gratis selamanya di 100 KB/s; <upgrade>upgrade dengan FLUX</upgrade> untuk kecepatan penuh.',
+    'Pasangan kunci WireGuard Anda dibuat di sini, di browser Anda — kunci privat tidak pernah keluar dari tab ini. Pilih negara, daftar di gateway Flux terdekat, lalu ekspor<mono> .conf</mono> siap-impor beserta QR-nya. Gratis selamanya di 100 KB/s; <upgrade>upgrade dengan kartu atau FLUX</upgrade> untuk kecepatan penuh.',
   connect_verify_warn:
     'Tanda tangan direktori tidak dapat diverifikasi — endpoint hanya ditampilkan sebagai informasi.',
   connect_notice_no_live_gateway:

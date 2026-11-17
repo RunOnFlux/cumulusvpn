@@ -12,7 +12,7 @@ export const nl: Catalog = {
   header_language_label: 'Taal',
 
   footer_tagline: 'CumulusVPN — Gedecentraliseerde VPN op Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Bèta-traject · geen account · geen logs',
+  footer_credit: 'Open source · geen account · geen logs',
   footer_terms: 'Gebruiksvoorwaarden',
   footer_privacy: 'Privacybeleid',
 
@@ -32,10 +32,12 @@ export const nl: Catalog = {
   countries_no_match: 'Geen land komt overeen met “{query}”.',
   countries_nodes: { one: '{n} node', other: '{n} nodes' },
 
-  connect_eyebrow: 'Bèta-traject · WireGuard-configuratie',
+  connect_eyebrow: 'WireGuard-configuratie · elk apparaat',
+  connect_purpose:
+    'Voor elk apparaat met de officiële WireGuard-app — Windows, Linux, een router of alles wat onze apps nog niet ondersteunen. Op Mac, iPhone en Android voegen onze apps automatische failover, een kill switch en Stealth toe.',
   connect_title: 'Eén sleutel, <glow>elke gateway.</glow>',
   connect_lede:
-    'Je WireGuard-sleutelpaar wordt hier gegenereerd, in je browser — de privésleutel verlaat dit tabblad nooit. Kies een land, schrijf je in bij de dichtstbijzijnde Flux-gateway en exporteer een importklare<mono> .conf</mono> met QR-code. Voor altijd gratis op 100 KB/s; <upgrade>upgrade met FLUX</upgrade> voor volle snelheid.',
+    'Je WireGuard-sleutelpaar wordt hier gegenereerd, in je browser — de privésleutel verlaat dit tabblad nooit. Kies een land, schrijf je in bij de dichtstbijzijnde Flux-gateway en exporteer een importklare<mono> .conf</mono> met QR-code. Voor altijd gratis op 100 KB/s; <upgrade>upgrade met kaart of FLUX</upgrade> voor volle snelheid.',
   connect_verify_warn:
     'Directoryhandtekening kon niet worden geverifieerd — endpoints worden alleen ter informatie getoond.',
   connect_notice_no_live_gateway:

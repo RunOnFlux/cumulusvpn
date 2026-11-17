@@ -12,7 +12,7 @@ export const tr: Catalog = {
   header_language_label: 'Dil',
 
   footer_tagline: 'CumulusVPN — Flux Cloud üzerinde merkeziyetsiz VPN · vpn.cumulusvpn.com',
-  footer_credit: 'Beta hattı · hesap yok · kayıt yok',
+  footer_credit: 'Açık kaynak · hesap yok · kayıt yok',
   footer_terms: 'Kullanım Koşulları',
   footer_privacy: 'Gizlilik Politikası',
 
@@ -32,10 +32,12 @@ export const tr: Catalog = {
   countries_no_match: '“{query}” ile eşleşen ülke yok.',
   countries_nodes: { one: '{n} düğüm', other: '{n} düğüm' },
 
-  connect_eyebrow: 'Beta hattı · WireGuard yapılandırması',
+  connect_eyebrow: 'WireGuard yapılandırması · her cihaz',
+  connect_purpose:
+    "Resmî WireGuard uygulaması olan her cihaz için — Windows, Linux, bir yönlendirici ya da uygulamalarımızın henüz desteklemediği her şey. Mac, iPhone ve Android'de uygulamalarımız otomatik yedeğe geçiş, kill switch ve Stealth ekler.",
   connect_title: 'Tek anahtar, <glow>her gateway.</glow>',
   connect_lede:
-    'WireGuard anahtar çiftin burada, tarayıcında oluşturulur — özel anahtar bu sekmeden asla çıkmaz. Bir ülke seç, en yakın Flux gateway’ine kaydol ve içe aktarmaya hazır bir<mono> .conf</mono> ile QR dışa aktar. 100 KB/s hızında sonsuza dek ücretsiz; tam hız için <upgrade>FLUX ile yükselt</upgrade>.',
+    'WireGuard anahtar çiftin burada, tarayıcında oluşturulur — özel anahtar bu sekmeden asla çıkmaz. Bir ülke seç, en yakın Flux gateway’ine kaydol ve içe aktarmaya hazır bir<mono> .conf</mono> ile QR dışa aktar. 100 KB/s hızında sonsuza dek ücretsiz; tam hız için <upgrade>kartla veya FLUX ile yükselt</upgrade>.',
   connect_verify_warn:
     'Dizin imzası doğrulanamadı — uç noktalar yalnızca bilgi amaçlı gösteriliyor.',
   connect_notice_no_live_gateway:

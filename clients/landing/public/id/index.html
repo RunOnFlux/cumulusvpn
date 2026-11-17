@@ -112,6 +112,9 @@
   .top nav a { text-decoration: none; }
   .top nav a:hover { color: var(--ink); }
   .top .right { display: flex; align-items: center; gap: 14px; }
+  .gh { display: inline-flex; color: var(--ink-2); line-height: 0; }
+  .gh:hover { color: var(--ink); }
+  .gh svg { width: 20px; height: 20px; }
   .badge-flux { font-family: var(--mono); font-size: 11px; color: var(--ink-3); border: 1px solid var(--line);
     padding: 4px 9px; border-radius: 20px; white-space: nowrap; }
   /* Official "Powered by Flux" lockup — two art variants swapped by theme. */
@@ -151,6 +154,11 @@
   .hero h1 .glow { color: var(--cyan); }
   .hero p.lede { font-size: 19px; color: var(--ink-2); max-width: 46ch; margin: 22px 0 0; }
   .hero .cta { display: flex; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+  .oss { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 20px; padding: 6px 12px;
+    border: 1px solid var(--line); border-radius: 20px; font-size: 13px; color: var(--ink-2); text-decoration: none; }
+  .oss:hover { border-color: var(--ink-3); color: var(--ink); }
+  .oss svg { width: 16px; height: 16px; color: var(--cyan); flex-shrink: 0; }
+  .oss-url { font-family: var(--mono); font-size: 12px; color: var(--ink-3); }
   .kpis { display: flex; gap: 26px; margin-top: 40px; flex-wrap: wrap; }
   .kpi .n { font-family: var(--mono); font-size: 24px; font-weight: 600; letter-spacing: -.02em; }
   .kpi .l { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
@@ -271,6 +279,9 @@
   .trust p { color: var(--ink-2); font-size: 14px; margin: 0; }
   .trust p a { color: var(--cyan); text-decoration: none; }
   .trust p a:hover { text-decoration: underline; }
+  .trust-link { display: inline-block; margin-top: 12px; font-family: var(--mono); font-size: 12.5px; color: var(--cyan);
+    text-decoration: none; word-break: break-all; }
+  .trust-link:hover { text-decoration: underline; }
 
   /* cta band */
   .band { background: linear-gradient(135deg, color-mix(in srgb, var(--cyan) 14%, var(--surface)), var(--surface));
@@ -432,6 +443,7 @@
     <a href="#apps">Dapatkan aplikasi</a><a href="#trust">Privasi</a><a href="/network">Jaringan</a>
   </nav>
   <div class="right">
+    <a class="gh" href="https://github.com/RunOnFlux/cumulusvpn" target="_blank" rel="noreferrer" aria-label="GitHub" title="GitHub"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <a class="pbf" href="https://runonflux.com" target="_blank" rel="noreferrer" aria-label="Powered by Flux — membuka runonflux.com">
       <img class="pbf-on-light" src="/powered_by_dark.svg" alt="Powered by Flux" height="16" />
       <img class="pbf-on-dark" src="/powered_by_light.svg" alt="" height="16" aria-hidden="true" />
@@ -453,6 +465,7 @@
         <a class="btn primary" href="#apps">Dapatkan aplikasi</a>
         <a class="btn ghost" href="#how">Cara kerja</a>
       </div>
+      <a class="oss" href="https://github.com/RunOnFlux/cumulusvpn" target="_blank" rel="noreferrer"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Open source · MIT</span><span class="oss-url">github.com/RunOnFlux/cumulusvpn</span></a>
       <div class="kpis">
         <div class="kpi"><div class="n">6,500+</div><div class="l">node Flux di seluruh dunia</div></div>
         <div class="kpi"><div class="n">30+</div><div class="l">negara saat peluncuran</div></div>
@@ -572,9 +585,9 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M8 20h8M12 18v2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Setup web</h3>
-        <p>Membuat kunci Anda di browser dan memberi Anda config WireGuard + QR untuk diimpor ke aplikasi WireGuard. Juga menghosting halaman upgrade dengan pembayaran FLUX. Tidak perlu instalasi untuk setup atau membayar.</p>
+        <p>Untuk Windows, Linux, router — perangkat apa pun dengan aplikasi WireGuard resmi. Kunci Anda dibuat di browser; impor konfigurasinya atau pindai QR. Di sini juga Anda upgrade, dengan kartu atau FLUX.</p>
         <div class="actions">
-          <a class="applink" href="https://vpn.cumulusvpn.com"><span>Setup di browser</span><span class="tag">Beta</span></a>
+          <a class="applink" href="https://vpn.cumulusvpn.com"><span>Setup di browser</span><span class="tag os">WireGuard</span></a>
         </div>
       </div>
 
@@ -625,6 +638,7 @@
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <h3>Open source</h3>
         <p>Aplikasi dan gateway bersifat publik. Baca kodenya, bangun sendiri, atau jalankan milik Anda sendiri — protokol pembayaran dan hak akses didokumentasikan sepenuhnya.</p>
+        <a class="trust-link" href="https://github.com/RunOnFlux/cumulusvpn" target="_blank" rel="noreferrer">github.com/RunOnFlux/cumulusvpn →</a>
       </div>
       <div class="trust">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><rect x="3" y="14" width="18" height="6" rx="1.5" stroke="currentColor" stroke-width="1.7"/><path d="M7 7h.01M7 17h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -666,6 +680,7 @@
       <a href="#pricing">Harga</a>
       <a href="#apps">Dapatkan aplikasi</a>
       <a href="https://vpn.cumulusvpn.com">Aplikasi web</a>
+      <a href="https://github.com/RunOnFlux/cumulusvpn">GitHub</a>
     </div>
     <div class="col">
       <h4>Pelajari</h4>

@@ -36,6 +36,8 @@ function useAppVersion(): string | null {
 }
 
 const SITE_URL = 'https://cumulusvpn.com';
+/** Everything — apps, gateway, payment bridge — is MIT open source. */
+const SOURCE_URL = 'https://github.com/RunOnFlux/cumulusvpn';
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
 const TERMS_URL = 'https://cumulusvpn.com/terms';
 const SUPPORT_URL = 'https://cumulusvpn.com/support';
@@ -180,6 +182,7 @@ export function Settings({
             <span className="lat">{CVPN_DIRECTORY_PUBKEY.slice(0, 16)}…</span>
           </div>
           <LinkRow label="cumulusvpn.com" url={SITE_URL} />
+          <LinkRow label="Source code (open source · MIT)" url={SOURCE_URL} />
 
           <div className="setsec">Privacy &amp; support</div>
           <LinkRow label="Privacy Policy" url={PRIVACY_URL} />

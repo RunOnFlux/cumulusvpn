@@ -95,9 +95,16 @@ export function ConnectPage({
     readonly health: ConfHealth;
   }>(() => ({ checking: prior !== null, health: 'unknown' }));
 
-  // The effective selection: the user's explicit pick, else the best (first)
-  // discovered country. Derived rather than synced via an effect.
-  const selected = picked ?? discovery.options[0] ?? null;
+  // The effective selection: the user's explicit pick, else the location
+  // nearest the visitor, else the first row. Derived rather than synced via an
+  // effect. A pick is re-resolved by id against the current rows, so once the
+  // live discovery replaces the cached list, enrollment uses the fresh gateway.
+  const selected =
+    (picked && discovery.options.find((o) => o.id === picked.id)) ??
+    picked ??
+    discovery.nearest ??
+    discovery.options[0] ??
+    null;
 
   // This key's real tier. Entitlement is read from the chain, so any live
   // gateway answers the same; the pill stays hidden until one does — a
@@ -279,6 +286,7 @@ export function ConnectPage({
               ),
             })}
           </p>
+          <p className="lede purpose">{t('connect_purpose')}</p>
         </div>
 
         {/* `verified` is false until the directory resolves; only a finished check can fail. */}
