@@ -30,6 +30,7 @@ pub mod dns;
 pub mod killswitch;
 pub mod routing;
 pub mod tlsbridge;
+pub mod trace;
 mod validate;
 pub mod wggo;
 
@@ -650,7 +651,9 @@ impl TunnelManager {
             killswitch::Proto::Udp
         };
 
+        let mut steps = trace::Steps::new("connect");
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
+        steps.mark("wait_lock");
 
         // Replace any existing tunnel first (including a prior multi-hop pair).
         // This path is reachable via auto-reconnect/failover WITHOUT an
@@ -686,6 +689,7 @@ impl TunnelManager {
         inner.country = Some(country.to_string());
         inner.endpoint = Some(endpoint.to_string());
         inner.error = None;
+        steps.mark("teardown_previous");
 
         // Leak protection. engage REPLACES any prior ruleset atomically (no open
         // window), so re-engaging on reconnect is safe. But when THIS session has
@@ -718,6 +722,7 @@ impl TunnelManager {
         } else {
             inner.lift_kill_switch();
         }
+        steps.mark("kill_switch");
 
         // wg-tls: stand up the UDP<->TLS bridge to the gateway relay and point the
         // WG device at its LOCAL udp endpoint. The bridge's TLS connection is made
@@ -740,6 +745,7 @@ impl TunnelManager {
         } else {
             None
         };
+        steps.mark("tls_bridge");
 
         let sidecar = match Sidecar::spawn(IFACE) {
             Ok(s) => s,
@@ -750,6 +756,7 @@ impl TunnelManager {
                 return Err(e);
             }
         };
+        steps.mark("sidecar_start");
 
         // Phase 2: the kernel tun name is known now, so re-engage with the pass
         // that lets tunnel traffic out. Before `configure`, so the rule is in
@@ -783,6 +790,7 @@ impl TunnelManager {
             inner.error = Some(e.to_string());
             return Err(e);
         }
+        steps.mark("configure");
 
         // Routing: pin the WireGuard endpoint to the physical gateway (so the
         // tunnel's own UDP escapes), then point the default route at the tunnel.
@@ -794,6 +802,7 @@ impl TunnelManager {
             inner.error = Some(e.to_string());
             return Err(e);
         }
+        steps.mark("endpoint_route");
         // Include mode routes ONLY the listed prefixes into the tunnel (the
         // default stays physical); otherwise install the split-default pair
         // and, in exclude mode, the more-specific bypass routes that win over
@@ -815,6 +824,7 @@ impl TunnelManager {
             return Err(e);
         }
         inner.bypass_routes = split_bypass.to_vec();
+        steps.mark("routes");
 
         // DNS last: only now do the routes send the resolver's traffic into the
         // tunnel. Never fails the connect — a DNS failure is a warning on the
@@ -827,6 +837,7 @@ impl TunnelManager {
             pin_route: split.is_some(),
             kill_switch,
         }));
+        steps.mark("dns");
 
         inner.sidecar = Some(sidecar);
         inner.bridge = bridge; // keep the wg-tls bridge alive for the session
@@ -843,6 +854,7 @@ impl TunnelManager {
         inner.rx_bytes = 0;
         inner.tx_bytes = 0;
 
+        steps.ok();
         Ok(inner.snapshot())
     }
 
@@ -1218,14 +1230,18 @@ impl TunnelManager {
 
     /// Tear the tunnel down: kill the sidecar and remove the kill switch.
     pub fn disconnect(&self) -> Result<TunnelStatus, TunnelError> {
+        let mut steps = trace::Steps::new("disconnect");
         let mut inner = self.inner.lock().expect("tunnel mutex poisoned");
+        steps.mark("wait_lock");
         // DNS first, while the tunnel still runs: the system resolver is never
         // one that cannot be reached, and with the kill switch on, the original
         // resolver stays blocked until the switch itself comes down below.
         inner.restore_dns();
+        steps.mark("dns_restore");
         if let Some(sidecar) = inner.sidecar.take() {
             let _ = sidecar.kill();
         }
+        steps.mark("sidecar_stop");
         // Multi-hop: also reap the inner (exit) device and clear its routes.
         if let Some(exit_sidecar) = inner.exit_sidecar.take() {
             let _ = exit_sidecar.kill();
@@ -1247,7 +1263,9 @@ impl TunnelManager {
         if let Some(mut bridge) = inner.bridge.take() {
             bridge.shutdown();
         }
+        steps.mark("routes");
         inner.lift_kill_switch();
+        steps.mark("kill_switch");
         let backend = inner.backend;
         *inner = Inner {
             state: TunnelState::Down,
@@ -1270,6 +1288,7 @@ impl TunnelManager {
             dead_watch: DeadWatch::IDLE,
             ks_engaged: false,
         };
+        steps.ok();
         Ok(inner.snapshot())
     }
 }

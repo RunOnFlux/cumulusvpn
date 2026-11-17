@@ -824,8 +824,17 @@ export function useConnection(): ConnectionModel {
     }
     const id = setInterval(() => {
       void (async () => {
+        // A Disconnect is tearing the tunnel down: it going away now is the
+        // point, not a drop. Reading it as one raised a false "connection
+        // lost" (error box + notification) on every slow Windows disconnect.
+        if (disconnectingRef.current) {
+          return;
+        }
         try {
           const s = await nativeStatus();
+          if (disconnectingRef.current) {
+            return;
+          }
           setTunnel(s);
           const sample = { rx: s.rxBytes, tx: s.txBytes, at: Date.now() };
           setSpeed(speedBetween(lastSampleRef.current, sample));

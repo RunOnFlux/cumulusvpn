@@ -54,6 +54,10 @@ fn main() {
         std::process::exit(1);
     }
 
+    if let Some(log) = cumulusvpn_tunnel::trace::default_log_path() {
+        cumulusvpn_tunnel::trace::enable(log);
+        cumulusvpn_tunnel::trace::note("helper started");
+    }
     let manager = Arc::new(TunnelManager::new());
     // A previous instance may have died with the system DNS still pointed at
     // the tunnel (launchd restarts us within seconds). Its backups live in the
