@@ -4,8 +4,10 @@
     "beforeBuildCommand": "yarn build && node scripts/build-helper.mjs"
   },
   "bundle": {
+    "targets": ["deb", "rpm"],
     "linux": {
       "deb": {
+        "depends": ["nftables"],
         "files": {
           "/usr/bin/cumulusvpn-helper": "helper/build/cumulusvpn-helper",
           "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service"
@@ -15,6 +17,7 @@
         "postRemoveScript": "linux/deb-postrm.sh"
       },
       "rpm": {
+        "depends": ["nftables"],
         "files": {
           "/usr/bin/cumulusvpn-helper": "helper/build/cumulusvpn-helper",
           "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service"

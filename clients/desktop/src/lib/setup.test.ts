@@ -74,7 +74,9 @@ describe('setupBanner', () => {
   // Each Linux/Windows step names its own fix, and none offers the macOS
   // Settings button (it does nothing there).
   it('gives Linux the package, systemctl and group fixes', () => {
-    expect(setupBanner('serviceNotInstalled', 'linux')?.text).toMatch(/\.deb or \.rpm.*sudo/);
+    expect(setupBanner('serviceNotInstalled', 'linux')?.text).toMatch(
+      /\.deb or \.rpm.*pkg\.cumulusvpn\.com/,
+    );
     expect(setupBanner('serviceNotRunning', 'linux')?.text).toMatch(
       /sudo systemctl enable --now cumulusvpn-helper/,
     );

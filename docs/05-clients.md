@@ -71,8 +71,8 @@ quiet power-user escape hatch.
     on the named pipe `\\.\pipe\CumulusVPN.Helper` (interactive users may connect, not create
     instances). Peers: an elevated administrator, or the installed app image next to the
     service. Authenticode pinning is a prepared seam, off until Windows builds are signed.
-  - **Fallback:** an elevated app with no daemon (macOS run as root; a Linux AppImage or a
-    Windows build without its service, run as root / Administrator) runs the tunnel
+  - **Fallback:** an elevated app with no daemon (macOS run as root; a Linux build from
+    source or a Windows build without its service, run as root / Administrator) runs the tunnel
     in-process, as before the daemon. Otherwise the app shows a setup banner saying what is
     missing.
   - On Linux and Windows a daemon that died mid-session is restarted by systemd / the SCM and
