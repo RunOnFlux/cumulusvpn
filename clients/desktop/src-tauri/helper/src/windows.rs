@@ -78,6 +78,10 @@ pub fn main() -> i32 {
 /// `--console` (which names Administrators as the pipe's owner; see
 /// `peer_windows::console_sddl`).
 fn start(console: bool) -> io::Result<Arc<TunnelManager>> {
+    if let Some(log) = cumulusvpn_tunnel::trace::default_log_path() {
+        cumulusvpn_tunnel::trace::enable(log);
+        cumulusvpn_tunnel::trace::note("helper started");
+    }
     let manager = Arc::new(TunnelManager::new());
     manager.recover_stale();
     let sddl = if console {

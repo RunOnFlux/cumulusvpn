@@ -80,6 +80,10 @@ fn run_daemon() -> i32 {
         );
     }
 
+    if let Some(log) = cumulusvpn_tunnel::trace::default_log_path() {
+        cumulusvpn_tunnel::trace::enable(log);
+        cumulusvpn_tunnel::trace::note("helper started");
+    }
     let manager = Arc::new(TunnelManager::new());
     // A previous instance may have died mid-session: stale DNS, a kill switch
     // nobody will lift, an orphaned sidecar holding cvpn0. Clean all of it
