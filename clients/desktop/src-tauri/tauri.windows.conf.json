@@ -10,11 +10,20 @@
     "windows": {
       "nsis": {
         "installMode": "perMachine",
-        "installerHooks": "windows/hooks.nsh"
+        "installerHooks": "windows/hooks.nsh",
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "windows/art/nsis-header.bmp",
+        "sidebarImage": "windows/art/nsis-sidebar.bmp"
       },
       "wix": {
-        "fragmentPaths": ["windows/helper-service.wxs"],
-        "componentRefs": ["CumulusVpnHelperService"]
+        "fragmentPaths": [
+          "windows/helper-service.wxs"
+        ],
+        "componentRefs": [
+          "CumulusVpnHelperService"
+        ],
+        "bannerPath": "windows/art/wix-banner.bmp",
+        "dialogImagePath": "windows/art/wix-dialog.bmp"
       }
     }
   }

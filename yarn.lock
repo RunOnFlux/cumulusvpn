@@ -353,6 +353,7 @@ __metadata:
     "@types/react": "npm:19.3.0"
     "@types/react-dom": "npm:19.3.0"
     "@vitejs/plugin-react": "npm:6.1.2"
+    country-flag-emoji-polyfill: "npm:0.1.10"
     eslint: "npm:10.12.0"
     jsdom: "npm:30.1.2"
     prettier: "npm:3.9.10"
@@ -1480,6 +1481,13 @@ __metadata:
   version: 2.0.0
   resolution: "convert-source-map@npm:2.0.0"
   checksum: 10c0/8f2f7a27a1a011cc6cc88cc4da2d7d0cfa5ee0369508baae3d98c260bb3ac520691464e5bbe4ae7cdf09860c1d69ecc6f70c63c6e7c7f7e3f18ec08484dc7d9b
+  languageName: node
+  linkType: hard
+
+"country-flag-emoji-polyfill@npm:0.1.10":
+  version: 0.1.10
+  resolution: "country-flag-emoji-polyfill@npm:0.1.10"
+  checksum: 10c0/28a774f23cfadb88ffb6f409ff4e2205c463b66092eb55f86fb048a9fc15a392cf87d1c4d4438a7917d100bafc963ede4839d226bdfabe4b4e088327481609cd
   languageName: node
   linkType: hard
 

@@ -44,6 +44,8 @@ export function setupBanner(state: HelperRegistration, os: DesktopOs): SetupBann
   switch (state) {
     case 'enabled':
     case 'notNeeded':
+    // Not an error yet: the service is usually seconds from answering.
+    case 'serviceStarting':
       return null;
     case 'elevated':
       return {

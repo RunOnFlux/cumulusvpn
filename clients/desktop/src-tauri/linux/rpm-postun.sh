@@ -12,4 +12,10 @@ if [ -d /run/systemd/system ]; then
   fi
 fi
 
+# Erase (not upgrade): drop the repo file %post added; only ours, by its marker.
+REPO=/etc/yum.repos.d/cumulusvpn.repo
+if [ "$1" = 0 ] && [ -f "$REPO" ] && grep -q '^# Added by the cumulus-vpn package' "$REPO"; then
+  rm -f "$REPO"
+fi
+
 exit 0

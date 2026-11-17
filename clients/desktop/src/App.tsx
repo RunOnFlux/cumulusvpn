@@ -56,6 +56,8 @@ function updateText(u: Updater, connected: boolean): string {
       return `${v} is ready to install.${drop}`;
     case 'available':
       return `${v} is available.${drop}`;
+    case 'external':
+      return `${v} is available. Update it with your system’s software updater, or run: sudo apt upgrade (Fedora: sudo dnf upgrade).`;
     case 'installing':
       return `Installing ${v}… the app restarts by itself.`;
     case 'failed':
@@ -278,9 +280,11 @@ export function App(): JSX.Element {
           >
             {conn.phase === 'loading'
               ? 'Loading…'
-              : conn.multihop
-                ? 'Connect · multi-hop'
-                : 'Connect'}
+              : conn.helperState === 'serviceStarting'
+                ? 'Starting…'
+                : conn.multihop
+                  ? 'Connect · multi-hop'
+                  : 'Connect'}
           </button>
         )}
       </div>

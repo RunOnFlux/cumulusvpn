@@ -8,6 +8,12 @@
 #    the app then explains how to join). It applies to sessions started after
 #    it, so the user logs out and back in once.
 # 3. The unit is enabled and (re)started, picking up an upgraded binary.
+# 4. Updates: dnf / yum are pointed at our signed repository, so an .rpm
+#    installed by hand keeps updating like one installed from it. Skipped when
+#    a repo file already names pkg.cumulusvpn.com; the key ships in this
+#    package. Removed on erase (rpm-postun.sh). dnf asks once to import the
+#    key on the first update: rpm cannot import it from inside its own
+#    transaction.
 GROUP=cumulusvpn
 UNIT=cumulusvpn-helper.service
 
@@ -30,6 +36,20 @@ if [ -d /run/systemd/system ]; then
   systemctl daemon-reload >/dev/null 2>&1 || true
   systemctl enable "$UNIT" >/dev/null 2>&1 || true
   systemctl restart "$UNIT" || echo "CumulusVPN: could not start $UNIT (see: journalctl -u $UNIT)"
+fi
+
+REPO=/etc/yum.repos.d/cumulusvpn.repo
+if [ -d /etc/yum.repos.d ] && ! grep -rqs 'pkg\.cumulusvpn\.com' /etc/yum.repos.d; then
+  printf '%s\n' \
+    "# Added by the cumulus-vpn package so it receives updates; removed with it." \
+    "[cumulusvpn]" \
+    "name=CumulusVPN" \
+    "baseurl=https://pkg.cumulusvpn.com/rpm" \
+    "enabled=1" \
+    "gpgcheck=1" \
+    "repo_gpgcheck=1" \
+    "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-cumulusvpn" \
+    >"$REPO"
 fi
 
 exit 0

@@ -173,6 +173,13 @@ export function messageOf(err: unknown): string {
 }
 
 /**
+ * How long after launch a stopped helper service still counts as starting
+ * (`serviceStarting`) rather than as a setup problem. A Windows service at
+ * login, or one an update just restarted, answers within a few seconds.
+ */
+const SERVICE_START_GRACE_MS = 15_000;
+
+/**
  * Backoff for auto-reconnect attempts, in milliseconds.
  *
  * Starts at 5s, not 3: a reconnect re-runs the whole transport sweep, which
@@ -296,6 +303,7 @@ export function useConnection(): ConnectionModel {
   // until told otherwise, so the setup banner never flashes on a normal launch
   // before the first check comes back.
   const [helperState, setHelperState] = useState<HelperRegistration>('notNeeded');
+  const launchedAtRef = useRef(Date.now());
   const [favorites, setFavorites] = useState<readonly string[]>(() =>
     (localStorage.getItem('cvpn.favorites') ?? '').split(',').filter(Boolean),
   );
@@ -711,12 +719,21 @@ export function useConnection(): ConnectionModel {
   // app should notice when they are done rather than making them relaunch.
   // Once ready, the polling stops — nothing revokes it behind our back except
   // the user, who is then looking at the setup anyway.
+  //
+  // A service that is not running yet in the first seconds after launch is
+  // reported as `serviceStarting`, not as an error: at login, or right after an
+  // update restarted it, the app often opens before the service is up, and a
+  // warning that clears itself a few seconds later is noise. Checked every
+  // second while it settles.
   useEffect(() => {
     let alive = true;
     const check = (): void => {
       void helperRegistration().then((s) => {
         if (alive) {
-          setHelperState(s);
+          const settling =
+            s === 'serviceNotRunning' &&
+            Date.now() - launchedAtRef.current < SERVICE_START_GRACE_MS;
+          setHelperState(settling ? 'serviceStarting' : s);
         }
       });
     };
@@ -726,7 +743,7 @@ export function useConnection(): ConnectionModel {
         alive = false;
       };
     }
-    const id = setInterval(check, 3000);
+    const id = setInterval(check, helperState === 'serviceStarting' ? 1000 : 3000);
     return () => {
       alive = false;
       clearInterval(id);
@@ -755,12 +772,20 @@ export function useConnection(): ConnectionModel {
 
   // Auto-connect on launch (opt-in): once discovery settles and a location is
   // selected, bring the tunnel up automatically.
+  // Waits for the helper: launched at login, the app is often up before its
+  // service is (serviceStarting), and connecting then would only fail.
   useEffect(() => {
-    if (autoConnect && !autoConnectedRef.current && phase === 'idle' && selected) {
+    if (
+      autoConnect &&
+      !autoConnectedRef.current &&
+      phase === 'idle' &&
+      selected &&
+      helperReady(helperState)
+    ) {
       autoConnectedRef.current = true;
       connect();
     }
-  }, [autoConnect, phase, selected, connect]);
+  }, [autoConnect, phase, selected, connect, helperState]);
 
   // Poll native tunnel status for the counters the UI renders.
   //

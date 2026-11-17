@@ -6,7 +6,16 @@ import { App } from './App.js';
 import { Popover } from './components/Popover.js';
 import { reconcileIdentity } from './lib/identityBackup.js';
 import { installNativeFetch } from './lib/nativeFetch.js';
+import { polyfillCountryFlagEmojis } from 'country-flag-emoji-polyfill';
+import flagFontUrl from 'country-flag-emoji-polyfill/dist/TwemojiCountryFlags.woff2?url';
 import './styles.css';
+
+// Windows ships no colour flag emoji, so every location rendered as two
+// letters ("AU", "AT"). Where the platform can't draw flags this registers
+// the Twemoji flag font for the regional-indicator range only; it is first in
+// --sans / --mono (styles.css) and does nothing elsewhere. Self-hosted: the
+// package's default is a CDN, which the CSP blocks and we wouldn't use anyway.
+polyfillCountryFlagEmojis('Twemoji Country Flags', flagFontUrl);
 
 // Before anything fetches: the fleet is only reachable from Rust (see nativeFetch).
 installNativeFetch();
