@@ -115,6 +115,7 @@ export function Popover(): JSX.Element {
   const connected = phase === 'connected';
   const busy = phase === 'connecting';
   const blocked = s?.blocked === true;
+  const disconnecting = s?.disconnecting === true;
   const tone = blocked ? 'blocked' : connected ? 'on' : busy ? 'busy' : 'off';
   const countries = s?.countries ?? [];
   const current = countries.find((c) => c.code === s?.selected) ?? null;
@@ -147,9 +148,14 @@ export function Popover(): JSX.Element {
 
       {connected && s?.meters && <Meters m={s.meters} />}
 
-      {connected || busy || blocked ? (
-        <button type="button" className="btn-disc" onClick={() => send({ kind: 'disconnect' })}>
-          {busy ? 'Cancel' : 'Disconnect'}
+      {connected || busy || blocked || disconnecting ? (
+        <button
+          type="button"
+          className="btn-disc"
+          disabled={disconnecting}
+          onClick={() => send({ kind: 'disconnect' })}
+        >
+          {disconnecting ? 'Disconnecting…' : busy ? 'Cancel' : 'Disconnect'}
         </button>
       ) : (
         <button

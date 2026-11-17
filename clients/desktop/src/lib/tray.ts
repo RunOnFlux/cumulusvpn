@@ -35,6 +35,8 @@ export interface TrayState {
   readonly killSwitch: boolean;
   /** Kill switch holding traffic after a drop (useConnection `blocked`). */
   readonly blocked: boolean;
+  /** A Disconnect is in progress. */
+  readonly disconnecting: boolean;
   readonly countries: readonly TrayCountry[];
 }
 
@@ -60,6 +62,7 @@ export interface TrayInput {
   readonly favorites: readonly string[];
   readonly killSwitch: boolean;
   readonly blocked?: boolean;
+  readonly disconnecting?: boolean;
   readonly speed: Speed | null;
   readonly pingMs?: number | null;
   readonly connectedSince: number | null;
@@ -97,7 +100,10 @@ export function trayStateOf(input: TrayInput): TrayState {
   const where = route(input);
 
   let headline: string;
-  switch (phase) {
+  switch (input.disconnecting ? 'disconnecting' : phase) {
+    case 'disconnecting':
+      headline = 'Disconnecting…';
+      break;
     case 'loading':
       headline = 'Finding servers…';
       break;
@@ -164,6 +170,7 @@ export function trayStateOf(input: TrayInput): TrayState {
     selected: selected?.code ?? null,
     killSwitch: input.killSwitch,
     blocked: input.blocked === true,
+    disconnecting: input.disconnecting === true,
     countries,
   };
 }

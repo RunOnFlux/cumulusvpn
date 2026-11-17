@@ -69,6 +69,9 @@ pub struct TrayState {
     /// The kill switch is holding traffic after a drop: offer Disconnect.
     #[serde(default)]
     pub blocked: bool,
+    /// A Disconnect is in progress (the popover shows it).
+    #[serde(default)]
+    pub disconnecting: bool,
     pub countries: Vec<TrayCountry>,
 }
 
@@ -293,6 +296,7 @@ pub fn install(app: &tauri::App, show_main_window: fn(&AppHandle)) -> tauri::Res
         selected: None,
         kill_switch: false,
         blocked: false,
+        disconnecting: false,
         countries: Vec::new(),
     };
     let (menu, live) = build_menu(handle, &initial)?;
@@ -376,6 +380,7 @@ mod tests {
             selected: Some("DE".into()),
             kill_switch: true,
             blocked: false,
+            disconnecting: false,
             countries: vec![TrayCountry {
                 code: "DE".into(),
                 label: "🇩🇪 Germany".into(),
