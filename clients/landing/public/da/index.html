@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -567,7 +568,7 @@
     <div class="sec-head">
       <span class="eyebrow">Hent appen</span>
       <h2>Én forbind-knap, på hver skærm du ejer.</h2>
-      <p>Den samme gennemtænkte klient på web og mobil, med desktop på vej — ét designsprog på
+      <p>Den samme gennemtænkte klient på web, mobil og Mac, med Windows og Linux på vej — ét designsprog på
         hver skærm. Betal på nettet med telefonens enhedskode, så låser den op automatisk over kæden inden for et minut.</p>
     </div>
     <div class="apps">
@@ -585,10 +586,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>En rolig menulinje-app til macOS, Windows og Linux. Kill switch, automatisk genforbindelse og gateway-failover kører stille i bakken. Signerede installere på ~10&nbsp;MB.</p>
+        <p>En rolig menulinje-app til Mac. Kill switch, automatisk genforbindelse og gateway-failover kører stille i baggrunden, og appen opdaterer sig selv. Signeret og notariseret af Apple, ca. 6&nbsp;MB.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Snart</span></span>
+          <a class="applink" href="/download/mac"><span>Hent til Mac</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">Snart</span></span>
         </div>
+        <p class="appnote">Apple silicon (M1 eller nyere) · macOS 13+</p>
       </div>
 
       <div class="appcard">

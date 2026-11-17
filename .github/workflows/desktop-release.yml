@@ -306,6 +306,12 @@ jobs:
           bash "$GITHUB_WORKSPACE/clients/desktop/scripts/notarize-macos.sh" "$dmg" macos/CumulusVPN.app
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             gh release upload "$GITHUB_REF_NAME" "$dmg" --clobber --repo "$GITHUB_REPOSITORY"
+            # The same stapled .dmg under a name with no version in it, so
+            # releases/latest/download/CumulusVPN_macOS.dmg — what
+            # cumulusvpn.com/download/mac redirects to — always serves the
+            # newest published release.
+            cp "$dmg" "$RUNNER_TEMP/CumulusVPN_macOS.dmg"
+            gh release upload "$GITHUB_REF_NAME" "$RUNNER_TEMP/CumulusVPN_macOS.dmg" --clobber --repo "$GITHUB_REPOSITORY"
           fi
 
       # The helper must actually be in the bundle: without it the app can only

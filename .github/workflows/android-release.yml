@@ -135,6 +135,11 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
+          # Never "latest": that slot belongs to the desktop app, whose update
+          # feed (releases/latest/download/latest.json) and the website's Mac
+          # download (releases/latest/download/CumulusVPN_macOS.dmg) both
+          # resolve through it. A mobile release taking it would 404 both.
+          make_latest: false
           files: |
             dist/CumulusVPN-*.apk
             dist/CumulusVPN-*.aab

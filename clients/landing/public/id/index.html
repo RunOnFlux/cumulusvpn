@@ -261,6 +261,7 @@
     letter-spacing: .06em; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
+  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -564,7 +565,7 @@
     <div class="sec-head">
       <span class="eyebrow">Dapatkan aplikasi</span>
       <h2>Satu tombol hubungkan, di setiap layar yang Anda miliki.</h2>
-      <p>Klien yang sama indahnya di web dan mobile, dengan desktop segera hadir — satu bahasa desain di setiap layar. Bayar di web dengan kode perangkat ponsel Anda, dan ponsel itu terbuka otomatis lewat chain dalam waktu kurang dari semenit.</p>
+      <p>Klien yang sama indahnya di web, mobile, dan Mac, dengan Windows dan Linux segera hadir — satu bahasa desain di setiap layar. Bayar di web dengan kode perangkat ponsel Anda, dan ponsel itu terbuka otomatis lewat chain dalam waktu kurang dari semenit.</p>
     </div>
     <div class="apps">
 
@@ -580,10 +581,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Aplikasi menu-bar yang tenang untuk macOS, Windows, dan Linux. Kill switch, sambung-ulang otomatis, dan failover gateway berjalan diam-diam di tray. Installer bertanda tangan ~10&nbsp;MB.</p>
+        <p>Aplikasi menu-bar yang tenang untuk Mac. Kill switch, sambung-ulang otomatis, dan failover gateway berjalan diam-diam di latar belakang, dan aplikasinya memperbarui diri sendiri. Ditandatangani dan dinotarisasi oleh Apple, sekitar 6&nbsp;MB.</p>
         <div class="actions">
-          <span class="applink soon"><span>macOS · Windows · Linux</span><span class="tag">Segera</span></span>
+          <a class="applink" href="/download/mac"><span>Unduh untuk Mac</span><span class="tag os">macOS</span></a>
+          <span class="applink soon"><span>Windows · Linux</span><span class="tag">Segera</span></span>
         </div>
+        <p class="appnote">Apple silicon (M1 atau lebih baru) · macOS 13+</p>
       </div>
 
       <div class="appcard">
