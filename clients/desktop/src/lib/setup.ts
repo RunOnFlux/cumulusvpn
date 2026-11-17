@@ -64,7 +64,7 @@ export function setupBanner(state: HelperRegistration, os: DesktopOs): SetupBann
       return block(
         os === 'windows'
           ? 'CumulusVPN’s background service isn’t installed. Reinstall CumulusVPN, or run it as administrator.'
-          : 'CumulusVPN’s background service isn’t installed. Install the .deb or .rpm package — or, for the AppImage, start CumulusVPN with sudo.',
+          : 'CumulusVPN’s background service isn’t installed. Install CumulusVPN from the .deb or .rpm package (or our apt / dnf repository at pkg.cumulusvpn.com).',
       );
     case 'serviceNotRunning':
       return block(

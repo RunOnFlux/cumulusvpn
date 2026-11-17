@@ -2,7 +2,9 @@ name: desktop-release
 
 # CumulusVPN desktop installers, built with tauri-action and published to a
 # GitHub Release: macOS (Apple Silicon) .dmg/.app, Linux (x86_64)
-# .deb/.rpm/.AppImage, and Windows (x86_64) NSIS + MSI.
+# .deb/.rpm, and Windows (x86_64) NSIS + MSI. No AppImage: it cannot install
+# the helper service, so it could only connect when started with sudo
+# (tauri.linux.conf.json limits the Linux bundles to deb + rpm).
 #
 # Platform notes:
 # - Intel Macs are deliberately dropped (obsolete).
@@ -13,10 +15,7 @@ name: desktop-release
 #   platform config bundles it:
 #     macOS   tauri.macos.conf.json   → LaunchDaemon in the .app (SMAppService)
 #     Linux   tauri.linux.conf.json   → /usr/bin + a systemd unit in the
-#                                       .deb/.rpm, with maintainer scripts;
-#                                       the AppImage has no service and runs
-#                                       the tunnel in-process when started
-#                                       with sudo
+#                                       .deb/.rpm, with maintainer scripts
 #     Windows tauri.windows.conf.json → next to the app, registered as the
 #                                       CumulusVPNHelper service by the NSIS
 #                                       hooks / the MSI fragment (per-machine)
@@ -359,8 +358,11 @@ jobs:
 
       # Auto-update: the updater artifacts must be signed by the key whose
       # PUBLIC half ships in tauri.conf.json (plugins.updater.pubkey), or every
-      # installed app silently refuses every update. Check the AppImage's
-      # signature against that pubkey with minisign (the format Tauri uses).
+      # installed app silently refuses every update. Check the .deb's
+      # signature against that pubkey with minisign (the format Tauri uses);
+      # every platform's artifacts are signed by the same key in this job's
+      # environment. (.deb / .rpm installs update through apt / dnf, but the
+      # signature still proves the key and its public half match.)
       - name: Verify the updater signature matches the shipped public key
         if: runner.os == 'Linux'
         shell: bash
@@ -368,7 +370,7 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get install -y minisign >/dev/null
-          img=$(ls target/${{ matrix.target }}/release/bundle/appimage/*.AppImage | head -n1)
+          img=$(ls target/${{ matrix.target }}/release/bundle/deb/*.deb | head -n1)
           test -s "$img.sig" || { echo "::error::no updater signature next to $img (createUpdaterArtifacts / TAURI_SIGNING_PRIVATE_KEY)"; exit 1; }
           jq -r '.plugins.updater.pubkey' tauri.conf.json | base64 -d > "$RUNNER_TEMP/updater.pub"
           base64 -d < "$img.sig" > "$RUNNER_TEMP/updater.minisig"
