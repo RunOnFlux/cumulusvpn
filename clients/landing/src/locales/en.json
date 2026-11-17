@@ -95,7 +95,7 @@
     "apps_h2": "One connect button, on every screen you own.",
     "apps_lede": "The same beautiful client on web, mobile and Mac, with Windows and Linux coming soon — one design language on\n        every screen. Pay on the web with your phone's Device code and it unlocks automatically over the chain within a minute.",
     "app_web_h": "Web setup",
-    "app_web_p": "Generates your key in the browser and gives you a WireGuard config + QR to import into the\n          WireGuard app. Also hosts the pay-in-FLUX upgrade page. No install to set up or pay.",
+    "app_web_p": "For Windows, Linux, routers — any device with the official WireGuard app. Your key is made in your browser; import the config or scan the QR. It's also where you upgrade, by card or FLUX.",
     "app_web_link": "Set up in browser",
     "tag_beta": "Beta",
     "app_desktop_h": "Desktop",

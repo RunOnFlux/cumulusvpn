@@ -92,7 +92,7 @@
     "apps_h2": "Kitufe kimoja cha kuunganisha, kwenye kila skrini unayomiliki.",
     "apps_lede": "Mteja huyo huyo mzuri kwenye wavuti, simu na Mac, na matoleo ya Windows na Linux yanakuja hivi karibuni — lugha moja ya muundo kwenye kila skrini. Lipa kwenye wavuti kwa msimbo wa kifaa wa simu yako, nayo itafunguka kiotomatiki kupitia mnyororo ndani ya dakika moja.",
     "app_web_h": "Usanidi wa wavuti",
-    "app_web_p": "Hutengeneza ufunguo wako kwenye kivinjari na kukupa usanidi wa WireGuard + QR ya kuhamisha kwenye programu ya WireGuard. Pia inahifadhi ukurasa wa kuboresha wa kulipa kwa FLUX. Hakuna usakinishaji kwa ajili ya kusanidi au kulipa.",
+    "app_web_p": "Kwa Windows, Linux, ruta — kifaa chochote chenye programu rasmi ya WireGuard. Ufunguo wako huundwa kwenye kivinjari; ingiza usanidi au changanua QR. Hapa pia ndipo unapoboresha, kwa kadi au FLUX.",
     "app_web_link": "Sanidi kwenye kivinjari",
     "tag_beta": "Beta",
     "app_desktop_h": "Kompyuta",

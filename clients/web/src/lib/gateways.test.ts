@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { GatewayInfo } from '@cumulusvpn/core';
-import { buildCountryOptions, healthOf } from './gateways';
+import { buildCountryOptions, healthOf, nearestOption } from './gateways';
 
-function gateway(country: string, load: number, city = 'Somewhere'): GatewayInfo {
+function gateway(
+  country: string,
+  load: number,
+  city = 'Somewhere',
+  ip = '203.0.113.1',
+): GatewayInfo {
   return {
     country,
     region: 'region',
@@ -13,8 +18,8 @@ function gateway(country: string, load: number, city = 'Somewhere'): GatewayInfo
     min_client_version: '1.0.0',
     server_pubkey: 'srv',
     sign_pubkey: 'sign',
-    ip: '203.0.113.1',
-    controlUrl: 'http://203.0.113.1:51821',
+    ip,
+    controlUrl: `http://${ip}:51821`,
   };
 }
 
@@ -110,5 +115,41 @@ describe('buildCountryOptions', () => {
     expect(options[0]!.cc).toBe('DE');
     expect(options[0]!.nodeCount).toBe(2);
     expect(buildCountryOptions(['cumulusvpntlsde'], [], 'en')[0]!.cc).toBe('DE');
+  });
+});
+
+describe('nearestOption', () => {
+  const specs = ['cumulusvpnau', 'cumulusvpnsg', 'cumulusvpnde'];
+  const gws = [
+    gateway('AU', 0.2, 'Brisbane', '198.51.100.1'),
+    gateway('SG', 0.3, 'Singapore', '198.51.100.2'),
+    gateway('DE', 0.1, 'Frankfurt', '198.51.100.3'),
+  ];
+
+  it('picks the location whose gateway answered fastest, not the first row', () => {
+    const options = buildCountryOptions(specs, gws, 'en');
+    expect(options[0]?.cc).toBe('AU');
+    const times = new Map([
+      ['198.51.100.1', 140],
+      ['198.51.100.2', 35],
+      ['198.51.100.3', 260],
+    ]);
+    expect(nearestOption(options, times)?.cc).toBe('SG');
+  });
+
+  it('passes over a near-full gateway while another location has room', () => {
+    const busy = [gateway('SG', 0.95, 'Singapore', '198.51.100.2'), gws[0]!, gws[2]!];
+    const options = buildCountryOptions(specs, busy, 'en');
+    const times = new Map([
+      ['198.51.100.1', 140],
+      ['198.51.100.2', 35],
+      ['198.51.100.3', 260],
+    ]);
+    expect(nearestOption(options, times)?.cc).toBe('AU');
+  });
+
+  it('is null when nothing was timed', () => {
+    const options = buildCountryOptions(specs, gws, 'en');
+    expect(nearestOption(options, new Map())).toBeNull();
   });
 });

@@ -254,11 +254,13 @@ the failure this checklist exists to prevent.)
 
 **Desktop** (tag `desktop-v<x.y.z>`):
 
-| File                                          | Field                                     |
-| --------------------------------------------- | ----------------------------------------- |
-| `clients/desktop/package.json`                | `version`                                 |
-| `clients/desktop/src-tauri/tauri.conf.json`   | `version` (the binary + updater manifest) |
-| `clients/desktop/src/components/Settings.tsx` | `APP_VERSION` (the About row)             |
+| File                                        | Field                                     |
+| ------------------------------------------- | ----------------------------------------- |
+| `clients/desktop/package.json`              | `version`                                 |
+| `clients/desktop/src-tauri/tauri.conf.json` | `version` (the binary + updater manifest) |
+
+The Settings **About** row reads the installed bundle's version at runtime
+(`getVersion()`), so it can no longer drift; there is nothing to bump there.
 
 (A future improvement: derive all of these from the tag in CI.)
 

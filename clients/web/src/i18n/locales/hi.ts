@@ -12,7 +12,7 @@ export const hi: Catalog = {
   header_language_label: 'भाषा',
 
   footer_tagline: 'CumulusVPN — Flux Cloud पर विकेंद्रीकृत VPN · vpn.cumulusvpn.com',
-  footer_credit: 'बीटा पथ · न कोई खाता · न कोई लॉग',
+  footer_credit: 'ओपन सोर्स · न कोई खाता · न कोई लॉग',
   footer_terms: 'सेवा की शर्तें',
   footer_privacy: 'प्राइवेसी नीति',
 
@@ -32,10 +32,12 @@ export const hi: Catalog = {
   countries_no_match: '“{query}” से कोई देश मेल नहीं खाता।',
   countries_nodes: { one: '{n} नोड', other: '{n} नोड्स' },
 
-  connect_eyebrow: 'बीटा पथ · WireGuard कॉन्फ़िग',
+  connect_eyebrow: 'WireGuard कॉन्फ़िग · किसी भी डिवाइस के लिए',
+  connect_purpose:
+    'आधिकारिक WireGuard ऐप वाले किसी भी डिवाइस के लिए — Windows, Linux, राउटर, या कुछ भी जिसे हमारे ऐप अभी कवर नहीं करते। Mac, iPhone और Android पर हमारे ऐप ऑटोमैटिक फ़ेलओवर, किल स्विच और Stealth जोड़ते हैं।',
   connect_title: 'एक कुंजी, <glow>हर गेटवे।</glow>',
   connect_lede:
-    'आपकी WireGuard कुंजी-जोड़ी यहीं, आपके ब्राउज़र में जनरेट होती है — निजी कुंजी इस टैब से कभी बाहर नहीं जाती। एक देश चुनें, निकटतम Flux गेटवे पर नामांकन करें, और इम्पोर्ट के लिए तैयार<mono> .conf</mono> व QR एक्सपोर्ट करें। 100 KB/s पर हमेशा मुफ़्त; पूरी स्पीड के लिए <upgrade>FLUX से अपग्रेड करें</upgrade>।',
+    'आपकी WireGuard कुंजी-जोड़ी यहीं, आपके ब्राउज़र में जनरेट होती है — निजी कुंजी इस टैब से कभी बाहर नहीं जाती। एक देश चुनें, निकटतम Flux गेटवे पर नामांकन करें, और इम्पोर्ट के लिए तैयार<mono> .conf</mono> व QR एक्सपोर्ट करें। 100 KB/s पर हमेशा मुफ़्त; पूरी स्पीड के लिए <upgrade>कार्ड या FLUX से अपग्रेड करें</upgrade>।',
   connect_verify_warn:
     'डायरेक्टरी हस्ताक्षर सत्यापित नहीं हो सका — एंडपॉइंट केवल जानकारी के लिए दिखाए गए हैं।',
   connect_notice_no_live_gateway:

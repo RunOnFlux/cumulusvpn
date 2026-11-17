@@ -17,6 +17,8 @@ vi.mock('./hooks/useDiscovery', () => ({
     options: [],
     gateways: [],
     notice: null,
+    nearest: null,
+    refreshing: false,
   }),
 }));
 const statusMock = vi.hoisted(() => vi.fn());

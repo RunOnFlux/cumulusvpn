@@ -12,7 +12,7 @@ export const th: Catalog = {
   header_language_label: 'ภาษา',
 
   footer_tagline: 'CumulusVPN — VPN แบบกระจายศูนย์บน Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'เส้นทางเบต้า · ไม่มีบัญชี · ไม่มีล็อก',
+  footer_credit: 'โอเพนซอร์ส · ไม่มีบัญชี · ไม่มีล็อก',
   footer_terms: 'ข้อกำหนดการให้บริการ',
   footer_privacy: 'นโยบายความเป็นส่วนตัว',
 
@@ -32,10 +32,12 @@ export const th: Catalog = {
   countries_no_match: 'ไม่มีประเทศที่ตรงกับ “{query}”',
   countries_nodes: { other: '{n} โหนด' },
 
-  connect_eyebrow: 'เส้นทางเบต้า · config ของ WireGuard',
+  connect_eyebrow: 'config ของ WireGuard · ทุกอุปกรณ์',
+  connect_purpose:
+    'สำหรับทุกอุปกรณ์ที่มีแอป WireGuard อย่างเป็นทางการ — Windows, Linux, เราเตอร์ หรืออุปกรณ์ที่แอปของเรายังไม่รองรับ บน Mac, iPhone และ Android แอปของเราเพิ่มการสลับเซิร์ฟเวอร์อัตโนมัติ, kill switch และ Stealth',
   connect_title: 'คีย์เดียว <glow>ทุกเกตเวย์</glow>',
   connect_lede:
-    'คู่คีย์ WireGuard ของคุณถูกสร้างขึ้นที่นี่ ในเบราว์เซอร์ของคุณ — คีย์ส่วนตัวจะไม่ออกจากแท็บนี้เลย เลือกประเทศ ลงทะเบียนที่เกตเวย์ Flux ที่ใกล้ที่สุด แล้วส่งออกไฟล์<mono> .conf</mono> พร้อมใช้งานและ QR ฟรีตลอดไปที่ 100 KB/s <upgrade>อัปเกรดด้วย FLUX</upgrade> เพื่อความเร็วเต็มสปีด',
+    'คู่คีย์ WireGuard ของคุณถูกสร้างขึ้นที่นี่ ในเบราว์เซอร์ของคุณ — คีย์ส่วนตัวจะไม่ออกจากแท็บนี้เลย เลือกประเทศ ลงทะเบียนที่เกตเวย์ Flux ที่ใกล้ที่สุด แล้วส่งออกไฟล์<mono> .conf</mono> พร้อมใช้งานและ QR ฟรีตลอดไปที่ 100 KB/s <upgrade>อัปเกรดด้วยบัตรหรือ FLUX</upgrade> เพื่อความเร็วเต็มสปีด',
   connect_verify_warn:
     'ไม่สามารถยืนยันลายเซ็นของไดเรกทอรีได้ — เอนด์พอยต์ที่แสดงมีไว้เพื่อข้อมูลเท่านั้น',
   connect_notice_no_live_gateway:

@@ -12,7 +12,7 @@ export const pt: Catalog = {
   header_language_label: 'Idioma',
 
   footer_tagline: 'CumulusVPN — VPN descentralizada na Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Trilho beta · sem conta · sem registros',
+  footer_credit: 'Código aberto · sem conta · sem registros',
   footer_terms: 'Termos de serviço',
   footer_privacy: 'Política de privacidade',
 
@@ -32,10 +32,12 @@ export const pt: Catalog = {
   countries_no_match: 'Nenhum país corresponde a “{query}”.',
   countries_nodes: { one: '{n} nó', other: '{n} nós' },
 
-  connect_eyebrow: 'Trilho beta · configuração WireGuard',
+  connect_eyebrow: 'Configuração WireGuard · qualquer dispositivo',
+  connect_purpose:
+    'Para qualquer dispositivo com o app oficial do WireGuard — Windows, Linux, um roteador ou o que nossos apps ainda não cobrem. No Mac, iPhone e Android, nossos apps adicionam failover automático, kill switch e Stealth.',
   connect_title: 'Uma chave, <glow>todos os gateways.</glow>',
   connect_lede:
-    'Seu par de chaves WireGuard é gerado aqui, no seu navegador — a chave privada nunca sai desta aba. Escolha um país, inscreva-se no gateway Flux mais próximo e exporte um<mono> .conf</mono> pronto para importar com o QR. Grátis para sempre a 100 KB/s; <upgrade>faça upgrade com FLUX</upgrade> para velocidade máxima.',
+    'Seu par de chaves WireGuard é gerado aqui, no seu navegador — a chave privada nunca sai desta aba. Escolha um país, inscreva-se no gateway Flux mais próximo e exporte um<mono> .conf</mono> pronto para importar com o QR. Grátis para sempre a 100 KB/s; <upgrade>faça upgrade com cartão ou FLUX</upgrade> para velocidade máxima.',
   connect_verify_warn:
     'Não foi possível verificar a assinatura do diretório — os endpoints são exibidos apenas a título informativo.',
   connect_notice_no_live_gateway:

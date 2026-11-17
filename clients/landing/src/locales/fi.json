@@ -92,7 +92,7 @@
     "apps_h2": "Yksi Yhdistä-painike jokaisella omistamallasi näytöllä.",
     "apps_lede": "Sama kaunis asiakassovellus verkossa, mobiilissa ja Macilla, Windows- ja Linux-versiot tulossa pian — yksi muotoilukieli joka näytöllä. Maksa verkossa puhelimesi laitekoodilla, niin puhelin avautuu automaattisesti ketjun kautta minuutin sisällä.",
     "app_web_h": "Selainasetukset",
-    "app_web_p": "Luo avaimesi selaimessa ja antaa WireGuard-asetustiedoston + QR-koodin tuotavaksi WireGuard-sovellukseen. Sisältää myös FLUXilla maksettavan päivityssivun. Ei asennusta tarvita asetusten tekoon tai maksamiseen.",
+    "app_web_p": "Windowsille, Linuxille ja reitittimille — mille tahansa laitteelle, jossa on virallinen WireGuard-sovellus. Avaimesi luodaan selaimessa; tuo asetukset tai skannaa QR-koodi. Täällä myös päivität, kortilla tai FLUXilla.",
     "app_web_link": "Määritä selaimessa",
     "tag_beta": "Beta",
     "app_desktop_h": "Työpöytä",

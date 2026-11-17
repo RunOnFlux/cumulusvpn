@@ -12,7 +12,7 @@ export const fa: Catalog = {
   header_language_label: 'زبان',
 
   footer_tagline: 'CumulusVPN — VPN غیرمتمرکز روی Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'نسخه بتا · بدون حساب کاربری · بدون ثبت لاگ',
+  footer_credit: 'متن‌باز · بدون حساب کاربری · بدون ثبت لاگ',
   footer_terms: 'شرایط استفاده',
   footer_privacy: 'سیاست حریم خصوصی',
 
@@ -32,10 +32,12 @@ export const fa: Catalog = {
   countries_no_match: 'هیچ کشوری با «{query}» مطابقت ندارد.',
   countries_nodes: { one: '{n} گره', other: '{n} گره' },
 
-  connect_eyebrow: 'نسخه بتا · پیکربندی WireGuard',
+  connect_eyebrow: 'پیکربندی WireGuard · هر دستگاهی',
+  connect_purpose:
+    'برای هر دستگاهی که برنامهٔ رسمی WireGuard را دارد — Windows، Linux، روتر، یا هر چیزی که برنامه‌های ما هنوز پوشش نمی‌دهند. روی Mac، iPhone و Android برنامه‌های ما جابه‌جایی خودکار سرور، کلید قطع اضطراری و Stealth را اضافه می‌کنند.',
   connect_title: 'یک کلید، <glow>هر دروازه.</glow>',
   connect_lede:
-    'جفت‌کلید WireGuard شما همین‌جا، در مرورگرتان ساخته می‌شود — کلید خصوصی هرگز این تب را ترک نمی‌کند. کشوری را انتخاب کنید، در نزدیک‌ترین دروازه Flux ثبت‌نام کنید و فایل<mono> .conf</mono> آماده وارد کردن را همراه با کد QR دریافت کنید. برای همیشه رایگان با سرعت 100 KB/s؛ برای سرعت کامل <upgrade>با FLUX ارتقا دهید</upgrade>.',
+    'جفت‌کلید WireGuard شما همین‌جا، در مرورگرتان ساخته می‌شود — کلید خصوصی هرگز این تب را ترک نمی‌کند. کشوری را انتخاب کنید، در نزدیک‌ترین دروازه Flux ثبت‌نام کنید و فایل<mono> .conf</mono> آماده وارد کردن را همراه با کد QR دریافت کنید. برای همیشه رایگان با سرعت 100 KB/s؛ برای سرعت کامل <upgrade>با کارت یا FLUX ارتقا دهید</upgrade>.',
   connect_verify_warn:
     'امضای فهرست راهنما قابل تأیید نبود — نقاط پایانی فقط جهت اطلاع نمایش داده می‌شوند.',
   connect_notice_no_live_gateway:

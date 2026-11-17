@@ -20,3 +20,31 @@ export const proxiedFetch: typeof fetch = (input, init) => {
   }
   return fetch(input, init);
 };
+
+/**
+ * How long each gateway took to answer its `/v1/info` probe, by IP (the fastest
+ * of its answers). The probe runs through this site's Worker, which executes at
+ * the Cloudflare edge nearest the visitor, so the time is dominated by that
+ * edge's distance to the gateway: a fair stand-in for the visitor's own, and
+ * enough to tell Singapore from Frankfurt. Used to pre-select the nearest
+ * location (lib/gateways `nearestOption`).
+ */
+export const probeTimes = new Map<string, number>();
+
+const INFO_PROBE = /^http:\/\/(\d{1,3}(?:\.\d{1,3}){3}):51821\/v1\/info(?:[?#]|$)/;
+
+/** {@link proxiedFetch}, recording {@link probeTimes} for gateway info probes. */
+export const timedProxiedFetch: typeof fetch = async (input, init) => {
+  const url =
+    typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url;
+  const probe = INFO_PROBE.exec(url);
+  const started = performance.now();
+  const res = await proxiedFetch(input, init);
+  const ip = probe?.[1];
+  if (ip && res.ok) {
+    const ms = performance.now() - started;
+    const prev = probeTimes.get(ip);
+    probeTimes.set(ip, prev === undefined ? ms : Math.min(prev, ms));
+  }
+  return res;
+};

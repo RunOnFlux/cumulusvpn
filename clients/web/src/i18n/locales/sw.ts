@@ -12,7 +12,7 @@ export const sw: Catalog = {
   header_language_label: 'Lugha',
 
   footer_tagline: 'CumulusVPN — VPN isiyo na kituo kimoja kwenye Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Njia ya beta · bila akaunti · bila kumbukumbu',
+  footer_credit: 'Chanzo huria · bila akaunti · bila kumbukumbu',
   footer_terms: 'Masharti ya Huduma',
   footer_privacy: 'Sera ya Faragha',
 
@@ -32,10 +32,12 @@ export const sw: Catalog = {
   countries_no_match: 'Hakuna nchi inayolingana na “{query}”.',
   countries_nodes: { one: '{n} nodi', other: '{n} nodi' },
 
-  connect_eyebrow: 'Njia ya beta · Usanidi wa WireGuard',
+  connect_eyebrow: 'Usanidi wa WireGuard · kifaa chochote',
+  connect_purpose:
+    'Kwa kifaa chochote chenye programu rasmi ya WireGuard — Windows, Linux, ruta, au chochote ambacho programu zetu bado hazijashughulikia. Kwenye Mac, iPhone na Android, programu zetu huongeza kubadilisha seva kiotomatiki, kill switch na Stealth.',
   connect_title: 'Ufunguo mmoja, <glow>kila lango.</glow>',
   connect_lede:
-    'Jozi yako ya funguo za WireGuard inatengenezwa hapa, kwenye kivinjari chako — ufunguo wa faragha haondoki kwenye kichupo hiki kamwe. Chagua nchi, jisajili kwenye lango la Flux lililo karibu zaidi, kisha hamisha faili<mono> .conf</mono> tayari kutumika pamoja na msimbo wa QR. Bure milele kwa 100 KB/s; <upgrade>boresha kwa FLUX</upgrade> kupata kasi kamili.',
+    'Jozi yako ya funguo za WireGuard inatengenezwa hapa, kwenye kivinjari chako — ufunguo wa faragha haondoki kwenye kichupo hiki kamwe. Chagua nchi, jisajili kwenye lango la Flux lililo karibu zaidi, kisha hamisha faili<mono> .conf</mono> tayari kutumika pamoja na msimbo wa QR. Bure milele kwa 100 KB/s; <upgrade>boresha kwa kadi au FLUX</upgrade> kupata kasi kamili.',
   connect_verify_warn:
     'Sahihi ya saraka haikuweza kuthibitishwa — vituo vinaonyeshwa kwa taarifa tu.',
   connect_notice_no_live_gateway:

@@ -141,3 +141,34 @@ export function buildCountryOptions(
 
   return shown;
 }
+
+/** Above this load a closer location is skipped for a less busy one. */
+const BUSY_LOAD = 0.9;
+
+/**
+ * The live location nearest the visitor: the one whose enrollment gateway
+ * answered its probe fastest (`times`, ms by IP — gatewayFetch `probeTimes`).
+ * Near-full gateways are passed over while any other location has room. Null
+ * when nothing was timed (no live gateway, or every probe came from a cache),
+ * and the caller falls back to the first row.
+ */
+export function nearestOption(
+  options: readonly CountryOption[],
+  times: ReadonlyMap<string, number>,
+): CountryOption | null {
+  const timed = options.filter(
+    (o) => o.status === 'live' && o.bestGateway && times.has(o.bestGateway.ip),
+  );
+  const roomy = timed.filter((o) => (o.bestGateway?.load ?? 1) < BUSY_LOAD);
+  const pool = roomy.length > 0 ? roomy : timed;
+  let best: CountryOption | null = null;
+  let bestMs = Infinity;
+  for (const o of pool) {
+    const ms = times.get(o.bestGateway?.ip ?? '') ?? Infinity;
+    if (ms < bestMs) {
+      best = o;
+      bestMs = ms;
+    }
+  }
+  return best;
+}

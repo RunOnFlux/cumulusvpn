@@ -32,6 +32,8 @@ const discovery: DiscoveryState = {
   options: [],
   gateways: [],
   notice: 'no-live-gateway',
+  nearest: null,
+  refreshing: false,
 };
 
 function renderPage(locale: 'en' | 'es' = 'en', state: DiscoveryState = discovery) {
@@ -159,7 +161,7 @@ describe('<ConnectPage />', () => {
     expect(screen.getByText('This device’s identity')).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('One key, every gateway.');
     expect(screen.getByText(/Couldn’t reach any gateway just now\./)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'upgrade with FLUX' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'upgrade by card or FLUX' })).toBeInTheDocument();
   });
 
   // The pill used to be a hard-coded FREE, which told paying users their payment

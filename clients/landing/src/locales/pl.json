@@ -92,7 +92,7 @@
     "apps_h2": "Jeden przycisk połączenia na każdym twoim ekranie.",
     "apps_lede": "Ten sam dopracowany klient w przeglądarce, na telefonie i na Macu, a wkrótce także na Windows i Linuksie — wspólny język projektowy na każdym ekranie. Zapłać w przeglądarce, podając kod urządzenia swojego telefonu, a telefon odblokuje się automatycznie poprzez chain w ciągu minuty.",
     "app_web_h": "Konfiguracja w przeglądarce",
-    "app_web_p": "Generuje twój klucz w przeglądarce i daje ci konfigurację WireGuard + kod QR do zaimportowania w aplikacji WireGuard. Hostuje też stronę ulepszenia z płatnością w FLUX. Bez instalacji — ani do konfiguracji, ani do płatności.",
+    "app_web_p": "Dla Windows, Linuksa, routerów — każdego urządzenia z oficjalną aplikacją WireGuard. Klucz powstaje w przeglądarce; zaimportuj konfigurację lub zeskanuj kod QR. Tu także ulepszysz plan, kartą lub za FLUX.",
     "app_web_link": "Skonfiguruj w przeglądarce",
     "tag_beta": "Beta",
     "app_desktop_h": "Komputer",

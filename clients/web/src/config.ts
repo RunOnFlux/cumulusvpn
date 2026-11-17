@@ -36,6 +36,8 @@ export const BRIDGE_URL = 'https://pay.cumulusvpn.com';
 // pay button, so paying is an explicit acceptance of the Terms (docs/06).
 export const TERMS_URL = 'https://cumulusvpn.com/terms';
 export const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
+/** The whole project — apps, gateway, payment bridge — is MIT open source here. */
+export const SOURCE_URL = 'https://github.com/RunOnFlux/cumulusvpn';
 
 // localStorage key for a payment-code override handed in via #/upgrade?code=…
 // (the desktop app deep-links here with ITS code so the payment credits the

@@ -12,7 +12,7 @@ export const uk: Catalog = {
   header_language_label: 'Мова',
 
   footer_tagline: 'CumulusVPN — Децентралізований VPN на Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Бета-канал · без акаунта · без логів',
+  footer_credit: 'Відкритий код · без акаунта · без логів',
   footer_terms: 'Умови використання',
   footer_privacy: 'Політика конфіденційності',
 
@@ -32,10 +32,12 @@ export const uk: Catalog = {
   countries_no_match: 'Жодна країна не відповідає запиту «{query}».',
   countries_nodes: { one: '{n} вузол', few: '{n} вузли', many: '{n} вузлів', other: '{n} вузла' },
 
-  connect_eyebrow: 'Бета-канал · конфігурація WireGuard',
+  connect_eyebrow: 'Конфігурація WireGuard · будь-який пристрій',
+  connect_purpose:
+    'Для будь-якого пристрою з офіційним застосунком WireGuard — Windows, Linux, роутер або все, що наші застосунки поки не підтримують. На Mac, iPhone та Android наші застосунки додають автоматичне перемикання серверів, kill switch і Stealth.',
   connect_title: 'Один ключ, <glow>кожен шлюз.</glow>',
   connect_lede:
-    'Твоя пара ключів WireGuard генерується тут, у браузері — приватний ключ ніколи не залишає цю вкладку. Обери країну, зареєструйся на найближчому шлюзі Flux і експортуй готовий до імпорту<mono> .conf</mono> разом із QR-кодом. Назавжди безкоштовно на 100 KB/s; <upgrade>онови з FLUX</upgrade> для повної швидкості.',
+    'Твоя пара ключів WireGuard генерується тут, у браузері — приватний ключ ніколи не залишає цю вкладку. Обери країну, зареєструйся на найближчому шлюзі Flux і експортуй готовий до імпорту<mono> .conf</mono> разом із QR-кодом. Назавжди безкоштовно на 100 KB/s; <upgrade>онови карткою або за FLUX</upgrade> для повної швидкості.',
   connect_verify_warn:
     'Не вдалося перевірити підпис каталогу — кінцеві точки показані лише для інформації.',
   connect_notice_no_live_gateway:

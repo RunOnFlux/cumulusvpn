@@ -12,7 +12,7 @@ export const vi: Catalog = {
   header_language_label: 'Ngôn ngữ',
 
   footer_tagline: 'CumulusVPN — VPN phi tập trung trên Flux Cloud · vpn.cumulusvpn.com',
-  footer_credit: 'Kênh beta · không tài khoản · không log',
+  footer_credit: 'Mã nguồn mở · không tài khoản · không log',
   footer_terms: 'Điều khoản dịch vụ',
   footer_privacy: 'Chính sách quyền riêng tư',
 
@@ -32,10 +32,12 @@ export const vi: Catalog = {
   countries_no_match: 'Không có quốc gia nào khớp với “{query}”.',
   countries_nodes: { other: '{n} node' },
 
-  connect_eyebrow: 'Kênh beta · cấu hình WireGuard',
+  connect_eyebrow: 'Cấu hình WireGuard · mọi thiết bị',
+  connect_purpose:
+    'Dành cho mọi thiết bị có ứng dụng WireGuard chính thức — Windows, Linux, router, hoặc bất cứ thứ gì ứng dụng của chúng tôi chưa hỗ trợ. Trên Mac, iPhone và Android, ứng dụng của chúng tôi bổ sung tự động chuyển máy chủ, kill switch và Stealth.',
   connect_title: 'Một khóa, <glow>mọi gateway.</glow>',
   connect_lede:
-    'Cặp khóa WireGuard của bạn được tạo ngay tại đây, trong trình duyệt của bạn — khóa riêng tư không bao giờ rời khỏi tab này. Chọn một quốc gia, đăng ký ở gateway Flux gần nhất, rồi xuất một<mono> .conf</mono> sẵn sàng nhập cùng mã QR. Miễn phí mãi mãi ở tốc độ 100 KB/s; <upgrade>nâng cấp bằng FLUX</upgrade> để có tốc độ tối đa.',
+    'Cặp khóa WireGuard của bạn được tạo ngay tại đây, trong trình duyệt của bạn — khóa riêng tư không bao giờ rời khỏi tab này. Chọn một quốc gia, đăng ký ở gateway Flux gần nhất, rồi xuất một<mono> .conf</mono> sẵn sàng nhập cùng mã QR. Miễn phí mãi mãi ở tốc độ 100 KB/s; <upgrade>nâng cấp bằng thẻ hoặc FLUX</upgrade> để có tốc độ tối đa.',
   connect_verify_warn:
     'Không thể xác minh chữ ký của danh mục — các endpoint chỉ được hiển thị để tham khảo.',
   connect_notice_no_live_gateway:

@@ -84,6 +84,9 @@ header.top { border-bottom: 1px solid var(--line); position: sticky; top: 0; z-i
 .top nav a { text-decoration: none; }
 .top nav a:hover { color: var(--ink); }
 .top .right { display: flex; align-items: center; gap: 14px; }
+.gh { display: inline-flex; color: var(--ink-2); line-height: 0; }
+.gh:hover { color: var(--ink); }
+.gh svg { width: 20px; height: 20px; }
 /* Official "Powered by Flux" lockup — two art variants swapped by theme. */
 .pbf { display: inline-flex; align-items: center; line-height: 0; opacity: 0.92; }
 .pbf:hover { opacity: 1; }

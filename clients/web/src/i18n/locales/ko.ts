@@ -12,7 +12,7 @@ export const ko: Catalog = {
   header_language_label: '언어',
 
   footer_tagline: 'CumulusVPN — Flux Cloud 기반 분산형 VPN · vpn.cumulusvpn.com',
-  footer_credit: '베타 채널 · 계정 없음 · 로그 없음',
+  footer_credit: '오픈 소스 · 계정 없음 · 로그 없음',
   footer_terms: '이용약관',
   footer_privacy: '개인정보 처리방침',
 
@@ -32,10 +32,12 @@ export const ko: Catalog = {
   countries_no_match: '“{query}”와 일치하는 국가가 없습니다.',
   countries_nodes: { other: '노드 {n}개' },
 
-  connect_eyebrow: '베타 채널 · WireGuard 설정',
+  connect_eyebrow: 'WireGuard 설정 · 모든 기기',
+  connect_purpose:
+    '공식 WireGuard 앱이 있는 모든 기기용 — Windows, Linux, 라우터, 또는 아직 저희 앱이 지원하지 않는 기기. Mac, iPhone, Android에서는 저희 앱이 자동 장애 조치, 킬 스위치, Stealth를 더해 줍니다.',
   connect_title: '키 하나로 <glow>모든 게이트웨이에.</glow>',
   connect_lede:
-    'WireGuard 키 쌍은 여기, 브라우저 안에서 생성되며 — 개인 키는 이 탭을 벗어나지 않습니다. 국가를 선택하고 가장 가까운 Flux 게이트웨이에 등록한 뒤, 바로 가져올 수 있는<mono> .conf</mono> 파일과 QR 코드를 내보내세요. 100 KB/s로 영구 무료이며, 전체 속도를 원한다면 <upgrade>FLUX로 업그레이드</upgrade>하세요.',
+    'WireGuard 키 쌍은 여기, 브라우저 안에서 생성되며 — 개인 키는 이 탭을 벗어나지 않습니다. 국가를 선택하고 가장 가까운 Flux 게이트웨이에 등록한 뒤, 바로 가져올 수 있는<mono> .conf</mono> 파일과 QR 코드를 내보내세요. 100 KB/s로 영구 무료이며, 전체 속도를 원한다면 <upgrade>카드 또는 FLUX로 업그레이드</upgrade>하세요.',
   connect_verify_warn: '디렉터리 서명을 확인할 수 없습니다 — 엔드포인트는 참고용으로만 표시됩니다.',
   connect_notice_no_live_gateway:
     '지금은 어떤 게이트웨이에도 접속할 수 없습니다. 서명된 디렉터리의 국가 목록을 표시하고 있습니다 — 1분 후 페이지를 새로고침해 다시 시도하세요.',
