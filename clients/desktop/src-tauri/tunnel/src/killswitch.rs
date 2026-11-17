@@ -85,6 +85,14 @@ const TABLE: &str = "cumulusvpn";
 #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
 const GROUP: &str = "CumulusVPN";
 
+/// Whether [`disengage`] is slow enough to skip when this session never
+/// engaged the switch. Windows runs PowerShell for it (seconds); pf and nft
+/// are instant, and on macOS a restarted helper may still hold the previous
+/// instance's anchor (row H15), so they always run it. Windows clears a
+/// stale switch at service start (`recover_stale`), so a skipped disengage
+/// never leaves a block behind. Used by the tunnel manager.
+pub const DISENGAGE_IS_SLOW: bool = cfg!(windows);
+
 /// Where the leak-protection rules get installed, per platform.
 #[derive(Debug, Clone, Copy)]
 pub enum Backend {
@@ -113,8 +121,9 @@ impl Proto {
             Proto::Tcp => "tcp",
         }
     }
-    /// Windows Firewall `-Protocol` spelling.
-    #[cfg(target_os = "windows")]
+    /// Windows Firewall `-Protocol` spelling. Always compiled: the Windows
+    /// engage script is built (and tested) on every host.
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
     fn win(self) -> &'static str {
         match self {
             Proto::Udp => "UDP",
@@ -595,6 +604,7 @@ fn disengage_linux() {
 /// so it holds even if setting the adapter's DNS failed, and goes with the rest
 /// on disengage. Pure and always compiled, so it is tested from any host.
 #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+#[cfg(test)]
 fn windows_dns_block_script(
     endpoint_ip: &str,
     dns_servers: &[IpAddr],
@@ -612,6 +622,75 @@ fn windows_dns_block_script(
     steps.join("; ")
 }
 
+/// The whole Windows engage as ONE PowerShell script.
+///
+/// Every `powershell` process costs a second or more to start and load the
+/// NetSecurity module, and this used to be six of them in a row — most of a
+/// Windows connect. One script, stopping at the first error, does the same in
+/// one start. Order matters and is unchanged: clear our old group, add every
+/// allow and the DNS blocks, and only then flip the default to block, so the
+/// block is never active without its exceptions. Pure, so it is tested from
+/// any host.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn windows_engage_script(
+    endpoint_ip: &str,
+    endpoint_port: &str,
+    proto: Proto,
+    bypass_cidrs: &[String],
+    dns_servers: &[IpAddr],
+    tunnel_address: Option<IpAddr>,
+) -> String {
+    let proto_s = proto.win();
+    let mut steps = vec![
+        "$ErrorActionPreference = 'Stop'".to_string(),
+        format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
+        // The WireGuard endpoint handshake (loopback is exempt from Windows
+        // Firewall filtering, so it needs no rule).
+        format!(
+            "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — endpoint' -Group '{GROUP}' \
+             -Direction Outbound -Action Allow -Protocol {proto_s} -RemoteAddress {endpoint_ip} \
+             -RemotePort {endpoint_port} | Out-Null"
+        ),
+        // Everything out the tunnel adapter(s): cvpn0 (single) / cvpn-entry +
+        // cvpn-exit (multi-hop). -InterfaceAlias accepts a wildcard.
+        format!(
+            "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — tunnel' -Group '{GROUP}' \
+             -Direction Outbound -Action Allow -InterfaceAlias 'cvpn*' | Out-Null"
+        ),
+    ];
+    // Split-tunneling bypass prefixes: one rule for the whole set (Windows
+    // Firewall accepts a CIDR list in -RemoteAddress).
+    if !bypass_cidrs.is_empty() {
+        let list = bypass_cidrs.join(",");
+        steps.push(format!(
+            "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — split bypass' -Group '{GROUP}' \
+             -Direction Outbound -Action Allow -RemoteAddress {list} | Out-Null"
+        ));
+    }
+    // DNS block rules, which override the tunnel and bypass allows above.
+    let endpoints: Vec<IpAddr> = endpoint_ip.parse().ok().into_iter().collect();
+    steps.extend(super::dns::windows::dns_block_rules(
+        GROUP,
+        "CumulusVPN kill switch",
+        dns_servers,
+        tunnel_address,
+        &endpoints,
+    ));
+    // Last: block everything else; the allow rules take precedence over it.
+    steps.push("Set-NetFirewallProfile -All -DefaultOutboundAction Block".to_string());
+    steps.join("; ")
+}
+
+/// The Windows disengage as one script: the policy back to allow FIRST, so
+/// traffic flows again even if removing the rules fails, then our group.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn windows_disengage_script() -> String {
+    format!(
+        "Set-NetFirewallProfile -All -DefaultOutboundAction Allow; \
+         Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"
+    )
+}
+
 #[cfg(target_os = "windows")]
 fn engage_windows(
     endpoint_ip: &str,
@@ -621,102 +700,34 @@ fn engage_windows(
     dns_servers: &[IpAddr],
     tunnel_address: Option<IpAddr>,
 ) -> Result<(), TunnelError> {
-    let proto_s = proto.win();
-    // Clear any stale rules from a previous run, then add our allow rules BEFORE
-    // flipping the default policy to block — so there's never a window where the
-    // block is active without the exceptions in place.
-    run_best_effort(
-        "powershell",
-        &[
-            "-NoProfile",
-            "-Command",
-            &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
-        ],
-    );
-
-    // Allow the WireGuard endpoint handshake out (loopback is exempt from Windows
-    // Firewall filtering, so it needs no rule).
-    run(
-        "powershell",
-        &["-NoProfile", "-Command", &format!(
-            "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — endpoint' -Group '{GROUP}' \
-             -Direction Outbound -Action Allow -Protocol {proto_s} -RemoteAddress {endpoint_ip} -RemotePort {endpoint_port} | Out-Null"
-        )],
-        "failed to add endpoint allow rule",
-    )?;
-
-    // Allow all traffic out the tunnel adapter(s): cvpn0 (single) / cvpn-entry +
-    // cvpn-exit (multi-hop). -InterfaceAlias accepts a wildcard.
     run(
         "powershell",
         &[
             "-NoProfile",
+            "-NonInteractive",
             "-Command",
-            &format!(
-            "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — tunnel' -Group '{GROUP}' \
-             -Direction Outbound -Action Allow -InterfaceAlias 'cvpn*' | Out-Null"
-        ),
+            &windows_engage_script(
+                endpoint_ip,
+                endpoint_port,
+                proto,
+                bypass_cidrs,
+                dns_servers,
+                tunnel_address,
+            ),
         ],
-        "failed to add tunnel allow rule",
-    )?;
-
-    // Split-tunneling bypass prefixes (one rule for the whole set — Windows
-    // Firewall accepts a CIDR list in -RemoteAddress).
-    if !bypass_cidrs.is_empty() {
-        let list = bypass_cidrs.join(",");
-        run(
-            "powershell",
-            &["-NoProfile", "-Command", &format!(
-                "New-NetFirewallRule -DisplayName 'CumulusVPN kill switch — split bypass' -Group '{GROUP}' \
-                 -Direction Outbound -Action Allow -RemoteAddress {list} | Out-Null"
-            )],
-            "failed to add split bypass rule",
-        )?;
-    }
-
-    // DNS: block rules, so they override the tunnel and bypass allows above.
-    run(
-        "powershell",
-        &[
-            "-NoProfile",
-            "-Command",
-            &windows_dns_block_script(endpoint_ip, dns_servers, tunnel_address),
-        ],
-        "failed to add DNS leak rules",
-    )?;
-
-    // Block everything else outbound by default; the allow rules above take
-    // precedence over the default block.
-    run(
-        "powershell",
-        &[
-            "-NoProfile",
-            "-Command",
-            "Set-NetFirewallProfile -All -DefaultOutboundAction Block",
-        ],
-        "failed to set block policy",
-    )?;
-    Ok(())
+        "failed to engage the kill switch",
+    )
 }
 
 #[cfg(target_os = "windows")]
 fn disengage_windows() {
-    // Restore the default (allow) policy first so traffic flows again, then drop
-    // our rules.
     run_best_effort(
         "powershell",
         &[
             "-NoProfile",
+            "-NonInteractive",
             "-Command",
-            "Set-NetFirewallProfile -All -DefaultOutboundAction Allow",
-        ],
-    );
-    run_best_effort(
-        "powershell",
-        &[
-            "-NoProfile",
-            "-Command",
-            &format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
+            &windows_disengage_script(),
         ],
     );
 }
@@ -1185,6 +1196,57 @@ mod linux_ruleset_tests {
 #[cfg(test)]
 mod windows_ruleset_tests {
     use super::*;
+
+    /// One PowerShell start for the whole engage, and the block flipped
+    /// only after every allow and DNS rule is in place.
+    #[test]
+    fn the_windows_engage_is_one_script_that_blocks_last() {
+        let s = windows_engage_script(
+            "203.0.113.7",
+            "51820",
+            Proto::Udp,
+            &["192.168.1.0/24".to_string()],
+            &["1.1.1.1".parse().unwrap()],
+            Some("10.8.0.2".parse().unwrap()),
+        );
+        assert!(
+            s.starts_with("$ErrorActionPreference = 'Stop'; Remove-NetFirewallRule"),
+            "{s}"
+        );
+        // endpoint + tunnel + split bypass + 4 DNS rules
+        assert_eq!(s.matches("New-NetFirewallRule").count(), 7, "{s}");
+        assert!(
+            s.contains("-RemoteAddress 203.0.113.7 -RemotePort 51820"),
+            "{s}"
+        );
+        assert!(s.contains("-InterfaceAlias 'cvpn*'"), "{s}");
+        assert!(s.contains("-RemoteAddress 192.168.1.0/24"), "{s}");
+        assert!(
+            s.ends_with("Set-NetFirewallProfile -All -DefaultOutboundAction Block"),
+            "{s}"
+        );
+        assert_eq!(s.matches("DefaultOutboundAction").count(), 1, "{s}");
+    }
+
+    #[test]
+    fn the_windows_engage_without_split_has_no_bypass_rule() {
+        let s = windows_engage_script("203.0.113.7", "443", Proto::Tcp, &[], &[], None);
+        assert!(!s.contains("split bypass"), "{s}");
+        assert!(s.contains("-Protocol TCP"), "{s}");
+    }
+
+    /// Traffic flows again first; removing our rules comes second.
+    #[test]
+    fn the_windows_disengage_restores_the_policy_before_removing_rules() {
+        let s = windows_disengage_script();
+        let allow = s
+            .find("DefaultOutboundAction Allow")
+            .expect("policy restore");
+        let remove = s
+            .find("Remove-NetFirewallRule -Group 'CumulusVPN'")
+            .expect("rule removal");
+        assert!(allow < remove, "{s}");
+    }
 
     #[test]
     fn the_kill_switch_carries_the_dns_block_in_its_own_group() {

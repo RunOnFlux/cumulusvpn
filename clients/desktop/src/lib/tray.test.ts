@@ -87,6 +87,13 @@ describe('trayStateOf', () => {
     );
   });
 
+  it('says it is disconnecting while a teardown runs, whatever the phase', () => {
+    const s = trayStateOf(input({ phase: 'connected', disconnecting: true }));
+    expect(s.headline).toBe('Disconnecting…');
+    expect(s.disconnecting).toBe(true);
+    expect(trayStateOf(input({ phase: 'connected' })).disconnecting).toBe(false);
+  });
+
   it('lists each country once and marks favourites', () => {
     const s = trayStateOf(input({ favorites: ['FR'] }));
     expect(s.countries).toEqual([

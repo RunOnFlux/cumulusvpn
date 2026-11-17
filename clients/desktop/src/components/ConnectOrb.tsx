@@ -6,6 +6,8 @@ interface Props {
   readonly onToggle: () => void;
   /** Kill switch holding traffic after a drop (see useConnection `blocked`). */
   readonly blocked?: boolean;
+  /** A Disconnect is in progress (useConnection `disconnecting`). */
+  readonly disconnecting?: boolean;
 }
 
 const LABEL: Record<Phase, string> = {
@@ -17,22 +19,37 @@ const LABEL: Record<Phase, string> = {
 };
 
 /** The big central connect state — cyan glow + pulse ring when protected. */
-export function ConnectOrb({ phase, onToggle, blocked = false }: Props): JSX.Element {
-  const mode = blocked
-    ? 'blocked'
-    : phase === 'connected'
-      ? 'on'
-      : phase === 'connecting'
-        ? 'connecting'
-        : 'off';
-  const glyph = blocked ? '⛔' : phase === 'connected' ? '🛡️' : phase === 'connecting' ? '⋯' : '⏻';
-  const label = blocked ? 'Blocked' : LABEL[phase];
+export function ConnectOrb({
+  phase,
+  onToggle,
+  blocked = false,
+  disconnecting = false,
+}: Props): JSX.Element {
+  const mode = disconnecting
+    ? 'connecting'
+    : blocked
+      ? 'blocked'
+      : phase === 'connected'
+        ? 'on'
+        : phase === 'connecting'
+          ? 'connecting'
+          : 'off';
+  const glyph = disconnecting
+    ? '⋯'
+    : blocked
+      ? '⛔'
+      : phase === 'connected'
+        ? '🛡️'
+        : phase === 'connecting'
+          ? '⋯'
+          : '⏻';
+  const label = disconnecting ? 'Disconnecting' : blocked ? 'Blocked' : LABEL[phase];
   return (
     <div className="orb-wrap">
       <button
         className={`orb ${mode}`}
         onClick={onToggle}
-        disabled={phase === 'loading' || phase === 'connecting'}
+        disabled={phase === 'loading' || phase === 'connecting' || disconnecting}
         aria-label={label}
       >
         <span className="ring" />

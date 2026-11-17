@@ -105,6 +105,12 @@ export interface ConnectionModel {
    * Disconnect lifts it.
    */
   readonly blocked: boolean;
+  /**
+   * A Disconnect is tearing the tunnel down. On Windows that takes seconds,
+   * so the UI says so at once, and Connect waits until it is done: a connect
+   * racing the teardown would have its new tunnel torn down behind it.
+   */
+  readonly disconnecting: boolean;
   /** Transport mode: 'auto' (fastest) or 'stealth' (obfuscated); persisted. */
   readonly transportMode: TransportMode;
   readonly setTransportMode: (mode: TransportMode) => void;
@@ -303,6 +309,8 @@ export function useConnection(): ConnectionModel {
   // until told otherwise, so the setup banner never flashes on a normal launch
   // before the first check comes back.
   const [helperState, setHelperState] = useState<HelperRegistration>('notNeeded');
+  const [disconnecting, setDisconnecting] = useState(false);
+  const disconnectingRef = useRef(false);
   const launchedAtRef = useRef(Date.now());
   const [favorites, setFavorites] = useState<readonly string[]>(() =>
     (localStorage.getItem('cvpn.favorites') ?? '').split(',').filter(Boolean),
@@ -567,7 +575,7 @@ export function useConnection(): ConnectionModel {
 
   const connect = useCallback(() => {
     const entry = selected;
-    if (!entry || phase === 'connecting') {
+    if (!entry || phase === 'connecting' || disconnectingRef.current) {
       return;
     }
     // Only cross-jurisdiction needs an explicit exit pick; Balanced (same-country)
@@ -630,6 +638,12 @@ export function useConnection(): ConnectionModel {
           await refreshEntitlement(result.gatewayIp, entry.signPubKey);
         }
       } catch (err) {
+        // Cancelled by Disconnect (or by a newer connect): not a failure, and
+        // the canceller owns the phase from here. Reporting it raced the
+        // teardown and left "connect cancelled" on screen as an error.
+        if (sweep.signal.aborted) {
+          return;
+        }
         setError(messageOf(err));
         setTunnel({ ...DOWN, state: 'error', error: messageOf(err) });
         setPhase('error');
@@ -654,6 +668,12 @@ export function useConnection(): ConnectionModel {
     sweepRef.current?.abort();
     sweepRef.current = null;
     wasConnectedRef.current = false;
+    if (disconnectingRef.current) {
+      return;
+    }
+    disconnectingRef.current = true;
+    setDisconnecting(true);
+    setError(null);
     void (async () => {
       try {
         const s = await teardown();
@@ -664,6 +684,8 @@ export function useConnection(): ConnectionModel {
       } finally {
         setSplitActive(false);
         setPhase('idle');
+        disconnectingRef.current = false;
+        setDisconnecting(false);
       }
     })();
   }, []);
@@ -879,6 +901,7 @@ export function useConnection(): ConnectionModel {
     selectExit,
     killSwitch,
     blocked: isBlocked(phase, tunnel, killSwitch),
+    disconnecting,
     setKillSwitch,
     nodeDiversity,
     setNodeDiversity,

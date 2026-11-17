@@ -208,9 +208,23 @@ struct Inner {
     /// across awake polls before the tunnel is declared dead. See
     /// [`confirm_dead`].
     dead_watch: DeadWatch,
+    /// Whether this session engaged the kill switch (set before the engage,
+    /// so a failure part-way is still lifted). See [`Inner::lift_kill_switch`].
+    ks_engaged: bool,
 }
 
 impl Inner {
+    /// Lift the kill switch. Where that is slow (Windows: PowerShell) it is
+    /// skipped unless this session engaged it — every connect with the switch
+    /// off and every disconnect used to pay two PowerShell starts for a
+    /// switch that was never on. Elsewhere it always runs, as before.
+    fn lift_kill_switch(&mut self) {
+        if self.ks_engaged || !killswitch::DISENGAGE_IS_SLOW {
+            let _ = killswitch::disengage(self.backend);
+        }
+        self.ks_engaged = false;
+    }
+
     fn snapshot(&self) -> TunnelStatus {
         TunnelStatus {
             state: self.state,
@@ -603,6 +617,7 @@ impl TunnelManager {
                 last_handshake: None,
                 repaired_at: None,
                 dead_watch: DeadWatch::IDLE,
+                ks_engaged: false,
             }),
         }
     }
@@ -682,6 +697,7 @@ impl TunnelManager {
         // without the matching hole, split tunneling would silently do nothing
         // while appearing configured (docs/17 §7.1).
         if kill_switch {
+            inner.ks_engaged = true;
             killswitch::engage(
                 inner.backend,
                 &killswitch::LeakPolicy {
@@ -700,7 +716,7 @@ impl TunnelManager {
             )
             .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
         } else {
-            let _ = killswitch::disengage(inner.backend);
+            inner.lift_kill_switch();
         }
 
         // wg-tls: stand up the UDP<->TLS bridge to the gateway relay and point the
@@ -715,7 +731,7 @@ impl TunnelManager {
                     Some(b)
                 }
                 Err(e) => {
-                    let _ = killswitch::disengage(inner.backend);
+                    inner.lift_kill_switch();
                     inner.state = TunnelState::Error;
                     inner.error = Some(e.to_string());
                     return Err(e);
@@ -728,7 +744,7 @@ impl TunnelManager {
         let sidecar = match Sidecar::spawn(IFACE) {
             Ok(s) => s,
             Err(e) => {
-                let _ = killswitch::disengage(inner.backend);
+                inner.lift_kill_switch();
                 inner.state = TunnelState::Error;
                 inner.error = Some(e.to_string());
                 return Err(e);
@@ -753,7 +769,7 @@ impl TunnelManager {
                 tunnel_address,
             ) {
                 let _ = sidecar.kill();
-                let _ = killswitch::disengage(inner.backend);
+                inner.lift_kill_switch();
                 inner.state = TunnelState::Error;
                 inner.error = Some(e.to_string());
                 return Err(e);
@@ -762,7 +778,7 @@ impl TunnelManager {
 
         if let Err(e) = sidecar.configure(&config) {
             let _ = sidecar.kill();
-            let _ = killswitch::disengage(inner.backend);
+            inner.lift_kill_switch();
             inner.state = TunnelState::Error;
             inner.error = Some(e.to_string());
             return Err(e);
@@ -773,7 +789,7 @@ impl TunnelManager {
         let endpoint_ip = strip_endpoint_port(endpoint).to_string();
         if let Err(e) = routing::add_endpoint_bypass(&endpoint_ip) {
             let _ = sidecar.kill();
-            let _ = killswitch::disengage(inner.backend);
+            inner.lift_kill_switch();
             inner.state = TunnelState::Error;
             inner.error = Some(e.to_string());
             return Err(e);
@@ -793,7 +809,7 @@ impl TunnelManager {
             routing::remove_bypass_routes(split_bypass);
             routing::remove_endpoint_bypass(&endpoint_ip);
             let _ = sidecar.kill();
-            let _ = killswitch::disengage(inner.backend);
+            inner.lift_kill_switch();
             inner.state = TunnelState::Error;
             inner.error = Some(e.to_string());
             return Err(e);
@@ -903,6 +919,7 @@ impl TunnelManager {
         // already rejects prefixes containing the entry/exit endpoints, so the
         // bypass can never shadow the entry allowance (§7.2).
         if params.kill_switch {
+            inner.ks_engaged = true;
             killswitch::engage(
                 inner.backend,
                 &killswitch::LeakPolicy {
@@ -919,7 +936,7 @@ impl TunnelManager {
             )
             .map_err(|_| TunnelError::KillSwitch("failed to engage"))?;
         } else {
-            let _ = killswitch::disengage(inner.backend);
+            inner.lift_kill_switch();
         }
 
         // Helper: unwind everything set up so far on any failure.
@@ -940,7 +957,7 @@ impl TunnelManager {
             if let Some(sc) = entry_sc {
                 let _ = sc.kill();
             }
-            let _ = killswitch::disengage(inner.backend);
+            inner.lift_kill_switch();
             inner.state = TunnelState::Error;
             inner.error = Some(e.to_string());
             Err(e)
@@ -1230,7 +1247,7 @@ impl TunnelManager {
         if let Some(mut bridge) = inner.bridge.take() {
             bridge.shutdown();
         }
-        let _ = killswitch::disengage(inner.backend);
+        inner.lift_kill_switch();
         let backend = inner.backend;
         *inner = Inner {
             state: TunnelState::Down,
@@ -1251,6 +1268,7 @@ impl TunnelManager {
             last_handshake: None,
             repaired_at: None,
             dead_watch: DeadWatch::IDLE,
+            ks_engaged: false,
         };
         Ok(inner.snapshot())
     }

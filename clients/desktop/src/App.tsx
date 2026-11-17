@@ -154,6 +154,7 @@ export function App(): JSX.Element {
         <ConnectOrb
           phase={conn.phase}
           blocked={conn.blocked}
+          disconnecting={conn.disconnecting}
           onToggle={connected || busy || conn.blocked ? conn.disconnect : conn.connect}
         />
         {/* Never leave "why is my internet gone?" unanswered (mobile's HOLD). */}
@@ -263,9 +264,9 @@ export function App(): JSX.Element {
         />
         <TierBadge entitlement={conn.entitlement} onUpgrade={() => setShowUpgrade(true)} />
 
-        {connected || busy || conn.blocked ? (
-          <button className="btn-disc" onClick={conn.disconnect}>
-            Disconnect
+        {connected || busy || conn.blocked || conn.disconnecting ? (
+          <button className="btn-disc" onClick={conn.disconnect} disabled={conn.disconnecting}>
+            {conn.disconnecting ? 'Disconnecting…' : 'Disconnect'}
           </button>
         ) : (
           <button
