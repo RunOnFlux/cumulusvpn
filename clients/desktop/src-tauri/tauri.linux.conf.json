@@ -10,7 +10,8 @@
         "depends": ["nftables"],
         "files": {
           "/usr/bin/cumulusvpn-helper": "helper/build/cumulusvpn-helper",
-          "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service"
+          "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service",
+          "/usr/share/keyrings/cumulusvpn-archive-keyring.asc": "linux/cumulusvpn-archive-keyring.asc"
         },
         "postInstallScript": "linux/deb-postinst.sh",
         "preRemoveScript": "linux/deb-prerm.sh",
@@ -20,7 +21,8 @@
         "depends": ["nftables"],
         "files": {
           "/usr/bin/cumulusvpn-helper": "helper/build/cumulusvpn-helper",
-          "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service"
+          "/usr/lib/systemd/system/cumulusvpn-helper.service": "linux/cumulusvpn-helper.service",
+          "/etc/pki/rpm-gpg/RPM-GPG-KEY-cumulusvpn": "linux/cumulusvpn-archive-keyring.asc"
         },
         "postInstallScript": "linux/rpm-post.sh",
         "preRemoveScript": "linux/rpm-preun.sh",

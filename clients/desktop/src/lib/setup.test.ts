@@ -73,6 +73,11 @@ describe('setupBanner', () => {
 
   // Each Linux/Windows step names its own fix, and none offers the macOS
   // Settings button (it does nothing there).
+  it('shows no warning while the service is still starting after launch', () => {
+    expect(setupBanner('serviceStarting', 'windows')).toBeNull();
+    expect(setupBanner('serviceStarting', 'linux')).toBeNull();
+  });
+
   it('gives Linux the package, systemctl and group fixes', () => {
     expect(setupBanner('serviceNotInstalled', 'linux')?.text).toMatch(
       /\.deb or \.rpm.*pkg\.cumulusvpn\.com/,

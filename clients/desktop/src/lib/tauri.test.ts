@@ -26,6 +26,8 @@ describe('helper setup state', () => {
       ['serviceNotInstalled', false],
       ['serviceNotRunning', false],
       ['serviceDenied', false],
+      // Connect waits while the service is still coming up after launch.
+      ['serviceStarting', false],
     ];
     for (const [state, ready] of cases) {
       expect(helperReady(state)).toBe(ready);

@@ -258,6 +258,10 @@ export function nativeAvailable(): boolean {
  * - `serviceDenied` — it answered and refused this app: on Linux the account is
  *   not in the `cumulusvpn` group yet (or has not logged in again since), on
  *   Windows this is not the installed app.
+ * - `serviceStarting` — app-side only, never sent by Rust: `serviceNotRunning`
+ *   seen within the first seconds after launch, when the service is usually
+ *   still starting (the app opened at login, or just after an update restarted
+ *   the service). Connect waits; no warning banner yet (useConnection).
  */
 export type HelperRegistration =
   | 'notNeeded'
@@ -268,7 +272,8 @@ export type HelperRegistration =
   | 'notFound'
   | 'serviceNotInstalled'
   | 'serviceNotRunning'
-  | 'serviceDenied';
+  | 'serviceDenied'
+  | 'serviceStarting';
 
 /** Whether Connect can work in this setup state (no setup step outstanding). */
 export function helperReady(state: HelperRegistration): boolean {

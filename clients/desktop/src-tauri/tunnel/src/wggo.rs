@@ -493,6 +493,46 @@ fn requested_name(logical: &str) -> String {
 }
 
 /// A handle to the spawned wireguard-go process + its UAPI control socket.
+/// `ERROR_PIPE_BUSY`: every instance of the named pipe is serving a client.
+#[cfg_attr(not(windows), allow(dead_code))]
+const ERROR_PIPE_BUSY: i32 = 231;
+
+/// How long a client waits out a busy UAPI pipe before giving up.
+#[cfg_attr(not(windows), allow(dead_code))]
+const UAPI_PIPE_BUSY_WAIT: Duration = Duration::from_secs(3);
+
+/// Whether a failed pipe open is worth retrying. Only "busy" is: a missing
+/// pipe means wireguard-go is gone, and waiting would only delay the error
+/// while the status poll holds the tunnel lock.
+#[cfg_attr(not(windows), allow(dead_code))]
+fn pipe_open_retryable(os_error: Option<i32>) -> bool {
+    os_error == Some(ERROR_PIPE_BUSY)
+}
+
+/// Open the UAPI pipe as a client.
+///
+/// A named pipe serves one client per instance, and wireguard-go's listener
+/// (ipc/namedpipe) creates the next instance only when its accept loop comes
+/// round again. So an open straight after another — the readiness probe in
+/// `spawn`, then `configure` — can find every instance busy for a moment
+/// (`ERROR_PIPE_BUSY`). That is the normal named-pipe contract, which
+/// Windows clients answer by retrying (wireguard-go's own client waits the
+/// same way); failing on it is what broke every Windows connect with "cannot
+/// open wireguard-go UAPI pipe".
+#[cfg(windows)]
+fn open_uapi_pipe(path: &std::path::Path) -> std::io::Result<fs::File> {
+    let deadline = Instant::now() + UAPI_PIPE_BUSY_WAIT;
+    loop {
+        match fs::OpenOptions::new().read(true).write(true).open(path) {
+            Ok(f) => return Ok(f),
+            Err(e) if pipe_open_retryable(e.raw_os_error()) && Instant::now() < deadline => {
+                thread::sleep(Duration::from_millis(15));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+}
+
 pub struct Sidecar {
     /// The **real** device name the kernel assigned (e.g. `utun6`, `cvpn0`).
     /// Routes and the address are programmed against this, not the logical name.
@@ -615,13 +655,11 @@ impl Sidecar {
                     "wireguard-go exited during startup (needs Administrator to create the wintun adapter, and wintun.dll next to the app)",
                 ));
             }
-            if fs::OpenOptions::new()
-                .read(true)
-                .write(true)
-                .open(&uapi_path)
-                .is_ok()
-            {
-                break;
+            match open_uapi_pipe(&uapi_path) {
+                Ok(_) => break,
+                // Every instance busy: the pipe exists, so wireguard-go is up.
+                Err(e) if e.raw_os_error() == Some(ERROR_PIPE_BUSY) => break,
+                Err(_) => {}
             }
             if Instant::now() > deadline {
                 let _ = child.kill();
@@ -697,10 +735,7 @@ impl Sidecar {
     fn uapi_exchange(&self, request: &str) -> Result<String, TunnelError> {
         use std::io::{Read, Write};
 
-        let mut pipe = fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .open(&self.uapi_path)
+        let mut pipe = open_uapi_pipe(&self.uapi_path)
             .map_err(|_| TunnelError::Uapi("cannot open wireguard-go UAPI pipe"))?;
         pipe.write_all(request.as_bytes())
             .map_err(|_| TunnelError::Uapi("failed to write UAPI request"))?;
@@ -980,7 +1015,16 @@ mod obfs_tests {
 
 #[cfg(test)]
 mod uapi_path_tests {
-    use super::uapi_socket_path;
+    use super::{pipe_open_retryable, uapi_socket_path, ERROR_PIPE_BUSY};
+
+    /// Busy is the named-pipe "try again"; anything else is a real failure.
+    #[test]
+    fn only_a_busy_pipe_is_retried() {
+        assert!(pipe_open_retryable(Some(ERROR_PIPE_BUSY)));
+        assert!(!pipe_open_retryable(Some(2))); // ERROR_FILE_NOT_FOUND: sidecar gone
+        assert!(!pipe_open_retryable(Some(5))); // ERROR_ACCESS_DENIED
+        assert!(!pipe_open_retryable(None));
+    }
 
     /// The engine is AmneziaWG: its endpoints live under `amneziawg` /
     /// `AmneziaWG`, not upstream's `wireguard` / `WireGuard`. Waiting on the

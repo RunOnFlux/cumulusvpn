@@ -17,8 +17,11 @@
  *
  * The updater plugin is only registered where the app can replace itself
  * (macOS, Windows, a Linux AppImage — src-tauri/src/lib.rs `self_updating`);
- * deb / rpm installs update through the package manager instead.
+ * deb / rpm installs update through the package manager instead. There the
+ * same feed is still checked (`latest_version`), and a newer version gets the
+ * `external` banner: "update it with your system's software updater".
  */
+import { getVersion } from '@tauri-apps/api/app';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { check } from '@tauri-apps/plugin-updater';
@@ -26,13 +29,22 @@ import type { DownloadEvent, Update } from '@tauri-apps/plugin-updater';
 import { sendNotification } from '@tauri-apps/plugin-notification';
 import { ensureNotificationPermission } from './useNotifications.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { isNewerVersion } from '../lib/version.js';
 
 const FIRST_CHECK_MS = 15_000;
 const EVERY_MS = 6 * 60 * 60 * 1000;
 const AUTO_KEY = 'cvpn.autoUpdate';
 
 /** What the main window's banner shows. */
-export type UpdatePhase = 'none' | 'available' | 'downloading' | 'ready' | 'installing' | 'failed';
+export type UpdatePhase =
+  | 'none'
+  | 'available'
+  | 'downloading'
+  | 'ready'
+  | 'installing'
+  | 'failed'
+  /** A newer version exists, installed through apt / dnf, not by the app. */
+  | 'external';
 
 /** The result of the last check, for Settings. */
 export type CheckState = 'idle' | 'checking' | 'current' | 'found' | 'error';
@@ -102,6 +114,8 @@ export function useUpdater(notify = true): Updater {
   const dismissedRef = useRef<string | null>(null);
   const autoRef = useRef(autoDownload);
   autoRef.current = autoDownload;
+  const supportedRef = useRef<boolean | null>(null);
+  supportedRef.current = supported;
 
   /** One system notification per version, if the user has them on. */
   const announce = useCallback((v: string, body: string) => {
@@ -135,6 +149,32 @@ export function useUpdater(notify = true): Updater {
       if (manual) {
         setCheckState('checking');
         dismissedRef.current = null;
+      }
+      if (supportedRef.current === false) {
+        // A .deb / .rpm install: the package manager updates it. Only say so.
+        if (!isTauri()) {
+          busyRef.current = false;
+          return;
+        }
+        void Promise.all([invoke<string>('latest_version'), getVersion()])
+          .then(([latest, current]) => {
+            if (!isNewerVersion(latest, current)) {
+              setCheckState('current');
+              return;
+            }
+            setCheckState('found');
+            setVersion(latest);
+            show(latest, 'external');
+            announce(
+              latest,
+              'A new version is available. Update it with your system’s software updater.',
+            );
+          })
+          .catch(() => setCheckState('error'))
+          .finally(() => {
+            busyRef.current = false;
+          });
+        return;
       }
       void check()
         .then(async (u) => {

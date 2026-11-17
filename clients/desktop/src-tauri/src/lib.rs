@@ -103,6 +103,32 @@ fn updates_supported() -> bool {
     self_updating()
 }
 
+/// The newest published desktop version, from the same signed release feed
+/// the in-app updater reads. Used where the app cannot update itself (a .deb /
+/// .rpm install updates through apt / dnf) to say that an update is waiting.
+/// Only the version string is taken; nothing is downloaded or installed.
+#[tauri::command]
+async fn latest_version() -> Result<String, String> {
+    const FEED: &str =
+        "https://github.com/RunOnFlux/cumulusvpn/releases/latest/download/latest.json";
+    let body = tauri_plugin_http::reqwest::Client::new()
+        .get(FEED)
+        .timeout(std::time::Duration::from_secs(20))
+        .send()
+        .await
+        .and_then(|r| r.error_for_status())
+        .map_err(|e| format!("update feed: {e}"))?
+        .text()
+        .await
+        .map_err(|e| format!("update feed: {e}"))?;
+    let feed: serde_json::Value =
+        serde_json::from_str(&body).map_err(|e| format!("update feed: {e}"))?;
+    feed.get("version")
+        .and_then(|v| v.as_str())
+        .map(str::to_owned)
+        .ok_or_else(|| "update feed: no version".to_owned())
+}
+
 fn self_updating() -> bool {
     if cfg!(any(target_os = "macos", windows)) {
         return true;
@@ -154,6 +180,7 @@ pub fn run() {
             popover::popover_open_main,
             popover::popover_quit,
             updates_supported,
+            latest_version,
         ])
         .setup(|app| {
             #[cfg(target_os = "macos")]

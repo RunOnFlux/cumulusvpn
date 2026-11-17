@@ -13,7 +13,8 @@ import { useOpenAtLogin } from '../hooks/useOpenAtLogin.js';
 import type { Updater } from '../hooks/useUpdater.js';
 import { openExternal } from '../lib/opener.js';
 import { formatExpiry } from '../lib/payment.js';
-import poweredByFlux from '../assets/powered_by_flux.png';
+import pbfOnDark from '../assets/powered_by_flux_on_dark.svg';
+import pbfOnLight from '../assets/powered_by_flux_on_light.svg';
 import { DnsSection } from './DnsSection.js';
 import { IdentitySection } from './IdentitySection.js';
 
@@ -199,7 +200,10 @@ export function Settings({
             aria-label="Powered by Flux — opens runonflux.com"
             onClick={() => void openExternal(FLUX_URL)}
           >
-            <img src={poweredByFlux} alt="Powered by Flux" width={130} height={18} />
+            {/* The official lockup in both variants; CSS shows the one with
+                contrast for the current theme. */}
+            <img className="pbf-on-dark" src={pbfOnDark} alt="Powered by Flux" height={18} />
+            <img className="pbf-on-light" src={pbfOnLight} alt="" aria-hidden="true" height={18} />
           </button>
         </div>
 
@@ -439,7 +443,7 @@ function checkLabel(u: Updater): string {
       ? `Downloading ${u.version ?? ''} ${Math.round(u.progress * 100)}%`
       : `Downloading ${u.version ?? ''}…`;
   }
-  if (u.phase === 'ready' || u.phase === 'available') {
+  if (u.phase === 'ready' || u.phase === 'available' || u.phase === 'external') {
     return `${u.version ?? 'Update'} available`;
   }
   switch (u.checkState) {
@@ -460,13 +464,23 @@ function UpdatesSection({ updater }: { readonly updater: Updater }): JSX.Element
     return null;
   }
   if (!updater.supported) {
+    // A .deb / .rpm install: apt / dnf update it; the app can only check.
     return (
       <>
         <div className="setsec">Updates</div>
-        <div className="setinfo">
-          <span>Updates</span>
-          <span className="lat">through your package manager</span>
-        </div>
+        <button
+          type="button"
+          className="setinfo setlink"
+          disabled={updater.checkState === 'checking'}
+          onClick={updater.checkNow}
+        >
+          <span>Check for updates</span>
+          <span className="lat">{checkLabel(updater)}</span>
+        </button>
+        <p className="setnote">
+          Installed from a package: updates arrive through your system’s software updater (apt /
+          dnf).
+        </p>
       </>
     );
   }
