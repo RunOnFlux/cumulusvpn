@@ -24,6 +24,16 @@ tokio = { version = "1.53.2", features = ["rt-multi-thread", "macros", "sync", "
 rustls = { version = "0.23.45", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12", "logging"] }
 
+# Windows: routes through the IP Helper API in-process (src/winroute.rs)
+# instead of PowerShell. Same version as the app crate's, already in the lock.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = [
+  "Win32_Foundation",
+  "Win32_NetworkManagement_IpHelper",
+  "Win32_NetworkManagement_Ndis",
+  "Win32_Networking_WinSock",
+] }
+
 [dev-dependencies]
 # Self-signed cert generation for the wg-tls bridge loopback test (ring backend,
 # matching the runtime crypto provider — no aws-lc-rs/cmake).
