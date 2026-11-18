@@ -1105,55 +1105,211 @@ pub(crate) mod windows {
         rules
     }
 
-    /// One PowerShell script (one process — each spawn costs ~0.3s): firewall
-    /// rules first, because they are the leak protection and must not depend on
-    /// the adapter steps succeeding; then the adapter's server, empty suffix
-    /// and metric 1; then a cache flush so no answer from the old resolver
-    /// lingers. `Stop` makes any failure a non-zero exit.
-    pub(crate) fn apply_script(
+    /// Windows Firewall name of the DNS-leak blocks added with netsh. One name
+    /// for all four rules, so a single `delete rule name=…` removes them; no
+    /// spaces, because it travels as one `name=` argument.
+    pub(crate) const NETSH_RULE: &str = "CumulusVPN-DNS-leak-block";
+
+    /// One command of a DNS apply / restore. `required` steps fail the apply;
+    /// the others tolerate "nothing to do" (no rule to delete, cache already
+    /// empty).
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub(crate) struct Cmd {
+        pub(crate) program: &'static str,
+        pub(crate) args: Vec<String>,
+        pub(crate) required: bool,
+    }
+
+    fn netsh(args: &[&str], required: bool) -> Cmd {
+        Cmd {
+            program: "netsh",
+            args: args.iter().map(|a| (*a).to_string()).collect(),
+            required,
+        }
+    }
+
+    /// The DNS-leak block as netsh rules: the same four rules as
+    /// [`dns_block_rules`] (UDP and TCP to 53 and 853, to every server but the
+    /// tunnel's resolvers and endpoint, and from every local address but the
+    /// tunnel's), but through netsh — a process that starts in a fraction of
+    /// the second each PowerShell firewall cmdlet costs. Measured on a real PC
+    /// the PowerShell version was 3.6 s of every connect and 2.8 s of every
+    /// disconnect (tunnel::trace).
+    pub(crate) fn netsh_block_rules(
+        resolvers: &[IpAddr],
+        tunnel_address: Option<IpAddr>,
+        endpoints: &[IpAddr],
+    ) -> Vec<Cmd> {
+        let mut allowed: Vec<IpAddr> = resolvers.to_vec();
+        allowed.extend_from_slice(endpoints);
+        let other_servers = complement_ranges(&allowed).join(",");
+        let not_endpoint = complement_ranges(endpoints).join(",");
+        let name = format!("name={NETSH_RULE}");
+        let mut rules = Vec::new();
+        for proto in ["UDP", "TCP"] {
+            let protocol = format!("protocol={proto}");
+            let remote = format!("remoteip={other_servers}");
+            rules.push(netsh(
+                &[
+                    "advfirewall",
+                    "firewall",
+                    "add",
+                    "rule",
+                    &name,
+                    "dir=out",
+                    "action=block",
+                    &protocol,
+                    "remoteport=53,853",
+                    &remote,
+                ],
+                true,
+            ));
+        }
+        if let Some(tunnel) = tunnel_address {
+            let not_tunnel = complement_ranges(&[tunnel]).join(",");
+            for proto in ["UDP", "TCP"] {
+                let protocol = format!("protocol={proto}");
+                let local = format!("localip={not_tunnel}");
+                let remote = format!("remoteip={not_endpoint}");
+                rules.push(netsh(
+                    &[
+                        "advfirewall",
+                        "firewall",
+                        "add",
+                        "rule",
+                        &name,
+                        "dir=out",
+                        "action=block",
+                        &protocol,
+                        "remoteport=53,853",
+                        &local,
+                        &remote,
+                    ],
+                    true,
+                ));
+            }
+        }
+        rules
+    }
+
+    /// The whole DNS apply: firewall rules first (they are the leak protection
+    /// and must not depend on the adapter steps), then the adapter's resolvers
+    /// with registration off, metric 1, and a cache flush so no answer from the
+    /// old resolver lingers.
+    pub(crate) fn netsh_apply(
         iface: &str,
         servers: &[IpAddr],
         tunnel_address: Option<IpAddr>,
         endpoints: &[IpAddr],
-    ) -> String {
-        let server_list = ps_list(&servers.iter().map(IpAddr::to_string).collect::<Vec<_>>());
-        let mut steps = vec![
-            "$ErrorActionPreference = 'Stop'".to_string(),
-            format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
-        ];
-        steps.extend(dns_block_rules(
-            GROUP,
-            "CumulusVPN",
-            servers,
-            tunnel_address,
-            endpoints,
+    ) -> Vec<Cmd> {
+        let name = format!("name={NETSH_RULE}");
+        let mut cmds = vec![netsh(
+            &["advfirewall", "firewall", "delete", "rule", &name],
+            false,
+        )];
+        cmds.extend(netsh_block_rules(servers, tunnel_address, endpoints));
+
+        let iface_arg = format!("name={iface}");
+        for (family, list) in [
+            (
+                "ipv4",
+                servers.iter().filter(|a| a.is_ipv4()).collect::<Vec<_>>(),
+            ),
+            (
+                "ipv6",
+                servers.iter().filter(|a| a.is_ipv6()).collect::<Vec<_>>(),
+            ),
+        ] {
+            for (i, server) in list.iter().enumerate() {
+                let address = format!("address={server}");
+                if i == 0 {
+                    cmds.push(netsh(
+                        &[
+                            "interface",
+                            family,
+                            "set",
+                            "dnsservers",
+                            &iface_arg,
+                            "source=static",
+                            &address,
+                            "register=none",
+                            "validate=no",
+                        ],
+                        true,
+                    ));
+                } else {
+                    let index = format!("index={}", i + 1);
+                    cmds.push(netsh(
+                        &[
+                            "interface",
+                            family,
+                            "add",
+                            "dnsservers",
+                            &iface_arg,
+                            &address,
+                            &index,
+                            "validate=no",
+                        ],
+                        true,
+                    ));
+                }
+            }
+        }
+        let iface_if = format!("interface={iface}");
+        cmds.push(netsh(
+            &[
+                "interface",
+                "ipv4",
+                "set",
+                "interface",
+                &iface_if,
+                "metric=1",
+            ],
+            true,
         ));
-        steps.push(format!(
-            "Set-DnsClientServerAddress -InterfaceAlias '{iface}' -ServerAddresses {server_list}"
-        ));
-        steps.push(format!(
-            "Set-DnsClient -InterfaceAlias '{iface}' -ConnectionSpecificSuffix '' \
-             -RegisterThisConnectionsAddress $false"
-        ));
-        steps.push(format!(
-            "Set-NetIPInterface -InterfaceAlias '{iface}' -AddressFamily IPv4 -InterfaceMetric 1"
-        ));
-        steps.push("Clear-DnsClientCache".to_string());
-        steps.join("; ")
+        cmds.push(Cmd {
+            program: "ipconfig",
+            args: vec!["/flushdns".to_string()],
+            required: false,
+        });
+        cmds
     }
 
-    /// Remove our rules, and reset the adapter in case wintun reuses it. Each
+    /// Remove our rules, and reset the adapter in case wintun reuses it. Every
     /// step tolerates "nothing there" — the adapter is usually already gone.
-    pub(crate) fn restore_script(iface: &str) -> String {
-        [
-            format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue"),
-            format!(
-                "Set-DnsClientServerAddress -InterfaceAlias '{iface}' -ResetServerAddresses \
-                 -ErrorAction SilentlyContinue"
+    pub(crate) fn netsh_restore(iface: &str) -> Vec<Cmd> {
+        let name = format!("name={NETSH_RULE}");
+        let iface_arg = format!("name={iface}");
+        vec![
+            netsh(&["advfirewall", "firewall", "delete", "rule", &name], false),
+            netsh(
+                &[
+                    "interface",
+                    "ipv4",
+                    "set",
+                    "dnsservers",
+                    &iface_arg,
+                    "source=dhcp",
+                ],
+                false,
             ),
-            "Clear-DnsClientCache -ErrorAction SilentlyContinue".to_string(),
+            netsh(
+                &[
+                    "interface",
+                    "ipv6",
+                    "set",
+                    "dnsservers",
+                    &iface_arg,
+                    "source=dhcp",
+                ],
+                false,
+            ),
+            Cmd {
+                program: "ipconfig",
+                args: vec!["/flushdns".to_string()],
+                required: false,
+            },
         ]
-        .join("; ")
     }
 
     /// After a crash: only our own rule group. Left behind, it would block every
@@ -1161,7 +1317,10 @@ pub(crate) mod windows {
     /// at all. Nothing else is touched (the default outbound policy belongs to
     /// the kill switch and to the user).
     pub(crate) fn recover_script() -> String {
-        format!("Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue")
+        format!(
+            "Remove-NetFirewallRule -Group '{GROUP}' -ErrorAction SilentlyContinue; \
+             Remove-NetFirewallRule -DisplayName '{NETSH_RULE}' -ErrorAction SilentlyContinue"
+        )
     }
 
     #[cfg(windows)]
@@ -1180,8 +1339,22 @@ pub(crate) mod windows {
             )
         }
 
+        /// Run each command in order; the first `required` failure stops and
+        /// is the error.
+        fn run_all(cmds: &[Cmd]) -> Result<(), String> {
+            for cmd in cmds {
+                let args: Vec<&str> = cmd.args.iter().map(String::as_str).collect();
+                if let Err(e) = run_capture(cmd.program, &args, None) {
+                    if cmd.required {
+                        return Err(e);
+                    }
+                }
+            }
+            Ok(())
+        }
+
         pub(in super::super) fn apply(target: &DnsTarget) -> Result<Applied, String> {
-            powershell(&apply_script(
+            run_all(&netsh_apply(
                 &target.interface,
                 &target.servers,
                 target.tunnel_address,
@@ -1197,9 +1370,7 @@ pub(crate) mod windows {
         }
 
         pub(in super::super) fn restore(_: Option<&Applied>, target: &DnsTarget) {
-            if let Err(e) = powershell(&restore_script(&target.interface)) {
-                eprintln!("cumulusvpn: DNS restore failed: {e}");
-            }
+            let _ = run_all(&netsh_restore(&target.interface));
         }
 
         pub(in super::super) fn recover_stale(_: &[&str]) {
@@ -2016,82 +2187,120 @@ mod tests {
             );
         }
 
+        fn argv(c: &Cmd) -> String {
+            format!("{} {}", c.program, c.args.join(" "))
+        }
+
+        /// Firewall rules first, then the adapter; every rule a single argv
+        /// token per `key=value`, so netsh never sees a split value.
         #[test]
-        fn the_apply_script_sets_the_adapter_and_installs_the_rules_first() {
-            let s = apply_script(
+        fn the_netsh_apply_installs_the_rules_before_the_adapter_steps() {
+            let cmds = netsh_apply(
                 "cvpn0",
                 &[ip("1.1.1.1")],
                 Some(ip("10.8.0.2")),
                 &[ip("203.0.113.7")],
             );
-            let steps: Vec<&str> = s.split("; ").collect();
-            assert_eq!(steps[0], "$ErrorActionPreference = 'Stop'");
+            let lines: Vec<String> = cmds.iter().map(argv).collect();
             assert_eq!(
-                steps[1],
-                "Remove-NetFirewallRule -Group 'CumulusVPN-DNS' -ErrorAction SilentlyContinue"
+                lines[0],
+                "netsh advfirewall firewall delete rule name=CumulusVPN-DNS-leak-block"
             );
-            let rule = steps
+            assert!(!cmds[0].required, "nothing to delete is fine");
+            let rules: Vec<&String> = lines.iter().filter(|l| l.contains(" add rule ")).collect();
+            assert_eq!(rules.len(), 4, "{lines:?}");
+            let last_rule = lines
                 .iter()
-                .position(|x| x.starts_with("New-NetFirewallRule"))
+                .rposition(|l| l.contains(" add rule "))
                 .unwrap();
-            let server = steps
-                .iter()
-                .position(|x| x.starts_with("Set-DnsClientServerAddress"))
-                .unwrap();
+            let server = lines.iter().position(|l| l.contains("dnsservers")).unwrap();
             assert!(
-                rule < server,
+                last_rule < server,
                 "leak rules must not depend on the adapter steps"
             );
             assert_eq!(
-                steps[server],
-                "Set-DnsClientServerAddress -InterfaceAlias 'cvpn0' -ServerAddresses '1.1.1.1'"
+                lines[server],
+                "netsh interface ipv4 set dnsservers name=cvpn0 source=static address=1.1.1.1 \
+                 register=none validate=no"
             );
-            assert!(s.contains(
-                "Set-DnsClient -InterfaceAlias 'cvpn0' -ConnectionSpecificSuffix '' \
-                 -RegisterThisConnectionsAddress $false"
+            assert!(lines.contains(
+                &"netsh interface ipv4 set interface interface=cvpn0 metric=1".to_string()
             ));
-            assert!(s.contains(
-                "Set-NetIPInterface -InterfaceAlias 'cvpn0' -AddressFamily IPv4 -InterfaceMetric 1"
-            ));
-            assert_eq!(*steps.last().unwrap(), "Clear-DnsClientCache");
-        }
-
-        /// A two-address provider: the adapter gets both, in order, and both
-        /// are carved out of the "DNS to other servers" block — any other
-        /// resolver (1.1.1.1 included) stays blocked.
-        #[test]
-        fn a_two_server_provider_is_set_and_allowed_in_full() {
-            let quad9 = [ip("9.9.9.9"), ip("149.112.112.112")];
-            let s = apply_script("cvpn0", &quad9, Some(ip("10.8.0.2")), &[ip("203.0.113.7")]);
-            assert!(
-                s.contains(
-                    "Set-DnsClientServerAddress -InterfaceAlias 'cvpn0' \
-                     -ServerAddresses '9.9.9.9','149.112.112.112'"
-                ),
-                "{s}"
-            );
-            assert!(
-                s.contains(
-                    "-RemoteAddress '0.0.0.0-9.9.9.8','9.9.9.10-149.112.112.111',\
-                     '149.112.112.113-203.0.113.6','203.0.113.8-255.255.255.255',"
-                ),
-                "{s}"
-            );
-        }
-
-        /// Restore and crash recovery remove only our own group. They never touch
-        /// the default outbound policy, so a quit can never reset the firewall.
-        #[test]
-        fn restore_and_recovery_touch_only_our_group() {
-            for s in [restore_script("cvpn0"), recover_script()] {
-                assert!(
-                    s.contains("Remove-NetFirewallRule -Group 'CumulusVPN-DNS'"),
-                    "{s}"
-                );
-                assert!(!s.contains("DefaultOutboundAction"), "{s}");
-                assert!(!s.contains("Set-NetFirewallProfile"), "{s}");
+            assert_eq!(lines.last().unwrap(), "ipconfig /flushdns");
+            for c in &cmds {
+                for a in &c.args {
+                    assert!(!a.contains(' '), "one token per argument: {a:?}");
+                }
             }
-            assert!(restore_script("cvpn0").contains("-ResetServerAddresses"));
+        }
+
+        /// The same carve-outs as the PowerShell rules: the resolvers and the
+        /// endpoint are reachable on 53/853, every other server is not.
+        #[test]
+        fn the_netsh_rules_carve_out_the_resolvers_and_the_endpoint() {
+            let quad9 = [ip("9.9.9.9"), ip("149.112.112.112")];
+            let lines: Vec<String> =
+                netsh_apply("cvpn0", &quad9, Some(ip("10.8.0.2")), &[ip("203.0.113.7")])
+                    .iter()
+                    .map(argv)
+                    .collect();
+            let other = lines
+                .iter()
+                .find(|l| l.contains("protocol=UDP") && !l.contains("localip="))
+                .unwrap();
+            assert!(
+                other.contains(
+                    "remoteip=0.0.0.0-9.9.9.8,9.9.9.10-149.112.112.111,\
+                     149.112.112.113-203.0.113.6,203.0.113.8-255.255.255.255,"
+                ),
+                "{other}"
+            );
+            assert!(other.contains("remoteport=53,853 "), "{other}");
+            let outside = lines
+                .iter()
+                .find(|l| l.contains("protocol=TCP") && l.contains("localip="))
+                .unwrap();
+            assert!(
+                outside.contains("localip=0.0.0.0-10.8.0.1,10.8.0.3-"),
+                "{outside}"
+            );
+            // Both servers on the adapter, in order.
+            assert!(lines.contains(
+                &"netsh interface ipv4 set dnsservers name=cvpn0 source=static \
+                  address=9.9.9.9 register=none validate=no"
+                    .to_string()
+            ));
+            assert!(lines.contains(
+                &"netsh interface ipv4 add dnsservers name=cvpn0 address=149.112.112.112 \
+                  index=2 validate=no"
+                    .to_string()
+            ));
+        }
+
+        /// Restore and crash recovery remove only our own rules. They never
+        /// touch the default outbound policy, so a quit can never reset the
+        /// firewall.
+        #[test]
+        fn restore_and_recovery_touch_only_our_rules() {
+            let restore: Vec<String> = netsh_restore("cvpn0").iter().map(argv).collect();
+            assert_eq!(
+                restore[0],
+                "netsh advfirewall firewall delete rule name=CumulusVPN-DNS-leak-block"
+            );
+            assert!(netsh_restore("cvpn0").iter().all(|c| !c.required));
+            let recover = recover_script();
+            assert!(
+                recover.contains("Remove-NetFirewallRule -Group 'CumulusVPN-DNS'"),
+                "{recover}"
+            );
+            assert!(
+                recover.contains("-DisplayName 'CumulusVPN-DNS-leak-block'"),
+                "{recover}"
+            );
+            for text in restore.iter().chain(std::iter::once(&recover)) {
+                assert!(!text.contains("DefaultOutboundAction"), "{text}");
+                assert!(!text.contains("firewallpolicy"), "{text}");
+            }
         }
     }
 

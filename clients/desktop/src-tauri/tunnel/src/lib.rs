@@ -33,6 +33,8 @@ pub mod tlsbridge;
 pub mod trace;
 mod validate;
 pub mod wggo;
+#[cfg(windows)]
+mod winroute;
 
 use std::net::{IpAddr, SocketAddr, UdpSocket};
 use std::sync::{Arc, Mutex};

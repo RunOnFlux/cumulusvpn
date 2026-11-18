@@ -289,6 +289,15 @@ pub fn add_endpoint_bypass(endpoint_ip: &str) -> Result<(), TunnelError> {
     }
     #[cfg(windows)]
     {
+        // In-process through the IP Helper API (milliseconds); the commands
+        // below are the fallback (seconds: two PowerShell starts and netsh).
+        if let Ok(ip) = endpoint_ip.parse::<std::net::Ipv4Addr>() {
+            if let Some(route) = super::winroute::default_route() {
+                if super::winroute::add_host_route(ip, &route).is_ok() {
+                    return Ok(());
+                }
+            }
+        }
         // netsh needs the interface as well as the next hop; both come from the
         // same lowest-metric default route, so they are consistent by
         // construction.
@@ -328,7 +337,14 @@ pub fn remove_endpoint_bypass(endpoint_ip: &str) {
     #[cfg(target_os = "linux")]
     run_best_effort("ip", &["route", "del", &format!("{endpoint_ip}/32")]);
     #[cfg(windows)]
-    remove_route_best_effort(&format!("{endpoint_ip}/32"));
+    {
+        let native = endpoint_ip
+            .parse::<std::net::Ipv4Addr>()
+            .is_ok_and(super::winroute::delete_host_routes);
+        if !native {
+            remove_route_best_effort(&format!("{endpoint_ip}/32"));
+        }
+    }
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     let _ = endpoint_ip;
 }
