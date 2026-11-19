@@ -516,3 +516,22 @@ jobs:
           Assert-Gone
           # The runner exits with the last native exit code (sc.exe's 1060).
           exit 0
+
+      # The NSIS installer that just passed the install test, under a name with
+      # no version in it, so releases/latest/download/CumulusVPN_Windows_x64-setup.exe
+      # — what cumulusvpn.com/download/windows redirects to — always serves
+      # the newest published release. (The MSI stays versioned-only, on the
+      # release page, for IT deployment.)
+      - name: Upload the stable-name Windows installer
+        if: runner.os == 'Windows' && startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        working-directory: clients/desktop/src-tauri/target/${{ matrix.target }}/release/bundle
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $nsis = Get-ChildItem nsis/*-setup.exe | Select-Object -First 1
+          $stable = Join-Path $env:RUNNER_TEMP 'CumulusVPN_Windows_x64-setup.exe'
+          Copy-Item $nsis.FullName $stable
+          gh release upload $env:GITHUB_REF_NAME $stable --clobber --repo $env:GITHUB_REPOSITORY
+          if ($LASTEXITCODE -ne 0) { throw "upload failed: $LASTEXITCODE" }
