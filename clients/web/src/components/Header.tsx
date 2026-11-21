@@ -39,18 +39,43 @@ export function Header({ route, onNavigate, themeMode, onToggleTheme }: HeaderPr
             onNavigate('connect');
           }}
         >
-          <svg className="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+          <svg className="mark" viewBox="259 240 560 560" aria-hidden="true">
+            <defs>
+              <linearGradient
+                id="cvpn-hdr-cloud"
+                x1="300"
+                y1="360"
+                x2="620"
+                y2="700"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0" stopColor="#7DF3EB" />
+                <stop offset=".5" stopColor="#34E4DA" />
+                <stop offset="1" stopColor="#0FB9AE" />
+              </linearGradient>
+              <linearGradient
+                id="cvpn-hdr-bolt"
+                x1="470"
+                y1="380"
+                x2="560"
+                y2="660"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0" stopColor="#FFFFFF" />
+                <stop offset="1" stopColor="#E8FFFC" />
+              </linearGradient>
+            </defs>
+            <g fill="url(#cvpn-hdr-cloud)">
+              <circle cx="392" cy="556" r="104" />
+              <circle cx="512" cy="486" r="146" />
+              <circle cx="642" cy="532" r="118" />
+              <circle cx="712" cy="588" r="78" />
+              <rect x="326" y="556" width="452" height="132" rx="66" />
+            </g>
             <path
-              d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z"
-              fill="currentColor"
-              opacity=".18"
+              d="M566 372 L430 566 L512 566 L470 700 L620 512 L534 512 Z"
+              fill="url(#cvpn-hdr-bolt)"
             />
-            <path
-              d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z"
-              stroke="var(--cyan)"
-              strokeWidth="1.7"
-            />
-            <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)" />
           </svg>
           <span className="brand-name">CumulusVPN</span>
         </a>
