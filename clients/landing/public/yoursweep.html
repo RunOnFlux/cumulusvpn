@@ -1,0 +1,793 @@
+<!doctype html>
+<html lang="en" data-theme="">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CumulusVPN for YourSweep users — a free month of Premium</title>
+    <meta
+      name="description"
+      content="You've checked the room with YourSweep. Now secure the hotel Wi-Fi: YourSweep users get a free month of CumulusVPN Premium with code SWEEP-VPN."
+    />
+    <!-- A partner landing page for one campaign: reached from the YourSweep app, not search. -->
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#070B11" />
+    <meta property="og:title" content="CumulusVPN for YourSweep users — a free month of Premium" />
+    <meta
+      property="og:description"
+      content="You've checked the room with YourSweep. Now secure the hotel Wi-Fi: YourSweep users get a free month of CumulusVPN Premium with code SWEEP-VPN."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cumulusvpn.com/yoursweep" />
+    <meta property="og:site_name" content="CumulusVPN" />
+    <meta property="og:image" content="https://cumulusvpn.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://cumulusvpn.com/yoursweep" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <style>
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/inter-400.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('/fonts/inter-500.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url('/fonts/inter-600.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('/fonts/inter-700.woff2') format('woff2');
+      }
+      :root {
+        --bg: #f5f8fb;
+        --bg-2: #eaf0f6;
+        --surface: #ffffff;
+        --surface-2: #f0f4f8;
+        --ink: #0c1420;
+        --ink-2: #46586b;
+        --ink-3: #7b8d9e;
+        --line: #dce5ee;
+        --cyan: #0fb9ae;
+        --cyan-glow: #34e4da;
+        --amber: #c77f17;
+        --amber-2: #f5b23d;
+        --green: #1f9d6b;
+        --slate: #8496a8;
+        --radius: 18px;
+        --maxw: 1160px;
+        --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+        --sans:
+          'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+          sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #070b11;
+          --bg-2: #0c121b;
+          --surface: #10171f;
+          --surface-2: #161f2a;
+          --ink: #eaf1f8;
+          --ink-2: #a6b6c6;
+          --ink-3: #6c7e90;
+          --line: #1e2a37;
+          --cyan: #34e4da;
+          --cyan-glow: #34e4da;
+          --amber: #f5b23d;
+          --amber-2: #f5b23d;
+          --green: #34d399;
+          --slate: #64748b;
+        }
+      }
+      :root[data-theme='light'] {
+        --bg: #f5f8fb;
+        --bg-2: #eaf0f6;
+        --surface: #ffffff;
+        --surface-2: #f0f4f8;
+        --ink: #0c1420;
+        --ink-2: #46586b;
+        --ink-3: #7b8d9e;
+        --line: #dce5ee;
+        --cyan: #0fb9ae;
+        --cyan-glow: #34e4da;
+        --amber: #c77f17;
+        --amber-2: #f5b23d;
+        --green: #1f9d6b;
+      }
+      :root[data-theme='dark'] {
+        --bg: #070b11;
+        --bg-2: #0c121b;
+        --surface: #10171f;
+        --surface-2: #161f2a;
+        --ink: #eaf1f8;
+        --ink-2: #a6b6c6;
+        --ink-3: #6c7e90;
+        --line: #1e2a37;
+        --cyan: #34e4da;
+        --cyan-glow: #34e4da;
+        --amber: #f5b23d;
+        --amber-2: #f5b23d;
+        --green: #34d399;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-synthesis: none;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      h1,
+      h2,
+      h3 {
+        text-wrap: balance;
+        margin: 0;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        font-weight: 600;
+      }
+      a {
+        color: inherit;
+      }
+
+      header.top {
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(10px);
+      }
+      .top .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 62px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-size: 18px;
+        text-decoration: none;
+      }
+      .mark {
+        width: 26px;
+        height: 26px;
+      }
+      .top nav {
+        display: flex;
+        gap: 22px;
+        font-size: 14px;
+        color: var(--ink-2);
+        align-items: center;
+      }
+      .top nav a {
+        text-decoration: none;
+      }
+      .top nav a:hover {
+        color: var(--ink);
+      }
+      .gh {
+        display: inline-flex;
+        color: var(--ink-2);
+        line-height: 0;
+      }
+      .gh:hover {
+        color: var(--ink);
+      }
+      .gh svg {
+        width: 20px;
+        height: 20px;
+      }
+      .top .right {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .pbf {
+        display: inline-flex;
+        align-items: center;
+        line-height: 0;
+        opacity: 0.92;
+      }
+      .pbf:hover {
+        opacity: 1;
+      }
+      .pbf img {
+        width: auto;
+        display: none;
+      }
+      .pbf .pbf-on-light {
+        display: inline;
+      }
+      @media (prefers-color-scheme: dark) {
+        .pbf .pbf-on-light {
+          display: none;
+        }
+        .pbf .pbf-on-dark {
+          display: inline;
+        }
+      }
+      :root[data-theme='light'] .pbf .pbf-on-light {
+        display: inline;
+      }
+      :root[data-theme='light'] .pbf .pbf-on-dark {
+        display: none;
+      }
+      :root[data-theme='dark'] .pbf .pbf-on-light {
+        display: none;
+      }
+      :root[data-theme='dark'] .pbf .pbf-on-dark {
+        display: inline;
+      }
+      /* Same control style as the web app header (34x30, 9px radius, surface). */
+      .theme-btn {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        color: var(--ink-2);
+        border-radius: 9px;
+        width: 34px;
+        height: 30px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font: inherit;
+        font-size: 15px;
+        line-height: 1;
+      }
+      .theme-btn:hover {
+        color: var(--ink);
+        border-color: var(--cyan);
+      }
+
+      /* ---- YourSweep partner page ---- */
+      .ys-hero {
+        position: relative;
+        padding: 72px 0 8px;
+        overflow: hidden;
+      }
+      .ys-hero::before {
+        content: '';
+        position: absolute;
+        inset: -40% -10% auto;
+        height: 520px;
+        background: radial-gradient(
+          ellipse at 30% 40%,
+          color-mix(in srgb, var(--cyan) 16%, transparent),
+          transparent 62%
+        );
+        pointer-events: none;
+      }
+      .narrow {
+        position: relative;
+        max-width: 780px;
+      }
+      .ys-hero h1 {
+        font-size: clamp(32px, 5.4vw, 52px);
+        letter-spacing: -0.035em;
+        line-height: 1.06;
+        margin: 14px 0 16px;
+      }
+      .ys-hero h1 .glow {
+        color: var(--cyan);
+      }
+      .ys-hero .lede {
+        color: var(--ink-2);
+        font-size: 18px;
+        max-width: 640px;
+        margin: 0;
+      }
+      .code-card {
+        margin-top: 30px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+        padding: 22px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        flex-wrap: wrap;
+      }
+      .code-card .label {
+        font-family: var(--mono);
+        font-size: 11px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--ink-3);
+      }
+      .code-card .code {
+        font-family: var(--mono);
+        font-size: clamp(30px, 6vw, 40px);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        line-height: 1.2;
+        margin: 4px 0;
+        user-select: all;
+      }
+      .code-card .what {
+        color: var(--ink-2);
+        font-size: 14px;
+        margin: 0;
+      }
+      .copy-btn {
+        font: inherit;
+        font-weight: 600;
+        font-size: 15px;
+        border: 0;
+        border-radius: 12px;
+        padding: 0 22px;
+        min-height: 48px;
+        background: var(--cyan);
+        color: #04211f;
+        cursor: pointer;
+      }
+      .copy-btn:hover {
+        filter: brightness(1.06);
+      }
+      .copy-btn:focus-visible,
+      .store:focus-visible {
+        outline: 2px solid var(--cyan);
+        outline-offset: 3px;
+      }
+      section.steps-sec {
+        padding: 34px 0 64px;
+      }
+      ol.steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 14px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 16px;
+        padding: 22px 24px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+      .step .n {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-weight: 700;
+        color: var(--cyan);
+      }
+      .step h2 {
+        font-size: 19px;
+        letter-spacing: -0.01em;
+        margin: 8px 0 6px;
+      }
+      .step p {
+        color: var(--ink-2);
+        margin: 0;
+        font-size: 15px;
+      }
+      .step p + p {
+        margin-top: 8px;
+      }
+      .step b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .ui {
+        font-weight: 600;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      .stores {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+      .store {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        text-decoration: none;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 0 14px;
+        min-height: 46px;
+        font-size: 14px;
+        font-weight: 600;
+        background: var(--surface-2);
+      }
+      .store:hover {
+        border-color: var(--ink-3);
+      }
+      .store .tag {
+        font-family: var(--mono);
+        font-size: 10px;
+        color: var(--ink-3);
+        letter-spacing: 0.06em;
+      }
+      .fine {
+        margin: 22px 0 0;
+        padding: 0 0 0 18px;
+        color: var(--ink-3);
+        font-size: 13.5px;
+        display: grid;
+        gap: 6px;
+      }
+      .fine a {
+        color: var(--ink-2);
+      }
+      @media (max-width: 560px) {
+        .ys-hero {
+          padding-top: 44px;
+        }
+        .ys-hero .lede {
+          font-size: 16.5px;
+        }
+        .code-card,
+        .step {
+          padding: 18px;
+        }
+        .copy-btn {
+          width: 100%;
+        }
+        .step {
+          grid-template-columns: minmax(0, 1fr);
+          gap: 10px;
+        }
+        .step h2 {
+          margin-top: 0;
+        }
+        .stores {
+          grid-template-columns: minmax(0, 1fr);
+        }
+      }
+      /* This page had no mobile rule for the top bar at all, so brand + nav +
+         the Flux lockup summed to ~570px and pushed the whole document into
+         horizontal scroll on a phone. Same treatment as the other pages. */
+      @media (max-width: 900px) {
+        .top .wrap {
+          flex-wrap: wrap;
+          height: auto;
+          padding-top: 9px;
+          padding-bottom: 9px;
+        }
+        .top nav {
+          order: 3;
+          width: 100%;
+          gap: 18px;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .top nav::-webkit-scrollbar {
+          display: none;
+        }
+        .top nav a {
+          white-space: nowrap;
+          padding: 9px 0;
+        }
+        .brand {
+          min-height: 44px;
+        }
+        .theme-btn {
+          height: 36px;
+        }
+        .top .pbf {
+          display: none;
+        }
+      }
+
+      footer {
+        padding: 34px 0 52px;
+        color: var(--ink-3);
+        font-size: 13px;
+        border-top: 1px solid var(--line);
+      }
+      footer .foot-bottom {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+    </style>
+    <script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "9e07c1b233a24fbda101b18947f1b1b3"}'
+    ></script>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <svg class="mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+            <path
+              d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z"
+              fill="currentColor"
+              opacity=".18"
+            />
+            <path
+              d="M9 21h13a5 5 0 0 0 .6-9.96A7 7 0 0 0 8.5 12 4.5 4.5 0 0 0 9 21Z"
+              stroke="var(--cyan)"
+              stroke-width="1.7"
+            />
+            <path d="M14 15l-2.5 4h3l-1 4 4.5-6h-3l1.5-2.6z" fill="var(--cyan)" />
+          </svg>
+          CumulusVPN
+        </a>
+        <nav>
+          <a href="/#how">How it works</a><a href="/#pricing">Pricing</a>
+          <a href="/#apps">Get the app</a><a href="/network">Network</a>
+        </nav>
+        <div class="right">
+          <a
+            class="gh"
+            href="https://github.com/RunOnFlux/cumulusvpn"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub"
+            title="GitHub"
+            ><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+          ></a>
+          <a
+            class="pbf"
+            href="https://runonflux.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Powered by Flux — opens runonflux.com"
+          >
+            <img
+              class="pbf-on-light"
+              src="/powered_by_dark.svg"
+              alt="Powered by Flux"
+              height="16"
+            />
+            <img
+              class="pbf-on-dark"
+              src="/powered_by_light.svg"
+              alt=""
+              height="16"
+              aria-hidden="true"
+            />
+          </a>
+          <button
+            class="theme-btn"
+            id="themeToggle"
+            type="button"
+            aria-label="Toggle light / dark theme"
+            title="Toggle theme"
+          >
+            ◐
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="ys-hero">
+        <div class="wrap narrow">
+          <span class="eyebrow">YourSweep × CumulusVPN</span>
+          <h1>You've checked the room. <span class="glow">Now lock down the Wi-Fi.</span></h1>
+          <p class="lede">
+            YourSweep finds the hidden cameras and trackers. CumulusVPN covers what comes next:
+            hotel and café Wi-Fi, where anyone on the same network — or a fake one pretending to be
+            it — can try to watch your traffic. Your first month of Premium is on us.
+          </p>
+
+          <div class="code-card">
+            <div>
+              <div class="label">Your code</div>
+              <div class="code" id="code">SWEEP-VPN</div>
+              <p class="what">
+                One free month of CumulusVPN Premium: full speed on every server, no data caps.
+              </p>
+            </div>
+            <button class="copy-btn" id="copy" type="button">Copy code</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="steps-sec">
+        <div class="wrap narrow">
+          <ol class="steps">
+            <li class="step">
+              <span class="n" aria-hidden="true">1</span>
+              <div>
+                <h2>Get CumulusVPN</h2>
+                <p>Free on every platform. No account, no email, no card.</p>
+                <div class="stores">
+                  <a class="store" href="https://apps.apple.com/app/cumulusvpn/id6792741863"
+                    ><span>App Store</span><span class="tag">iOS</span></a
+                  >
+                  <a
+                    class="store"
+                    href="https://play.google.com/store/apps/details?id=com.cumulusvpn.app"
+                    ><span>Google Play</span><span class="tag">Android</span></a
+                  >
+                  <a class="store" href="/download/mac"
+                    ><span>Download for Mac</span><span class="tag">macOS</span></a
+                  >
+                  <a class="store" href="/download/windows"
+                    ><span>Download for Windows</span><span class="tag">Windows</span></a
+                  >
+                </div>
+              </div>
+            </li>
+            <li class="step">
+              <span class="n" aria-hidden="true">2</span>
+              <div>
+                <h2>Open “Redeem a code”</h2>
+                <p>
+                  <b>iPhone or Android:</b> open <span class="ui">Settings</span>, tap your plan (it
+                  says <span class="ui">tap to upgrade</span>), then scroll down to
+                  <span class="ui">Redeem a code</span>.
+                </p>
+                <p>
+                  <b>Mac or Windows:</b> in the main window, click
+                  <span class="ui">Upgrade — card or FLUX</span>, then scroll down to
+                  <span class="ui">Redeem a code</span>.
+                </p>
+              </div>
+            </li>
+            <li class="step">
+              <span class="n" aria-hidden="true">3</span>
+              <div>
+                <h2>Enter SWEEP-VPN and tap Redeem</h2>
+                <p>
+                  Premium switches on by itself within a few minutes, on every server at once.
+                  That's it.
+                </p>
+              </div>
+            </li>
+          </ol>
+
+          <ul class="fine">
+            <li>One free month per device, until 31 March 2027 or while the offer lasts.</li>
+            <li>
+              Nothing renews and there's no card on file: after the month, your device goes back to
+              the free plan (100&nbsp;KB/s) unless you choose to upgrade.
+            </li>
+            <li>
+              On a router or Linux? Set it up in your browser and redeem the code there:
+              <a href="https://vpn.cumulusvpn.com/#/upgrade?voucher=SWEEPVPN">vpn.cumulusvpn.com</a
+              >.
+            </li>
+            <li>Questions? <a href="/support">We're here to help</a>.</li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="foot-bottom">
+          <div>
+            © 2026 CumulusVPN · <a href="/">cumulusvpn.com</a> ·
+            <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> ·
+            <a href="/support">Support</a>
+          </div>
+          <div class="mono">Powered by Flux</div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+      (function () {
+        var btn = document.getElementById('copy');
+        if (!btn) return;
+        btn.addEventListener('click', function () {
+          function done(ok) {
+            btn.textContent = ok ? 'Copied ✓' : 'Copy failed — type SWEEP-VPN';
+            setTimeout(function () {
+              btn.textContent = 'Copy code';
+            }, 2200);
+          }
+          try {
+            navigator.clipboard.writeText('SWEEPVPN').then(
+              function () {
+                done(true);
+              },
+              function () {
+                done(false);
+              },
+            );
+          } catch (e) {
+            done(false);
+          }
+        });
+      })();
+    </script>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var KEY = 'cumulusvpn-theme';
+        try {
+          var saved = localStorage.getItem(KEY);
+          if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+        } catch (e) {}
+        /* Same cycle + icons as the web app: system (◐) → dark (☾) → light (☀). */
+        var ICON = { system: '◐', dark: '☾', light: '☀' };
+        function mode() {
+          var attr = root.getAttribute('data-theme');
+          return attr === 'light' || attr === 'dark' ? attr : 'system';
+        }
+        var btn = document.getElementById('themeToggle');
+        function paint() {
+          if (btn) btn.textContent = ICON[mode()];
+        }
+        paint();
+        if (btn) {
+          btn.addEventListener('click', function () {
+            var m = mode();
+            var next = m === 'system' ? 'dark' : m === 'dark' ? 'light' : 'system';
+            if (next === 'system') root.removeAttribute('data-theme');
+            else root.setAttribute('data-theme', next);
+            try {
+              if (next === 'system') localStorage.removeItem(KEY);
+              else localStorage.setItem(KEY, next);
+            } catch (e) {}
+            paint();
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>
