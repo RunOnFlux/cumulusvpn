@@ -839,6 +839,19 @@ mod linux {
         format!("{prefix}{iface}")
     }
 
+    /// Whether the `resolvconf` on PATH (resolved to its real file) is
+    /// systemd's compatibility shim. Ubuntu, Arch, Fedora and others ship
+    /// `/usr/sbin/resolvconf -> resolvectl`: it does not write
+    /// `/etc/resolv.conf`, it configures systemd-resolved (socket-activating it
+    /// if stopped). When resolved is NOT the system resolver that changes
+    /// nothing lookups use — they still go to the resolver in
+    /// `/etc/resolv.conf`, which the kill switch then blocks — so it must not
+    /// count as "resolvconf is available": the honest outcome is the DNS
+    /// warning, not a silent "protected" with broken (or leaking) DNS.
+    pub(super) fn is_systemd_resolvconf_shim(real_file_name: &str) -> bool {
+        matches!(real_file_name, "resolvectl" | "systemd-resolve")
+    }
+
     /// `-m 0`: highest priority; `-x`: exclusive — only this record's servers
     /// are used while it exists (openresolv). Same flags as `wg-quick`.
     pub(super) fn resolvconf_apply_argv(record: &str) -> Vec<String> {
@@ -885,6 +898,19 @@ mod linux {
                 .any(|dir| dir.join(program).is_file())
         }
 
+        /// `resolvconf` resolved through symlinks is systemd's (see
+        /// [`is_systemd_resolvconf_shim`]).
+        fn resolvconf_is_shim() -> bool {
+            let path = std::env::var_os("PATH").unwrap_or_default();
+            std::env::split_paths(&path)
+                .chain(["/usr/sbin", "/sbin", "/usr/bin", "/bin"].map(Into::into))
+                .map(|dir| dir.join("resolvconf"))
+                .find(|p| p.is_file())
+                .and_then(|p| fs::canonicalize(p).ok())
+                .and_then(|p| p.file_name().map(|n| n.to_string_lossy().into_owned()))
+                .is_some_and(|name| is_systemd_resolvconf_shim(&name))
+        }
+
         fn resolved_in_use() -> bool {
             let link = fs::read_link(RESOLV_CONF)
                 .ok()
@@ -928,7 +954,7 @@ mod linux {
                 let _ = resolvectl(&["flush-caches".to_string()]);
                 return Ok(Applied::Resolved);
             }
-            if have("resolvconf") {
+            if have("resolvconf") && !resolvconf_is_shim() {
                 let record = record(iface);
                 let argv = resolvconf_apply_argv(&record);
                 let args: Vec<&str> = argv.iter().map(String::as_str).collect();
@@ -2056,6 +2082,15 @@ mod tests {
             assert_eq!(resolvconf_iface_prefix(None), "");
             assert_eq!(resolvconf_iface_prefix(Some("lo\neth0\n")), "");
             assert_eq!(resolvconf_record("tun.", "cvpn0"), "tun.cvpn0");
+        }
+
+        #[test]
+        fn systemds_resolvconf_shim_is_not_a_resolvconf() {
+            assert!(is_systemd_resolvconf_shim("resolvectl"));
+            assert!(is_systemd_resolvconf_shim("systemd-resolve"));
+            // Debian's resolvconf, openresolv
+            assert!(!is_systemd_resolvconf_shim("resolvconf"));
+            assert!(!is_systemd_resolvconf_shim("resolvconf.openresolv"));
         }
     }
 

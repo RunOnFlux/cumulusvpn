@@ -54,6 +54,148 @@ fn run_best_effort(program: &str, args: &[&str]) {
     let _ = Command::new(program).args(args).output();
 }
 
+/// The `rtm_protocol` tag on every route we install through the PHYSICAL path
+/// (the endpoint bypass and split-tunnel bypass routes). Those outlive our
+/// devices, so teardown and crash recovery must find exactly ours: untagged
+/// `ip route del <prefix>` also deletes a same-prefix route the system owns —
+/// a split rule equal to the user's LAN (or Docker's bridge) took the kernel's
+/// connected route with it, and the machine lost its LAN and usually its
+/// default gateway. Unassigned in iproute2's `rt_protos`. Routes on our own
+/// `cvpn*` devices need no tag: they vanish with the device.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+pub const ROUTE_PROTO: &str = "157";
+
+/// `ip` argv for the endpoint bypass host route. `replace`, not `add`: a route
+/// left by a SIGKILLed helper made every reconnect to the same gateway fail
+/// ("failed to add endpoint bypass route") — exactly the reconnect systemd's
+/// restart is meant to enable.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn linux_endpoint_bypass_argv(cidr: &str, gw: &str) -> Vec<String> {
+    ["route", "replace", cidr, "via", gw, "proto", ROUTE_PROTO]
+        .iter()
+        .map(|s| s.to_string())
+        .collect()
+}
+
+/// `ip` argv to delete one of OUR routes for `cidr` — and nothing else's.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn linux_del_ours_argv(cidr: &str, v6: bool) -> Vec<String> {
+    let mut a: Vec<String> = if v6 { vec!["-6".into()] } else { vec![] };
+    a.extend(
+        ["route", "del", cidr, "proto", ROUTE_PROTO]
+            .iter()
+            .map(|s| s.to_string()),
+    );
+    a
+}
+
+/// Whether some route for exactly `cidr` already exists (the kernel's connected
+/// route for the LAN, a Docker bridge, …). Such a prefix is already more
+/// specific than the tunnel's `0.0.0.0/1` + `128.0.0.0/1` and egresses on its
+/// own interface, so a bypass for it is already in effect.
+#[cfg(target_os = "linux")]
+fn route_exists(cidr: &str, v6: bool) -> bool {
+    let mut args = if v6 { vec!["-6"] } else { vec![] };
+    args.extend(["route", "show", "exact", cidr]);
+    Command::new("ip")
+        .args(&args)
+        .output()
+        .is_ok_and(|o| o.status.success() && !o.stdout.trim_ascii().is_empty())
+}
+
+/// Delete every route we tagged ([`ROUTE_PROTO`]), v4 and v6. Called on helper
+/// start / `--cleanup`, after a crash left them behind.
+pub fn flush_stale_routes() {
+    #[cfg(target_os = "linux")]
+    {
+        run_best_effort("ip", &["route", "flush", "proto", ROUTE_PROTO]);
+        run_best_effort("ip", &["-6", "route", "flush", "proto", ROUTE_PROTO]);
+    }
+}
+
+/// WireGuard's worst-case per-packet overhead: an IPv6 outer header (40) + UDP
+/// (8) + the WireGuard data header and tag (32). `wg-quick` subtracts the same.
+pub const WG_OVERHEAD: u32 = 80;
+
+/// The largest tunnel MTU the physical path to `endpoint_ip` can carry: the
+/// egress link's MTU (or a route's own `mtu` attribute) minus [`WG_OVERHEAD`],
+/// which is how `wg-quick` sizes its devices.
+///
+/// A fixed 1420 assumes a 1500-byte path. On anything smaller — PPPoE (1492),
+/// tethering, many cloud and nested-VPN links — full-size packets inside the
+/// tunnel are silently dropped: pings and tiny replies work, TLS handshakes and
+/// downloads stall. Must run **before** the tunnel's routes exist (both connect
+/// paths call it ahead of routing), and ignores a path that already resolves
+/// through one of our own devices, so a reconnect cannot ratchet the MTU down.
+/// `None` when the path cannot be determined; callers keep their default.
+#[cfg(target_os = "linux")]
+pub fn path_mtu_cap(endpoint_ip: &str) -> Option<u16> {
+    let out = Command::new("ip")
+        .args(["-o", "route", "get", endpoint_ip])
+        .output()
+        .ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let text = String::from_utf8_lossy(&out.stdout);
+    let dev = route_get_field(&text, "dev")?;
+    if dev.starts_with("cvpn") {
+        return None;
+    }
+    let link = match route_get_mtu(&text) {
+        Some(m) => m,
+        None => std::fs::read_to_string(format!("/sys/class/net/{dev}/mtu"))
+            .ok()?
+            .trim()
+            .parse()
+            .ok()?,
+    };
+    tunnel_mtu_for_link(link)
+}
+
+/// Not detected on macOS / Windows yet: they keep the configured MTU.
+#[cfg(not(target_os = "linux"))]
+pub fn path_mtu_cap(_endpoint_ip: &str) -> Option<u16> {
+    None
+}
+
+/// Tunnel MTU for a link MTU. Below IPv4's 576-byte minimum the measurement is
+/// not believable, so the caller keeps its default rather than cripple the link.
+pub fn tunnel_mtu_for_link(link: u32) -> Option<u16> {
+    let mtu = link.checked_sub(WG_OVERHEAD)?;
+    if mtu < 576 {
+        return None;
+    }
+    Some(mtu.min(u32::from(u16::MAX)) as u16)
+}
+
+/// The token after `key` in `ip -o route get` output (`dev eth0` → `eth0`).
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn route_get_field<'a>(text: &'a str, key: &str) -> Option<&'a str> {
+    let mut words = text.split_whitespace();
+    while let Some(w) = words.next() {
+        if w == key {
+            return words.next();
+        }
+    }
+    None
+}
+
+/// A route's explicit MTU (`mtu 1400`, `mtu lock 1400`, or a learned PMTU in
+/// the `cache` section), which overrides the link's.
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+fn route_get_mtu(text: &str) -> Option<u32> {
+    let mut words = text.split_whitespace();
+    while let Some(w) = words.next() {
+        if w == "mtu" {
+            let next = words.next()?;
+            let value = if next == "lock" { words.next()? } else { next };
+            return value.parse().ok();
+        }
+    }
+    None
+}
+
 /// Run a command, mapping a non-zero exit (or spawn failure) to `err`.
 /// `CREATE_NO_WINDOW`: see [`super::CREATE_NO_WINDOW`].
 #[cfg(windows)]
@@ -279,12 +421,9 @@ pub fn add_endpoint_bypass(endpoint_ip: &str) -> Result<(), TunnelError> {
         }
         #[cfg(target_os = "linux")]
         {
-            let cidr = format!("{endpoint_ip}/32");
-            run(
-                "ip",
-                &["route", "add", &cidr, "via", &gw],
-                "failed to add endpoint bypass route (needs root)",
-            )
+            let argv = linux_endpoint_bypass_argv(&format!("{endpoint_ip}/32"), &gw);
+            let args: Vec<&str> = argv.iter().map(String::as_str).collect();
+            run("ip", &args, "failed to add endpoint bypass route")
         }
     }
     #[cfg(windows)]
@@ -335,7 +474,11 @@ pub fn remove_endpoint_bypass(endpoint_ip: &str) {
     #[cfg(target_os = "macos")]
     run_best_effort("route", &["-n", "delete", "-host", endpoint_ip]);
     #[cfg(target_os = "linux")]
-    run_best_effort("ip", &["route", "del", &format!("{endpoint_ip}/32")]);
+    {
+        let argv = linux_del_ours_argv(&format!("{endpoint_ip}/32"), false);
+        let args: Vec<&str> = argv.iter().map(String::as_str).collect();
+        run_best_effort("ip", &args);
+    }
     #[cfg(windows)]
     {
         let native = endpoint_ip
@@ -669,10 +812,17 @@ pub fn add_bypass_routes(cidrs: &[String]) -> Result<(), TunnelError> {
                     };
                     args.extend(["via", gw]);
                 }
+                args.extend(["proto", ROUTE_PROTO]);
                 if v6 || link {
                     run_best_effort("ip", &args);
-                } else {
-                    run("ip", &args, "failed to add bypass route (needs root)")?;
+                } else if run("ip", &args, "failed to add bypass route").is_err() {
+                    // A route for this exact prefix already exists — the LAN's
+                    // own connected route, a Docker bridge. It already wins over
+                    // the tunnel's /1 routes, so the bypass holds; and since it
+                    // is not ours (untagged), teardown will leave it alone.
+                    if !route_exists(cidr, v6) {
+                        return Err(TunnelError::Sidecar("failed to add bypass route"));
+                    }
                 }
             }
         }
@@ -740,11 +890,11 @@ pub fn remove_bypass_routes(cidrs: &[String]) {
         }
         #[cfg(target_os = "linux")]
         {
-            if _v6 {
-                run_best_effort("ip", &["-6", "route", "del", cidr]);
-            } else {
-                run_best_effort("ip", &["route", "del", cidr]);
-            }
+            // Only OUR route for this prefix (tagged): an untagged delete also
+            // removed the kernel's connected route when a rule equalled the LAN.
+            let argv = linux_del_ours_argv(cidr, _v6);
+            let args: Vec<&str> = argv.iter().map(String::as_str).collect();
+            run_best_effort("ip", &args);
         }
         #[cfg(windows)]
         remove_route_best_effort(cidr);
@@ -844,4 +994,72 @@ pub fn clear_multihop_routes(exit_ip: &str) -> Result<(), TunnelError> {
     #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     let _ = exit_ip;
     Ok(())
+}
+
+#[cfg(test)]
+mod path_mtu_tests {
+    use super::*;
+
+    #[test]
+    fn the_overhead_is_subtracted_like_wg_quick() {
+        assert_eq!(tunnel_mtu_for_link(1500), Some(1420));
+        assert_eq!(tunnel_mtu_for_link(1492), Some(1412)); // PPPoE
+        assert_eq!(tunnel_mtu_for_link(1280), Some(1200)); // WSL, many tethers
+    }
+
+    #[test]
+    fn an_unbelievable_link_keeps_the_default() {
+        assert_eq!(tunnel_mtu_for_link(600), None);
+        assert_eq!(tunnel_mtu_for_link(40), None);
+    }
+
+    #[test]
+    fn a_loopback_sized_link_does_not_overflow() {
+        assert_eq!(tunnel_mtu_for_link(65536), Some(65456));
+        assert_eq!(tunnel_mtu_for_link(u32::MAX), Some(u16::MAX));
+    }
+
+    #[test]
+    fn physical_path_routes_are_tagged_and_deleted_only_when_ours() {
+        assert_eq!(
+            linux_endpoint_bypass_argv("88.99.210.138/32", "192.168.1.1"),
+            [
+                "route",
+                "replace",
+                "88.99.210.138/32",
+                "via",
+                "192.168.1.1",
+                "proto",
+                ROUTE_PROTO
+            ]
+        );
+        assert_eq!(
+            linux_del_ours_argv("192.168.1.0/24", false),
+            ["route", "del", "192.168.1.0/24", "proto", ROUTE_PROTO]
+        );
+        assert_eq!(
+            linux_del_ours_argv("fd00::/8", true),
+            ["-6", "route", "del", "fd00::/8", "proto", ROUTE_PROTO]
+        );
+        // Not a protocol iproute2 assigns (rt_protos): kernel 2, static 4, dhcp 16, …
+        for taken in [
+            "0", "1", "2", "3", "4", "8", "9", "11", "12", "16", "18", "42", "99", "186", "188",
+        ] {
+            assert_ne!(ROUTE_PROTO, taken);
+        }
+    }
+
+    #[test]
+    fn route_get_output_is_parsed() {
+        let plain = "1.1.1.1 via 172.29.160.1 dev eth0 src 172.29.164.22 uid 0 \\    cache ";
+        assert_eq!(route_get_field(plain, "dev"), Some("eth0"));
+        assert_eq!(route_get_mtu(plain), None);
+
+        let pmtu = "88.99.210.138 via 192.168.1.1 dev wlp2s0 src 192.168.1.20 uid 0 \\    cache expires 589sec mtu 1400 ";
+        assert_eq!(route_get_field(pmtu, "dev"), Some("wlp2s0"));
+        assert_eq!(route_get_mtu(pmtu), Some(1400));
+
+        let locked = "10.0.0.1 dev ppp0 src 10.0.0.2 uid 0 \\    cache mtu lock 1492 ";
+        assert_eq!(route_get_mtu(locked), Some(1492));
+    }
 }
