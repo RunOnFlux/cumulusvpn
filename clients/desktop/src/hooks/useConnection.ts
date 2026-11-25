@@ -164,6 +164,30 @@ export function isBlocked(phase: Phase, tunnel: TunnelStatus, killSwitch: boolea
 }
 
 /**
+ * The tunnel status to show after a connect attempt failed: what the native
+ * side REALLY has in place, not an assumed error state. A failure before the
+ * tunnel was ever requested — enrollment refused, node at capacity, gateway
+ * unreachable — engages no kill switch. Synthesising `state: 'error'` there
+ * made `isBlocked` claim "the kill switch is blocking all traffic so nothing
+ * leaks" while traffic flowed unprotected, and hid the real error. Only a
+ * native `error` (the helper keeps the switch engaged) counts as blocked.
+ */
+export async function tunnelAfterFailedConnect(
+  message: string,
+  readNative: () => Promise<TunnelStatus> = nativeStatus,
+): Promise<TunnelStatus> {
+  try {
+    const native = await readNative();
+    if (native.state === 'error') {
+      return { ...native, error: native.error ?? message };
+    }
+  } catch {
+    // No answer from the native side: nothing of ours can be holding traffic.
+  }
+  return { ...DOWN, error: message };
+}
+
+/**
  * A macOS helper left over from desktop 1.4.3 or earlier keeps running after
  * the app is updated (launchd doesn't restart it), and fails every connect
  * with this. Helpers from 1.4.5 on restart themselves after an update; for the
@@ -644,8 +668,12 @@ export function useConnection(): ConnectionModel {
         if (sweep.signal.aborted) {
           return;
         }
-        setError(messageOf(err));
-        setTunnel({ ...DOWN, state: 'error', error: messageOf(err) });
+        const message = messageOf(err);
+        setError(message);
+        setTunnel(await tunnelAfterFailedConnect(message));
+        if (sweep.signal.aborted) {
+          return;
+        }
         setPhase('error');
       }
     })();
