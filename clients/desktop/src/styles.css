@@ -965,8 +965,14 @@ button {
 .sheet {
   position: fixed;
   inset: 0;
-  background: color-mix(in srgb, var(--bg) 82%, transparent);
-  backdrop-filter: blur(6px);
+  /* Opaque on purpose. A translucent sheet relied on backdrop-filter to hide
+     the screen behind it, and WebKitGTK only renders that with GPU
+     compositing, which many Linux setups lack (VMs, software rendering, the
+     common WEBKIT_DISABLE_COMPOSITING_MODE workaround). At 82% the main
+     screen showed straight through every sheet — its header collided with the
+     sheet title, stats and buttons read between Settings rows — and even 97%
+     left the header legible behind "Settings". */
+  background: var(--bg);
   display: flex;
   flex-direction: column;
   align-items: center;
