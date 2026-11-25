@@ -11,6 +11,11 @@ Documentation=https://cumulusvpn.com
 # (nft table, resolvconf record, sidecars) survives a reboot on Linux, and
 # ordering it before network-pre.target would hold networkd back until
 # basic.target. multi-user.target brings it up before anyone logs in.
+# No start rate limit: with the default (5 starts / 10 s) a few package
+# upgrades in a row (each restarts the unit, and an older .rpm's %postun
+# restarted it a second time) left the helper `failed` with start-limit-hit,
+# and Restart=always never retries that. RestartSec=1 already paces a crash loop.
+StartLimitIntervalSec=0
 
 [Service]
 Type=simple

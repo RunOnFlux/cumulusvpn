@@ -148,6 +148,9 @@ mod packaging_tests {
         // kills its sidecars.
         assert!(unit.contains("\nKillMode=mixed\n"), "{unit}");
         assert!(unit.contains("\nRestart=always\n"), "{unit}");
+        // Restart=always never retries a unit that hit its start limit, and a
+        // few upgrades in a row used to get there: the helper stayed dead.
+        assert!(unit.contains("\nStartLimitIntervalSec=0\n"), "{unit}");
         assert!(unit.contains("\nWantedBy=multi-user.target\n"), "{unit}");
     }
 

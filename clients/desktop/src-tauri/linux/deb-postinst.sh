@@ -46,6 +46,8 @@ fi
 if [ -d /run/systemd/system ]; then
   systemctl daemon-reload >/dev/null 2>&1 || true
   systemctl enable "$UNIT" >/dev/null 2>&1 || true
+  # Revive a helper an earlier release left `failed` (start-limit-hit).
+  systemctl reset-failed "$UNIT" >/dev/null 2>&1 || true
   systemctl restart "$UNIT" || echo "CumulusVPN: could not start $UNIT (see: journalctl -u $UNIT)"
 fi
 
