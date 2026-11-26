@@ -24,7 +24,7 @@
     "@runonflux/utxo-lib": "1.0.5",
     "@scure/base": "2.4.0",
     "better-sqlite3": "13.0.3",
-    "fastify": "5.12.5",
+    "fastify": "5.12.6",
     "google-auth-library": "11.2.0",
     "googleapis": "185.0.0",
     "stripe": "23.0.0"
