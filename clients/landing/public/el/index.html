@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -586,7 +584,7 @@
     <div class="sec-head">
       <span class="eyebrow">Απόκτησε την εφαρμογή</span>
       <h2>Ένα κουμπί σύνδεσης, σε κάθε οθόνη που έχεις.</h2>
-      <p>Ο ίδιος όμορφος client σε web, κινητό, Mac και Windows, με το Linux να έρχεται σύντομα — μία γλώσσα σχεδίασης σε
+      <p>Ο ίδιος όμορφος client σε web, κινητό, Mac, Windows και Linux — μία γλώσσα σχεδίασης σε
         κάθε οθόνη. Πλήρωσε στο web με τον κωδικό συσκευής του κινητού σου και αυτό ξεκλειδώνει αυτόματα μέσω του chain μέσα σε ένα λεπτό.</p>
     </div>
     <div class="apps">
@@ -603,13 +601,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Μια ήσυχη εφαρμογή στη γραμμή μενού του Mac ή στην περιοχή ειδοποιήσεων των Windows. Kill switch, αυτόματη επανασύνδεση και εναλλαγή πύλης λειτουργούν αθόρυβα στο παρασκήνιο, και η εφαρμογή ενημερώνεται μόνη της. Υπογεγραμμένη και στις δύο πλατφόρμες, επικυρωμένη (notarized) από την Apple, περίπου 6&nbsp;MB.</p>
+        <p>Μια ήσυχη εφαρμογή στη γραμμή μενού ή στην περιοχή ειδοποιήσεων, σε Mac, Windows και Linux. Kill switch, αυτόματη επανασύνδεση και εναλλαγή πύλης λειτουργούν αθόρυβα στο παρασκήνιο, και η εφαρμογή ενημερώνεται μόνη της. Υπογεγραμμένη σε κάθε πλατφόρμα και επικυρωμένη (notarized) από την Apple.</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Λήψη για Mac</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Λήψη για Windows</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Σύντομα</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Λήψη για Mac</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Λήψη για Windows</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Λήψη για Linux</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 ή νεότερο) · macOS 13+<br>Windows 10 ή 11 · x64</p>
       </div>
 
       <div class="appcard">

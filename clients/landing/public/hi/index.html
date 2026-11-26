@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -581,7 +579,7 @@
     <div class="sec-head">
       <span class="eyebrow">ऐप पाएँ</span>
       <h2>एक कनेक्ट बटन, आपकी हर स्क्रीन पर।</h2>
-      <p>वेब, मोबाइल, Mac और Windows पर वही खूबसूरत क्लाइंट, और Linux जल्द आ रहा है — हर स्क्रीन पर एक ही डिज़ाइन भाषा। अपने फ़ोन के डिवाइस कोड के साथ वेब पर भुगतान करें, और वह एक मिनट के भीतर चेन के ज़रिए अपने आप अनलॉक हो जाता है।</p>
+      <p>वेब, मोबाइल, Mac, Windows और Linux पर वही खूबसूरत क्लाइंट — हर स्क्रीन पर एक ही डिज़ाइन भाषा। अपने फ़ोन के डिवाइस कोड के साथ वेब पर भुगतान करें, और वह एक मिनट के भीतर चेन के ज़रिए अपने आप अनलॉक हो जाता है।</p>
     </div>
     <div class="apps">
 
@@ -597,13 +595,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>डेस्कटॉप</h3>
-        <p>Mac के मेन्यू बार या Windows के सिस्टम ट्रे में रहने वाला एक शांत ऐप। किल स्विच, ऑटो-रीकनेक्ट और गेटवे फ़ेलओवर बैकग्राउंड में चुपचाप चलते हैं, और ऐप खुद को अपडेट रखता है। दोनों प्लेटफ़ॉर्म पर साइन किया गया, Apple द्वारा नोटराइज़ किया गया, लगभग 6&nbsp;MB।</p>
+        <p>मेन्यू बार या सिस्टम ट्रे में रहने वाला एक शांत ऐप — Mac, Windows और Linux पर। किल स्विच, ऑटो-रीकनेक्ट और गेटवे फ़ेलओवर बैकग्राउंड में चुपचाप चलते हैं, और ऐप खुद को अपडेट रखता है। हर प्लेटफ़ॉर्म पर साइन किया गया और Apple द्वारा नोटराइज़ किया गया।</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Mac के लिए डाउनलोड करें</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Windows के लिए डाउनलोड करें</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">जल्द आ रहा है</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Mac के लिए डाउनलोड करें</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Windows के लिए डाउनलोड करें</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Linux के लिए डाउनलोड करें</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 या नया) · macOS 13+<br>Windows 10 या 11 · x64</p>
       </div>
 
       <div class="appcard">

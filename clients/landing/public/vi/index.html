@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -586,7 +584,7 @@
     <div class="sec-head">
       <span class="eyebrow">Tải ứng dụng</span>
       <h2>Một nút kết nối, trên mọi màn hình bạn sở hữu.</h2>
-      <p>Cùng một ứng dụng khách đẹp mắt trên web, di động, Mac và Windows, bản Linux sắp ra mắt — chung một ngôn ngữ thiết kế trên
+      <p>Cùng một ứng dụng khách đẹp mắt trên web, di động, Mac, Windows và Linux — chung một ngôn ngữ thiết kế trên
         mọi màn hình. Thanh toán trên web bằng mã thiết bị của điện thoại, và điện thoại của bạn sẽ tự động mở khóa qua chain trong vòng một phút.</p>
     </div>
     <div class="apps">
@@ -603,13 +601,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Một ứng dụng điềm tĩnh trên thanh menu của Mac hoặc khay hệ thống của Windows. Kill switch, tự động kết nối lại và chuyển đổi gateway hoạt động lặng lẽ trong nền, và ứng dụng tự cập nhật. Được ký trên cả hai nền tảng và được Apple công chứng (notarize), khoảng 6&nbsp;MB.</p>
+        <p>Một ứng dụng điềm tĩnh trên thanh menu hoặc khay hệ thống, trên Mac, Windows và Linux. Kill switch, tự động kết nối lại và chuyển đổi gateway hoạt động lặng lẽ trong nền, và ứng dụng tự cập nhật. Được ký trên mọi nền tảng và được Apple công chứng (notarize).</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Tải về cho Mac</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Tải về cho Windows</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Sắp ra mắt</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Tải về cho Mac</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Tải về cho Windows</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Tải về cho Linux</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 trở lên) · macOS 13+<br>Windows 10 hoặc 11 · x64</p>
       </div>
 
       <div class="appcard">

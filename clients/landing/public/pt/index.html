@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -586,7 +584,7 @@
     <div class="sec-head">
       <span class="eyebrow">Baixe o app</span>
       <h2>Um botão de conectar, em cada tela que você usa.</h2>
-      <p>O mesmo cliente cuidadoso na web, no mobile, no Mac e no Windows, com Linux em breve — uma só linguagem de design em
+      <p>O mesmo cliente cuidadoso na web, no mobile, no Mac, no Windows e no Linux — uma só linguagem de design em
         todas as telas. Pague na web com o código do dispositivo do seu celular e ele desbloqueia sozinho pela chain em menos de um minuto.</p>
     </div>
     <div class="apps">
@@ -603,13 +601,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Um app discreto na barra de menu do Mac ou na bandeja do sistema do Windows. Kill switch, reconexão automática e troca de gateway rodam silenciosamente em segundo plano, e o app se atualiza sozinho. Assinado nas duas plataformas e notarizado pela Apple, cerca de 6&nbsp;MB.</p>
+        <p>Um app discreto na barra de menu ou na bandeja do sistema, no Mac, no Windows e no Linux. Kill switch, reconexão automática e troca de gateway rodam silenciosamente em segundo plano, e o app se atualiza sozinho. Assinado em todas as plataformas e notarizado pela Apple.</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Baixar para Mac</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Baixar para Windows</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Em breve</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Baixar para Mac</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Baixar para Windows</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Baixar para Linux</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 ou mais recente) · macOS 13+<br>Windows 10 ou 11 · x64</p>
       </div>
 
       <div class="appcard">

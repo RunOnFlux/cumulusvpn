@@ -238,12 +238,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -573,11 +571,10 @@
         <h3>{{index.app_desktop_h}}</h3>
         <p>{{index.app_desktop_p}}</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>{{index.app_desktop_mac}}</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>{{index.app_desktop_win}}</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">{{index.tag_soon}}</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>{{index.app_desktop_mac}}</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>{{index.app_desktop_win}}</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>{{index.app_desktop_linux}}</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">{{index.app_desktop_req}}<br>{{index.app_desktop_req_win}}</p>
       </div>
 
       <div class="appcard">

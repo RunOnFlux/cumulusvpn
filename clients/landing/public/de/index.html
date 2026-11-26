@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -584,7 +582,7 @@
     <div class="sec-head">
       <span class="eyebrow">App holen</span>
       <h2>Ein Verbinden-Button, auf jedem Bildschirm, den du besitzt.</h2>
-      <p>Derselbe durchdachte Client im Web, auf dem Handy, auf dem Mac und unter Windows, Linux folgt in Kürze — mit einer gemeinsamen Designsprache auf
+      <p>Derselbe durchdachte Client im Web, auf dem Handy, auf dem Mac, unter Windows und Linux — mit einer gemeinsamen Designsprache auf
         jedem Bildschirm. Bezahle im Web mit dem Gerätecode deines Handys, und es schaltet sich automatisch über die Chain frei, innerhalb einer Minute.</p>
     </div>
     <div class="apps">
@@ -601,13 +599,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>Eine ruhige App in der Mac-Menüleiste oder im Windows-Infobereich. Kill Switch, automatisches Neuverbinden und Gateway-Failover laufen leise im Hintergrund, und die App hält sich selbst aktuell. Auf beiden Systemen signiert, von Apple notarisiert, rund 6&nbsp;MB.</p>
+        <p>Eine ruhige App in Menüleiste oder Infobereich, auf Mac, Windows und Linux. Kill Switch, automatisches Neuverbinden und Gateway-Failover laufen leise im Hintergrund, und die App hält sich selbst aktuell. Auf allen Systemen signiert und von Apple notarisiert.</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Für Mac laden</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Für Windows laden</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Bald</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Für Mac laden</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Für Windows laden</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Für Linux laden</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple Silicon (M1 oder neuer) · macOS 13+<br>Windows 10 oder 11 · x64</p>
       </div>
 
       <div class="appcard">

@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -581,7 +579,7 @@
     <div class="sec-head">
       <span class="eyebrow">Скачать приложение</span>
       <h2>Одна кнопка подключения на каждом твоём экране.</h2>
-      <p>Один и тот же красивый клиент в вебе, на мобильном, на Mac и на Windows, а скоро и на Linux — единый язык дизайна на каждом экране. Плати через веб с кодом устройства своего телефона — и он разблокируется автоматически через chain в течение минуты.</p>
+      <p>Один и тот же красивый клиент в вебе, на мобильном, на Mac, на Windows и на Linux — единый язык дизайна на каждом экране. Плати через веб с кодом устройства своего телефона — и он разблокируется автоматически через chain в течение минуты.</p>
     </div>
     <div class="apps">
 
@@ -597,13 +595,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Десктоп</h3>
-        <p>Спокойное приложение в строке меню Mac или в системном трее Windows. Kill switch, автопереподключение и переключение шлюзов при сбое тихо работают в фоне, а приложение само обновляется. Подписано на обеих платформах и нотаризовано Apple, около 6&nbsp;МБ.</p>
+        <p>Спокойное приложение в строке меню или системном трее — на Mac, Windows и Linux. Kill switch, автопереподключение и переключение шлюзов при сбое тихо работают в фоне, а приложение само обновляется. Подписано на всех платформах и нотаризовано Apple.</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Скачать для Mac</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Скачать для Windows</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Скоро</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Скачать для Mac</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Скачать для Windows</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Скачать для Linux</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 или новее) · macOS 13+<br>Windows 10 или 11 · x64</p>
       </div>
 
       <div class="appcard">

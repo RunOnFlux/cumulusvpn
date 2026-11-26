@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -582,7 +580,7 @@
     <div class="sec-head">
       <span class="eyebrow">รับแอป</span>
       <h2>ปุ่มเชื่อมต่อเดียว บนทุกหน้าจอที่คุณมี</h2>
-      <p>ไคลเอนต์ที่สวยงามตัวเดียวกันบนเว็บ มือถือ Mac และ Windows ส่วน Linux กำลังจะมาเร็ว ๆ นี้ — ใช้ภาษาการออกแบบเดียวกันบนทุกหน้าจอ
+      <p>ไคลเอนต์ที่สวยงามตัวเดียวกันบนเว็บ มือถือ Mac, Windows และ Linux — ใช้ภาษาการออกแบบเดียวกันบนทุกหน้าจอ
         จ่ายเงินบนเว็บด้วยรหัสอุปกรณ์ของโทรศัพท์คุณ แล้วโทรศัพท์จะปลดล็อกให้อัตโนมัติผ่าน chain ภายในหนึ่งนาที</p>
     </div>
     <div class="apps">
@@ -599,13 +597,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>เดสก์ท็อป</h3>
-        <p>แอปที่เรียบง่ายบนแถบเมนูของ Mac หรือถาดระบบของ Windows Kill switch, การเชื่อมต่อใหม่อัตโนมัติ และการสลับเกตเวย์ทำงานอย่างเงียบ ๆ เบื้องหลัง และแอปอัปเดตตัวเองโดยอัตโนมัติ เซ็นรับรองทั้งสองแพลตฟอร์มและผ่านการรับรอง (notarize) จาก Apple ขนาดประมาณ 6&nbsp;MB</p>
+        <p>แอปที่เรียบง่ายบนแถบเมนูหรือถาดระบบ ทั้งบน Mac, Windows และ Linux Kill switch, การเชื่อมต่อใหม่อัตโนมัติ และการสลับเกตเวย์ทำงานอย่างเงียบ ๆ เบื้องหลัง และแอปอัปเดตตัวเองโดยอัตโนมัติ เซ็นรับรองทุกแพลตฟอร์มและผ่านการรับรอง (notarize) จาก Apple</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>ดาวน์โหลดสำหรับ Mac</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>ดาวน์โหลดสำหรับ Windows</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">เร็ว ๆ นี้</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>ดาวน์โหลดสำหรับ Mac</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>ดาวน์โหลดสำหรับ Windows</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>ดาวน์โหลดสำหรับ Linux</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 ขึ้นไป) · macOS 13 ขึ้นไป<br>Windows 10 หรือ 11 · x64</p>
       </div>
 
       <div class="appcard">

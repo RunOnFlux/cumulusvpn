@@ -450,6 +450,10 @@
       .store:hover {
         border-color: var(--ink-3);
       }
+      /* An odd one out (Linux, fifth) takes the whole last row. */
+      .store:last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+      }
       .store .tag {
         font-family: var(--mono);
         font-size: 10px;
@@ -692,6 +696,9 @@
                   <a class="store" href="/download/windows"
                     ><span>Download for Windows</span><span class="tag">Windows</span></a
                   >
+                  <a class="store" href="/linux"
+                    ><span>Download for Linux</span><span class="tag">Linux</span></a
+                  >
                 </div>
               </div>
             </li>
@@ -705,7 +712,7 @@
                   <span class="ui">Redeem a code</span>.
                 </p>
                 <p>
-                  <b>Mac or Windows:</b> in the main window, click
+                  <b>Mac, Windows or Linux:</b> in the main window, click
                   <span class="ui">Upgrade — card or FLUX</span>, then scroll down to
                   <span class="ui">Redeem a code</span>.
                 </p>
@@ -730,7 +737,7 @@
               the free plan (100&nbsp;KB/s) unless you choose to upgrade.
             </li>
             <li>
-              On a router or Linux? Set it up in your browser and redeem the code there:
+              On a router? Set it up in your browser and redeem the code there:
               <a href="https://vpn.cumulusvpn.com/#/upgrade?voucher=SWEEPVPN">vpn.cumulusvpn.com</a
               >.
             </li>

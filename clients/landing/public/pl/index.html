@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -581,7 +579,7 @@
     <div class="sec-head">
       <span class="eyebrow">Pobierz aplikację</span>
       <h2>Jeden przycisk połączenia na każdym twoim ekranie.</h2>
-      <p>Ten sam dopracowany klient w przeglądarce, na telefonie, na Macu i na Windows, a wkrótce także na Linuksie — wspólny język projektowy na każdym ekranie. Zapłać w przeglądarce, podając kod urządzenia swojego telefonu, a telefon odblokuje się automatycznie poprzez chain w ciągu minuty.</p>
+      <p>Ten sam dopracowany klient w przeglądarce, na telefonie, na Macu, na Windows i na Linuksie — wspólny język projektowy na każdym ekranie. Zapłać w przeglądarce, podając kod urządzenia swojego telefonu, a telefon odblokuje się automatycznie poprzez chain w ciągu minuty.</p>
     </div>
     <div class="apps">
 
@@ -597,13 +595,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Komputer</h3>
-        <p>Spokojna aplikacja w pasku menu Maca lub w zasobniku systemowym Windows. Kill switch, automatyczne ponowne łączenie i przełączanie bramek działają cicho w tle, a aplikacja sama się aktualizuje. Podpisana na obu systemach i notaryzowana przez Apple, ok. 6&nbsp;MB.</p>
+        <p>Spokojna aplikacja w pasku menu lub zasobniku systemowym – na Macu, Windows i Linuksie. Kill switch, automatyczne ponowne łączenie i przełączanie bramek działają cicho w tle, a aplikacja sama się aktualizuje. Podpisana na każdym systemie i notaryzowana przez Apple.</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Pobierz na Maca</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Pobierz na Windows</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Wkrótce</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Pobierz na Maca</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Pobierz na Windows</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Pobierz na Linuksa</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 lub nowszy) · macOS 13+<br>Windows 10 lub 11 · x64</p>
       </div>
 
       <div class="appcard">

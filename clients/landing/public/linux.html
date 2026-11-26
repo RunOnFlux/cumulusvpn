@@ -1,0 +1,880 @@
+<!doctype html>
+<html lang="en" data-theme="">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CumulusVPN for Linux — install on Ubuntu, Debian and Fedora</title>
+    <meta
+      name="description"
+      content="Install CumulusVPN on Linux: signed packages for Ubuntu, Debian, Linux Mint and Fedora, updated through apt and dnf. One Connect button, a kill switch and auto-reconnect, in your system tray."
+    />
+    <meta name="theme-color" content="#070B11" />
+    <meta
+      property="og:title"
+      content="CumulusVPN for Linux — install on Ubuntu, Debian and Fedora"
+    />
+    <meta
+      property="og:description"
+      content="Install CumulusVPN on Linux: signed packages for Ubuntu, Debian, Linux Mint and Fedora, updated through apt and dnf. One Connect button, a kill switch and auto-reconnect, in your system tray."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cumulusvpn.com/linux" />
+    <meta property="og:site_name" content="CumulusVPN" />
+    <meta property="og:image" content="https://cumulusvpn.com/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://cumulusvpn.com/linux" />
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <style>
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 400;
+        font-display: swap;
+        src: url('/fonts/inter-400.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 500;
+        font-display: swap;
+        src: url('/fonts/inter-500.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 600;
+        font-display: swap;
+        src: url('/fonts/inter-600.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Inter';
+        font-style: normal;
+        font-weight: 700;
+        font-display: swap;
+        src: url('/fonts/inter-700.woff2') format('woff2');
+      }
+      :root {
+        --bg: #f5f8fb;
+        --bg-2: #eaf0f6;
+        --surface: #ffffff;
+        --surface-2: #f0f4f8;
+        --ink: #0c1420;
+        --ink-2: #46586b;
+        --ink-3: #7b8d9e;
+        --line: #dce5ee;
+        --cyan: #0fb9ae;
+        --cyan-glow: #34e4da;
+        --amber: #c77f17;
+        --amber-2: #f5b23d;
+        --green: #1f9d6b;
+        --slate: #8496a8;
+        --radius: 18px;
+        --maxw: 1160px;
+        --mono: ui-monospace, 'SF Mono', 'JetBrains Mono', 'Cascadia Code', Menlo, monospace;
+        --sans:
+          'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
+          sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #070b11;
+          --bg-2: #0c121b;
+          --surface: #10171f;
+          --surface-2: #161f2a;
+          --ink: #eaf1f8;
+          --ink-2: #a6b6c6;
+          --ink-3: #6c7e90;
+          --line: #1e2a37;
+          --cyan: #34e4da;
+          --cyan-glow: #34e4da;
+          --amber: #f5b23d;
+          --amber-2: #f5b23d;
+          --green: #34d399;
+          --slate: #64748b;
+        }
+      }
+      :root[data-theme='light'] {
+        --bg: #f5f8fb;
+        --bg-2: #eaf0f6;
+        --surface: #ffffff;
+        --surface-2: #f0f4f8;
+        --ink: #0c1420;
+        --ink-2: #46586b;
+        --ink-3: #7b8d9e;
+        --line: #dce5ee;
+        --cyan: #0fb9ae;
+        --cyan-glow: #34e4da;
+        --amber: #c77f17;
+        --amber-2: #f5b23d;
+        --green: #1f9d6b;
+      }
+      :root[data-theme='dark'] {
+        --bg: #070b11;
+        --bg-2: #0c121b;
+        --surface: #10171f;
+        --surface-2: #161f2a;
+        --ink: #eaf1f8;
+        --ink-2: #a6b6c6;
+        --ink-3: #6c7e90;
+        --line: #1e2a37;
+        --cyan: #34e4da;
+        --cyan-glow: #34e4da;
+        --amber: #f5b23d;
+        --amber-2: #f5b23d;
+        --green: #34d399;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: var(--sans);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        font-synthesis: none;
+        line-height: 1.5;
+        overflow-x: hidden;
+      }
+      .wrap {
+        max-width: var(--maxw);
+        margin: 0 auto;
+        padding: 0 24px;
+      }
+      h1,
+      h2,
+      h3 {
+        text-wrap: balance;
+        margin: 0;
+      }
+      .mono {
+        font-family: var(--mono);
+      }
+      .eyebrow {
+        font-family: var(--mono);
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--cyan);
+        font-weight: 600;
+      }
+      a {
+        color: inherit;
+      }
+
+      header.top {
+        border-bottom: 1px solid var(--line);
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
+        backdrop-filter: blur(10px);
+      }
+      .top .wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 62px;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 11px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+        font-size: 18px;
+        text-decoration: none;
+      }
+      .mark {
+        width: 26px;
+        height: 26px;
+      }
+      .top nav {
+        display: flex;
+        gap: 22px;
+        font-size: 14px;
+        color: var(--ink-2);
+        align-items: center;
+      }
+      .top nav a {
+        text-decoration: none;
+      }
+      .top nav a:hover {
+        color: var(--ink);
+      }
+      .gh {
+        display: inline-flex;
+        color: var(--ink-2);
+        line-height: 0;
+      }
+      .gh:hover {
+        color: var(--ink);
+      }
+      .gh svg {
+        width: 20px;
+        height: 20px;
+      }
+      .top .right {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+      }
+      .pbf {
+        display: inline-flex;
+        align-items: center;
+        line-height: 0;
+        opacity: 0.92;
+      }
+      .pbf:hover {
+        opacity: 1;
+      }
+      .pbf img {
+        width: auto;
+        display: none;
+      }
+      .pbf .pbf-on-light {
+        display: inline;
+      }
+      @media (prefers-color-scheme: dark) {
+        .pbf .pbf-on-light {
+          display: none;
+        }
+        .pbf .pbf-on-dark {
+          display: inline;
+        }
+      }
+      :root[data-theme='light'] .pbf .pbf-on-light {
+        display: inline;
+      }
+      :root[data-theme='light'] .pbf .pbf-on-dark {
+        display: none;
+      }
+      :root[data-theme='dark'] .pbf .pbf-on-light {
+        display: none;
+      }
+      :root[data-theme='dark'] .pbf .pbf-on-dark {
+        display: inline;
+      }
+      /* Same control style as the web app header (34x30, 9px radius, surface). */
+      .theme-btn {
+        background: var(--surface);
+        border: 1px solid var(--line);
+        color: var(--ink-2);
+        border-radius: 9px;
+        width: 34px;
+        height: 30px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font: inherit;
+        font-size: 15px;
+        line-height: 1;
+      }
+      .theme-btn:hover {
+        color: var(--ink);
+        border-color: var(--cyan);
+      }
+
+      /* ---- YourSweep partner page ---- */
+      .lx-hero {
+        position: relative;
+        padding: 72px 0 8px;
+        overflow: hidden;
+      }
+      .lx-hero::before {
+        content: '';
+        position: absolute;
+        inset: -40% -10% auto;
+        height: 520px;
+        background: radial-gradient(
+          ellipse at 30% 40%,
+          color-mix(in srgb, var(--cyan) 16%, transparent),
+          transparent 62%
+        );
+        pointer-events: none;
+      }
+      .narrow {
+        position: relative;
+        max-width: 780px;
+      }
+      .lx-hero h1 {
+        font-size: clamp(32px, 5.4vw, 52px);
+        letter-spacing: -0.035em;
+        line-height: 1.06;
+        margin: 14px 0 16px;
+      }
+      .lx-hero h1 .glow {
+        color: var(--cyan);
+      }
+      .lx-hero .lede {
+        color: var(--ink-2);
+        font-size: 18px;
+        max-width: 640px;
+        margin: 0;
+      }
+      .reqs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 24px 0 0;
+        padding: 0;
+        list-style: none;
+      }
+      .reqs li {
+        font-family: var(--mono);
+        font-size: 12px;
+        color: var(--ink-2);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 5px 11px;
+        background: var(--surface);
+      }
+      section.steps-sec {
+        padding: 34px 0 64px;
+      }
+      ol.steps {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        gap: 14px;
+      }
+      .step {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr);
+        gap: 16px;
+        padding: 22px 24px;
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: var(--radius);
+      }
+      .step .n {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: 1px solid var(--line);
+        display: grid;
+        place-items: center;
+        font-family: var(--mono);
+        font-weight: 700;
+        color: var(--cyan);
+      }
+      .step h2 {
+        font-size: 19px;
+        letter-spacing: -0.01em;
+        margin: 8px 0 6px;
+      }
+      .step p {
+        color: var(--ink-2);
+        margin: 0;
+        font-size: 15px;
+      }
+      .step p + p,
+      .step .cmd + p {
+        margin-top: 10px;
+      }
+      .step b {
+        color: var(--ink);
+        font-weight: 600;
+      }
+      .ui {
+        font-weight: 600;
+        color: var(--ink);
+        white-space: nowrap;
+      }
+      code.inl {
+        font-family: var(--mono);
+        font-size: 0.86em;
+        color: var(--ink);
+        background: var(--surface-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 1px 6px;
+        overflow-wrap: anywhere;
+      }
+      .cmd {
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--surface-2);
+        overflow: hidden;
+      }
+      .cmd-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 8px 8px 8px 14px;
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--ink);
+      }
+      .copy {
+        font: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 0 12px;
+        min-height: 32px;
+        background: var(--surface);
+        color: var(--ink);
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+      .copy:hover {
+        border-color: var(--ink-3);
+      }
+      .copy:focus-visible {
+        outline: 2px solid var(--cyan);
+        outline-offset: 2px;
+      }
+      .cmd pre {
+        margin: 0;
+        padding: 12px 14px;
+        font-family: var(--mono);
+        font-size: 12.5px;
+        line-height: 1.65;
+        color: var(--ink);
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+      }
+      /* One line per command: a "$" prompt (CSS only, never copied) and a hanging
+         indent, so a long command that wraps can't be mistaken for two. */
+      .cmd pre .ln {
+        display: block;
+        padding-left: 2ch;
+        text-indent: -2ch;
+      }
+      .cmd pre .ln::before {
+        content: '$ ';
+        color: var(--ink-3);
+        user-select: none;
+      }
+      .cmd pre .ln + .ln {
+        margin-top: 6px;
+      }
+      .fine {
+        margin: 22px 0 0;
+        padding: 0 0 0 18px;
+        color: var(--ink-3);
+        font-size: 13.5px;
+        display: grid;
+        gap: 8px;
+      }
+      .fine b {
+        color: var(--ink-2);
+        font-weight: 600;
+      }
+      .fine a {
+        color: var(--ink-2);
+      }
+      .fp {
+        font-family: var(--mono);
+        font-size: 12px;
+        white-space: nowrap;
+      }
+      @media (max-width: 560px) {
+        .lx-hero {
+          padding-top: 44px;
+        }
+        .lx-hero .lede {
+          font-size: 16.5px;
+        }
+        .step {
+          padding: 18px;
+          grid-template-columns: minmax(0, 1fr);
+          gap: 10px;
+        }
+        .step h2 {
+          margin-top: 0;
+        }
+        .fp {
+          white-space: normal;
+        }
+      }
+      /* This page had no mobile rule for the top bar at all, so brand + nav +
+         the Flux lockup summed to ~570px and pushed the whole document into
+         horizontal scroll on a phone. Same treatment as the other pages. */
+      @media (max-width: 900px) {
+        .top .wrap {
+          flex-wrap: wrap;
+          height: auto;
+          padding-top: 9px;
+          padding-bottom: 9px;
+        }
+        .top nav {
+          order: 3;
+          width: 100%;
+          gap: 18px;
+          overflow-x: auto;
+          scrollbar-width: none;
+        }
+        .top nav::-webkit-scrollbar {
+          display: none;
+        }
+        .top nav a {
+          white-space: nowrap;
+          padding: 9px 0;
+        }
+        .brand {
+          min-height: 44px;
+        }
+        .theme-btn {
+          height: 36px;
+        }
+        .top .pbf {
+          display: none;
+        }
+      }
+
+      footer {
+        padding: 34px 0 52px;
+        color: var(--ink-3);
+        font-size: 13px;
+        border-top: 1px solid var(--line);
+      }
+      footer .foot-bottom {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+    </style>
+    <script
+      defer
+      src="https://static.cloudflareinsights.com/beacon.min.js"
+      data-cf-beacon='{"token": "9e07c1b233a24fbda101b18947f1b1b3"}'
+    ></script>
+  </head>
+  <body>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href="/">
+          <svg class="mark" viewBox="259 240 560 560" aria-hidden="true">
+            <defs>
+              <linearGradient
+                id="cvpn-cloud-1"
+                x1="300"
+                y1="360"
+                x2="620"
+                y2="700"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0" stop-color="#7DF3EB" />
+                <stop offset=".5" stop-color="#34E4DA" />
+                <stop offset="1" stop-color="#0FB9AE" />
+              </linearGradient>
+              <linearGradient
+                id="cvpn-bolt-1"
+                x1="470"
+                y1="380"
+                x2="560"
+                y2="660"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop offset="0" stop-color="#FFFFFF" />
+                <stop offset="1" stop-color="#E8FFFC" />
+              </linearGradient>
+            </defs>
+            <g fill="url(#cvpn-cloud-1)">
+              <circle cx="392" cy="556" r="104" />
+              <circle cx="512" cy="486" r="146" />
+              <circle cx="642" cy="532" r="118" />
+              <circle cx="712" cy="588" r="78" />
+              <rect x="326" y="556" width="452" height="132" rx="66" />
+            </g>
+            <path
+              d="M566 372 L430 566 L512 566 L470 700 L620 512 L534 512 Z"
+              fill="url(#cvpn-bolt-1)"
+            />
+          </svg>
+          CumulusVPN
+        </a>
+        <nav>
+          <a href="/#how">How it works</a><a href="/#pricing">Pricing</a>
+          <a href="/#apps">Get the app</a><a href="/network">Network</a>
+        </nav>
+        <div class="right">
+          <a
+            class="gh"
+            href="https://github.com/RunOnFlux/cumulusvpn"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="GitHub"
+            title="GitHub"
+            ><svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path
+                d="M9 18c-4 1-4-2-6-2.5M15 21v-3.2c0-.9-.3-1.5-.7-1.9 2.6-.3 5.3-1.3 5.3-5.8a4.5 4.5 0 0 0-1.2-3.1 4.2 4.2 0 0 0-.1-3.1s-1-.3-3.3 1.2a11 11 0 0 0-6 0C6.7 3.6 5.7 3.9 5.7 3.9a4.2 4.2 0 0 0-.1 3.1A4.5 4.5 0 0 0 4.4 10c0 4.5 2.7 5.5 5.3 5.8-.3.3-.6.8-.7 1.6"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              /></svg
+          ></a>
+          <a
+            class="pbf"
+            href="https://runonflux.com"
+            target="_blank"
+            rel="noreferrer"
+            aria-label="Powered by Flux — opens runonflux.com"
+          >
+            <img
+              class="pbf-on-light"
+              src="/powered_by_dark.svg"
+              alt="Powered by Flux"
+              height="16"
+            />
+            <img
+              class="pbf-on-dark"
+              src="/powered_by_light.svg"
+              alt=""
+              height="16"
+              aria-hidden="true"
+            />
+          </a>
+          <button
+            class="theme-btn"
+            id="themeToggle"
+            type="button"
+            aria-label="Toggle light / dark theme"
+            title="Toggle theme"
+          >
+            ◐
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="lx-hero">
+        <div class="wrap narrow">
+          <span class="eyebrow">Desktop · Linux</span>
+          <h1>CumulusVPN for <span class="glow">Linux</span></h1>
+          <p class="lede">
+            The same calm app as on Mac and Windows: one Connect button, a kill switch,
+            auto-reconnect and gateway failover, running quietly in your system tray. Free to use,
+            no account, and it updates along with the rest of your system.
+          </p>
+          <ul class="reqs" aria-label="Requirements">
+            <li>Ubuntu 24.04+</li>
+            <li>Debian 13+</li>
+            <li>Linux Mint 22+</li>
+            <li>Fedora 40+</li>
+            <li>64-bit x86</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="steps-sec">
+        <div class="wrap narrow">
+          <ol class="steps">
+            <li class="step">
+              <span class="n" aria-hidden="true">1</span>
+              <div>
+                <h2>Install from our repository</h2>
+                <p>
+                  Open a terminal, paste the lines for your system and press Enter. This adds our
+                  signed repository, so updates arrive with your normal system updates.
+                </p>
+                <div class="cmd">
+                  <div class="cmd-head">
+                    <span>Ubuntu, Debian, Linux Mint</span>
+                    <button class="copy" type="button" data-copy="cmd-apt">Copy</button>
+                  </div>
+                  <pre
+                    id="cmd-apt"
+                  ><span class="ln">sudo wget -qO /etc/apt/keyrings/cumulusvpn.asc https://pkg.cumulusvpn.com/cumulusvpn.asc</span><span class="ln">echo "deb [arch=amd64 signed-by=/etc/apt/keyrings/cumulusvpn.asc] https://pkg.cumulusvpn.com/deb stable main" | sudo tee /etc/apt/sources.list.d/cumulusvpn.list &gt;/dev/null</span><span class="ln">sudo apt update &amp;&amp; sudo apt install cumulus-vpn</span></pre>
+                </div>
+                <div class="cmd">
+                  <div class="cmd-head">
+                    <span>Fedora</span>
+                    <button class="copy" type="button" data-copy="cmd-dnf">Copy</button>
+                  </div>
+                  <pre
+                    id="cmd-dnf"
+                  ><span class="ln">sudo curl -fsSL -o /etc/yum.repos.d/cumulusvpn.repo https://pkg.cumulusvpn.com/rpm/cumulusvpn.repo</span><span class="ln">sudo dnf install cumulus-vpn</span></pre>
+                </div>
+                <p>
+                  On Fedora, <span class="ui">dnf</span> asks once whether to import the CumulusVPN
+                  key: check that it ends in <span class="fp">D926 CF3B</span> and answer <b>y</b>.
+                </p>
+              </div>
+            </li>
+            <li class="step">
+              <span class="n" aria-hidden="true">2</span>
+              <div>
+                <h2>Log out and back in</h2>
+                <p>
+                  The install adds you to the <span class="ui">cumulusvpn</span> group, which lets
+                  the app run the VPN without asking for your password. Your desktop picks that up
+                  at the next login, so log out and back in once (or restart).
+                </p>
+                <p>
+                  Installed it from App Center or GNOME Software instead? Add yourself with
+                  <code class="inl">sudo usermod -aG cumulusvpn $USER</code>, then log out and back
+                  in.
+                </p>
+              </div>
+            </li>
+            <li class="step">
+              <span class="n" aria-hidden="true">3</span>
+              <div>
+                <h2>Open CumulusVPN and connect</h2>
+                <p>
+                  Find <b>CumulusVPN</b> in your app menu and click the power button. Closing the
+                  window keeps you connected; on Ubuntu the app stays in the top bar.
+                </p>
+                <p>
+                  Fedora's desktop hides tray icons unless you add the
+                  <span class="ui">AppIndicator</span> extension. Without it, open CumulusVPN from
+                  the app menu again to bring the window back, and quit from
+                  <span class="ui">Settings</span>.
+                </p>
+              </div>
+            </li>
+          </ol>
+
+          <ul class="fine">
+            <li>
+              <b>Updates</b> come with your system updates (Software Updater, GNOME Software), or
+              run <code class="inl">sudo apt update &amp;&amp; sudo apt upgrade</code> /
+              <code class="inl">sudo dnf upgrade --refresh</code>.
+            </li>
+            <li>
+              <b>Requirements:</b> a 64-bit x86 (x86-64) computer with systemd, running Ubuntu
+              24.04, Debian 13, Linux Mint 22, Fedora 40 or newer, or a distribution based on them.
+              ARM isn't supported yet.
+            </li>
+            <li>
+              <b>Prefer a package file?</b> Every
+              <a href="https://github.com/RunOnFlux/cumulusvpn/releases/latest"
+                >release on GitHub</a
+              >
+              has the <span class="ui">.deb</span> and <span class="ui">.rpm</span>. Install it from
+              a terminal (<code class="inl">sudo apt install ./CumulusVPN_*_amd64.deb</code> or
+              <code class="inl">sudo dnf install ./CumulusVPN-*.x86_64.rpm</code>); it adds the same
+              repository, so it keeps updating.
+            </li>
+            <li>
+              <b>Signed:</b> packages and repository are signed with our key
+              <span class="fp">707A 0C78 FE68 0285 3F89 60A7 7DCB A649 D926 CF3B</span>, and every
+              release has signed checksums.
+            </li>
+            <li>
+              <b>Uninstall:</b> <code class="inl">sudo apt remove cumulus-vpn</code> or
+              <code class="inl">sudo dnf remove cumulus-vpn</code>. The VPN disconnects and your
+              network goes back to normal.
+            </li>
+            <li>
+              On a router, a server or a device without a desktop? Use the
+              <a href="https://vpn.cumulusvpn.com">web setup</a> with the official WireGuard tools.
+            </li>
+            <li>
+              CumulusVPN is
+              <a href="https://github.com/RunOnFlux/cumulusvpn">open source (MIT)</a>. Questions?
+              <a href="/support">We're here to help</a>.
+            </li>
+          </ul>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="wrap">
+        <div class="foot-bottom">
+          <div>
+            © 2026 CumulusVPN · <a href="/">cumulusvpn.com</a> ·
+            <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a> ·
+            <a href="/support">Support</a>
+          </div>
+          <div class="mono">Powered by Flux</div>
+        </div>
+      </div>
+    </footer>
+
+    <script>
+            (function () {
+              var buttons = document.querySelectorAll('button[data-copy]');
+              Array.prototype.forEach.call(buttons, function (btn) {
+                btn.addEventListener('click', function () {
+                  var el = document.getElementById(btn.getAttribute('data-copy'));
+                  if (!el) return;
+                  var text = Array.prototype.map
+                    .call(el.querySelectorAll('.ln'), function (ln) {
+                      return ln.textContent;
+                    })
+                    .join('
+      ');
+                  function done(ok) {
+                    btn.textContent = ok ? 'Copied' : 'Select and copy';
+                    setTimeout(function () {
+                      btn.textContent = 'Copy';
+                    }, 2200);
+                  }
+                  try {
+                    navigator.clipboard.writeText(text + '
+      ').then(
+                      function () {
+                        done(true);
+                      },
+                      function () {
+                        done(false);
+                      },
+                    );
+                  } catch (e) {
+                    done(false);
+                  }
+                });
+              });
+            })();
+    </script>
+
+    <script>
+      (function () {
+        var root = document.documentElement;
+        var KEY = 'cumulusvpn-theme';
+        try {
+          var saved = localStorage.getItem(KEY);
+          if (saved === 'light' || saved === 'dark') root.setAttribute('data-theme', saved);
+        } catch (e) {}
+        /* Same cycle + icons as the web app: system (◐) → dark (☾) → light (☀). */
+        var ICON = { system: '◐', dark: '☾', light: '☀' };
+        function mode() {
+          var attr = root.getAttribute('data-theme');
+          return attr === 'light' || attr === 'dark' ? attr : 'system';
+        }
+        var btn = document.getElementById('themeToggle');
+        function paint() {
+          if (btn) btn.textContent = ICON[mode()];
+        }
+        paint();
+        if (btn) {
+          btn.addEventListener('click', function () {
+            var m = mode();
+            var next = m === 'system' ? 'dark' : m === 'dark' ? 'light' : 'system';
+            if (next === 'system') root.removeAttribute('data-theme');
+            else root.setAttribute('data-theme', next);
+            try {
+              if (next === 'system') localStorage.removeItem(KEY);
+              else localStorage.setItem(KEY, next);
+            } catch (e) {}
+            paint();
+          });
+        }
+      })();
+    </script>
+  </body>
+</html>

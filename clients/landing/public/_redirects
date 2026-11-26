@@ -1,4 +1,5 @@
-# Stable download links (Workers static assets). The DMG and installer names
+# Stable download links (Workers static assets). Linux has an install page
+# (/linux: apt / dnf repository) rather than one file. The DMG and installer names
 # carry no version, so "latest" always serves the newest published desktop
 # release (desktop-release.yml uploads both under these names).
 # Only desktop releases may be marked "latest" (android-release.yml sets
@@ -6,3 +7,4 @@
 # desktop app's update feed.
 /download/mac  https://github.com/RunOnFlux/cumulusvpn/releases/latest/download/CumulusVPN_macOS.dmg  302
 /download/windows  https://github.com/RunOnFlux/cumulusvpn/releases/latest/download/CumulusVPN_Windows_x64-setup.exe  302
+/download/linux  /linux  302
