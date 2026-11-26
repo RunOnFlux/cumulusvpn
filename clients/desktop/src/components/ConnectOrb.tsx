@@ -1,5 +1,6 @@
-import type { JSX } from 'react';
+import type { JSX, ReactNode } from 'react';
 import type { Phase } from '../hooks/useConnection.js';
+import { DotsIcon, PowerIcon } from './Icons.js';
 
 interface Props {
   readonly phase: Phase;
@@ -34,15 +35,17 @@ export function ConnectOrb({
         : phase === 'connecting'
           ? 'connecting'
           : 'off';
-  const glyph = disconnecting
-    ? '⋯'
-    : blocked
-      ? '⛔'
-      : phase === 'connected'
-        ? '🛡️'
-        : phase === 'connecting'
-          ? '⋯'
-          : '⏻';
+  const glyph: ReactNode = disconnecting ? (
+    <DotsIcon />
+  ) : blocked ? (
+    '⛔'
+  ) : phase === 'connected' ? (
+    '🛡️'
+  ) : phase === 'connecting' ? (
+    <DotsIcon />
+  ) : (
+    <PowerIcon />
+  );
   const label = disconnecting ? 'Disconnecting' : blocked ? 'Blocked' : LABEL[phase];
   return (
     <div className="orb-wrap">

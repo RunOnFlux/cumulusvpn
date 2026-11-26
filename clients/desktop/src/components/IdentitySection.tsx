@@ -12,6 +12,7 @@ import {
 } from '../lib/identity.js';
 import { backupStatus, replaceBackupWithThisDevice, storeName } from '../lib/identityBackup.js';
 import { loadOrCreateKeypair } from '../lib/storage.js';
+import { CheckIcon } from './Icons.js';
 
 interface Props {
   /** Open with the recovery key already showing (the "save your key" nudge). */
@@ -103,9 +104,10 @@ export function IdentitySection({
 
       {(backup.state === 'saved' || backup.state === 'restored') && (
         <div className="st-note id-backup">
+          <CheckIcon />{' '}
           {backup.state === 'restored'
-            ? `✓ Restored from ${store} — your identity survived the reinstall.`
-            : `✓ Also backed up in ${store}, so a reinstall keeps it.`}
+            ? `Restored from ${store} — your identity survived the reinstall.`
+            : `Also backed up in ${store}, so a reinstall keeps it.`}
         </div>
       )}
       {backup.state === 'other' && backup.other && step.kind === 'idle' && (

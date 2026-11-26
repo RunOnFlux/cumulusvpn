@@ -27,6 +27,7 @@ import { openExternal } from '../lib/opener.js';
 import { useDesktopFlags } from '../lib/flags.js';
 import { formatExpiry, voucherErrorText } from '../lib/payment.js';
 import type { PaymentIdentity } from '../lib/payment.js';
+import { CheckIcon } from './Icons.js';
 
 const TERMS_URL = 'https://cumulusvpn.com/terms';
 const PRIVACY_URL = 'https://cumulusvpn.com/privacy';
@@ -80,7 +81,9 @@ export function Upgrade({ entitlement, payment, refreshTier, onClose }: Props): 
                 </div>
                 <ul className="perks">
                   {PERKS.map((p) => (
-                    <li key={p}>✓ {p}</li>
+                    <li key={p}>
+                      <CheckIcon /> {p}
+                    </li>
                   ))}
                 </ul>
                 <div className="plan-sub">
