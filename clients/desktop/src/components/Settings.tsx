@@ -17,6 +17,7 @@ import pbfOnDark from '../assets/powered_by_flux_on_dark.svg';
 import pbfOnLight from '../assets/powered_by_flux_on_light.svg';
 import { DnsSection } from './DnsSection.js';
 import { IdentitySection } from './IdentitySection.js';
+import { QuitRow } from './QuitRow.js';
 
 /**
  * The installed app's version, read from the bundle itself (tauri.conf.json's
@@ -189,6 +190,8 @@ export function Settings({
           <LinkRow label="Privacy Policy" url={PRIVACY_URL} />
           <LinkRow label="Terms of Service" url={TERMS_URL} />
           <LinkRow label="Support" url={SUPPORT_URL} />
+
+          <QuitRow connected={sessionActive} />
 
           <p className="setfoot">
             Decentralized WireGuard VPN on Flux Cloud. No logs; your key stays on this device and in

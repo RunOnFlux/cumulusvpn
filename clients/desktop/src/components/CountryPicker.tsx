@@ -5,6 +5,7 @@ import type { QualityTone } from '@cumulusvpn/core';
 import type { CountryOption } from '../lib/session.js';
 import { bestLocation, citiesOf, countryOfId, optionId } from '../lib/locations.js';
 import { useEscape } from '../hooks/useEscape.js';
+import { RetryIcon, StarIcon } from './Icons.js';
 
 interface Props {
   /** Country rows (level 1). */
@@ -217,7 +218,13 @@ export function CountryPicker({
         <div className="sheethead">
           <h2>Choose location</h2>
           <button className="retest" disabled={refreshing} onClick={() => void doRefresh()}>
-            {refreshing ? 'Testing…' : '↻ Re-test'}
+            {refreshing ? (
+              'Testing…'
+            ) : (
+              <>
+                <RetryIcon /> Re-test
+              </>
+            )}
           </button>
         </div>
         <input
@@ -266,7 +273,7 @@ export function CountryPicker({
                     onToggleFavorite(c.code);
                   }}
                 >
-                  {fav ? '★' : '☆'}
+                  <StarIcon filled={fav} />
                 </span>
                 <span className="flag">{c.flag}</span>
                 <span className="cn">

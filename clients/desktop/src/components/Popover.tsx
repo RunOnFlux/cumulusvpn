@@ -12,6 +12,7 @@ import { emit, listen } from '@tauri-apps/api/event';
 import { useEffect, useState } from 'react';
 import type { JSX } from 'react';
 import type { TrayAction, TrayCountry, TrayMeters, TrayState } from '../lib/tray.js';
+import { CheckIcon } from './Icons.js';
 
 function send(action: TrayAction): void {
   void emit('tray-action', action);
@@ -65,7 +66,11 @@ function Places({
       onClick={() => onPick(c.code)}
     >
       <span>{c.label}</span>
-      {c.code === selected && <span className="pop-check">✓</span>}
+      {c.code === selected && (
+        <span className="pop-check">
+          <CheckIcon />
+        </span>
+      )}
     </button>
   );
   return (
