@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -586,7 +584,7 @@
     <div class="sec-head">
       <span class="eyebrow">Få appen</span>
       <h2>Én koble til-knapp, på hver skjerm du eier.</h2>
-      <p>Den samme gjennomførte klienten på web, mobil, Mac og Windows, med Linux på vei — ett felles designspråk på
+      <p>Den samme gjennomførte klienten på web, mobil, Mac, Windows og Linux — ett felles designspråk på
         hver skjerm. Betal på nettet med telefonens enhetskode, så låses den automatisk opp over kjeden i løpet av et minutt.</p>
     </div>
     <div class="apps">
@@ -603,13 +601,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Desktop</h3>
-        <p>En rolig app i menylinjen på Mac eller i systemstatusfeltet på Windows. Kill switch, automatisk gjenoppkobling og gateway-failover kjører stille i bakgrunnen, og appen oppdaterer seg selv. Signert på begge plattformer og notarisert av Apple, ca. 6&nbsp;MB.</p>
+        <p>En rolig app i menylinjen eller systemstatusfeltet på Mac, Windows og Linux. Kill switch, automatisk gjenoppkobling og gateway-failover kjører stille i bakgrunnen, og appen oppdaterer seg selv. Signert på alle plattformer og notarisert av Apple.</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Last ned for Mac</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Last ned for Windows</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Snart</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Last ned for Mac</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Last ned for Windows</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Last ned for Linux</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 eller nyere) · macOS 13+<br>Windows 10 eller 11 · x64</p>
       </div>
 
       <div class="appcard">

@@ -264,12 +264,10 @@
     border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; font-size: 14px; font-weight: 600;
     background: var(--surface-2); }
   .applink:hover { border-color: var(--ink-3); }
-  .applink.soon { color: var(--ink-3); font-weight: 500; cursor: default; }
   .applink .tag { font-family: var(--mono); font-size: 10px; color: var(--ink-3); text-transform: uppercase;
-    letter-spacing: .06em; }
+    letter-spacing: .06em; white-space: nowrap; flex-shrink: 0; }
   /* Platform names are trademarks with fixed casing — "IOS" is not Apple's. */
   .applink .tag.os { text-transform: none; }
-  .appnote { margin: 8px 2px 0; font-size: 12px; color: var(--ink-3); }
 
   /* trust */
   .trust-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
@@ -581,7 +579,7 @@
     <div class="sec-head">
       <span class="eyebrow">Hanki sovellus</span>
       <h2>Yksi Yhdistä-painike jokaisella omistamallasi näytöllä.</h2>
-      <p>Sama kaunis asiakassovellus verkossa, mobiilissa, Macilla ja Windowsilla, Linux-versio tulossa pian — yksi muotoilukieli joka näytöllä. Maksa verkossa puhelimesi laitekoodilla, niin puhelin avautuu automaattisesti ketjun kautta minuutin sisällä.</p>
+      <p>Sama kaunis asiakassovellus verkossa, mobiilissa, Macilla, Windowsilla ja Linuxilla — yksi muotoilukieli joka näytöllä. Maksa verkossa puhelimesi laitekoodilla, niin puhelin avautuu automaattisesti ketjun kautta minuutin sisällä.</p>
     </div>
     <div class="apps">
 
@@ -597,13 +595,12 @@
       <div class="appcard">
         <svg class="ico" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="2.5" y="5" width="19" height="12" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M2 20h20" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
         <h3>Työpöytä</h3>
-        <p>Rauhallinen sovellus Macin valikkorivillä tai Windowsin ilmaisinalueella. Kill switch, automaattinen uudelleenyhdistäminen ja yhdyskäytävän failover toimivat hiljaa taustalla, ja sovellus päivittää itsensä. Allekirjoitettu molemmilla alustoilla, Applen notarisoima, noin 6&nbsp;MB.</p>
+        <p>Rauhallinen sovellus valikkorivillä tai ilmaisinalueella – Macilla, Windowsilla ja Linuxilla. Kill switch, automaattinen uudelleenyhdistäminen ja yhdyskäytävän failover toimivat hiljaa taustalla, ja sovellus päivittää itsensä. Allekirjoitettu kaikilla alustoilla ja Applen notarisoima.</p>
         <div class="actions">
-          <a class="applink" href="/download/mac"><span>Lataa Macille</span><span class="tag os">macOS</span></a>
-          <a class="applink" href="/download/windows"><span>Lataa Windowsille</span><span class="tag os">Windows</span></a>
-          <span class="applink soon"><span>Linux</span><span class="tag">Pian</span></span>
+          <a class="applink" href="/download/mac" title="Apple silicon (M1 or later) · macOS 13 or later"><span>Lataa Macille</span><span class="tag os">Apple silicon</span></a>
+          <a class="applink" href="/download/windows" title="Windows 10 or 11 · x64"><span>Lataa Windowsille</span><span class="tag os">x64</span></a>
+          <a class="applink" href="/linux" title="Ubuntu 24.04+, Debian 13+, Fedora 40+ · x86-64"><span>Lataa Linuxille</span><span class="tag os">deb · rpm</span></a>
         </div>
-        <p class="appnote">Apple silicon (M1 tai uudempi) · macOS 13+<br>Windows 10 tai 11 · x64</p>
       </div>
 
       <div class="appcard">
