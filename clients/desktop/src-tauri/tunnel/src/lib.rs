@@ -110,6 +110,20 @@ const IFACE_ENTRY: &str = "cvpn-entry";
 /// Inner (to EXIT) interface name for multi-hop; carries the default route.
 const IFACE_EXIT: &str = "cvpn-exit";
 
+/// Single-hop (and multi-hop outer) MTU when nothing smaller is required: a
+/// 1500-byte path minus [`routing::WG_OVERHEAD`].
+const DEFAULT_MTU: u16 = 1420;
+/// Multi-hop inner (exit) MTU on a 1500-byte path: the outer minus overhead.
+const DEFAULT_INNER_MTU: u16 = 1340;
+
+/// A device's MTU: what its `.conf` asks for (or `default`), lowered to what
+/// the path underneath can carry. Never raised — a `.conf` that asks for less
+/// keeps it.
+fn effective_mtu(configured: Option<u16>, default: u16, cap: Option<u16>) -> u16 {
+    let want = configured.unwrap_or(default);
+    cap.map_or(want, |c| want.min(c))
+}
+
 /// Strip a trailing `:port` from an endpoint, leaving IPv6 forms untouched —
 /// mirrors the core-ts `stripEndpointPort`. `"1.2.3.4:51820"` → `"1.2.3.4"`.
 fn strip_endpoint_port(endpoint: &str) -> &str {
@@ -785,6 +799,13 @@ impl TunnelManager {
             }
         }
 
+        // Fit the device to the physical path before any tunnel route exists
+        // (the gateway's address, not the wg-tls bridge's local one).
+        config.mtu = Some(effective_mtu(
+            config.mtu,
+            DEFAULT_MTU,
+            routing::path_mtu_cap(strip_endpoint_port(endpoint)),
+        ));
         if let Err(e) = sidecar.configure(&config) {
             let _ = sidecar.kill();
             inner.lift_kill_switch();
@@ -877,8 +898,21 @@ impl TunnelManager {
         ensure_elevated()?;
         // Parse both nested configs before touching any state. The outer config
         // legitimately carries no DNS; the inner sets the exit's DNS + 1340 MTU.
-        let outer_cfg = WgConfig::parse(params.outer)?;
-        let inner_cfg = WgConfig::parse(params.inner)?;
+        let mut outer_cfg = WgConfig::parse(params.outer)?;
+        let mut inner_cfg = WgConfig::parse(params.inner)?;
+        // Size both stacked devices to the physical path (see `effective_mtu`):
+        // the outer fits the link, the inner fits inside the outer.
+        let outer_mtu = effective_mtu(
+            outer_cfg.mtu,
+            DEFAULT_MTU,
+            routing::path_mtu_cap(strip_endpoint_port(params.entry_endpoint)),
+        );
+        outer_cfg.mtu = Some(outer_mtu);
+        inner_cfg.mtu = Some(effective_mtu(
+            inner_cfg.mtu,
+            DEFAULT_INNER_MTU,
+            routing::tunnel_mtu_for_link(u32::from(outer_mtu)),
+        ));
         // DNS belongs to the inner (exit) device: that is where the default
         // route, and so the resolver's traffic, goes.
         let (dns_servers, tunnel_address) = dns_facts(&inner_cfg);
@@ -1207,6 +1241,10 @@ impl TunnelManager {
         }
         dns::recover_stale(&[IFACE, IFACE_EXIT]);
         wggo::reap_orphans(&[IFACE, IFACE_ENTRY, IFACE_EXIT]);
+        // Physical-path routes (endpoint + split bypass) outlive the devices;
+        // a crashed session's would make the next connect to the same gateway
+        // fail. Ours are tagged, so nothing of the system's is touched.
+        routing::flush_stale_routes();
         killswitch::recover_stale(inner.backend);
     }
 
@@ -1467,6 +1505,31 @@ mod roam_tests {
 #[cfg(test)]
 mod dns_facts_tests {
     use super::*;
+
+    #[test]
+    fn mtu_fits_the_path_and_multihop_nests() {
+        // 1500-byte path: today's values.
+        let outer = effective_mtu(None, DEFAULT_MTU, routing::tunnel_mtu_for_link(1500));
+        assert_eq!(outer, 1420);
+        let inner = effective_mtu(
+            Some(1340),
+            DEFAULT_INNER_MTU,
+            routing::tunnel_mtu_for_link(u32::from(outer)),
+        );
+        assert_eq!(inner, 1340);
+        // 1280-byte path (WSL, tethering): both shrink, still 80 apart.
+        let outer = effective_mtu(Some(1420), DEFAULT_MTU, routing::tunnel_mtu_for_link(1280));
+        assert_eq!(outer, 1200);
+        let inner = effective_mtu(
+            Some(1340),
+            DEFAULT_INNER_MTU,
+            routing::tunnel_mtu_for_link(u32::from(outer)),
+        );
+        assert_eq!(inner, 1120);
+        // Unknown path keeps the default; a smaller .conf value is never raised.
+        assert_eq!(effective_mtu(None, DEFAULT_MTU, None), 1420);
+        assert_eq!(effective_mtu(Some(1280), DEFAULT_MTU, Some(1420)), 1280);
+    }
 
     const KEY: &str = "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=";
 

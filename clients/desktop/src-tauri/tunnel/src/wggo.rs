@@ -556,6 +556,12 @@ impl Sidecar {
         let requested = requested_name(logical);
         let name_file = std::env::temp_dir().join(format!("cvpn-{logical}.name"));
         let _ = fs::remove_file(&name_file);
+        // A socket left by a SIGKILLed predecessor would satisfy the readiness
+        // checks below before the new process has bound its own (every
+        // disconnect used to leave one, and the next connect failed with
+        // "cannot connect to wireguard-go UAPI socket"). Drop it — but only if
+        // nothing answers on it, so a live device is never orphaned.
+        remove_stale_uapi_socket(&uapi_socket_path(&requested));
 
         let mut child = Command::new(&bin)
             .arg("-f") // foreground: we own the process lifetime
@@ -587,7 +593,7 @@ impl Sidecar {
             // Linux may not write the name-file; fall back to the requested name
             // once its socket shows up.
             #[cfg(not(target_os = "macos"))]
-            if uapi_socket_path(&requested).exists() {
+            if uapi_socket_ready(&uapi_socket_path(&requested)) {
                 break requested.clone();
             }
             if Instant::now() > deadline {
@@ -601,8 +607,10 @@ impl Sidecar {
         };
 
         // Phase 2: wait for the UAPI control socket.
+        // Ready means a connect succeeds, not that the file exists: the socket
+        // is created by bind() a moment before listen().
         let uapi_path = uapi_socket_path(&real);
-        while !uapi_path.exists() {
+        while !uapi_socket_ready(&uapi_path) {
             if let Ok(Some(_status)) = child.try_wait() {
                 return Err(TunnelError::Sidecar(
                     "wireguard-go exited before its UAPI socket appeared",
@@ -818,20 +826,82 @@ impl Sidecar {
     /// Kill the sidecar and remove its interface. wireguard-go tears the TUN
     /// device down on exit; the routes it required are cleaned by the caller.
     pub fn kill(mut self) -> Result<(), TunnelError> {
+        self.reap();
+        Ok(())
+    }
+
+    /// SIGKILL the child and remove the UAPI socket it can no longer remove
+    /// itself, so the next spawn starts from a clean slate.
+    fn reap(&mut self) {
         if let Some(mut child) = self.child.take() {
             let _ = child.kill();
             let _ = child.wait();
+            #[cfg(unix)]
+            let _ = fs::remove_file(&self.uapi_path);
         }
-        Ok(())
     }
 }
 
 impl Drop for Sidecar {
     fn drop(&mut self) {
-        if let Some(mut child) = self.child.take() {
-            let _ = child.kill();
-            let _ = child.wait();
-        }
+        self.reap();
+    }
+}
+
+/// True once something accepts connections on the UAPI socket.
+#[cfg(unix)]
+fn uapi_socket_ready(path: &std::path::Path) -> bool {
+    std::os::unix::net::UnixStream::connect(path).is_ok()
+}
+
+/// Remove `path` if it is a socket nobody is listening on.
+#[cfg(unix)]
+fn remove_stale_uapi_socket(path: &std::path::Path) {
+    if path.exists() && !uapi_socket_ready(path) {
+        let _ = fs::remove_file(path);
+    }
+}
+
+#[cfg(all(test, unix))]
+mod stale_socket_tests {
+    use super::*;
+    use std::os::unix::net::{UnixListener, UnixStream};
+
+    fn tmp(name: &str) -> PathBuf {
+        let p = std::env::temp_dir().join(format!("cvpn-test-{}-{name}.sock", std::process::id()));
+        let _ = fs::remove_file(&p);
+        p
+    }
+
+    #[test]
+    fn a_stale_socket_is_not_ready_and_is_removed() {
+        let p = tmp("stale");
+        drop(UnixListener::bind(&p).expect("bind")); // what a SIGKILLed wg-go leaves
+        assert!(p.exists());
+        assert!(
+            !uapi_socket_ready(&p),
+            "a file alone must not count as ready"
+        );
+        remove_stale_uapi_socket(&p);
+        assert!(!p.exists());
+    }
+
+    #[test]
+    fn a_live_socket_is_ready_and_kept() {
+        let p = tmp("live");
+        let _l = UnixListener::bind(&p).expect("bind");
+        assert!(uapi_socket_ready(&p));
+        remove_stale_uapi_socket(&p);
+        assert!(p.exists(), "a listening device must never be orphaned");
+        let _ = UnixStream::connect(&p);
+        let _ = fs::remove_file(&p);
+    }
+
+    #[test]
+    fn a_missing_socket_is_not_ready() {
+        let p = tmp("missing");
+        assert!(!uapi_socket_ready(&p));
+        remove_stale_uapi_socket(&p); // no-op, no panic
     }
 }
 
