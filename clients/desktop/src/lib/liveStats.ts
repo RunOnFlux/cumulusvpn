@@ -70,3 +70,35 @@ export async function probeLatency(): Promise<number | null> {
     return null;
   }
 }
+
+/**
+ * Round trip to each gateway in ms, measured natively the same way as
+ * {@link probeLatency} (see `probe_gateways` in src-tauri/src/latency.rs), so
+ * the location card and the live ping agree. `null` outside Tauri or if the
+ * command is unavailable — the caller then falls back to timing `/v1/info`.
+ */
+export async function probeGateways(
+  ips: readonly string[],
+): Promise<Record<string, number> | null> {
+  if (!isTauri()) {
+    return null;
+  }
+  try {
+    return await invoke<Record<string, number>>('probe_gateways', { ips });
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The latency on the location card: the live ping through the tunnel while
+ * connected (what the ping tile shows too), otherwise the discovery probe.
+ */
+export function cardLatency(
+  connected: boolean,
+  pingMs: number | null,
+  probedMs: number | null | undefined,
+): string | null {
+  const ms = connected && pingMs !== null ? pingMs : probedMs;
+  return ms != null ? `${ms} ms` : null;
+}

@@ -178,3 +178,63 @@ export function saveFleetCache(
   const blob: FleetCache = { gateways, latencyByIp, savedAt };
   safeSet(FLEET_KEY, JSON.stringify(blob));
 }
+
+const TRANSPORT_PREF_KEY = 'cvpn.transportPref.v1';
+
+/**
+ * How long a remembered transport stays first in line. After that the normal
+ * order is tried again, so a block that has since been lifted (or a network
+ * the user has left) stops costing obfuscation overhead.
+ */
+export const TRANSPORT_PREF_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const TRANSPORT_PREF_MAX_ENTRIES = 200;
+
+interface TransportPref {
+  readonly type: string;
+  readonly at: number;
+}
+
+function loadTransportPrefs(): Record<string, TransportPref> {
+  try {
+    const parsed = JSON.parse(safeGet(TRANSPORT_PREF_KEY) ?? '{}') as unknown;
+    return parsed && typeof parsed === 'object' ? (parsed as Record<string, TransportPref>) : {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * The transport that last got through to `gatewayIp` after the usual first
+ * choice did not (e.g. `awg` where plain WireGuard's UDP port is blocked), or
+ * null when there is none, it expired, or it is corrupt.
+ */
+export function loadTransportPref(gatewayIp: string, now: number = Date.now()): string | null {
+  const pref = loadTransportPrefs()[gatewayIp];
+  if (!pref || typeof pref.type !== 'string' || typeof pref.at !== 'number') {
+    return null;
+  }
+  return now - pref.at > TRANSPORT_PREF_MAX_AGE_MS ? null : pref.type;
+}
+
+/** Remember (or with `null`, forget) the transport that works for `gatewayIp`. */
+export function saveTransportPref(
+  gatewayIp: string,
+  type: string | null,
+  now: number = Date.now(),
+): void {
+  const prefs = loadTransportPrefs();
+  if (type === null) {
+    if (!(gatewayIp in prefs)) {
+      return;
+    }
+    delete prefs[gatewayIp];
+  } else {
+    prefs[gatewayIp] = { type, at: now };
+  }
+  // Drop expired entries, and keep the newest few hundred: the fleet churns.
+  const kept = Object.entries(prefs)
+    .filter(([, p]) => now - p.at <= TRANSPORT_PREF_MAX_AGE_MS)
+    .sort(([, a], [, b]) => b.at - a.at)
+    .slice(0, TRANSPORT_PREF_MAX_ENTRIES);
+  safeSet(TRANSPORT_PREF_KEY, JSON.stringify(Object.fromEntries(kept)));
+}

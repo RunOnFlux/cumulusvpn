@@ -13,6 +13,12 @@ interface Props {
   readonly onRouteStyle: (style: MultihopStyle) => void;
   /** The chosen EXIT hop (entry is the main location button in `App`). */
   readonly exit: CountryOption | null;
+  /**
+   * The exit gateway the live session actually uses, or null when there is no
+   * multi-hop session. Shown instead of `exit` while connected — on Balanced
+   * it is the only way to see where traffic leaves.
+   */
+  readonly sessionExit?: CountryOption | null;
   /** Open the country picker for the EXIT hop. */
   readonly onOpenExit: () => void;
   /** Locked while a session is up or connecting (route can't change live). */
@@ -43,9 +49,11 @@ export function MultihopPanel({
   routeStyle,
   onRouteStyle,
   exit,
+  sessionExit = null,
   onOpenExit,
   locked,
 }: Props): JSX.Element {
+  const shownExit = sessionExit ?? exit;
   return (
     <div className="mh">
       <div className="mh-toggle" role="group" aria-label="Tunnel mode">
@@ -94,18 +102,20 @@ export function MultihopPanel({
               auto-chosen (a second gateway there) — showing an exit-country
               picker would be misleading since the pick is ignored. Only
               cross-jurisdiction lets the user choose where traffic emerges. */}
-          {routeStyle === 'multihop-cross-jurisdiction' ? (
+          {routeStyle === 'multihop-cross-jurisdiction' || sessionExit ? (
             <button className="loc-btn mh-exit" onClick={onOpenExit} disabled={locked}>
               <span className="hop-tag">EXIT</span>
-              <span className="flag">{exit?.flag ?? '🌐'}</span>
+              <span className="flag">{shownExit?.flag ?? '🌐'}</span>
               <span className="meta">
-                <span className="n">{exit?.name ?? 'Choose exit'}</span>
+                <span className="n">{shownExit?.name ?? 'Choose exit'}</span>
                 <span className="s">
-                  {exit ? `${exit.city || exit.code} · ${exit.gatewayIp}` : 'where traffic emerges'}
+                  {shownExit
+                    ? `${shownExit.city || shownExit.code} · ${shownExit.gatewayIp}`
+                    : 'where traffic emerges'}
                 </span>
               </span>
-              {exit && <span className={pingClass(exit.load)} />}
-              <span className="chev">›</span>
+              {shownExit && <span className={pingClass(shownExit.load)} />}
+              {!locked && <span className="chev">›</span>}
             </button>
           ) : (
             <p className="mh-exit-note">

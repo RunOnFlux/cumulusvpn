@@ -106,6 +106,9 @@ beforeEach(() => {
   nativeState.failAttempts = 0;
   nativeState.connects = 0;
   nativeState.session = { country: null, endpoint: null, assignedIp: null };
+  // establish() remembers a fallback transport per gateway; start each test
+  // from the usual order.
+  localStorage.removeItem('cvpn.transportPref.v1');
 });
 
 afterEach(async () => {
@@ -305,6 +308,30 @@ describe('establish', () => {
     expect(mockedEnroll).toHaveBeenCalledTimes(1);
     // The caller learns which transport actually worked.
     expect(result.transport.type).toBe('awg');
+  });
+
+  it('remembers a fallback that got through: the next connect there tries it first', async () => {
+    mockedEnroll.mockResolvedValue(enrollReply);
+    nativeState.failAttempts = 1; // plain wg is blocked at this gateway
+    const both = {
+      ...country,
+      transports: [
+        { type: 'wg' as const, port: 51820 },
+        { type: 'awg' as const, port: 51821, params: { jc: '4' } },
+      ],
+    };
+    await establish(both, keypair, true, 'auto');
+
+    vi.mocked(invoke).mockClear();
+    nativeState.connects = 0;
+    nativeState.failAttempts = 0;
+    const again = await establish(both, keypair, true, 'auto');
+
+    const connects = vi.mocked(invoke).mock.calls.filter((c) => c[0] === 'connect');
+    // Straight to awg: no ~6 s wait on the blocked transport.
+    expect(connects).toHaveLength(1);
+    expect((connects[0]?.[1] as { endpoint: string }).endpoint).toMatch(/:51821$/);
+    expect(again.transport.type).toBe('awg');
   });
 
   it('a Disconnect mid-sweep CANCELS it — never re-connects what the user cancelled', async () => {

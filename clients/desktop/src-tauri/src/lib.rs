@@ -176,6 +176,7 @@ pub fn run() {
             identity_backup::identity_backup_get,
             identity_backup::identity_backup_set,
             latency::probe_latency,
+            latency::probe_gateways,
             popover::popover_state,
             popover::popover_open_main,
             popover::popover_quit,

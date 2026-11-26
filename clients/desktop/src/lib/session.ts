@@ -36,7 +36,15 @@ import type {
 import { isTauri } from '@tauri-apps/api/core';
 import { BUNDLED_DIRECTORY, countryMeta } from './directory.js';
 import { toCityRows, toCountryRows } from './locations.js';
-import { loadDnsChoice, loadFleetCache, loadSplitPolicy, saveFleetCache } from './storage.js';
+import {
+  loadDnsChoice,
+  loadFleetCache,
+  loadSplitPolicy,
+  loadTransportPref,
+  saveFleetCache,
+  saveTransportPref,
+} from './storage.js';
+import { probeGateways } from './liveStats.js';
 import * as tunnel from './tauri.js';
 import type { TunnelStatus } from './tauri.js';
 
@@ -99,6 +107,8 @@ export interface CountryOption {
   readonly nodeCount?: number;
   /** Measured RTT to this row's gateway in ms; null = unreachable / untested. */
   readonly latencyMs?: number | null;
+  /** Every gateway this row covers reports no room for new free users. */
+  readonly full?: boolean;
 }
 
 /** Result of bringing a tunnel up: the gateway's enroll reply + native status. */
@@ -138,14 +148,23 @@ export interface MultihopResult {
 }
 
 /**
- * Measure every gateway's control-plane RTT (two quick samples each, in
- * parallel) so the picker and Automatic can rank by latency as well as load.
- * An unreachable gateway is simply absent from the map.
+ * Measure every gateway's RTT so the picker and Automatic can rank by latency
+ * as well as load. An unreachable gateway is simply absent from the map.
+ *
+ * In the app this is a native TCP-handshake probe, the same measurement as the
+ * live ping once connected, so the two figures agree. Elsewhere (tests, the
+ * browser demo) it times `/v1/info` fetches instead.
  */
 async function measureFleet(
   gateways: readonly GatewayInfo[],
   fetchImpl?: typeof fetch,
 ): Promise<Record<string, number>> {
+  if (!fetchImpl) {
+    const native = await probeGateways(gateways.map((g) => g.ip));
+    if (native) {
+      return native;
+    }
+  }
   const out: Record<string, number> = {};
   await Promise.all(
     gateways.map(async (g) => {
@@ -340,6 +359,40 @@ function toGatewayInfo(country: CountryOption): GatewayInfo {
   };
 }
 
+/**
+ * `chain` with the transport type `preferred` moved to the front, when the chain
+ * has it. Never adds a transport: the chain was already filtered by mode, tier
+ * and this build, so a remembered transport can't escape Stealth's list.
+ */
+export function preferTransport(
+  chain: readonly Transport[],
+  preferred: string | null,
+): readonly Transport[] {
+  const i = preferred === null ? -1 : chain.findIndex((t) => t.type === preferred);
+  return i <= 0 ? chain : [chain[i]!, ...chain.slice(0, i), ...chain.slice(i + 1)];
+}
+
+/**
+ * Update the remembered transport for a gateway after a successful connect.
+ * The usual first choice working clears it; a fallback that got through is
+ * remembered, so the next connect there skips the attempt that times out
+ * (plain WireGuard's UDP port is blocked at some providers, which cost ~6 s
+ * on every connect). The remembered one working again leaves the entry alone,
+ * so it still expires and the usual order gets re-tested now and then.
+ */
+export function rememberTransport(
+  gatewayIp: string,
+  usualFirst: Transport | undefined,
+  tried: readonly Transport[],
+  worked: Transport,
+): void {
+  if (worked.type === usualFirst?.type) {
+    saveTransportPref(gatewayIp, null);
+  } else if (tried[0]?.type !== worked.type) {
+    saveTransportPref(gatewayIp, worked.type);
+  }
+}
+
 /** How long to wait for a transport's inner handshake before trying the next.
  *  wireguard-go re-sends a handshake initiation every ~5s, so this buys two
  *  attempts — enough for any working path, short enough that walking a 3-entry
@@ -472,12 +525,15 @@ export async function establish(
   // entitlement, which is what keeps fallback safe: it can only ever walk within
   // the mode's own preference list, so Stealth can never fall back to plain WG.
   const gwTier = await resolveGatewayTier(country, keypair.publicKey, tier, fetchImpl);
-  const chain = transportFallbackChain(
+  const usualChain = transportFallbackChain(
     country.transports,
     transportMode,
     IMPLEMENTED_TRANSPORTS,
     gwTier,
   );
+  // A transport that got through here last time, after the usual first choice
+  // didn't, goes first (see rememberTransport).
+  const chain = preferTransport(usualChain, loadTransportPref(country.gatewayIp));
   if (chain.length === 0) {
     // Nothing usable here. requireTransport throws the precise, mode- and
     // tier-aware message (Premium-only vs no-DPI-resistant-transport), so it
@@ -571,6 +627,7 @@ export async function establish(
       throw new Error('connect cancelled');
     }
     if (up) {
+      rememberTransport(country.gatewayIp, usualChain[0], chain, transport);
       return {
         gatewayIp: country.gatewayIp,
         enroll: reply,

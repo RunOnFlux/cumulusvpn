@@ -16,6 +16,7 @@ import { Settings } from './components/Settings.js';
 import { helperReady, openHelperSettings } from './lib/tauri.js';
 import { desktopOs, setupBanner } from './lib/setup.js';
 import { RecoveryNudge } from './components/RecoveryNudge.js';
+import { cardLatency } from './lib/liveStats.js';
 
 /** Which hop the country picker is currently editing, or closed. */
 type PickerTarget = 'entry' | 'exit' | null;
@@ -198,14 +199,14 @@ export function App(): JSX.Element {
               {selected
                 ? [
                     selected.city || selected.code,
-                    selected.latencyMs != null ? `${selected.latencyMs} ms` : null,
+                    cardLatency(connected, conn.pingMs, selected.latencyMs),
                     selected.gatewayIp,
                   ]
                     .filter(Boolean)
                     .join(' · ')
-                : conn.phase === 'loading'
+                : conn.phase === 'loading' || conn.refreshing
                   ? 'discovering fleet…'
-                  : 'Re-test from the location list'}
+                  : 'Retrying automatically…'}
             </span>
           </span>
           {selected && (
@@ -223,6 +224,7 @@ export function App(): JSX.Element {
           routeStyle={conn.routeStyle}
           onRouteStyle={conn.setRouteStyle}
           exit={conn.exit}
+          sessionExit={conn.sessionExit}
           onOpenExit={() => setPicker('exit')}
           locked={locked}
         />
