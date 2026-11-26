@@ -139,22 +139,20 @@ fn dispatch(request: proto::Request, manager: &TunnelManager) -> proto::Response
         proto::Request::Disconnect => ("disconnect", manager.disconnect()),
         proto::Request::Connect(r) => (
             "connect",
-            manager.connect_request(&r).map(|s| {
+            manager.connect_request(&r).inspect(|_| {
                 eprintln!(
                     "cumulusvpn-helper: connected to {} via {}",
                     r.country, r.endpoint
                 );
-                s
             }),
         ),
         proto::Request::ConnectMultihop(r) => (
             "multi-hop connect",
-            manager.connect_multihop_request(&r).map(|s| {
+            manager.connect_multihop_request(&r).inspect(|_| {
                 eprintln!(
                     "cumulusvpn-helper: connected multi-hop {} -> {}",
                     r.entry_country, r.exit_country
                 );
-                s
             }),
         ),
     };
