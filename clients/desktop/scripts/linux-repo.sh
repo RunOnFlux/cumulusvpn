@@ -77,6 +77,8 @@ enabled=1
 gpgcheck=1
 repo_gpgcheck=1
 gpgkey=$BASE_URL/cumulusvpn.asc
+# dnf's default is 48 h: a new release could go unseen for two days.
+metadata_expire=6h
 EOF
 
 # --- self-check: what users' package managers will verify --------------------

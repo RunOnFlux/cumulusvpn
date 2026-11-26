@@ -58,7 +58,7 @@ function updateText(u: Updater, connected: boolean): string {
     case 'available':
       return `${v} is available.${drop}`;
     case 'external':
-      return `${v} is available. Update it with your system’s software updater, or run: sudo apt upgrade (Fedora: sudo dnf upgrade).`;
+      return `${v} is available. Update it with your system’s software updater, or run: sudo apt update && sudo apt upgrade (Fedora: sudo dnf upgrade --refresh).`;
     case 'installing':
       return `Installing ${v}… the app restarts by itself.`;
     case 'failed':
