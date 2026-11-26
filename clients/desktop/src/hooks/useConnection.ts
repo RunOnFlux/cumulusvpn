@@ -15,8 +15,8 @@ import {
   fetchEntitlement,
   teardown,
 } from '../lib/session.js';
-import type { CountryOption, FleetDiscovery } from '../lib/session.js';
-import { resolveSelection } from '../lib/locations.js';
+import type { CountryOption, FleetDiscovery, MultihopResult } from '../lib/session.js';
+import { gatewayOption, optionId, resolveSelection } from '../lib/locations.js';
 import { fleetPriceFlux, paymentIdentity } from '../lib/payment.js';
 import type { PaymentIdentity } from '../lib/payment.js';
 import { status as nativeStatus, helperRegistration, helperReady } from '../lib/tauri.js';
@@ -78,7 +78,10 @@ export interface ConnectionModel {
   /** True when the live session has split-tunneling rules applied (docs/17 §8). */
   readonly splitActive: boolean;
   readonly error: string | null;
-  /** Pick a location id (`DE`, `DE:Frankfurt`), or `null` for Automatic. */
+  /**
+   * Pick a location id (`DE`, `DE:Frankfurt`), or `null` for Automatic. During
+   * a session this switches the tunnel to it.
+   */
   readonly select: (id: string | null) => void;
   readonly connect: () => void;
   readonly disconnect: () => void;
@@ -89,6 +92,11 @@ export interface ConnectionModel {
   readonly routeStyle: MultihopStyle;
   /** The EXIT hop chosen for multi-hop (entry is `selected`). */
   readonly exit: CountryOption | null;
+  /**
+   * The exit gateway the live multi-hop session actually uses (Balanced picks
+   * it automatically), or null outside a multi-hop session.
+   */
+  readonly sessionExit: CountryOption | null;
   /** Toggle multi-hop on/off. */
   readonly setMultihop: (on: boolean) => void;
   /** Pick the multi-hop route style. */
@@ -198,6 +206,19 @@ const SERVICE_START_GRACE_MS = 15_000;
 const RECONNECT_DELAYS_MS = [5000, 10000, 20000, 40000, 60000, 60000] as const;
 
 /**
+ * Backoff for re-running fleet discovery while it has found nothing (no cache,
+ * no live gateways), in ms; the last entry repeats. Launched at login, the app
+ * often starts before the network is up, and a single attempt then left
+ * "No locations" on screen until the user restarted the app.
+ */
+export const DISCOVERY_RETRY_MS = [5000, 10000, 20000, 30000, 60000] as const;
+
+/** The wait before discovery attempt `attempt + 1` (0-based `attempt`). */
+export function discoveryRetryDelay(attempt: number): number {
+  return DISCOVERY_RETRY_MS[Math.min(Math.max(attempt, 0), DISCOVERY_RETRY_MS.length - 1)]!;
+}
+
+/**
  * What a status read at launch says about a session that outlived the previous
  * app instance. The helper daemon keeps the tunnel (and its kill switch and
  * repair loop) when the app is killed, so a relaunched app must reattach to it
@@ -231,6 +252,53 @@ export function dnsWarningOf(phase: Phase, tunnel: TunnelStatus): string | null 
   return phase === 'connected' ? (tunnel.dnsWarning ?? null) : null;
 }
 
+/**
+ * Whether picking `id` (null = Automatic) during a session at `live` moves the
+ * tunnel somewhere else. Automatic, or a country whose best row is the city
+ * already in use, resolves to where we are, which needs no reconnect.
+ */
+export function switchesLocation(
+  id: string | null,
+  live: CountryOption,
+  countries: readonly CountryOption[],
+  locations: readonly CountryOption[],
+): boolean {
+  if (id !== null && id === optionId(live)) {
+    return false;
+  }
+  const target = resolveSelection(id, countries, locations);
+  return (
+    target !== null && optionId(target) !== optionId(live) && target.gatewayIp !== live.gatewayIp
+  );
+}
+
+/**
+ * The entry and exit rows to show for a live multi-hop session: the gateways
+ * `selectHops` actually chose, looked up in the fleet. The entry keeps the
+ * picked row's id (so re-picking it is recognised) with the real gateway's
+ * details; a hop missing from the fleet falls back to the picked row / null.
+ */
+export function sessionHops(
+  entry: CountryOption,
+  fleet: readonly GatewayInfo[],
+  result: Pick<MultihopResult, 'entryGatewayIp' | 'exitGatewayIp'>,
+): { entry: CountryOption; exit: CountryOption | null } {
+  const entryGw = fleet.find((g) => g.ip === result.entryGatewayIp);
+  const exitGw = fleet.find((g) => g.ip === result.exitGatewayIp);
+  return {
+    entry: entryGw
+      ? {
+          ...entry,
+          gatewayIp: entryGw.ip,
+          city: entryGw.city.trim(),
+          load: entryGw.load,
+          signPubKey: entryGw.sign_pubkey,
+        }
+      : entry,
+    exit: exitGw ? gatewayOption(exitGw) : null,
+  };
+}
+
 export function useConnection(): ConnectionModel {
   const keypairRef = useRef<Keypair | null>(null);
   if (keypairRef.current === null) {
@@ -251,6 +319,11 @@ export function useConnection(): ConnectionModel {
   const [selectedId, setSelectedId] = useState<string | null>(() => loadSelectedCountry());
   // The location of the live (or reattached) session; null when idle.
   const [sessionEntry, setSessionEntry] = useState<CountryOption | null>(null);
+  // The exit gateway of a live multi-hop session; null otherwise.
+  const [sessionExit, setSessionExit] = useState<CountryOption | null>(null);
+  // Discovery found nothing to show and the phase is its error, which a later
+  // successful discovery clears.
+  const discoveryFailedRef = useRef(false);
   const selected = useMemo(
     () => sessionEntry ?? resolveSelection(selectedId, countries, locations),
     [sessionEntry, selectedId, countries, locations],
@@ -384,32 +457,56 @@ export function useConnection(): ConnectionModel {
         ready();
         setRefreshing(true);
       }
-      try {
-        const fresh = await discoverFleetAndCountries();
+      // Live discovery. While it finds no gateways and there is no cache on
+      // screen it is retried with backoff (DISCOVERY_RETRY_MS) — at login the
+      // network is often not up yet — until a fleet appears.
+      let settled = cached !== null;
+      for (let attempt = 0; ; attempt += 1) {
+        let fresh: FleetDiscovery | null = null;
+        let failure: unknown = null;
+        try {
+          fresh = await discoverFleetAndCountries();
+        } catch (err) {
+          failure = err;
+        }
         setRefreshing(false);
         if (!alive) {
           return;
         }
+        const gotFleet = fresh !== null && fresh.fleet.length > 0;
         // An empty fleet is the offline seed fallback: it must not replace a
-        // real (cached) fleet.
-        if (!cached || fresh.fleet.length > 0) {
+        // real (cached, or found meanwhile) fleet.
+        if (fresh && (gotFleet || fleetRef.current.length === 0)) {
           apply(fresh);
         }
-        if (!cached) {
-          ready();
+        if (!settled) {
+          settled = true;
+          if (fresh) {
+            ready();
+          } else if (live) {
+            reattach(live);
+          } else {
+            discoveryFailedRef.current = true;
+            setError(messageOf(failure));
+            setPhase('error');
+          }
+        } else if (gotFleet && discoveryFailedRef.current) {
+          // A retry found the fleet: the discovery error no longer applies.
+          discoveryFailedRef.current = false;
+          setError(null);
+          setPhase((p) => (p === 'error' ? 'idle' : p));
         }
-      } catch (err) {
-        setRefreshing(false);
-        if (!alive || cached) {
-          // With a cache on screen, a failed refresh just leaves it there.
+        // Done once real gateways are on screen: from here, the cache, or a
+        // manual Re-test that got there first. With a cache, a failed refresh
+        // just leaves it there.
+        if (gotFleet || cached || fleetRef.current.length > 0) {
           return;
         }
-        if (live) {
-          reattach(live);
+        await new Promise((resolve) => setTimeout(resolve, discoveryRetryDelay(attempt)));
+        if (!alive || fleetRef.current.length > 0) {
           return;
         }
-        setError(messageOf(err));
-        setPhase('error');
+        setRefreshing(true);
       }
     })();
     return () => {
@@ -431,6 +528,11 @@ export function useConnection(): ConnectionModel {
       setFleetPrice(fleetPriceFlux(fleet));
       setCountries(list);
       setLocations(locs);
+      if (fleet.length > 0 && discoveryFailedRef.current) {
+        discoveryFailedRef.current = false;
+        setError(null);
+        setPhase((p) => (p === 'error' ? 'idle' : p));
+      }
     } catch (err) {
       setError(messageOf(err));
     } finally {
@@ -455,15 +557,34 @@ export function useConnection(): ConnectionModel {
       reapplyRef.current = true;
     }
   }, []);
-  const select = useCallback((id: string | null) => {
-    setSelectedId(id);
-    saveSelectedCountry(id);
-    // Outside a live session (e.g. after a failed connect) the new pick is
-    // what Connect should use, not the location of the attempt that failed.
-    if (phaseRef.current !== 'connected' && phaseRef.current !== 'connecting') {
+  // Read by `select` to tell a real change of location from a re-pick.
+  const sessionEntryRef = useRef<CountryOption | null>(null);
+  sessionEntryRef.current = sessionEntry;
+  const countriesRef = useRef<readonly CountryOption[]>([]);
+  countriesRef.current = countries;
+  const locationsRef = useRef<readonly CountryOption[]>([]);
+  locationsRef.current = locations;
+  const select = useCallback(
+    (id: string | null) => {
+      setSelectedId(id);
+      saveSelectedCountry(id);
+      const live = sessionEntryRef.current;
+      if (live && (phaseRef.current === 'connected' || phaseRef.current === 'connecting')) {
+        // Picking a location during a session means "go there now". Before,
+        // the pick was only saved for the next connect while the tunnel stayed
+        // where it was, with nothing on screen saying so. Re-picking where we
+        // already are changes nothing.
+        if (!switchesLocation(id, live, countriesRef.current, locationsRef.current)) {
+          return;
+        }
+        markReapply();
+      }
+      // Unpin the session's location so the reconnect (or outside a session,
+      // e.g. after a failed connect, the next Connect) uses the new pick.
       setSessionEntry(null);
-    }
-  }, []);
+    },
+    [markReapply],
+  );
 
   const selectExit = useCallback(
     (code: string) => {
@@ -592,6 +713,7 @@ export function useConnection(): ConnectionModel {
     const sweep = new AbortController();
     sweepRef.current = sweep;
     setTunnel((t) => ({ ...t, state: 'connecting', country: entry.code }));
+    setSessionExit(null);
     // Pin the location for the session: Automatic re-resolves on every
     // re-test, and the live tunnel must keep showing where it really goes.
     setSessionEntry(entry);
@@ -614,6 +736,11 @@ export function useConnection(): ConnectionModel {
             undefined,
             nodeDiversity,
           );
+          // Show the hops actually in use: `selectHops` picks the gateways (on
+          // Balanced the exit automatically), not necessarily the rows' own.
+          const hops = sessionHops(entry, fleetRef.current, result);
+          setSessionEntry(hops.entry);
+          setSessionExit(hops.exit);
           setTunnel(result.tunnel);
           setSplitActive(result.splitApplied);
           setPhase('connected');
@@ -700,6 +827,7 @@ export function useConnection(): ConnectionModel {
     } else if (phase === 'idle') {
       setConnectedSince(null);
       setSessionEntry(null);
+      setSessionExit(null);
     }
   }, [phase]);
 
@@ -905,6 +1033,7 @@ export function useConnection(): ConnectionModel {
     multihop,
     routeStyle,
     exit,
+    sessionExit,
     setMultihop,
     setRouteStyle,
     selectExit,

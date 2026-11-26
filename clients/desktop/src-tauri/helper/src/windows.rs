@@ -60,7 +60,7 @@ pub fn main() -> i32 {
         Some("--cleanup") => cleanup(),
         Some("--ping") => ping(),
         Some("--version") => {
-            println!("cumulusvpn-helper {}", env!("CARGO_PKG_VERSION"));
+            println!("cumulusvpn-helper {}", crate::VERSION);
             0
         }
         Some(other) => {

@@ -41,17 +41,29 @@ function scoreOf(g: GatewayInfo, latency: LatencyByIp): number {
 }
 
 /**
- * The best gateway in `list`. Measured gateways are preferred over unmeasured
- * ones (an unreachable node is never "nearest"), as on mobile.
+ * A gateway that says it has no room left (`capacity` is the free-tier
+ * headroom when that binds first — gateway `handleInfo`), so a new enrollment
+ * there is refused with "free tier full".
+ */
+export function isFull(g: GatewayInfo): boolean {
+  return g.capacity === 0;
+}
+
+/**
+ * The best gateway in `list`. Gateways with room are preferred over full ones,
+ * and measured gateways over unmeasured ones (an unreachable node is never
+ * "nearest"), as on mobile.
  */
 export function bestOf(
   list: readonly GatewayInfo[],
   latency: LatencyByIp,
 ): GatewayInfo | undefined {
-  const measured = list.filter((g) => latency[g.ip] !== undefined);
+  const open = list.filter((g) => !isFull(g));
+  const pool = open.length > 0 ? open : list;
+  const measured = pool.filter((g) => latency[g.ip] !== undefined);
   let best: GatewayInfo | undefined;
   let bestScore = -Infinity;
-  for (const g of measured.length > 0 ? measured : list) {
+  for (const g of measured.length > 0 ? measured : pool) {
     const s = scoreOf(g, latency);
     if (s > bestScore) {
       best = g;
@@ -83,6 +95,15 @@ function toOption(
   };
 }
 
+/**
+ * A single gateway as a location (flag, name, city, IP) — how a live session
+ * shows the gateway it actually uses, e.g. a multi-hop exit chosen by
+ * `selectHops` rather than picked from a row.
+ */
+export function gatewayOption(g: GatewayInfo, latencyMs: number | null = null): CountryOption {
+  return toOption(g, g.country, 1, latencyMs === null ? {} : { [g.ip]: latencyMs });
+}
+
 function groupBy(
   gateways: readonly GatewayInfo[],
   keyOf: (g: GatewayInfo) => string,
@@ -102,7 +123,10 @@ function groupBy(
   for (const [id, list] of groups) {
     const best = bestOf(list, latency);
     if (best) {
-      rows.push(toOption(best, id, list.length, latency));
+      const row = toOption(best, id, list.length, latency);
+      // Every gateway here is full: still listed (a premium key may get in, and
+      // capacity frees up), but marked, and never chosen by Automatic.
+      rows.push(isFull(best) ? { ...row, full: true } : row);
     }
   }
   return rows.sort((a, b) => a.name.localeCompare(b.name) || a.city.localeCompare(b.city));
@@ -139,8 +163,10 @@ export function citiesOf(locations: readonly CountryOption[], code: string): Cou
 export function bestLocation(countries: readonly CountryOption[]): CountryOption | null {
   let best: CountryOption | null = null;
   let bestScore = -Infinity;
-  const measured = countries.filter((c) => c.latencyMs !== null && c.latencyMs !== undefined);
-  for (const c of measured.length > 0 ? measured : countries) {
+  const open = countries.filter((c) => !c.full);
+  const pool = open.length > 0 ? open : countries;
+  const measured = pool.filter((c) => c.latencyMs !== null && c.latencyMs !== undefined);
+  for (const c of measured.length > 0 ? measured : pool) {
     const s = gatewayQuality(c.latencyMs ?? null, c.load).score;
     if (s > bestScore) {
       best = c;

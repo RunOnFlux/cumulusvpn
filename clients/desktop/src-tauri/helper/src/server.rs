@@ -132,14 +132,44 @@ fn dispatch(request: proto::Request, manager: &TunnelManager) -> proto::Response
     let result = match request {
         proto::Request::Ping => {
             return proto::Response::Pong {
-                version: env!("CARGO_PKG_VERSION").to_string(),
+                version: crate::VERSION.to_string(),
             }
         }
-        proto::Request::Status => Ok(manager.status()),
-        proto::Request::Disconnect => manager.disconnect(),
-        proto::Request::Connect(r) => manager.connect_request(&r),
-        proto::Request::ConnectMultihop(r) => manager.connect_multihop_request(&r),
+        proto::Request::Status => return status_response(Ok::<_, String>(manager.status())),
+        proto::Request::Disconnect => ("disconnect", manager.disconnect()),
+        proto::Request::Connect(r) => (
+            "connect",
+            manager.connect_request(&r).map(|s| {
+                eprintln!(
+                    "cumulusvpn-helper: connected to {} via {}",
+                    r.country, r.endpoint
+                );
+                s
+            }),
+        ),
+        proto::Request::ConnectMultihop(r) => (
+            "multi-hop connect",
+            manager.connect_multihop_request(&r).map(|s| {
+                eprintln!(
+                    "cumulusvpn-helper: connected multi-hop {} -> {}",
+                    r.entry_country, r.exit_country
+                );
+                s
+            }),
+        ),
     };
+    let (op, result) = result;
+    // Into the journal / service log: without it a failed connect left no trace
+    // on the machine, only a line in an app window the user may have closed.
+    if let Err(e) = &result {
+        eprintln!("cumulusvpn-helper: {op} failed: {e}");
+    }
+    status_response(result)
+}
+
+fn status_response<E: std::fmt::Display>(
+    result: Result<proto::TunnelStatus, E>,
+) -> proto::Response {
     match result {
         Ok(status) => proto::Response::Status(Box::new(status)),
         Err(e) => proto::Response::Error {
@@ -206,7 +236,7 @@ mod tests {
     #[test]
     fn ping_is_answered_with_the_helper_version() {
         with_daemon(accept_everyone(), |client| {
-            assert_eq!(ping(client), Ok(env!("CARGO_PKG_VERSION").to_string()));
+            assert_eq!(ping(client), Ok(crate::VERSION.to_string()));
         });
     }
 

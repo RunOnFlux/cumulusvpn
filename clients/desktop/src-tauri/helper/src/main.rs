@@ -40,6 +40,10 @@ mod update_watch;
 #[cfg(windows)]
 mod windows;
 
+/// The CumulusVPN release this helper shipped with (from tauri.conf.json, see
+/// build.rs) — what `--ping` / `--version` report, not the crate's own 0.1.0.
+pub(crate) const VERSION: &str = env!("CUMULUSVPN_VERSION");
+
 #[cfg(target_os = "macos")]
 fn main() {
     use std::sync::Arc;
@@ -117,6 +121,16 @@ mod packaging_tests {
         std::fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("{}: {e}", path.display()))
             .replace("\r\n", "\n")
+    }
+
+    #[test]
+    fn the_helper_reports_the_release_version() {
+        let conf = read("tauri.conf.json");
+        assert!(
+            conf.contains(&format!("\"version\": \"{}\"", super::VERSION)),
+            "helper VERSION {} is not tauri.conf.json's version",
+            super::VERSION
+        );
     }
 
     const LINUX_SOCKET: &str = "/run/cumulusvpn/helper.sock";

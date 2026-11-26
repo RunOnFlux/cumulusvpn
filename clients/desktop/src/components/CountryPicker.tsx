@@ -40,6 +40,24 @@ const TONE_VAR: Record<QualityTone, string> = {
 function Quality({ row }: { readonly row: CountryOption }): JSX.Element {
   const latency = row.latencyMs ?? null;
   const q = gatewayQuality(latency, row.load);
+  if (row.full) {
+    // Every node here turned away new free users at discovery: say so before
+    // the user picks it and meets "free tier full" on Connect.
+    return (
+      <span
+        className="qcol"
+        title="No free slots right now — try another location or Re-test later"
+      >
+        <span className="qtop">
+          <span className="qlabel" style={{ color: TONE_VAR.busy }}>
+            Full
+          </span>
+          <span className="qdot" style={{ background: TONE_VAR.busy }} />
+        </span>
+        <span className="lat">{latency !== null ? `${latency} ms` : 'no free slots'}</span>
+      </span>
+    );
+  }
   return (
     <span className="qcol">
       <span className="qtop">

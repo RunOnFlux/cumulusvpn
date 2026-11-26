@@ -306,10 +306,7 @@ mod tests {
     fn the_pipe_serves_requests_over_a_session() {
         let name = daemon(Arc::new(|_: &Pipe| Ok(())));
         let mut client = open(&name);
-        assert_eq!(
-            server::ping(&mut client),
-            Ok(env!("CARGO_PKG_VERSION").to_string())
-        );
+        assert_eq!(server::ping(&mut client), Ok(crate::VERSION.to_string()));
         for _ in 0..3 {
             proto::write_frame(&mut client, &proto::Request::Status).expect("write");
             match proto::read_frame::<_, proto::Response>(&mut client).expect("read") {
