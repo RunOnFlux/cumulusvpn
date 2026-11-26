@@ -13,7 +13,8 @@
 #    a repo file already names pkg.cumulusvpn.com; the key ships in this
 #    package. Removed on erase (rpm-postun.sh). dnf asks once to import the
 #    key on the first update: rpm cannot import it from inside its own
-#    transaction.
+#    transaction. `metadata_expire=6h` (dnf's default is 48 h) lets a new
+#    release show up the same day; it is added to an older repo file too.
 GROUP=cumulusvpn
 UNIT=cumulusvpn-helper.service
 
@@ -51,7 +52,15 @@ if [ -d /etc/yum.repos.d ] && ! grep -rqs 'pkg\.cumulusvpn\.com' /etc/yum.repos.
     "gpgcheck=1" \
     "repo_gpgcheck=1" \
     "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-cumulusvpn" \
+    "metadata_expire=6h" \
     >"$REPO"
+elif [ -f "$REPO" ] && grep -qs 'pkg\.cumulusvpn\.com' "$REPO" \
+  && ! grep -qs '^metadata_expire=' "$REPO"; then
+  # Written before 1.4.15 (by us, or from the published .repo): without it
+  # dnf re-reads our metadata only every 48 h, so new releases went unseen.
+  # (A hand-edited file may lack the final newline: don't glue onto its last line.)
+  [ -z "$(tail -c 1 "$REPO")" ] || printf '\n' >>"$REPO"
+  printf '%s\n' "metadata_expire=6h" >>"$REPO"
 fi
 
 exit 0
