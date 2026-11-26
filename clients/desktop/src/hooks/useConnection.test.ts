@@ -5,6 +5,7 @@ import {
   messageOf,
   reattachPhase,
   STALE_HELPER_HINT,
+  tunnelAfterFailedConnect,
 } from './useConnection';
 import type { Phase } from './useConnection';
 import type { TunnelStatus } from '../lib/tauri';
@@ -101,5 +102,36 @@ describe('isBlocked', () => {
     expect(isBlocked('error', tunnel('error'), false)).toBe(false);
     expect(isBlocked('error', tunnel('down'), true)).toBe(false);
     expect(isBlocked('connected', tunnel('up'), true)).toBe(false);
+  });
+});
+
+describe('tunnelAfterFailedConnect', () => {
+  // Enrollment refused / node full / gateway unreachable: the helper was never
+  // asked to connect, so no kill switch is engaged. Claiming "blocked" here hid
+  // the real error and told the user nothing leaks while traffic flowed in the clear.
+  it('reports down, not blocked, when the native side has nothing up', async () => {
+    const t = await tunnelAfterFailedConnect('enroll HTTP 503', async () =>
+      status({ state: 'down', endpoint: null, assignedIp: null, country: null }),
+    );
+    expect(t.state).toBe('down');
+    expect(t.error).toBe('enroll HTTP 503');
+    expect(isBlocked('error', t, true)).toBe(false);
+  });
+
+  it('keeps the native error state when the helper holds the kill switch', async () => {
+    const t = await tunnelAfterFailedConnect('handshake timeout', async () =>
+      status({ state: 'error', error: 'no handshake' }),
+    );
+    expect(t.state).toBe('error');
+    expect(t.error).toBe('no handshake');
+    expect(isBlocked('error', t, true)).toBe(true);
+  });
+
+  it('is not blocked when the native side cannot be asked', async () => {
+    const t = await tunnelAfterFailedConnect('boom', async () => {
+      throw new Error('helper unreachable');
+    });
+    expect(t.state).toBe('down');
+    expect(isBlocked('error', t, true)).toBe(false);
   });
 });
