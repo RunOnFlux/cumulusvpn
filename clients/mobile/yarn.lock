@@ -903,12 +903,12 @@ __metadata:
 
 "@cumulusvpn/core@file:../core-ts::locator=%40cumulusvpn%2Fmobile%40workspace%3A.":
   version: 0.1.0
-  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=42d35f&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
+  resolution: "@cumulusvpn/core@file:../core-ts#../core-ts::hash=f33948&locator=%40cumulusvpn%2Fmobile%40workspace%3A."
   dependencies:
     "@noble/curves": "npm:2.4.0"
     "@noble/hashes": "npm:2.4.0"
     "@scure/base": "npm:2.4.0"
-  checksum: 10c0/06001275a8165a48614ae1617d22f7d26886e790a7cae8fb179022a63d7001be38a196acdcee1abecbf6b479fa235f5ba2efd0ac4c5b6df07f2def08afce97ab
+  checksum: 10c0/c2467304cc5e1ab30f27d36a769c3cdae2ce91c9904c58a70b5663ad3bc5339718d93150429ee62b48ac88d92ef027b5d503519dc353d4f49d2f685c9e0cbcfd
   languageName: node
   linkType: hard
 
@@ -6703,9 +6703,9 @@ __metadata:
   linkType: hard
 
 "undici@npm:^8.4.1":
-  version: 8.11.2
-  resolution: "undici@npm:8.11.2"
-  checksum: 10c0/106f6991178fb7562fd90cdec7993c5f807a9428682306091f0c4b27fc474ec291f868e29972c6252988bf061ad193df943b3b99e775be157a28d92bbb95699d
+  version: 8.13.1
+  resolution: "undici@npm:8.13.1"
+  checksum: 10c0/ee202b4da4f4a663e723696c6d6f6f27f3424aaddd652ceccf1062beaddce171809445cbdbedc50dcd53f0119a1fe8ce20f7c5d320039e71915418dfc98b58a0
   languageName: node
   linkType: hard
 
