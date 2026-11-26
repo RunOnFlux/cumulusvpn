@@ -409,6 +409,27 @@ jobs:
           rpm -qp --scripts "$rpm" | tee "$RUNNER_TEMP/rpm-scripts.txt"
           grep -c 'cumulusvpn-helper.service' "$RUNNER_TEMP/rpm-scripts.txt"
 
+          # The glibc floor. Tauri's bundlers record no library versions, so on
+          # Ubuntu 22.04 / Debian 12 the package installed and the app then
+          # failed to start (GLIBC_2.39 not found). tauri.linux.conf.json
+          # declares it: `libc6 (>= X)` in the .deb, and in the .rpm the
+          # capability `libc.so.6(GLIBC_X)(64bit)` that glibc >= X provides
+          # (Tauri writes rpm depends as bare names, so "glibc >= X" would be a
+          # package nothing provides). Check that the declared floor covers
+          # what the binaries actually link (a newer runner image raises it
+          # silently), and that the oldest Fedora we name provides it. The
+          # .deb side is resolved for real by the apt-get install below.
+          floor=$(dpkg-deb -f "$deb" Depends | grep -oP 'libc6 \(>= \K[0-9.]+(?=\))')
+          test -n "$floor"
+          rpm -qpR "$rpm" | tee "$RUNNER_TEMP/rpm-requires.txt"
+          grep -Fx "libc.so.6(GLIBC_${floor})(64bit)" "$RUNNER_TEMP/rpm-requires.txt"
+          dpkg-deb -x "$deb" "$RUNNER_TEMP/deb-data"
+          need=$(for b in "$RUNNER_TEMP"/deb-data/usr/bin/*; do objdump -T "$b" 2>/dev/null || true; done \
+            | grep -oP 'GLIBC_\K[0-9]+\.[0-9]+' | sort -V | tail -n1)
+          echo "binaries need glibc $need; the packages declare >= $floor"
+          test "$(printf '%s\n%s\n' "$need" "$floor" | sort -V | tail -n1)" = "$floor"
+          docker run --rm fedora:40 rpm -q --whatprovides "libc.so.6(GLIBC_${floor})(64bit)"
+
           # The daemon cleans up before it binds; give it a moment.
           wait_for_socket() {
             for _ in $(seq 1 50); do sudo test -S /run/cumulusvpn/helper.sock && return 0; sleep 0.2; done
