@@ -384,6 +384,9 @@ export function useConnection(): ConnectionModel {
   const [helperState, setHelperState] = useState<HelperRegistration>('notNeeded');
   const [disconnecting, setDisconnecting] = useState(false);
   const disconnectingRef = useRef(false);
+  // Bumped whenever a connect or disconnect starts, so a status poll that was
+  // in flight across one can tell its answer is about a session that is gone.
+  const sessionGenRef = useRef(0);
   const launchedAtRef = useRef(Date.now());
   const [favorites, setFavorites] = useState<readonly string[]>(() =>
     (localStorage.getItem('cvpn.favorites') ?? '').split(',').filter(Boolean),
@@ -707,6 +710,7 @@ export function useConnection(): ConnectionModel {
     }
     setError(null);
     setPhase('connecting');
+    sessionGenRef.current += 1;
     // Abort any sweep still running (double-click, or a reconnect racing a
     // manual connect) so two sweeps can't interleave against one TunnelManager.
     sweepRef.current?.abort();
@@ -799,6 +803,7 @@ export function useConnection(): ConnectionModel {
       return;
     }
     disconnectingRef.current = true;
+    sessionGenRef.current += 1;
     setDisconnecting(true);
     setError(null);
     void (async () => {
@@ -958,9 +963,15 @@ export function useConnection(): ConnectionModel {
         if (disconnectingRef.current) {
           return;
         }
+        // A poll sent just before a Disconnect (or a connect that replaces the
+        // session, e.g. switching location) can come back after it: the helper
+        // answers it once the teardown releases the tunnel, and by then the
+        // disconnect has finished, so the check above passes. That stale "down"
+        // turned a clean Disconnect into "connection lost".
+        const generation = sessionGenRef.current;
         try {
           const s = await nativeStatus();
-          if (disconnectingRef.current) {
+          if (disconnectingRef.current || generation !== sessionGenRef.current) {
             return;
           }
           setTunnel(s);
